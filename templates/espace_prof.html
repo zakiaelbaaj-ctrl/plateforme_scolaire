@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Espace Professeur</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        h1 { color: #333; }
+        .container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 10px; text-align: left; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+        .header a { text-decoration: none; color: #337ab7; }
+        #calendar { width: 100%; }
+        .btn { display: inline-block; padding: 10px 15px; background: #337ab7; color: white; border-radius: 4px; text-decoration: none; margin-top: 10px; }
+        .btn:hover { background: #285a8d; }
+        .small-info { margin-top: 10px; font-size: 0.9em; color: #555; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Bienvenue, {{ nom }} !</h1>
+        <a href="{{ url_for('logout') }}">Se déconnecter</a>
+    </div>
+
+    <div class="container">
+
+        <!-- Colonne gauche -->
+        <div>
+
+            <!-- Visio -->
+            <div class="card">
+                <h2>Visio avec les élèves</h2>
+                <p>Démarrez une classe virtuelle en ligne.</p>
+                <a class="btn" href="/visio" target="_blank">Démarrer la visio</a>
+                <hr>
+                <h3>Élèves en salle d'attente</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Classe</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for eleve in liste_attente %}
+                        <tr>
+                            <td>{{ eleve.nom }}</td>
+                            <td>{{ eleve.classe }}</td>
+                            <td>En attente</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Emploi du temps -->
+            <div class="card">
+                <h2>Mon emploi du temps</h2>
+                <ul>
+                    <li>Lundi : Mathématiques 08h00 - 10h00</li>
+                    <li>Mardi : Physique 10h00 - 12h00</li>
+                    <li>Mercredi : Libre</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <!-- Colonne droite -->
+        <div>
+
+            <!-- Calendrier -->
+            <div class="card">
+                <h2>Calendrier</h2>
+                <input type="date" id="calendar">
+            </div>
+
+            <!-- Heure et météo -->
+            <div class="card">
+                <h2>Infos du jour</h2>
+                <div><strong>Heure actuelle :</strong> <span id="clock"></span></div>
+                <div class="small-info"><strong>Météo :</strong> Ensoleillé, 24°C ☀️</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Script horloge
+        function updateClock() {
+            const now = new Date();
+            const clock = document.getElementById("clock");
+            clock.textContent = now.toLocaleTimeString("fr-FR");
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+
+</body>
+</html>

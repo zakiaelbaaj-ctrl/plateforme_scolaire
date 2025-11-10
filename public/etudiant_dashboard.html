@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableau de Bord Étudiant</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="logo">
+    <img src="logo.png" alt="Logo">
+</div>
+
+<div class="dashboard">
+    <h1 id="welcomeMessage">Bienvenue, Étudiant</h1>
+    <p>🎓 Vous êtes connecté à votre espace personnel.</p>
+
+    <button onclick="logout()" style="
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #ff5252;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+    ">Se déconnecter</button>
+</div>
+
+<script>
+// Vérifier si un étudiant est connecté
+const etudiant = JSON.parse(localStorage.getItem("etudiantConnecte"));
+if (!etudiant) {
+    alert("⚠️ Veuillez vous connecter d'abord.");
+    window.location.href = "login_etudiant.html";
+} else {
+    document.getElementById("welcomeMessage").textContent = `Bienvenue, ${etudiant.nom} !`;
+}
+
+// Déconnexion
+function logout() {
+    localStorage.removeItem("etudiantConnecte");
+    alert("Vous avez été déconnecté.");
+    window.location.href = "index.html";
+}
+</script>
+
+</body>
+</html>

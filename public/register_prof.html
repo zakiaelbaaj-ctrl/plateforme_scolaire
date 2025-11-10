@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription Professeur</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .success {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+        
+        .success.show {
+            display: block;
+        }
+        
+        .link-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .link-section a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .link-section a:hover {
+            text-decoration: underline;
+        }
+
+        .info {
+            background: #f0f8ff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 15px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👨‍🏫 Inscription Professeur</h1>
+        
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">Nom d'utilisateur</label>
+                <input type="text" id="username" name="username" required placeholder="prof_amine">
+            </div>
+
+            <div class="form-group">
+                <label for="prenom">Prénom</label>
+                <input type="text" id="prenom" name="prenom" required placeholder="Amine">
+            </div>
+
+            <div class="form-group">
+                <label for="nom">Nom</label>
+                <input type="text" id="nom" name="nom" required placeholder="EL HARRIF">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••" minlength="6">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">Confirmer le mot de passe</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="••••••••" minlength="6">
+            </div>
+            
+            <button type="submit" id="submitBtn">Créer mon compte</button>
+            
+            <div id="errorDiv" class="error"></div>
+            <div id="successDiv" class="success"></div>
+        </form>
+        
+        <div class="info">
+            💡 Le mot de passe doit faire au moins 6 caractères. Votre compte sera en attente de validation par l'administrateur.
+        </div>
+        
+        <div class="link-section">
+            <p>Vous avez déjà un compte ? <a href="login_prof.html">🔐 Se connecter</a></p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('registerForm');
+        const errorDiv = document.getElementById('errorDiv');
+        const successDiv = document.getElementById('successDiv');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        let isLoading = false;
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (isLoading) return;
+            
+            errorDiv.classList.remove('show');
+            successDiv.classList.remove('show');
+            errorDiv.textContent = '';
+            successDiv.textContent = '';
+            
+            const username = document.getElementById('username').value.trim();
+            const prenom = document.getElementById('prenom').value.trim();
+            const nom = document.getElementById('nom').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validation
+            if (!username || !prenom || !nom || !password || !confirmPassword) {
+                errorDiv.textContent = '❌ Veuillez remplir tous les champs';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password.length < 6) {
+                errorDiv.textContent = '❌ Le mot de passe doit faire au moins 6 caractères';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorDiv.textContent = '❌ Les mots de passe ne correspondent pas';
+                errorDiv.classList.add('show');
+                return;
+            }
+            
+            isLoading = true;
+            submitBtn.disabled = true;
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = '⏳ Inscription...';
+            
+            try {
+                // Appel API
+                const response = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        username, 
+                        password, 
+                        prenom,
+                        nom,
+                        role: 'prof'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || "Erreur d'inscription");
+                }
+                
+                successDiv.textContent = '✅ Inscription réussie! Votre compte est en attente de validation. Redirection...';
+                successDiv.classList.add('show');
+                
+                setTimeout(() => {
+                    window.location.href = 'login_prof.html';
+                }, 2000);
+                
+            } catch (err) {
+                console.error('Erreur inscription:', err);
+                errorDiv.textContent = '❌ ' + (err.message || 'Erreur lors de l\'inscription');
+                errorDiv.classList.add('show');
+            } finally {
+                isLoading = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+    </script>
+</body>
+</html>

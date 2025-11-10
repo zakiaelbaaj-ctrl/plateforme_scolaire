@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestion des Étudiants</title>
+<link rel="stylesheet" href="style.css">
+<style>
+    body {
+        font-family: Verdana, sans-serif;
+        background-color: #f7f7f7;
+        text-align: center;
+        padding: 20px;
+    }
+    h1 {
+        color: #1a1a1a;
+    }
+    table {
+        width: 90%;
+        margin: 20px auto;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 10px;
+    }
+    th {
+        background-color: #2193b0;
+        color: white;
+    }
+    button {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        color: white;
+        font-weight: bold;
+    }
+    .validate {
+        background-color: green;
+    }
+    .delete {
+        background-color: red;
+    }
+    .back-home {
+        margin-top: 20px;
+        display: block;
+        color: #2193b0;
+        text-decoration: none;
+        font-size: 14px;
+    }
+    .back-home:hover {
+        text-decoration: underline;
+    }
+</style>
+</head>
+<body>
+
+<div class="logo">
+    <img src="logo.png" alt="Logo">
+</div>
+
+<h1>👨‍💼 Espace Admin : Gestion des Étudiants</h1>
+
+<table id="etudiantTable">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Nom</th>
+            <th>Email</th>
+            <th>Statut</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Les étudiants seront injectés ici -->
+    </tbody>
+</table>
+
+<a href="index.html" class="back-home">⬅️ Retour à l’accueil</a>
+
+<script>
+// Récupérer les étudiants depuis localStorage
+let etudiants = JSON.parse(localStorage.getItem("etudiants") || "[]");
+
+// Afficher les étudiants
+function afficherEtudiants() {
+    const tbody = document.querySelector("#etudiantTable tbody");
+    tbody.innerHTML = "";
+    etudiants.forEach((e, index) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${e.nom}</td>
+            <td>${e.email}</td>
+            <td>${e.statut || "en_attente"}</td>
+            <td>
+                ${e.statut === "en_attente" ? `<button class="validate" onclick="validerEtudiant(${index})">Valider</button>` : ""}
+                <button class="delete" onclick="supprimerEtudiant(${index})">Supprimer</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Valider un étudiant
+function validerEtudiant(index) {
+    etudiants[index].statut = "validé";
+    localStorage.setItem("etudiants", JSON.stringify(etudiants));
+    afficherEtudiants();
+    alert(`✅ L'étudiant ${etudiants[index].nom} est maintenant validé.`);
+}
+
+// Supprimer un étudiant
+function supprimerEtudiant(index) {
+    if (confirm("Voulez-vous vraiment supprimer cet étudiant ?")) {
+        const removed = etudiants.splice(index, 1);
+        localStorage.setItem("etudiants", JSON.stringify(etudiants));
+        afficherEtudiants();
+        alert(`❌ L'étudiant ${removed[0].nom} a été supprimé.`);
+    }
+}
+
+// Afficher les étudiants au chargement
+afficherEtudiants();
+</script>
+
+</body>
+</html>

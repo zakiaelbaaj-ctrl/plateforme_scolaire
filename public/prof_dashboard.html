@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Professeur</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+  h1, h3 { color: #333; }
+  #videoContainer { display: none; margin-bottom: 20px; padding: 10px; background: #fff; border-radius: 5px; }
+  video { border: 2px solid #007bff; margin-right: 10px; border-radius: 5px; }
+  .controls { margin-top: 10px; margin-bottom: 20px; }
+  button { padding: 8px 12px; margin-right: 5px; cursor: pointer; border: none; border-radius: 3px; }
+  button:hover { opacity: 0.8; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .primary { background-color: #007bff; color: white; }
+  .danger { background-color: #dc3545; color: white; }
+  .warning { background-color: #ffc107; color: black; }
+  .success { background-color: #28a745; color: white; }
+  #chatBox { border: 1px solid #ddd; height: 150px; overflow-y: auto; padding: 10px; background: white; border-radius: 3px; margin-bottom: 10px; }
+  .chat-message { margin: 5px 0; padding: 5px; }
+  .chat-message.mine { color: #007bff; font-weight: bold; }
+  .appel-item { list-style: none; padding: 10px; background: white; margin: 5px 0; border-left: 4px solid #007bff; border-radius: 3px; }
+  #status { padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 3px; margin-bottom: 15px; }
+  input[type="text"], input[type="file"] { padding: 8px; border: 1px solid #ddd; border-radius: 3px; margin-right: 5px; }
+  #eleveConnecte { display: none; padding: 10px; background: #d4edda; border-left: 4px solid #28a745; margin: 10px 0; border-radius: 3px; }
+  #listeDocsProf { list-style: none; padding: 0; }
+  #listeDocsProf li { padding: 8px; background: #f9f9f9; margin: 5px 0; border-left: 3px solid #007bff; border-radius: 3px; }
+  #listeDocsProf a { color: #007bff; text-decoration: none; margin-left: 10px; }
+  #listeDocsProf a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1 id="welcomeMessage">Chargement...</h1>
+<div id="status">
+  <p id="visioStatus">🔴 Déconnecté</p>
+</div>
+
+<div id="eleveConnecte"></div>
+
+<div id="videoContainer">
+  <div>
+    <video id="localVideo" autoplay muted width="250"></video>
+    <video id="remoteVideo" autoplay width="250"></video>
+  </div>
+  <div class="controls">
+    <button id="btnToggleVisio" class="warning" onclick="toggleVisio()">🎥 Désactiver la caméra</button>
+    <button id="btnTerminerVisio" class="danger" onclick="terminerVisio()">❌ Terminer appel</button>
+  </div>
+</div>
+
+<h3>Appels en attente (<span id="appelCounter">0</span>)</h3>
+<ul id="appelsEnAttente"></ul>
+
+<h3>💬 Chat</h3>
+<div id="chatBox"></div>
+<div class="controls">
+  <input type="text" id="chatInput" placeholder="Votre message..." disabled>
+  <button id="btnSendChat" class="primary" onclick="envoyerChat()" disabled>Envoyer</button>
+</div>
+
+<h3>📤 Envoyer une correction</h3>
+<div class="controls">
+  <input type="file" id="uploadCorrection" disabled>
+  <button id="btnSendCorrection" class="primary" onclick="envoyerCorrection()" disabled>📤 Envoyer correction</button>
+</div>
+
+<h3>📄 Documents reçus</h3>
+<ul id="listeDocsProf"></ul>
+
+<button class="danger" onclick="logout()" style="margin-top: 20px;">🚪 Déconnexion</button>
+
+<script>
+// === Variables globales ===
+let username = "Prof";
+let utilisateur = null;
+let ws = null;
+let pc = null;
+let visioActif = true;
+let eleveConnecte = null;
+let appelsEnAttente = [];
+let chatChannel = null;
+let fileChannel = null;
+let documentsRecus = [];
+
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+
+// === Initialisation ===
+function initialiser() {
+    utilisateur = JSON.parse(localStorage.getItem("dernier_connecte"));
+    if (!utilisateur) {
+        window.location.href = "/login.html";
+        return;
+    }
+    
+    username = utilisateur.username || "Professeur";
+    const nomComplet = utilisateur.nom 
+        ? `${utilisateur.prenom || ""} ${utilisateur.nom}`.trim()
+        : username;
+    document.getElementById("welcomeMessage").textContent = `👨‍🏫 Bienvenue ${nomComplet}!`;
+    
+    connecterWebSocket();
+}
+
+// === WebSocket ===
+function connecterWebSocket() {
+    try {
+        ws = new WebSocket("ws://localhost:4000");
+        
+        ws.onopen = () => {
+            console.log("✅ WebSocket connecté");
+            ws.send(JSON.stringify({ type: 'register', username, role: 'prof' }));
+            document.getElementById("visioStatus").textContent = "🟢 Connecté";
+            rafraichirAppels();
+        };
+        
+        ws.onerror = (err) => {
+            console.error("❌ Erreur WebSocket:", err);
+            document.getElementById("visioStatus").textContent = "🔴 Erreur WebSocket";
+        };
+        
+        ws.onmessage = async (msg) => {
+            const data = JSON.parse(msg.data);
+            switch(data.type) {
+                case 'appelEnAttente':
+                    appelsEnAttente = data.appels.filter(a => a.statut === 'en_attente');
+                    afficherAppelsEnAttente();
+                    break;
+                case 'offer':
+                    await gererOffre(data);
+                    break;
+                case 'answer':
+                    if(pc) await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                    document.getElementById("visioStatus").textContent = "🟢 Appel en cours...";
+                    break;
+                case 'ice':
+                    if(pc && data.candidate) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    break;
+                case 'chat':
+                    afficherMessageChat(data.sender, data.message, false);
+                    break;
+            }
+        };
+        
+        ws.onclose = () => {
+            console.log("WebSocket fermé");
+            document.getElementById("visioStatus").textContent = "🔴 Déconnecté";
+        };
+    } catch(err) {
+        console.error("Erreur connexion WebSocket:", err);
+    }
+}
+
+// === Gestion offre WebRTC ===
+async function gererOffre(data) {
+    try {
+        eleveConnecte = data.sender;
+        const eleveDiv = document.getElementById("eleveConnecte");
+        eleveDiv.textContent = `👤 Élève connecté: ${eleveConnecte}`;
+        eleveDiv.style.display = "block";
+
+        pc = new RTCPeerConnection({ 
+            iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] 
+        });
+        
+        pc.onicecandidate = (e) => {
+            if(e.candidate && ws.readyState === 1) {
+                ws.send(JSON.stringify({ 
+                    type: 'ice', 
+                    candidate: e.candidate, 
+                    target: eleveConnecte, 
+                    sender: username 
+                }));
+            }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = stream;
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        pc.ontrack = e => remoteVideo.srcObject = e.streams[0];
+
+        pc.ondatachannel = (event) => {
+            if(event.channel.label === "chat") initialiserChatChannel(event.channel);
+            if(event.channel.label === "file") initialiserFileChannel(event.channel);
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        
+        if(ws.readyState === 1) {
+            ws.send(JSON.stringify({ 
+                type: 'answer', 
+                answer, 
+                target: eleveConnecte, 
+                sender: username 
+            }));
+        }
+
+        activerUIConnexion(true);
+    } catch(err) {
+        console.error("❌ Erreur gestion offre:", err);
+        activerUIConnexion(false);
+    }
+}
+
+// === Data Channels ===
+function initialiserChatChannel(channel) {
+    chatChannel = channel;
+    channel.onopen = () => activerChat(true);
+    channel.onclose = () => activerChat(false);
+    channel.onmessage = e => afficherMessageChat(eleveConnecte, e.data, false);
+}
+
+function initialiserFileChannel(channel) {
+    fileChannel = channel;
+    let buffers = [], metadata = null;
+    channel.onmessage = (e) => {
+        if(typeof e.data === "string") {
+            const msg = JSON.parse(e.data);
+            if(msg.type === "metadata") { metadata = msg; buffers = []; }
+            else if(msg.type === "end") { 
+                const blob = new Blob(buffers); 
+                const url = URL.createObjectURL(blob); 
+                sauvegarderFichier(msg.filename, url); 
+                buffers = []; 
+                metadata = null;
+            }
+        } else { 
+            buffers.push(e.data); 
+        }
+    };
+}
+
+// === Chat ===
+function afficherMessageChat(sender, message, mine) {
+    const chatBox = document.getElementById("chatBox");
+    if(!chatBox) return;
+    const div = document.createElement("div");
+    div.className = "chat-message" + (mine ? " mine" : "");
+    div.innerHTML = `<b>${mine ? "Vous" : sender}:</b> ${message}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function envoyerChat() {
+    const input = document.getElementById("chatInput");
+    if(!input) return;
+    const message = input.value.trim();
+    if(!message) return;
+    
+    if(chatChannel && chatChannel.readyState === "open") {
+        chatChannel.send(message);
+    } else if(eleveConnecte && ws.readyState === 1) {
+        ws.send(JSON.stringify({
+            type: "chat",
+            message,
+            sender: username,
+            target: eleveConnecte
+        }));
+    }
+    
+    afficherMessageChat(username, message, true);
+    input.value = "";
+}
+
+// === Envoi de correction ===
+function activerEnvoiCorrection(active) {
+    document.getElementById("uploadCorrection").disabled = !active;
+    document.getElementById("btnSendCorrection").disabled = !active;
+}
+
+async function envoyerCorrection() {
+    const fileInput = document.getElementById("uploadCorrection");
+    if (!fileInput || !fileInput.files.length) {
+        alert("Sélectionnez un fichier");
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    if (fileChannel && fileChannel.readyState === "open") {
+        try {
+            const buffer = await file.arrayBuffer();
+            const chunk = 16 * 1024;
+            
+            fileChannel.send(JSON.stringify({
+                type: "metadata",
+                filename: file.name,
+                size: file.size
+            }));
+            
+            for (let i = 0; i < buffer.byteLength; i += chunk) {
+                fileChannel.send(buffer.slice(i, i + chunk));
+            }
+            
+            fileChannel.send(JSON.stringify({ type: "end" }));
+            alert(`✅ Correction "${file.name}" envoyée`);
+        } catch(err) {
+            console.error("Erreur envoi:", err);
+        }
+    } else {
+        alert("❌ Pas de connexion avec l'élève");
+    }
+    
+    fileInput.value = "";
+}
+
+// === Gestion appels ===
+function afficherAppelsEnAttente() {
+    const container = document.getElementById("appelsEnAttente");
+    const counter = document.getElementById("appelCounter");
+    counter.textContent = appelsEnAttente.length;
+    
+    if(appelsEnAttente.length === 0) {
+        container.innerHTML = '<li style="text-align:center; color:#999;">😊 Aucun appel en attente</li>';
+        return;
+    }
+    
+    container.innerHTML = appelsEnAttente.map(a => `
+        <li class="appel-item">
+            <div>👤 <b>${a.eleve}</b> - 🕐 ${new Date(a.timestamp).toLocaleTimeString()}</div>
+            <div class="appel-actions">
+                <button class="success" onclick="accepterAppel('${a.eleve}')">✓ Accepter</button>
+                <button class="danger" onclick="rejeterAppel('${a.eleve}')">✕ Rejeter</button>
+            </div>
+        </li>
+    `).join("");
+}
+
+function accepterAppel(eleve) {
+    eleveConnecte = eleve;
+    if(ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: "accepterAppel", eleveAccepte: eleve }));
+    }
+}
+
+function rejeterAppel(eleve) {
+    if(confirm(`Rejeter l'appel de ${eleve}?`)) {
+        if(ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: "rejeterAppel", eleveRejete: eleve }));
+        }
+    }
+}
+
+// === UI visio/chat ===
+function activerUIConnexion(active) {
+    const container = document.getElementById("videoContainer");
+    container.style.display = active ? "block" : "none";
+    document.getElementById("visioStatus").textContent = active ? "🟢 Appel en cours..." : "🟡 Appel en attente";
+    document.getElementById("btnToggleVisio").disabled = !active;
+    document.getElementById("btnTerminerVisio").disabled = !active;
+    activerChat(active);
+    activerEnvoiCorrection(active);
+}
+
+function activerChat(active) {
+    document.getElementById("chatInput").disabled = !active;
+    document.getElementById("btnSendChat").disabled = !active;
+}
+
+// === Visio ===
+function toggleVisio() {
+    if(!localVideo.srcObject) return;
+    visioActif = !visioActif;
+    localVideo.srcObject.getTracks().forEach(t => t.enabled = visioActif);
+    document.getElementById("btnToggleVisio").textContent = visioActif 
+        ? "🎥 Désactiver la caméra" 
+        : "🎥 Réactiver la caméra";
+}
+
+function terminerVisio() {
+    if(pc) { pc.close(); pc = null; }
+    if(localVideo.srcObject) { 
+        localVideo.srcObject.getTracks().forEach(t => t.stop()); 
+        localVideo.srcObject = null; 
+    }
+    remoteVideo.srcObject = null;
+    document.getElementById("eleveConnecte").style.display = "none";
+    activerUIConnexion(false);
+    eleveConnecte = null;
+}
+
+// === Documents ===
+function sauvegarderFichier(filename, url) {
+    console.log("📄 Fichier reçu:", filename);
+    
+    documentsRecus.push({
+        filename: filename,
+        url: url,
+        sender: eleveConnecte,
+        timestamp: new Date().toLocaleTimeString()
+    });
+    
+    afficherDocsProf();
+}
+
+function afficherDocsProf() {
+    const liste = document.getElementById("listeDocsProf");
+    
+    if(documentsRecus.length === 0) {
+        liste.innerHTML = "<li style='color:#999;'>📁 Les documents apparaîtront ici</li>";
+        return;
+    }
+    
+    liste.innerHTML = documentsRecus.map((doc, i) => `
+        <li>
+            📄 <b>${doc.filename}</b> (de ${doc.sender}) - ${doc.timestamp}
+            <a href="${doc.url}" download="${doc.filename}">⬇️ Télécharger</a>
+        </li>
+    `).join("");
+}
+
+afficherDocsProf();
+
+// === Déconnexion ===
+function logout() { 
+    if(pc) terminerVisio(); 
+    if(ws) ws.close();
+    localStorage.removeItem("dernier_connecte"); 
+    window.location.href = "/login.html"; 
+}
+
+// === Rafraîchissement appels ===
+function rafraichirAppels() {
+    setInterval(() => { 
+        if(ws && ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: 'getAppelsEnAttente' })); 
+        }
+    }, 3000);
+}
+
+// Lancer l'application
+window.addEventListener('DOMContentLoaded', initialiser);
+</script>
+</body>
+</html>

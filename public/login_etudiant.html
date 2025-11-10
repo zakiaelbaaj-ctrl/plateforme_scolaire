@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Étudiant</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .error {
+            color: #c33;
+            background: #fee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+            border: 1px solid #fcc;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: opacity 0.3s;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Connexion Étudiant</h2>
+        <div id="error" class="error"></div>
+        
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Nom d'utilisateur" required>
+            <input type="password" id="password" placeholder="Mot de passe" required>
+            <button type="submit" id="btnLogin">Se connecter</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("loginForm");
+        const errorDiv = document.getElementById("error");
+        const btnLogin = document.getElementById("btnLogin");
+        const usernameInput = document.getElementById("username");
+        const passwordInput = document.getElementById("password");
+        
+        let isLoading = false; // ✅ Prévenir les clics multiples
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            
+            // ✅ Éviter les clics multiples
+            if (isLoading) return;
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            // ✅ Réinitialiser l'erreur précédente
+            errorDiv.classList.remove("show");
+            errorDiv.textContent = "";
+            
+            // Validation client
+            if (!username || !password) {
+                errorDiv.textContent = "Veuillez remplir tous les champs";
+                errorDiv.classList.add("show");
+                return;
+            }
+
+            isLoading = true;
+            btnLogin.disabled = true;
+            const originalText = btnLogin.textContent;
+            btnLogin.textContent = "Connexion...";
+
+            try {
+                const res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                    // ❌ NE PAS envoyer 'role' depuis le client
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    errorDiv.textContent = data.error || "Identifiants incorrects";
+                    errorDiv.classList.add("show");
+                    return;
+                }
+
+                // ✅ Connexion réussie
+                // ⚠️ Utiliser sessionStorage au lieu de localStorage pour plus de sécurité
+                // ⚠️ Ne pas stocker les identifiants, seulement le token si fourni
+                if (data.token) {
+                    sessionStorage.setItem("authToken", data.token);
+                }
+                
+                // Stocker les infos étudiant si nécessaire
+                if (data.user) {
+                    sessionStorage.setItem("user", JSON.stringify(data.user));
+                }
+
+                // Redirection vers dashboard étudiant
+                window.location.href = "/student_dashboard.html";
+
+            } catch (err) {
+                console.error("Erreur réseau:", err);
+                errorDiv.textContent = "Erreur serveur. Veuillez réessayer.";
+                errorDiv.classList.add("show");
+            } finally {
+                // ✅ Réactiver le bouton
+                isLoading = false;
+                btnLogin.disabled = false;
+                btnLogin.textContent = originalText;
+            }
+        });
+    </script>
+</body>
+</html>

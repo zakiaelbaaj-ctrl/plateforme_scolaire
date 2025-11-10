@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Élève</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+  h1, h3 { color: #333; margin-top: 20px; }
+  #status { padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 3px; margin-bottom: 20px; }
+  #videoContainer { display: none; margin: 20px 0; padding: 10px; background: #fff; border-radius: 5px; }
+  video { border: 2px solid #007bff; margin-right: 10px; border-radius: 5px; }
+  .prof-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 15px 0; }
+  .prof-card { background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  .prof-card h4 { margin-bottom: 10px; color: #007bff; }
+  .prof-card .status { font-size: 12px; color: #666; margin: 5px 0; }
+  .prof-card button { width: 100%; padding: 8px; margin-top: 10px; cursor: pointer; border: none; border-radius: 3px; }
+  .prof-card button.selected { background: #28a745; color: white; }
+  .prof-card button.not-selected { background: #007bff; color: white; }
+  .prof-card button:hover { opacity: 0.8; }
+  button { padding: 8px 12px; margin-right: 5px; cursor: pointer; border: none; border-radius: 3px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .primary { background-color: #007bff; color: white; }
+  .danger { background-color: #dc3545; color: white; }
+  .warning { background-color: #ffc107; color: black; }
+  .success { background-color: #28a745; color: white; }
+  #chatBox { border: 1px solid #ddd; height: 150px; overflow-y: auto; padding: 10px; background: white; border-radius: 3px; margin-bottom: 10px; }
+  .chat-message { margin: 5px 0; padding: 5px; }
+  .chat-message.mine { color: #007bff; font-weight: bold; }
+  input[type="text"], input[type="file"] { padding: 8px; border: 1px solid #ddd; border-radius: 3px; margin-right: 5px; }
+  #listeDocsContainer { background: white; padding: 15px; border-radius: 5px; margin-top: 15px; }
+  #listeDocs { list-style: none; padding: 0; }
+  #listeDocs li { padding: 8px; background: #f9f9f9; margin: 5px 0; border-left: 3px solid #007bff; border-radius: 3px; }
+  #listeDocs a { color: #007bff; text-decoration: none; margin-left: 10px; }
+  #listeDocs a:hover { text-decoration: underline; }
+  .controls { margin: 10px 0; margin-bottom: 20px; }
+  #profCounter { background: #dc3545; color: white; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1 id="welcomeMessage">Chargement...</h1>
+<div id="status">
+  <p id="visioStatus">🔴 En attente de connexion...</p>
+</div>
+
+<h3>👨‍🏫 Professeurs disponibles (<span id="profCounter">0</span>)</h3>
+<div class="prof-list" id="listeProfs"></div>
+
+<div id="videoContainer">
+  <div>
+    <video id="localVideo" autoplay muted width="250"></video>
+    <video id="remoteVideo" autoplay width="250"></video>
+  </div>
+  <div class="controls">
+    <button id="btnToggleVisio" class="warning" onclick="toggleVisio()">🎥 Désactiver caméra</button>
+    <button id="btnStopVisio" class="danger" onclick="stopVisio()">❌ Arrêter appel</button>
+  </div>
+</div>
+
+<h3>💬 Chat</h3>
+<div id="chatBox"></div>
+<div class="controls">
+  <input type="text" id="chatInput" placeholder="Votre message..." disabled>
+  <button id="btnSendChat" class="primary" onclick="envoyerChat()" disabled>Envoyer</button>
+</div>
+
+<h3>📄 Documents</h3>
+<div class="controls">
+  <input type="file" id="uploadDoc" disabled>
+  <button id="btnSendDoc" class="primary" onclick="envoyerDoc()" disabled>📤 Envoyer document</button>
+</div>
+<div id="listeDocsContainer">
+  <ul id="listeDocs"></ul>
+</div>
+
+<button class="danger" onclick="logout()" style="margin-top: 20px;">🚪 Déconnexion</button>
+
+<script>
+// === Variables globales ===
+let eleve = null;
+let username = "";
+let ws = null;
+let pc = null;
+let visioActif = false;
+let selectedProf = null;
+let profList = [];
+let chatChannel = null;
+let fileChannel = null;
+let documentsRecus = [];
+
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+
+// === Initialisation ===
+function initialiser() {
+    eleve = JSON.parse(localStorage.getItem("eleveConnecte"));
+    if (!eleve) {
+        window.location.href = "/login_eleve.html";
+        return;
+    }
+    
+    username = eleve.username || eleve.nom || "Élève";
+    const nomComplet = eleve.nom ? `${eleve.prenom || ""} ${eleve.nom}`.trim() : username;
+    document.getElementById("welcomeMessage").textContent = `📚 Bienvenue, ${nomComplet}!`;
+    
+    connecterWebSocket();
+}
+
+// === WebSocket ===
+function connecterWebSocket() {
+    try {
+        ws = new WebSocket("ws://localhost:4000");
+        
+        ws.onopen = () => {
+            console.log("✅ WebSocket connecté");
+            ws.send(JSON.stringify({ type: "register", username, role: "eleve" }));
+            document.getElementById("visioStatus").textContent = "🟢 Connecté et en attente";
+        };
+        
+        ws.onerror = (err) => {
+            console.error("❌ Erreur WebSocket:", err);
+            document.getElementById("visioStatus").textContent = "🔴 Erreur de connexion";
+        };
+        
+        ws.onmessage = async (msg) => {
+            const data = JSON.parse(msg.data);
+            console.log("📨 Message reçu:", data.type);
+            
+            switch(data.type) {
+                case "profList":
+                    profList = data.profs || [];
+                    afficherProfs();
+                    break;
+                    
+                case "demandAppelConfirmee":
+                    document.getElementById("visioStatus").textContent = "📞 Appel en attente...";
+                    break;
+                    
+                case "appelAccepte":
+                    console.log("✅ Appel accepté par", data.prof);
+                    selectedProf = data.prof;
+                    demarrerVisio();
+                    break;
+                    
+                case "appelRejete":
+                    alert(`❌ Votre appel a été rejeté par ${data.prof}`);
+                    document.getElementById("visioStatus").textContent = "🟡 Appel rejeté";
+                    stopVisio();
+                    break;
+                    
+                case "answer":
+                    if (pc) {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                        document.getElementById("visioStatus").textContent = "🟢 Appel en cours...";
+                    }
+                    break;
+                    
+                case "ice":
+                    if (pc && data.candidate) {
+                        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    }
+                    break;
+                    
+                case "chat":
+                    afficherMessageChat(data.sender, data.message, false);
+                    break;
+                    
+                case "erreur":
+                    alert("❌ Erreur: " + data.message);
+                    break;
+            }
+        };
+        
+        ws.onclose = () => {
+            console.log("WebSocket fermé");
+            document.getElementById("visioStatus").textContent = "🔴 Déconnecté";
+        };
+    } catch(err) {
+        console.error("Erreur connexion WebSocket:", err);
+    }
+}
+
+// === Afficher les profs disponibles ===
+function afficherProfs() {
+    const container = document.getElementById("listeProfs");
+    const counter = document.getElementById("profCounter");
+    counter.textContent = profList.length;
+    
+    if(profList.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#999;">Aucun professeur disponible pour le moment</div>';
+        return;
+    }
+    
+    container.innerHTML = profList.map(prof => `
+        <div class="prof-card">
+            <h4>👨‍🏫 ${prof.username}</h4>
+            <div class="status">
+                ${prof.disponible ? '🟢 Disponible' : '🔴 Indisponible'}
+                <br>
+                Appels: ${prof.appelsEnAttente}
+            </div>
+            <button 
+                class="${selectedProf === prof.username ? 'selected' : 'not-selected'}"
+                onclick="selectionnerProf('${prof.username}')">
+                ${selectedProf === prof.username ? '✓ Sélectionné' : 'Sélectionner'}
+            </button>
+        </div>
+    `).join("");
+}
+
+// === Sélectionner un prof ===
+function selectionnerProf(profName) {
+    selectedProf = profName;
+    afficherProfs();
+    activerUIAppel(true);
+}
+
+// === Demander un appel ===
+function demanderAppel() {
+    if (!selectedProf) {
+        alert("Sélectionnez un professeur d'abord");
+        return;
+    }
+    
+    if (ws.readyState === 1) {
+        ws.send(JSON.stringify({
+            type: "demandAppel",
+            target: selectedProf,
+            sender: username
+        }));
+        document.getElementById("visioStatus").textContent = "📞 Envoi de la demande...";
+    }
+}
+
+// === Démarrer visio (appelé quand prof accepte) ===
+async function demarrerVisio() {
+    try {
+        document.getElementById("visioStatus").textContent = "🎥 Démarrage de la visio...";
+        
+        pc = new RTCPeerConnection({
+            iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }]
+        });
+        
+        chatChannel = pc.createDataChannel("chat");
+        fileChannel = pc.createDataChannel("file");
+        initialiserChatChannel(chatChannel);
+        initialiserFileChannel(fileChannel);
+        
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = stream;
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        
+        pc.ontrack = (e) => {
+            remoteVideo.srcObject = e.streams[0];
+        };
+        
+        pc.onicecandidate = (e) => {
+            if (e.candidate && ws.readyState === 1) {
+                ws.send(JSON.stringify({
+                    type: "ice",
+                    candidate: e.candidate,
+                    target: selectedProf,
+                    sender: username
+                }));
+            }
+        };
+        
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        
+        if (ws.readyState === 1) {
+            ws.send(JSON.stringify({
+                type: "offer",
+                offer,
+                target: selectedProf,
+                sender: username
+            }));
+        }
+        
+        activerUIConnexion(true);
+    } catch(err) {
+        console.error("❌ Erreur démarrage visio:", err);
+        alert("Erreur d'accès à la caméra/micro");
+    }
+}
+
+// === Toggle caméra ===
+function toggleVisio() {
+    if (!localVideo.srcObject) return;
+    const tracks = localVideo.srcObject.getVideoTracks();
+    tracks.forEach(track => track.enabled = !track.enabled);
+    const isEnabled = tracks[0]?.enabled;
+    document.getElementById("btnToggleVisio").textContent = isEnabled
+        ? "🎥 Désactiver caméra"
+        : "🎥 Réactiver caméra";
+}
+
+// === Arrêter visio ===
+function stopVisio() {
+    if (pc) {
+        pc.close();
+        pc = null;
+    }
+    if (localVideo.srcObject) {
+        localVideo.srcObject.getTracks().forEach(t => t.stop());
+        localVideo.srcObject = null;
+    }
+    remoteVideo.srcObject = null;
+    visioActif = false;
+    activerUIConnexion(false);
+    
+    if (ws.readyState === 1 && selectedProf) {
+        ws.send(JSON.stringify({
+            type: "terminerAppel",
+            target: selectedProf,
+            sender: username
+        }));
+    }
+    
+    document.getElementById("visioStatus").textContent = "🟡 Appel terminé";
+}
+
+// === Data Channels ===
+function initialiserChatChannel(channel) {
+    chatChannel = channel;
+    channel.onopen = () => activerChat(true);
+    channel.onclose = () => activerChat(false);
+    channel.onmessage = e => afficherMessageChat(selectedProf, e.data, false);
+}
+
+function initialiserFileChannel(channel) {
+    fileChannel = channel;
+    let buffers = [], metadata = null;
+    channel.onmessage = (e) => {
+        if (typeof e.data === "string") {
+            const msg = JSON.parse(e.data);
+            if (msg.type === "metadata") {
+                metadata = msg;
+                buffers = [];
+            } else if (msg.type === "end") {
+                const blob = new Blob(buffers);
+                const url = URL.createObjectURL(blob);
+                sauvegarderFichier(metadata.filename, url);
+                buffers = [];
+                metadata = null;
+            }
+        } else {
+            buffers.push(e.data);
+        }
+    };
+}
+
+// === Chat ===
+function afficherMessageChat(sender, message, mine) {
+    const chatBox = document.getElementById("chatBox");
+    if (!chatBox) return;
+    const div = document.createElement("div");
+    div.className = "chat-message" + (mine ? " mine" : "");
+    div.innerHTML = `<b>${mine ? "Vous" : sender}:</b> ${message}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function envoyerChat() {
+    const input = document.getElementById("chatInput");
+    if (!input) return;
+    const message = input.value.trim();
+    if (!message) return;
+    
+    if (chatChannel && chatChannel.readyState === "open") {
+        chatChannel.send(message);
+    } else if (selectedProf && ws.readyState === 1) {
+        ws.send(JSON.stringify({
+            type: "chat",
+            message,
+            sender: username,
+            target: selectedProf
+        }));
+    }
+    
+    afficherMessageChat(username, message, true);
+    input.value = "";
+}
+
+// === Documents ===
+async function envoyerDoc() {
+    const fileInput = document.getElementById("uploadDoc");
+    if (!fileInput || !fileInput.files.length) {
+        alert("Choisissez un fichier");
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    if (fileChannel && fileChannel.readyState === "open") {
+        try {
+            const buffer = await file.arrayBuffer();
+            const chunk = 16 * 1024;
+            
+            fileChannel.send(JSON.stringify({
+                type: "metadata",
+                filename: file.name,
+                size: file.size
+            }));
+            
+            for (let i = 0; i < buffer.byteLength; i += chunk) {
+                fileChannel.send(buffer.slice(i, i + chunk));
+            }
+            
+            fileChannel.send(JSON.stringify({ type: "end" }));
+            alert(`✅ Fichier "${file.name}" envoyé`);
+        } catch(err) {
+            console.error("Erreur envoi fichier:", err);
+        }
+    }
+    
+    fileInput.value = "";
+}
+
+function sauvegarderFichier(filename, url) {
+    console.log("📄 Fichier reçu:", filename);
+    
+    documentsRecus.push({
+        filename: filename,
+        url: url,
+        sender: selectedProf,
+        timestamp: new Date().toLocaleTimeString()
+    });
+    
+    afficherDocs();
+}
+
+function afficherDocs() {
+    const liste = document.getElementById("listeDocs");
+    
+    if(documentsRecus.length === 0) {
+        liste.innerHTML = "<li style='color:#999;'>📁 Les documents apparaîtront ici</li>";
+        return;
+    }
+    
+    liste.innerHTML = documentsRecus.map((doc, i) => `
+        <li>
+            📄 <b>${doc.filename}</b> (de ${doc.sender}) - ${doc.timestamp}
+            <a href="${doc.url}" download="${doc.filename}">⬇️ Télécharger</a>
+        </li>
+    `).join("");
+}
+
+afficherDocs();
+
+// === UI ===
+function activerUIAppel(active) {
+    if (active && !document.getElementById("btnDemanderAppel")) {
+        const btn = document.createElement("button");
+        btn.id = "btnDemanderAppel";
+        btn.className = "success";
+        btn.textContent = "📞 Demander un appel";
+        btn.onclick = demanderAppel;
+        const container = document.querySelector(".prof-list");
+        container.parentNode.insertBefore(btn, container.nextSibling);
+    }
+}
+
+function activerUIConnexion(active) {
+    const container = document.getElementById("videoContainer");
+    container.style.display = active ? "block" : "none";
+    document.getElementById("btnToggleVisio").disabled = !active;
+    document.getElementById("btnStopVisio").disabled = !active;
+    activerChat(active);
+}
+
+function activerChat(active) {
+    document.getElementById("chatInput").disabled = !active;
+    document.getElementById("btnSendChat").disabled = !active;
+    document.getElementById("uploadDoc").disabled = !active;
+    document.getElementById("btnSendDoc").disabled = !active;
+}
+
+// === Déconnexion ===
+function logout() {
+    if (visioActif) stopVisio();
+    if (ws) ws.close();
+    localStorage.removeItem("eleveConnecte");
+    window.location.href = "/login_eleve.html";
+}
+
+// === Lancer l'app ===
+window.addEventListener('DOMContentLoaded', initialiser);
+</script>
+</body>
+</html>

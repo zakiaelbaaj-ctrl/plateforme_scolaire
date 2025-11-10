@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Élève</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .success {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+        
+        .success.show {
+            display: block;
+        }
+        
+        .link-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .link-section a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .link-section a:hover {
+            text-decoration: underline;
+        }
+
+        .demo-info {
+            background: #f0f8ff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 15px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Connexion Élève</h1>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Nom d'utilisateur</label>
+                <input type="text" id="username" name="username" required placeholder="jean_martin">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••">
+            </div>
+            
+            <button type="submit" id="submitBtn">Se connecter</button>
+            
+            <div id="errorDiv" class="error"></div>
+            <div id="successDiv" class="success"></div>
+        </form>
+        
+        <div class="demo-info">
+            💡 <strong>Test:</strong> username: test_eleve | password: 1234
+        </div>
+        
+        <div class="link-section">
+            <p>Pas encore inscrit ? <a href="register_eleve.html">📝 Créer un compte</a></p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorDiv = document.getElementById('errorDiv');
+        const successDiv = document.getElementById('successDiv');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        let isLoading = false;
+        
+        // Données de test (à remplacer par API réelle)
+        const testUsers = [
+            { username: "test_eleve", password: "1234", prenom: "Jean", nom: "Martin" },
+            { username: "marie_dupont", password: "1234", prenom: "Marie", nom: "Dupont" }
+        ];
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (isLoading) return;
+            
+            errorDiv.classList.remove('show');
+            successDiv.classList.remove('show');
+            errorDiv.textContent = '';
+            successDiv.textContent = '';
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                errorDiv.textContent = '❌ Veuillez remplir tous les champs';
+                errorDiv.classList.add('show');
+                return;
+            }
+            
+            isLoading = true;
+            submitBtn.disabled = true;
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = '⏳ Connexion...';
+            
+            try {
+                // 🔹 Appel API (à remplacer par votre vrai backend)
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role: 'eleve' })
+                }).catch(err => {
+                    console.log("API non disponible, utilisation des données de test");
+                    return null;
+                });
+                
+                let user = null;
+                
+                if (response) {
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.message || "Erreur de connexion");
+                    }
+                    user = data.user || { username, prenom: username, nom: username };
+                } else {
+                    // Mode test (quand l'API n'est pas disponible)
+                    user = testUsers.find(u => u.username === username && u.password === password);
+                    if (!user) {
+                        throw new Error("Identifiants incorrects");
+                    }
+                }
+                
+                // 📝 Sauvegarder les données dans localStorage
+                localStorage.setItem('eleveConnecte', JSON.stringify({
+                    username: user.username,
+                    prenom: user.prenom || username,
+                    nom: user.nom || username,
+                    role: 'eleve'
+                }));
+                
+                successDiv.textContent = '✅ Connexion réussie! Redirection...';
+                successDiv.classList.add('show');
+                
+                setTimeout(() => {
+                    window.location.href = 'eleve_dashboard.html';
+                }, 1000);
+                
+            } catch (err) {
+                console.error('Erreur connexion:', err);
+                errorDiv.textContent = '❌ ' + err.message;
+                errorDiv.classList.add('show');
+            } finally {
+                isLoading = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+    </script>
+</body>
+</html>
