@@ -10,13 +10,16 @@ const { Pool } = pkg;
 const router = express.Router();
 
 // Connexion à PostgreSQL
+// Connexion à PostgreSQL
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
   password: process.env.DB_PASS,
-  port: process.env.DB_PORT,
+  port: parseInt(process.env.DB_PORT, 10), // convertir en nombre
+  ssl: { rejectUnauthorized: false }       // SSL requis par Render
 });
+
 
 // === Middleware pour vérifier le JWT ===
 const verifyToken = (req, res, next) => {
