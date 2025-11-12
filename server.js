@@ -21,14 +21,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- PostgreSQL connection ---
-const pool = new Pool({
+   const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
   password: process.env.DB_PASS,
   port: parseInt(process.env.DB_PORT, 10),
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
-
 
 pool.connect()
   .then(() => console.log("✅ Connecté à PostgreSQL"))
