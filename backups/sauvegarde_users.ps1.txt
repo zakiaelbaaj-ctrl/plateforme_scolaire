@@ -1,0 +1,34 @@
+# --- Variables ---
+$host = "dpg-d49mvjbipnbc7395ler0-a.frankfurt-postgres.render.com"
+$user = "plateforme_scolaire_db_user"
+$db   = "plateforme_scolaire_db"
+$port = 5432
+$backupDir = "C:\Users\zakia\Home\plateforme_scolaire\backups"
+
+# --- Crée le dossier backups s'il n'existe pas ---
+if (-not (Test-Path $backupDir)) {
+    New-Item -ItemType Directory -Path $backupDir | Out-Null
+}
+
+# --- Nom du fichier de sauvegarde horodaté ---
+$date = Get-Date -Format "yyyyMMdd_HHmm"
+$backupFile = Join-Path $backupDir "users_backup_$date.sql"
+
+# --- Commande pg_dump pour sauvegarde ---
+# Note: PowerShell nécessite d'échapper correctement les guillemets autour du chemin du fichier
+$cmd = "pg_dump -h $host -U $user -d $db -p $port -t users > `"$backupFile`""
+
+# --- Exécution de la sauvegarde ---
+Write-Output "💾 Sauvegarde de la table 'users' dans $backupFile..."
+Invoke-Expression $cmd
+Write-Output "✅ Sauvegarde terminée."
+
+# --- Supprime les fichiers de sauvegarde de plus de 30 jours ---
+Get-ChildItem -Path $backupDir -Filter "users_backup_*.sql" |
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+    ForEach-Object {
+        Write-Output "🗑 Suppression de l'ancien fichier : $($_.Name)"
+        Remove-Item $_.FullName
+    }
+
+Write-Output "🧹 Nettoyage des anciennes sauvegardes terminé."

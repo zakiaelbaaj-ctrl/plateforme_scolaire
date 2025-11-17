@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Professeurs</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; }
+  h2 { text-align: center; color: #333; }
+  table { border-collapse: collapse; width: 90%; margin: 20px auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+  th { background-color: #f0f0f0; color: #333; }
+  .statut { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: bold; }
+  .circle { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .valide { color: green; }
+  .en_attente { color: orange; }
+  .refuse { color: red; }
+  button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+  button.valider { background-color: #28a745; color: #fff; }
+  button.valider:hover { background-color: #218838; }
+  button.refuser { background-color: #dc3545; color: #fff; }
+  button.refuser:hover { background-color: #c82333; }
+</style>
+</head>
+<body>
+
+<h2>Dashboard Professeurs</h2>
+
+<table id="profsTable">
+  <thead>
+    <tr>
+      <th>Prénom</th>
+      <th>Nom</th>
+      <th>Email</th>
+      <th>Username</th>
+      <th>Statut</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+const tableBody = document.querySelector('#profsTable tbody');
+
+function statutHTML(statut) {
+  let colorClass = statut;
+  return `<span class="statut ${colorClass}">
+            <span class="circle ${colorClass}"></span>${statut}
+          </span>`;
+}
+
+function loadProfs() {
+  fetch('/api/auth/professeurs')
+    .then(res => res.json())
+    .then(profs => {
+      tableBody.innerHTML = '';
+      profs.forEach(prof => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${prof.prenom}</td>
+          <td>${prof.nom}</td>
+          <td>${prof.email || ''}</td>
+          <td>${prof.username || ''}</td>
+          <td>${statutHTML(prof.statut)}</td>
+          <td>
+            <button class="valider" onclick="updateStatut(${prof.id}, 'valide')">Valider</button>
+            <button class="refuser" onclick="updateStatut(${prof.id}, 'refuse')">Refuser</button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    })
+    .catch(err => console.error('Erreur fetch professeurs:', err));
+}
+
+function updateStatut(id, statut) {
+  fetch(`/api/auth/professeurs/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ statut })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log(data.message);
+    loadProfs();
+  })
+  .catch(err => console.error('Erreur update statut:', err));
+}
+
+// Charger au démarrage
+loadProfs();
+</script>
+
+</body>
+</html>

@@ -4,10 +4,14 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import { WebSocketServer } from "ws";
 import http from "http";
+import { WebSocketServer } from "ws";
 import pkg from "pg";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
 import authRoutes from "./routes/authRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 const { Pool } = pkg;
@@ -15,21 +19,20 @@ const { Pool } = pkg;
 // --- Express setup ---
 const app = express();
 app.use(express.json());
+app.get('/favicon.ico', (req, res) => res.status(204).send());
 
 // --- Define __dirname for ES modules ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- PostgreSQL connection ---
-   const pool = new Pool({
+const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
-  password: process.env.DB_PASS,
-  port: parseInt(process.env.DB_PORT, 10),
-  ssl: {
-    rejectUnauthorized: false
-  }
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT, 10) || 5432,
+  ssl: { rejectUnauthorized: false }
 });
 
 pool.connect()
@@ -38,11 +41,130 @@ pool.connect()
 
 // --- API routes ---
 app.use("/api/auth", authRoutes);
+app.use("/api", adminRoutes);
+
 app.get("/api", (req, res) => {
-  res.json({ message: "Bienvenue sur ton API de soutien scolaire 📚" });
+  res.json({ message: "Bienvenue sur l'API soutien scolaire 📚" });
 });
 
-// --- Static folders setup ---
+// --- ROUTE LOGIN ---
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username et password requis" });
+    }
+
+    const result = await pool.query(
+      "SELECT id, username, password, prenom, nom, statut FROM professeurs WHERE username = $1",
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: "Utilisateur introuvable" });
+    }
+
+    const prof = result.rows[0];
+
+    const validPassword = await bcrypt.compare(password, prof.password);
+    if (!validPassword) {
+      return res.status(401).json({ message: "Mot de passe incorrect" });
+    }
+
+    res.json({
+      prof: {
+        id: prof.id,
+        username: prof.username,
+        prenom: prof.prenom,
+        nom: prof.nom,
+        statut: prof.statut
+      }
+    });
+  } catch (err) {
+    console.error("Erreur login:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// --- ROUTE HEURES ---
+app.get("/api/prof/:username/heures", async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    const result = await pool.query(
+      "SELECT lundi, mardi, mercredi, jeudi, vendredi FROM heures_prof WHERE username = $1",
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({
+        heures: {
+          lundi: 0,
+          mardi: 0,
+          mercredi: 0,
+          jeudi: 0,
+          vendredi: 0,
+          total: 0
+        }
+      });
+    }
+
+    const h = result.rows[0];
+    const total = h.lundi + h.mardi + h.mercredi + h.jeudi + h.vendredi;
+
+    res.json({
+      heures: {
+        lundi: h.lundi,
+        mardi: h.mardi,
+        mercredi: h.mercredi,
+        jeudi: h.jeudi,
+        vendredi: h.vendredi,
+        total: total
+      }
+    });
+  } catch (err) {
+    console.error("Erreur heures:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// --- ROUTE INSCRIPTION ---
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { username, password, prenom, nom } = req.body;
+
+    if (!username || !password || !prenom || !nom) {
+      return res.status(400).json({ message: "Tous les champs sont requis" });
+    }
+
+    const check = await pool.query(
+      "SELECT id FROM professeurs WHERE username = $1",
+      [username]
+    );
+
+    if (check.rows.length > 0) {
+      return res.status(400).json({ message: "Username déjà utilisé" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      "INSERT INTO professeurs (username, password, prenom, nom, statut) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, prenom, nom, statut",
+      [username, hashedPassword, prenom, nom, "en attente"]
+    );
+
+    res.json({
+      message: "Compte créé avec succès",
+      prof: result.rows[0]
+    });
+  } catch (err) {
+    console.error("Erreur register:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// --- Static files ---
 const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
@@ -52,224 +174,136 @@ const corrDir = path.join(publicPath, "corrections");
 if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
 if (!fs.existsSync(corrDir)) fs.mkdirSync(corrDir, { recursive: true });
 
-// --- File APIs ---
-app.get("/api/files", (req, res) => {
-  fs.readdir(docsDir, (err, files) => {
-    if (err) return res.status(500).json({ error: "Impossible de lire le dossier" });
-    res.json(files || []);
-  });
-});
-
-app.delete("/api/files/:filename", (req, res) => {
-  const filePath = path.join(docsDir, req.params.filename);
-  fs.unlink(filePath, (err) => {
-    if (err) return res.status(500).json({ error: "Impossible de supprimer le fichier" });
-    res.json({ message: "Fichier supprimé" });
-  });
-});
-
-app.post("/api/corrections", (req, res) => {
-  const { filename, content } = req.body;
-  if (!filename || !content) return res.status(400).json({ error: "Filename et content requis" });
-
-  const buffer = Buffer.from(content, "base64");
-  const filePath = path.join(corrDir, filename);
-  fs.writeFile(filePath, buffer, (err) => {
-    if (err) return res.status(500).json({ error: "Impossible d'enregistrer la correction" });
-    res.json({ message: "Correction envoyée" });
-  });
-});
-
 app.use("/documents", express.static(docsDir));
 app.use("/corrections", express.static(corrDir));
 
-// --- WebSocket setup ---
+// --- HTTP server + WebSocket ---
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-const clients = new Map(); // username → ws
-const connectedProfs = new Map(); // username → { ws, disponible, appelEnAttente }
-const appelsEnAttente = new Map(); // prof_username → [{ eleve, timestamp, statut }]
+// --- WS maps ---
+const clients = new Map();
+const connectedProfs = new Map();
+const appelsEnAttente = new Map();
+const appelsEnCours = new Map();
 
+// --- WS connection ---
 wss.on("connection", (ws) => {
   console.log("✅ Nouvelle connexion WebSocket");
-
   let currentUsername = null;
   let currentRole = null;
 
-  ws.on("message", (msg) => {
+  ws.on("message", async (msg) => {
     try {
       const data = JSON.parse(msg);
-      console.log("📨 Message reçu:", data.type);
 
-      // --- USER REGISTRATION ---
-     if (data.type === "register") {
-    currentUsername = data.username;
-    currentRole = data.role || "eleve";
+      if (data.type === "register") {
+        currentUsername = data.username;
+        currentRole = data.role || "eleve";
 
-    clients.set(currentUsername, ws);
-
-    if (currentRole === "prof") {
-      connectedProfs.set(currentUsername, { ws, disponible: true });
-      appelsEnAttente.set(currentUsername, []);
-      console.log(`✅ Prof "${currentUsername}" enregistré`);
-    } else {
-      console.log(`✅ Élève "${currentUsername}" enregistré`);
-    }
-    
-    // ✅ Appeler pour TOUS les utilisateurs (profs ET élèves)
-    broadcastProfList();
-    return;
- }
-
-      // --- CALL REQUEST (Élève appelle un prof) ---
-      if (data.type === "demandAppel") {
-        const prof = connectedProfs.get(data.target);
-        if (!prof) {
-          console.log(`⚠️ Prof "${data.target}" non connecté`);
-          ws.send(JSON.stringify({ type: "erreur", message: "Le professeur n'est pas disponible" }));
+        if (clients.has(currentUsername)) {
+          ws.send(JSON.stringify({ type: "erreur", message: "Nom d'utilisateur déjà connecté" }));
+          ws.close();
           return;
         }
 
+        clients.set(currentUsername, ws);
+
+        if (currentRole === "prof") {
+          connectedProfs.set(currentUsername, { ws, disponible: true });
+          appelsEnAttente.set(currentUsername, []);
+        }
+
+        broadcastProfList();
+        return;
+      }
+
+      if (data.type === "demandAppel") {
+        const prof = connectedProfs.get(data.target);
+        if (!prof) return ws.send(JSON.stringify({ type: "erreur", message: "Prof non disponible" }));
+
         const appels = appelsEnAttente.get(data.target) || [];
-        
-        // Vérifier si l'élève n'a pas déjà un appel en attente
         if (!appels.find(a => a.eleve === data.sender)) {
-          appels.push({ 
-            eleve: data.sender, 
-            timestamp: new Date().toISOString(), 
-            statut: "en_attente" 
-          });
+          appels.push({ eleve: data.sender, timestamp: new Date().toISOString(), statut: "en_attente" });
           appelsEnAttente.set(data.target, appels);
 
-          // Notifier le prof
-          if (prof.ws.readyState === 1) {
-            prof.ws.send(JSON.stringify({ 
-              type: "appelEnAttente", 
-              appels: appels 
-            }));
-          }
-
-          // Confirmer à l'élève
-          ws.send(JSON.stringify({ 
-            type: "demandAppelConfirmee", 
-            prof: data.target, 
-            message: "Votre demande d'appel a été envoyée" 
-          }));
-          console.log(`📞 Appel de "${data.sender}" vers "${data.target}"`);
+          if (prof.ws.readyState === 1) prof.ws.send(JSON.stringify({ type: "appelEnAttente", appels }));
+          ws.send(JSON.stringify({ type: "demandAppelConfirmee", prof: data.target }));
         }
         return;
       }
 
-      // --- GET PENDING CALLS (Prof demande ses appels en attente) ---
-      if (data.type === "getAppelsEnAttente") {
-        const appels = appelsEnAttente.get(currentUsername) || [];
-        ws.send(JSON.stringify({ 
-          type: "appelEnAttente", 
-          appels: appels.filter(a => a.statut === "en_attente") 
-        }));
-        return;
-      }
-
-      // --- ACCEPT CALL ---
       if (data.type === "accepterAppel") {
-        const appels = appelsEnAttente.get(currentUsername) || [];
-        const appelIndex = appels.findIndex(a => a.eleve === data.eleveAccepte);
-        
-        if (appelIndex !== -1) {
-          appels[appelIndex].statut = "accepté";
-          
-          // Notifier l'élève
-          const eleveWs = clients.get(data.eleveAccepte);
-          if (eleveWs && eleveWs.readyState === 1) {
-            eleveWs.send(JSON.stringify({ 
-              type: "appelAccepte", 
-              prof: currentUsername 
-            }));
+        const { prof, eleve } = data;
+        const key = `${prof}_${eleve}`;
+        appelsEnCours.set(key, { startTime: new Date(), timer: null });
+
+        await pool.query(
+          `INSERT INTO appels (prof_username, eleve_username, start_time, statut)
+           VALUES ($1, $2, NOW(), 'en_cours')`,
+          [prof, eleve]
+        );
+
+        const eleveWs = clients.get(eleve);
+        if (eleveWs && eleveWs.readyState === 1) {
+          eleveWs.send(JSON.stringify({ type: 'appelAccepte', prof, eleve }));
+        }
+
+        const timer = setInterval(() => {
+          const callData = appelsEnCours.get(key);
+          if (!callData) {
+            clearInterval(timer);
+            return;
           }
+          const wsProf = connectedProfs.get(prof)?.ws;
+          const wsEleve = clients.get(eleve);
+          const elapsed = Math.floor((new Date() - callData.startTime) / 1000);
+          const msg = JSON.stringify({ type: "timerUpdate", elapsed });
+          if (wsProf?.readyState === 1) wsProf.send(msg);
+          if (wsEleve?.readyState === 1) wsEleve.send(msg);
+        }, 1000);
+        appelsEnCours.get(key).timer = timer;
+        return;
+      }
 
-          console.log(`✅ Appel accepté: "${currentUsername}" <- "${data.eleveAccepte}"`);
+      if (data.type === "appelTermine") {
+        const { prof, eleve } = data;
+        const key = `${prof}_${eleve}`;
+        const callData = appelsEnCours.get(key);
+        if (callData) {
+          clearInterval(callData.timer);
+          const durationMinutes = Math.round(((new Date() - callData.startTime) / 60000) * 100) / 100;
+
+          await pool.query(
+            `UPDATE appels
+             SET end_time = NOW(),
+                 duree_minutes = $1,
+                 statut = 'termine'
+             WHERE prof_username = $2 AND eleve_username = $3 AND statut = 'en_cours'`,
+            [durationMinutes, prof, eleve]
+          );
+          appelsEnCours.delete(key);
         }
         return;
       }
 
-      // --- REJECT CALL ---
-      if (data.type === "rejeterAppel") {
-        const appels = appelsEnAttente.get(currentUsername) || [];
-        const appelIndex = appels.findIndex(a => a.eleve === data.eleveRejete);
-        
-        if (appelIndex !== -1) {
-          appels.splice(appelIndex, 1);
-          
-          // Notifier l'élève
-          const eleveWs = clients.get(data.eleveRejete);
-          if (eleveWs && eleveWs.readyState === 1) {
-            eleveWs.send(JSON.stringify({ 
-              type: "appelRejete", 
-              prof: currentUsername 
-            }));
-          }
-
-          console.log(`❌ Appel rejeté: "${currentUsername}" -> "${data.eleveRejete}"`);
-        }
-        return;
+      if (["offer","answer","ice"].includes(data.type)) {
+        const target = clients.get(data.target) || connectedProfs.get(data.target)?.ws;
+        if (target?.readyState === 1) target.send(JSON.stringify({ ...data, sender: currentUsername }));
       }
 
-      // --- WebRTC OFFER ---
-      if (data.type === "offer") {
-        const target = clients.get(data.target);
-        if (target && target.readyState === 1) {
-          target.send(JSON.stringify({
-            type: "offer",
-            offer: data.offer,
-            sender: currentUsername
-          }));
-        }
-        return;
-      }
-
-      // --- WebRTC ANSWER ---
-      if (data.type === "answer") {
-        const target = clients.get(data.target);
-        if (target && target.readyState === 1) {
-          target.send(JSON.stringify({
-            type: "answer",
-            answer: data.answer,
-            sender: currentUsername
-          }));
-        }
-        return;
-      }
-
-      // --- ICE CANDIDATE ---
-      if (data.type === "ice") {
-        const target = clients.get(data.target);
-        if (target && target.readyState === 1 && data.candidate) {
-          target.send(JSON.stringify({
-            type: "ice",
-            candidate: data.candidate,
-            sender: currentUsername
-          }));
-        }
-        return;
-      }
-
-      // --- CHAT MESSAGE ---
       if (data.type === "chat") {
-        const target = clients.get(data.target);
-        if (target && target.readyState === 1) {
-          target.send(JSON.stringify({
-            type: "chat",
-            message: data.message,
-            sender: currentUsername,
-            timestamp: new Date().toISOString()
-          }));
-        }
-        return;
+        const target = clients.get(data.target) || connectedProfs.get(data.target)?.ws;
+        if (target?.readyState === 1) target.send(JSON.stringify({ type:"chat", sender: currentUsername, message: data.message, timestamp: new Date() }));
+      }
+
+      if (data.type === "fileUpload") {
+        const target = clients.get(data.target) || connectedProfs.get(data.target)?.ws;
+        if (target?.readyState === 1) target.send(JSON.stringify({ type:"newFile", sender: currentUsername, filename: data.filename, content: data.content }));
       }
 
     } catch (error) {
-      console.error("❌ Erreur traitement message:", error.message);
+      console.error("❌ Erreur WS:", error.message);
       ws.send(JSON.stringify({ type: "erreur", message: error.message }));
     }
   });
@@ -280,61 +314,22 @@ wss.on("connection", (ws) => {
     if (currentRole === "prof") {
       connectedProfs.delete(currentUsername);
       appelsEnAttente.delete(currentUsername);
-      console.log(`🔌 Prof "${currentUsername}" déconnecté`);
       broadcastProfList();
-    } else {
-      console.log(`🔌 Élève "${currentUsername}" déconnecté`);
     }
-  });
-
-  ws.on("error", (err) => {
-    console.error("❌ Erreur WS:", err.message);
   });
 });
 
 // --- BROADCAST PROF LIST ---
 function broadcastProfList() {
   const profList = [];
-  for (let [username, prof] of connectedProfs.entries()) {
+  for (const [username, prof] of connectedProfs.entries()) {
     const appels = appelsEnAttente.get(username) || [];
-    profList.push({ 
-      username, 
-      disponible: prof.disponible, 
-      appelsEnAttente: appels.length 
-    });
+    profList.push({ username, disponible: prof.disponible, appelsEnAttente: appels.length });
   }
   const message = JSON.stringify({ type: "profList", profs: profList });
-  for (let ws of clients.values()) {
-    if (ws.readyState === 1) ws.send(message);
-  }
+  for (const ws of clients.values()) if (ws.readyState === 1) ws.send(message);
 }
-// === API Professeurs ===
-app.get("/api/professeurs", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM professeurs");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("❌ Erreur:", err);
-    res.status(500).json({ message: "Erreur serveur" });
-  }
-});
-// --- Redirections ---
-app.get("/login_prof.html", (req, res) => {
-  res.redirect("/login.html");
-});
 
-app.get("/register_prof.html", (req, res) => {
-  res.redirect("/register_prof.html");
-});
-// --- START SERVER ---
+// --- Start server ---
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════╗
-║ ✅ SERVEUR LANCÉ sur http://localhost:${PORT}
-║ 📚 Élève: http://localhost:${PORT}/login_eleve.html
-║ 👨‍🏫 Prof: http://localhost:${PORT}/login.html
-║ 🔌 WebSocket: ws://localhost:${PORT}
-╚════════════════════════════════════════╝
-  `);
-});
+server.listen(PORT, () => console.log(`✅ Serveur lancé sur http://localhost:${PORT}`));

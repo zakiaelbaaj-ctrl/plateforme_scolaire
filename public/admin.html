@@ -6,386 +6,195 @@
     <title>Admin - Gestion des Professeurs</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        body {
-            font-family: Verdana, sans-serif;
-            background-color: #f7f7f7;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            color: #1a1a1a;
-            text-align: center;
-        }
-        
-        .controls {
-            margin: 20px 0;
-            display: flex;
-            gap: 10px;
-            justify-content: space-between;
-            flex-wrap: wrap;
-        }
-        
-        input[type="text"] {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 250px;
-        }
-        
-        .table-wrapper {
-            overflow-x: auto;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: left;
-        }
-        
-        th {
-            background-color: #2193b0;
-            color: white;
-            font-weight: bold;
-        }
-        
-        tr:hover {
-            background-color: #f9f9f9;
-        }
-        
-        .status {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .status.pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        
-        .status.validated {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        
-        .actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        button {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            color: white;
-            font-weight: bold;
-            transition: opacity 0.3s;
-            font-size: 14px;
-        }
-        
-        button:hover {
-            opacity: 0.9;
-        }
-        
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .validate-btn {
-            background-color: #28a745;
-        }
-        
-        .delete-btn {
-            background-color: #dc3545;
-        }
-        
-        .back-home {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 15px;
-            color: #2193b0;
-            text-decoration: none;
-            border: 1px solid #2193b0;
-            border-radius: 4px;
-            transition: all 0.3s;
-        }
-        
-        .back-home:hover {
-            background-color: #2193b0;
-            color: white;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-        
-        .modal-content {
-            background-color: white;
-            margin: 15% auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 300px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-        
-        .modal-content h3 {
-            margin-top: 0;
-            color: #333;
-        }
-        
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 20px;
-        }
-        
-        .btn-cancel {
-            background-color: #6c757d;
-        }
-        
-        .btn-confirm {
-            background-color: #dc3545;
-        }
+        body { font-family: Verdana, sans-serif; background-color: #f7f7f7; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; color: #1a1a1a; }
+        .controls { margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; }
+        input[type="text"] { padding: 10px; border-radius: 4px; border: 1px solid #ddd; width: 250px; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #2193b0; color: white; font-weight: bold; }
+        tr:hover { background-color: #f9f9f9; }
+        .status { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+        .status.pending { background-color: #fff3cd; color: #856404; }
+        .status.validated { background-color: #d4edda; color: #155724; }
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        button { padding: 8px 12px; border-radius: 4px; border: none; cursor: pointer; color: white; font-weight: bold; font-size: 14px; transition: opacity 0.3s; }
+        button:hover { opacity: 0.9; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .validate-btn { background-color: #28a745; }
+        .delete-btn { background-color: #dc3545; }
+        .back-home { display: inline-block; margin-top: 20px; padding: 10px 15px; color: #2193b0; text-decoration: none; border: 1px solid #2193b0; border-radius: 4px; transition: all 0.3s; }
+        .back-home:hover { background-color: #2193b0; color: white; }
+        .empty-state { text-align: center; padding: 40px; color: #666; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: white; margin: 15% auto; padding: 20px; border-radius: 8px; width: 90%; max-width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .modal-content h3 { margin-top: 0; color: #333; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .btn-cancel { background-color: #6c757d; }
+        .btn-confirm { background-color: #dc3545; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🛠️ Admin - Gestion des Professeurs</h1>
-        
-        <div class="controls">
-            <input type="text" id="searchInput" placeholder="🔍 Chercher un professeur...">
-            <button class="validate-btn" onclick="location.reload()">🔄 Rafraîchir</button>
-        </div>
-        
-        <div class="table-wrapper">
-            <table id="profTable">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Nom Complet</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Les professeurs seront injectés ici -->
-                </tbody>
-            </table>
-        </div>
-        
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="index.html" class="back-home">⬅️ Retour à l'accueil</a>
-        </div>
+<div class="container">
+    <h1>🛠️ Admin - Gestion des Professeurs</h1>
+
+    <div class="controls">
+        <input type="text" id="searchInput" placeholder="🔍 Chercher un professeur...">
+        <button class="validate-btn" onclick="loadProfs()">🔄 Rafraîchir</button>
     </div>
 
-    <!-- Modal de confirmation -->
-    <div id="confirmModal" class="modal">
-        <div class="modal-content">
-            <h3 id="modalTitle">Confirmation</h3>
-            <p id="modalMessage"></p>
-            <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal()">Annuler</button>
-                <button class="btn-confirm" id="confirmBtn" onclick="confirmAction()">Confirmer</button>
-            </div>
-        </div>
+    <div class="table-wrapper">
+        <table id="profTable">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Nom Complet</th>
+                <th>Statut</th>
+                <th>Heures en ligne ce mois</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- Professeurs injectés ici -->
+            </tbody>
+        </table>
     </div>
 
-    <script>
-        let profs = [];
-        let filteredProfs = [];
-        let pendingAction = null;
-        
-        // ✅ Charger les professeurs au démarrage
-        // ✅ Charger les professeurs au démarrage
+    <div style="text-align:center;">
+        <a href="index.html" class="back-home">⬅️ Retour à l'accueil</a>
+    </div>
+</div>
+
+<div id="confirmModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalTitle">Confirmation</h3>
+        <p id="modalMessage"></p>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+            <button class="btn-confirm" id="confirmBtn" onclick="confirmAction()">Confirmer</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let profs = [];
+let filteredProfs = [];
+let pendingAction = null;
+
 async function loadProfs() {
     try {
-        // Charger depuis l'API
-        const response = await fetch('/api/professeurs');
-        if (!response.ok) throw new Error('Erreur API');
-        
-        const data = await response.json();
+        const res = await fetch("/api/professeurs/avec_heures");
+        const data = await res.json();
         profs = data.map(p => ({
-            id: p.id,
+            ...p,
             fullname: `${p.prenom} ${p.nom}`,
-            nom: p.nom,
-            prenom: p.prenom,
-            email: p.email,
-            statut: p.statut || 'en_attente'
+            heures_en_ligne: p.heures_en_ligne || 0
         }));
-        
         filteredProfs = [...profs];
         displayProfs();
     } catch (err) {
-        console.error("Erreur chargement:", err);
-        alert("Erreur: impossible de charger les professeurs");
+        console.error(err);
+        alert("Erreur chargement des professeurs");
     }
 }
-        
-        // ✅ Afficher les professeurs
-        function displayProfs() {
-            const tbody = document.querySelector("#profTable tbody");
-            tbody.innerHTML = "";
-            
-            if (filteredProfs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="empty-state">Aucun professeur trouvé.</td></tr>`;
-                return;
-            }
-            
-            filteredProfs.forEach((prof, index) => {
-                const originalIndex = profs.findIndex(p => p.fullname === prof.fullname);
-                const tr = document.createElement("tr");
-                
-                // ✅ Échapper le texte pour éviter les XSS
-                const safeFullname = escapeHtml(prof.fullname || "N/A");
-                
-                const statusClass = prof.statut === "en_attente" ? "pending" : "validated";
-                const statusText = prof.statut === "en_attente" ? "⏳ En attente" : "✅ Validé";
-                
-                tr.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${safeFullname}</td>
-                    <td><span class="status ${statusClass}">${statusText}</span></td>
-                    <td>
-                        <div class="actions">
-                            ${prof.statut === "en_attente" ? `<button class="validate-btn" onclick="openValidateModal(${originalIndex})">Valider</button>` : ""}
-                            <button class="delete-btn" onclick="openDeleteModal(${originalIndex})">Supprimer</button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-        
-        // ✅ Échapper le HTML pour éviter les XSS
-        function escapeHtml(text) {
-            const div = document.createElement("div");
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // ✅ Ouvrir le modal de validation
-        function openValidateModal(index) {
-            pendingAction = { type: "validate", index };
-            document.getElementById("modalTitle").textContent = "Valider ce professeur ?";
-            document.getElementById("modalMessage").textContent = `Êtes-vous sûr de valider "${escapeHtml(profs[index].fullname)}" ?`;
-            document.getElementById("confirmModal").style.display = "block";
-        }
-        
-        // ✅ Ouvrir le modal de suppression
-        function openDeleteModal(index) {
-            pendingAction = { type: "delete", index };
-            document.getElementById("modalTitle").textContent = "Supprimer ce professeur ?";
-            document.getElementById("modalMessage").textContent = `Attention : "${escapeHtml(profs[index].fullname)}" sera définitivement supprimé.`;
-            document.getElementById("confirmBtn").className = "btn-confirm";
-            document.getElementById("confirmModal").style.display = "block";
-        }
-        
-        // ✅ Confirmer l'action
-        async function confirmAction() {
+
+function displayProfs() {
+    const tbody = document.querySelector("#profTable tbody");
+    tbody.innerHTML = "";
+
+    if (filteredProfs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Aucun professeur trouvé.</td></tr>`;
+        return;
+    }
+
+    filteredProfs.forEach((prof, index) => {
+        const statusClass = prof.statut === "en_attente" ? "pending" : "validated";
+        const statusText = prof.statut === "en_attente" ? "⏳ En attente" : "✅ Validé";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${escapeHtml(prof.fullname)}</td>
+            <td><span class="status ${statusClass}">${statusText}</span></td>
+            <td>${prof.heures_en_ligne} h</td>
+            <td>
+                <div class="actions">
+                    ${prof.statut === "en_attente" ? `<button class="validate-btn" onclick="openValidateModal(${index})">Valider</button>` : ""}
+                    <button class="delete-btn" onclick="openDeleteModal(${index})">Supprimer</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function openValidateModal(index) {
+    pendingAction = { type: "validate", index };
+    const prof = filteredProfs[index];
+    document.getElementById("modalTitle").textContent = "Valider ce professeur ?";
+    document.getElementById("modalMessage").textContent = `Êtes-vous sûr de valider "${escapeHtml(prof.fullname)}" ?`;
+    document.getElementById("confirmModal").style.display = "block";
+}
+
+function openDeleteModal(index) {
+    pendingAction = { type: "delete", index };
+    const prof = filteredProfs[index];
+    document.getElementById("modalTitle").textContent = "Supprimer ce professeur ?";
+    document.getElementById("modalMessage").textContent = `Attention : "${escapeHtml(prof.fullname)}" sera définitivement supprimé.`;
+    document.getElementById("confirmBtn").className = "btn-confirm";
+    document.getElementById("confirmModal").style.display = "block";
+}
+
+async function confirmAction() {
     if (!pendingAction) return;
-    
     const { type, index } = pendingAction;
-    const prof = profs[index];
-    
+    const prof = filteredProfs[index];
+
     if (type === "validate") {
         try {
-            const response = await fetch(`/api/auth/professeurs/${prof.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ statut: 'validé' })
+            const res = await fetch(`/api/auth/professeurs/${prof.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ statut: "valide" })
             });
-            
-            if (response.ok) {
-                prof.statut = "validé";
-                alert(`✅ "${prof.nom} ${prof.prenom}" est maintenant validé.`);
-                loadProfs();
-            } else {
-                alert("❌ Erreur lors de la validation");
-            }
-        } catch (err) {
-            console.error("Erreur:", err);
-            alert("❌ Erreur lors de la validation");
-        }
+            if (res.ok) alert(`✅ "${prof.fullname}" validé.`);
+            else alert("❌ Erreur lors de la validation");
+        } catch (err) { console.error(err); alert("❌ Erreur lors de la validation"); }
     } else if (type === "delete") {
         try {
-            const response = await fetch(`/api/auth/professeurs/${prof.id}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (response.ok) {
-                alert(`❌ "${prof.nom} ${prof.prenom}" a été supprimé.`);
-                loadProfs();
-            } else {
-                alert("❌ Erreur lors de la suppression");
-            }
-        } catch (err) {
-            console.error("Erreur:", err);
-            alert("❌ Erreur lors de la suppression");
-        }
+            const res = await fetch(`/api/auth/professeurs/${prof.id}`, { method: "DELETE" });
+            if (res.ok) alert(`❌ "${prof.fullname}" supprimé.`);
+            else alert("❌ Erreur lors de la suppression");
+        } catch (err) { console.error(err); alert("❌ Erreur lors de la suppression"); }
     }
-    
     closeModal();
+    loadProfs();
 }
-        
-        // ✅ Fermer le modal
-        function closeModal() {
-            document.getElementById("confirmModal").style.display = "none";
-            pendingAction = null;
-        }
-        
-        // ✅ Recherche en temps réel
-        document.getElementById("searchInput").addEventListener("keyup", (e) => {
-            const query = e.target.value.toLowerCase();
-            filteredProfs = profs.filter(prof =>
-                prof.fullname.toLowerCase().includes(query)
-            );
-            displayProfs();
-        });
-        
-        // ✅ Gestion d'erreur
-        function showError(message) {
-            alert("❌ " + message);
-        }
-        
-        // ✅ Fermer modal avec Échap
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") closeModal();
-        });
-        
-        // Charger les données au démarrage
-        loadProfs();
-    </script>
+
+function closeModal() {
+    pendingAction = null;
+    document.getElementById("confirmModal").style.display = "none";
+}
+
+document.getElementById("searchInput").addEventListener("keyup", e => {
+    const query = e.target.value.toLowerCase();
+    filteredProfs = profs.filter(p => p.fullname.toLowerCase().includes(query));
+    displayProfs();
+});
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+});
+
+loadProfs();
+</script>
 </body>
 </html>
