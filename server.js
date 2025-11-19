@@ -26,6 +26,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- PostgreSQL connection ---
+console.log("🔍 Variables d'environnement :");
+console.log("   DB_HOST:", process.env.DB_HOST);
+console.log("   DB_USER:", process.env.DB_USER);
+console.log("   DB_NAME:", process.env.DB_NAME);
+console.log("   DB_PORT:", process.env.DB_PORT);
+console.log("   DB_PASSWORD:", process.env.DB_PASSWORD ? "***" : "NON DÉFINI");
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
