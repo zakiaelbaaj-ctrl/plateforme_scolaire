@@ -28,6 +28,13 @@ body {
     margin-right: auto;
 }
 
+.logo h2 {
+    color: rgb(1,1,27);
+    font-size: 32px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
 /* Titres */
 h1 {
     color: rgb(1,1,27);
@@ -44,7 +51,7 @@ p {
     margin: 0 auto 20px;
 }
 
-/* Boutons salle d'attente */
+/* Boutons */
 button {
     width: 100%;
     padding: 14px;
@@ -63,14 +70,6 @@ button {
 button:hover {
     transform: translateY(-4px);
     box-shadow: 0 6px 18px rgba(0,0,0,0.3);
-}
-
-/* Compteur salle d'attente */
-.counter {
-    font-size: 14px;
-    margin-top: 10px;
-    color: #333;
-    transition: transform 0.3s ease, color 0.3s ease;
 }
 
 /* Organigramme animé */
@@ -155,7 +154,7 @@ button:hover {
     .org-card { width: 90%; }
     h1 { font-size: 24px; }
     p { font-size: 16px; max-width: 90%; }
-    .logo img { width: 80px; height: 80px; }
+    .logo h2 { font-size: 28px; }
     button { font-size: 14px; padding: 12px; }
 }
 </style>
@@ -169,16 +168,12 @@ button:hover {
 
     <!-- Contenu principal -->
     <div class="container">
-        <h1>Bienvenue sur <urgencescolaire class="com"></urgencescolaire>, un soutien Scolaire Instantané</h1>
+        <h1>Bienvenue sur urgencescolaire.com, un soutien Scolaire Instantané</h1>
         <p>
-            Ici, les élèves peuvent obtenir de l’aide pour leurs devoirs <strong>en temps réel</strong>.<br>
-            Vous êtes en <strong>urgence de trouver un professeur</strong> ? Inscrivez vous et des professeurs qualifiés vous assistera rapidement.<br>
-            Profitez d’un apprentissage rapide, efficace et personnalisé.
+            Ici, les élèves peuvent obtenir de l'aide pour leurs devoirs <strong>en temps réel</strong>.<br>
+            Vous êtes en <strong>urgence de trouver un professeur</strong> ? Inscrivez-vous et des professeurs qualifiés vous assisteront rapidement.<br>
+            Profitez d'un apprentissage rapide, efficace et personnalisé.
         </p>
-
-        <!-- Salle d'attente -->
-        <button onclick="joinQueue()">🧑‍🎓 Rejoindre la salle d'attente</button>
-        <div class="counter" id="studentCount">0 élève(s) attend(ent) actuellement...</div>
     </div>
 
     <!-- Organigramme animé des espaces -->
@@ -209,18 +204,6 @@ button:hover {
             </div>
         </div>
     </div>
-
-    <!-- Script salle d'attente -->
-    <script>
-        let studentCount = 0;
-        const countDisplay = document.getElementById("studentCount");
-
-        function joinQueue() {
-            studentCount++;
-            countDisplay.textContent = `${studentCount} élève(s) attend(ent) actuellement...`;
-            alert("🎉 Vous avez rejoint la salle d'attente !\nUn professeur va bientôt vous aider.");
-        }
-    </script>
 
 </body>
 </html>
