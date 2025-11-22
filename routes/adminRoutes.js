@@ -1,24 +1,8 @@
 // routes/adminRoutes.js
 import express from "express";
-import pkg from "pg";
-import dotenv from "dotenv";
+import { pool } from "../server.js";
 
-dotenv.config();
-const { Pool } = pkg;
 const router = express.Router();
-
-// --- PostgreSQL pool ---
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASS,
-  port: parseInt(process.env.DB_PORT, 10) || 5432,
-  ssl: { rejectUnauthorized: false },
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-  max: 20
-});
 
 // --- GET : tous les professeurs avec heures en ligne du mois ---
 router.get("/professeurs/avec_heures", async (req, res) => {
@@ -30,13 +14,14 @@ router.get("/professeurs/avec_heures", async (req, res) => {
         p.nom,
         p.username,
         p.statut,
+        p.matiere,
         COALESCE(SUM(a.duree_minutes)/60, 0) AS heures_en_ligne
       FROM profs p
       LEFT JOIN appels a 
         ON p.username = a.prof_username
         AND a.statut = 'termine'
         AND DATE_TRUNC('month', a.start_time) = DATE_TRUNC('month', CURRENT_DATE)
-      GROUP BY p.id, p.prenom, p.nom, p.username, p.statut
+      GROUP BY p.id, p.prenom, p.nom, p.username, p.statut, p.matiere
       ORDER BY p.nom, p.prenom;
     `;
     const result = await pool.query(query);
@@ -54,12 +39,24 @@ router.put("/professeurs/:id", async (req, res) => {
   if (!statut) return res.status(400).json({ error: "Statut requis" });
 
   try {
+    // Mettre à jour le statut dans profs
     const result = await pool.query(
       "UPDATE profs SET statut=$1 WHERE id=$2 RETURNING *",
       [statut, id]
     );
     if (result.rowCount === 0) return res.status(404).json({ error: "Professeur non trouvé" });
-    res.json(result.rows[0]);
+
+    // Récupérer l'email du professeur
+    const profResult = await pool.query("SELECT email FROM profs WHERE id = $1", [id]);
+    if (profResult.rows.length > 0) {
+      const email = profResult.rows[0].email;
+      // Normaliser le statut
+      const newStatut = statut === "validé" || statut === "valide" ? "valide" : statut;
+      // Mettre à jour le statut dans users
+      await pool.query("UPDATE users SET statut = $1 WHERE email = $2", [newStatut, email]);
+    }
+
+    res.json({ message: "Statut mis à jour avec succès", prof: result.rows[0] });
   } catch (err) {
     console.error("❌ Erreur PUT professeur:", err.message);
     res.status(500).json({ error: "Impossible de mettre à jour le professeur" });
@@ -70,9 +67,19 @@ router.put("/professeurs/:id", async (req, res) => {
 router.delete("/professeurs/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await pool.query("DELETE FROM profs WHERE id=$1 RETURNING *", [id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: "Professeur non trouvé" });
-    res.json({ message: "Professeur supprimé", prof: result.rows[0] });
+    // Récupérer l'email avant suppression
+    const profResult = await pool.query("SELECT email FROM profs WHERE id = $1", [id]);
+    if (profResult.rowCount === 0) return res.status(404).json({ error: "Professeur non trouvé" });
+
+    const email = profResult.rows[0].email;
+
+    // Supprimer de profs
+    await pool.query("DELETE FROM profs WHERE id = $1", [id]);
+
+    // Supprimer de users
+    await pool.query("DELETE FROM users WHERE email = $1", [email]);
+
+    res.json({ message: "Professeur supprimé avec succès", prof: profResult.rows[0] });
   } catch (err) {
     console.error("❌ Erreur DELETE professeur:", err.message);
     res.status(500).json({ error: "Impossible de supprimer le professeur" });
