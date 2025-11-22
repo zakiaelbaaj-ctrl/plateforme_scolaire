@@ -34,7 +34,7 @@ const verifyToken = (req, res, next) => {
 
 // 🔹 SIGNUP
 router.post("/signup", async (req, res) => {
-  const { username, password, prenom, nom, role, telephone } = req.body;
+  const { username, password, prenom, nom, role, telephone, matiere } = req.body;
 
   try {
     const userExist = await pool.query(
@@ -66,9 +66,9 @@ router.post("/signup", async (req, res) => {
     if (role === "prof") {
       const email = `${username}@example.com`;
       await pool.query(
-        `INSERT INTO profs (nom, prenom, email, matiere, statut)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [nom || username, prenom || username, email, "Général", "en_attente"]
+        `INSERT INTO profs (nom, prenom, email, password, matiere, statut)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [nom || username, prenom || username, email, hashedPassword, matiere || "Général", "en_attente"]
       );
     }
 
@@ -121,7 +121,6 @@ router.post("/login", async (req, res) => {
         nom: user.nom,
         role: user.role,
         statut: user.statut
-        // ❌ Telephone volontairement exclu
       }
     });
   } catch (err) {
@@ -134,13 +133,57 @@ router.post("/login", async (req, res) => {
 router.get("/professeurs", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, prenom, nom, email, username, statut
+      SELECT id, prenom, nom, email, username, matiere, statut
       FROM profs
       ORDER BY id
     `);
-    res.json(result.rows); // ✅ Pas de téléphone exposé
+    res.json(result.rows);
   } catch (err) {
     console.error("❌ Erreur récupération professeurs:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// 🔹 GET PROFESSEURS PAR MATIERE
+router.get("/professeurs/matiere/:matiere", async (req, res) => {
+  const { matiere } = req.params;
+
+  try {
+    const result = await pool.query(`
+      SELECT id, prenom, nom, email, username, matiere, statut
+      FROM profs
+      WHERE LOWER(matiere) LIKE LOWER($1)
+      AND statut = 'valide'
+      ORDER BY nom
+    `, [`%${matiere}%`]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        message: "Aucun professeur disponible pour cette matière" 
+      });
+    }
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Erreur récupération professeurs par matière:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// 🔹 GET TOUTES LES MATIERES DISPONIBLES
+router.get("/matieres", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT matiere
+      FROM profs
+      WHERE matiere IS NOT NULL
+      AND statut = 'valide'
+      ORDER BY matiere
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Erreur récupération matières:", err);
     res.status(500).json({ message: "Erreur serveur" });
   }
 });
@@ -167,6 +210,31 @@ router.put("/professeurs/:id", async (req, res) => {
   }
 });
 
+// 🔹 UPDATE MATIERE D'UN PROFESSEUR
+router.put("/professeurs/:id/matiere", async (req, res) => {
+  const { id } = req.params;
+  const { matiere } = req.body;
+
+  try {
+    const result = await pool.query(
+      "UPDATE profs SET matiere = $1 WHERE id = $2 RETURNING id, nom, prenom, matiere",
+      [matiere, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Professeur non trouvé" });
+    }
+
+    res.json({ 
+      message: "Matière mise à jour avec succès",
+      prof: result.rows[0] 
+    });
+  } catch (err) {
+    console.error("❌ Erreur update matière:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
 // 🔹 GET PROFILE
 router.get("/profile", verifyToken, async (req, res) => {
   try {
@@ -177,7 +245,7 @@ router.get("/profile", verifyToken, async (req, res) => {
     if (userQuery.rows.length === 0)
       return res.status(404).json({ message: "Utilisateur non trouvé" });
 
-    res.json({ user: userQuery.rows[0] }); // ✅ téléphone exclu
+    res.json({ user: userQuery.rows[0] });
   } catch (err) {
     console.error("❌ Erreur profile:", err);
     res.status(500).json({ message: "Erreur serveur" });
