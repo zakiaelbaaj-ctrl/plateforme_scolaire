@@ -51,6 +51,7 @@
             <tr>
                 <th>#</th>
                 <th>Nom Complet</th>
+                <th>Matière</th>
                 <th>Statut</th>
                 <th>Heures en ligne ce mois</th>
                 <th>Actions</th>
@@ -90,13 +91,14 @@ async function loadProfs() {
         profs = data.map(p => ({
             ...p,
             fullname: `${p.prenom} ${p.nom}`,
-            heures_en_ligne: p.heures_en_ligne || 0
+            heures_en_ligne: p.heures_en_ligne || 0,
+            matiere: p.matiere || "Non défini"
         }));
         filteredProfs = [...profs];
         displayProfs();
     } catch (err) {
-        console.error(err);
-        alert("Erreur chargement des professeurs");
+        console.error("❌ Erreur chargement des professeurs:", err);
+        alert("❌ Erreur chargement des professeurs");
     }
 }
 
@@ -105,7 +107,7 @@ function displayProfs() {
     tbody.innerHTML = "";
 
     if (filteredProfs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Aucun professeur trouvé.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Aucun professeur trouvé.</td></tr>`;
         return;
     }
 
@@ -117,6 +119,7 @@ function displayProfs() {
         tr.innerHTML = `
             <td>${index + 1}</td>
             <td>${escapeHtml(prof.fullname)}</td>
+            <td>${escapeHtml(prof.matiere)}</td>
             <td><span class="status ${statusClass}">${statusText}</span></td>
             <td>${prof.heures_en_ligne} h</td>
             <td>
@@ -160,20 +163,32 @@ async function confirmAction() {
 
     if (type === "validate") {
         try {
-            const res = await fetch(`/api/auth/professeurs/${prof.id}`, {
+            const res = await fetch(`/api/professeurs/${prof.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ statut: "valide" })
             });
-            if (res.ok) alert(`✅ "${prof.fullname}" validé.`);
-            else alert("❌ Erreur lors de la validation");
-        } catch (err) { console.error(err); alert("❌ Erreur lors de la validation"); }
+            if (res.ok) {
+                alert(`✅ "${prof.fullname}" validé.`);
+            } else {
+                alert("❌ Erreur lors de la validation");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("❌ Erreur lors de la validation");
+        }
     } else if (type === "delete") {
         try {
-            const res = await fetch(`/api/auth/professeurs/${prof.id}`, { method: "DELETE" });
-            if (res.ok) alert(`❌ "${prof.fullname}" supprimé.`);
-            else alert("❌ Erreur lors de la suppression");
-        } catch (err) { console.error(err); alert("❌ Erreur lors de la suppression"); }
+            const res = await fetch(`/api/professeurs/${prof.id}`, { method: "DELETE" });
+            if (res.ok) {
+                alert(`❌ "${prof.fullname}" supprimé.`);
+            } else {
+                alert("❌ Erreur lors de la suppression");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("❌ Erreur lors de la suppression");
+        }
     }
     closeModal();
     loadProfs();
@@ -194,6 +209,7 @@ document.addEventListener("keydown", e => {
     if (e.key === "Escape") closeModal();
 });
 
+// Charger les professeurs au démarrage
 loadProfs();
 </script>
 </body>
