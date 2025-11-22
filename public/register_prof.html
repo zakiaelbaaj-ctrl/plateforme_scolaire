@@ -26,15 +26,20 @@
         h1 { text-align: center; color: #333; margin-bottom: 30px; font-size: 28px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #555; font-weight: 500; }
-        input {
+        input, select {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
             border-radius: 5px;
             font-size: 16px;
             transition: border-color 0.3s;
+            font-family: inherit;
         }
-        input:focus { outline: none; border-color: #667eea; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        select {
+            cursor: pointer;
+            background-color: white;
+        }
         button {
             width: 100%;
             padding: 12px;
@@ -86,6 +91,28 @@
                 <input type="tel" id="telephone" name="telephone" placeholder="06xxxxxxxx" required>
             </div>
             <div class="form-group">
+                <label for="matiere">Matière enseignée</label>
+                <select id="matiere" name="matiere" required>
+                    <option value="">-- Sélectionner une matière --</option>
+                    <option value="Mathématiques">Mathématiques</option>
+                    <option value="Français">Français</option>
+                    <option value="Anglais">Anglais</option>
+                    <option value="Physique">Physique</option>
+                    <option value="Chimie">Chimie</option>
+                    <option value="Biologie">Biologie</option>
+                    <option value="Histoire">Histoire</option>
+                    <option value="Géographie">Géographie</option>
+                    <option value="Informatique">Informatique</option>
+                    <option value="Philosophie">Philosophie</option>
+                    <option value="Littérature">Littérature</option>
+                    <option value="Espagnol">Espagnol</option>
+                    <option value="Allemand">Allemand</option>
+                    <option value="Musique">Musique</option>
+                    <option value="Arts">Arts Plastiques</option>
+                    <option value="Autre">Autre</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="password">Mot de passe</label>
                 <input type="password" id="password" name="password" placeholder="••••••••" required>
             </div>
@@ -106,15 +133,17 @@
         
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            errorDiv.classList.remove('show'); successDiv.classList.remove('show');
+            errorDiv.classList.remove('show'); 
+            successDiv.classList.remove('show');
             
             const prenom = document.getElementById('prenom').value.trim();
             const nom = document.getElementById('nom').value.trim();
             const username = document.getElementById('username').value.trim();
             const telephone = document.getElementById('telephone').value.trim();
+            const matiere = document.getElementById('matiere').value.trim();
             const password = document.getElementById('password').value;
 
-            if (!prenom || !nom || !username || !telephone || !password) {
+            if (!prenom || !nom || !username || !telephone || !matiere || !password) {
                 errorDiv.textContent = '❌ Veuillez remplir tous les champs';
                 errorDiv.classList.add('show');
                 return;
@@ -127,7 +156,15 @@
                 const response = await fetch('/api/auth/signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prenom, nom, username, password, role: 'prof', telephone })
+                    body: JSON.stringify({ 
+                        prenom, 
+                        nom, 
+                        username, 
+                        password, 
+                        role: 'prof', 
+                        telephone,
+                        matiere
+                    })
                 });
                 
                 const data = await response.json();
