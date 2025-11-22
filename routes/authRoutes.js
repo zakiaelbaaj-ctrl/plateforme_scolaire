@@ -144,6 +144,24 @@ router.get("/professeurs", async (req, res) => {
   }
 });
 
+// 🔹 GET PROFESSEURS AVEC HEURES
+router.get("/professeurs/avec_heures", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.id, p.prenom, p.nom, p.email, p.username, p.matiere, p.statut,
+             COALESCE(SUM(a.duree_minutes), 0) as heures_en_ligne
+      FROM profs p
+      LEFT JOIN appels a ON p.username = a.prof_username
+      GROUP BY p.id, p.prenom, p.nom, p.email, p.username, p.matiere, p.statut
+      ORDER BY p.id
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Erreur récupération professeurs avec heures:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
 // 🔹 GET PROFESSEURS PAR MATIERE
 router.get("/professeurs/matiere/:matiere", async (req, res) => {
   const { matiere } = req.params;
@@ -231,6 +249,31 @@ router.put("/professeurs/:id/matiere", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Erreur update matière:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// 🔹 DELETE PROFESSEUR
+router.delete("/professeurs/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const profResult = await pool.query("SELECT email FROM profs WHERE id = $1", [id]);
+    if (profResult.rows.length === 0) {
+      return res.status(404).json({ message: "Professeur non trouvé" });
+    }
+
+    const email = profResult.rows[0].email;
+
+    // Supprimer de profs
+    await pool.query("DELETE FROM profs WHERE id = $1", [id]);
+
+    // Supprimer de users
+    await pool.query("DELETE FROM users WHERE email = $1", [email]);
+
+    res.json({ message: "Professeur supprimé avec succès" });
+  } catch (err) {
+    console.error("❌ Erreur suppression prof:", err);
     res.status(500).json({ message: "Erreur serveur" });
   }
 });
