@@ -39,7 +39,10 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   password: process.env.DB_PASS,
   port: parseInt(process.env.DB_PORT, 10) || 5432,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+  max: 20
 });
 
 pool.connect()
@@ -336,6 +339,9 @@ function broadcastProfList() {
   const message = JSON.stringify({ type: "profList", profs: profList });
   for (const ws of clients.values()) if (ws.readyState === 1) ws.send(message);
 }
+
+// --- Export pool pour les autres routes ---
+export { pool };
 
 // --- Start server ---
 const PORT = process.env.PORT || 4000;
