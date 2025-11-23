@@ -117,12 +117,17 @@
         .link-section {
             text-align: center;
             margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
         }
         
         .link-section a {
             color: #667eea;
             text-decoration: none;
             font-weight: 500;
+            font-size: 14px;
+            display: inline-block;
+            margin: 0 8px;
         }
         
         .link-section a:hover {
@@ -165,7 +170,12 @@
         </div>
         
         <div class="link-section">
-            <p>Pas encore inscrit ? <a href="register_eleve.html">📝 Créer un compte</a></p>
+            <p style="margin: 0 0 12px 0; color: #666;">
+                Pas encore inscrit ? <a href="register_eleve.html">📝 Créer un compte</a>
+            </p>
+            <p style="margin: 0; color: #666; font-size: 12px;">
+                <a href="forgot_password.html">🔑 Mot de passe oublié?</a>
+            </p>
         </div>
     </div>
 
@@ -177,7 +187,6 @@
         
         let isLoading = false;
         
-        // Données de test (à remplacer par API réelle)
         const testUsers = [
             { username: "test_eleve", password: "1234", prenom: "Jean", nom: "Martin" },
             { username: "marie_dupont", password: "1234", prenom: "Marie", nom: "Dupont" }
@@ -208,7 +217,6 @@
             submitBtn.textContent = '⏳ Connexion...';
             
             try {
-                // 🔹 Appel API (à remplacer par votre vrai backend)
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -227,18 +235,17 @@
                     }
                     user = data.user || { username, prenom: username, nom: username };
                 } else {
-                    // Mode test (quand l'API n'est pas disponible)
                     user = testUsers.find(u => u.username === username && u.password === password);
                     if (!user) {
                         throw new Error("Identifiants incorrects");
                     }
                 }
                 
-                // 📝 Sauvegarder les données dans localStorage
                 localStorage.setItem('eleveConnecte', JSON.stringify({
                     username: user.username,
                     prenom: user.prenom || username,
                     nom: user.nom || username,
+                    email: user.email || '',
                     role: 'eleve'
                 }));
                 

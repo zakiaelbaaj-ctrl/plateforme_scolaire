@@ -9,6 +9,8 @@ import { WebSocketServer } from "ws";
 import pkg from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -32,6 +34,7 @@ console.log("   DB_USER:", process.env.DB_USER);
 console.log("   DB_NAME:", process.env.DB_NAME);
 console.log("   DB_PORT:", process.env.DB_PORT);
 console.log("   DB_PASS:", process.env.DB_PASS ? "***" : "NON DÉFINI");
+console.log("   EMAIL_USER:", process.env.EMAIL_USER ? "✅" : "❌ NON DÉFINI");
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -49,6 +52,23 @@ pool.connect()
   .then(() => console.log("✅ Connecté à PostgreSQL"))
   .catch(err => console.error("❌ Erreur PostgreSQL :", err));
 
+// --- Email Configuration ---
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+transporter.verify((error, success) => {
+  if (error) {
+    console.log("⚠️ Email config error:", error.message);
+  } else {
+    console.log("✅ Email service ready");
+  }
+});
+
 // --- API routes ---
 app.use("/api/auth", authRoutes);
 app.use("/api", adminRoutes);
@@ -60,14 +80,14 @@ app.get("/api", (req, res) => {
 // --- ROUTE LOGIN ---
 app.post("/api/auth/login", async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ message: "Username et password requis" });
     }
 
     const result = await pool.query(
-      "SELECT id, username, password, prenom, nom, statut FROM professeurs WHERE username = $1",
+      "SELECT id, username, password, prenom, nom, statut, role, email, matiere FROM users WHERE username = $1",
       [username]
     );
 
@@ -75,20 +95,23 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({ message: "Utilisateur introuvable" });
     }
 
-    const prof = result.rows[0];
+    const user = result.rows[0];
 
-    const validPassword = await bcrypt.compare(password, prof.password);
+    const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(401).json({ message: "Mot de passe incorrect" });
     }
 
     res.json({
-      prof: {
-        id: prof.id,
-        username: prof.username,
-        prenom: prof.prenom,
-        nom: prof.nom,
-        statut: prof.statut
+      user: {
+        id: user.id,
+        username: user.username,
+        prenom: user.prenom,
+        nom: user.nom,
+        statut: user.statut,
+        role: user.role,
+        email: user.email,
+        matiere: user.matiere
       }
     });
   } catch (err) {
@@ -142,34 +165,167 @@ app.get("/api/prof/:username/heures", async (req, res) => {
 // --- ROUTE INSCRIPTION ---
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { username, password, prenom, nom } = req.body;
+    const { username, password, prenom, nom, email, role, matiere } = req.body;
 
-    if (!username || !password || !prenom || !nom) {
-      return res.status(400).json({ message: "Tous les champs sont requis" });
+    if (!username || !password || !prenom || !nom || !email) {
+      return res.status(400).json({ message: "Tous les champs sont requis (username, password, prenom, nom, email)" });
     }
 
     const check = await pool.query(
-      "SELECT id FROM professeurs WHERE username = $1",
-      [username]
+      "SELECT id FROM users WHERE username = $1 OR email = $2",
+      [username, email]
     );
 
     if (check.rows.length > 0) {
-      return res.status(400).json({ message: "Username déjà utilisé" });
+      return res.status(400).json({ message: "Username ou email déjà utilisé" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const userRole = role === "prof" ? "prof" : "eleve";
 
     const result = await pool.query(
-      "INSERT INTO professeurs (username, password, prenom, nom, statut) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, prenom, nom, statut",
-      [username, hashedPassword, prenom, nom, "en attente"]
+      "INSERT INTO users (username, password, prenom, nom, email, role, statut, matiere) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, username, prenom, nom, email, role, statut, matiere",
+      [username, hashedPassword, prenom, nom, email, userRole, "valide", matiere || null]
     );
 
     res.json({
       message: "Compte créé avec succès",
-      prof: result.rows[0]
+      user: result.rows[0]
     });
   } catch (err) {
     console.error("Erreur register:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// ===== ROUTES PASSWORD RESET =====
+
+// Route: Demander la réinitialisation
+app.post("/api/auth/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email requis" });
+    }
+
+    const userResult = await pool.query(
+      "SELECT id, username, prenom FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "Aucun compte associé à cet email" });
+    }
+
+    const user = userResult.rows[0];
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 heure
+
+    await pool.query(
+      "INSERT INTO password_reset_tokens (email, token, expires_at) VALUES ($1, $2, $3)",
+      [email, token, expiresAt]
+    );
+
+    const resetLink = `${process.env.FRONTEND_URL || "http://localhost:4000"}/reset_password.html?token=${token}`;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Réinitialiser votre mot de passe - Plateforme Scolaire",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #667eea;">Réinitialisation de mot de passe</h2>
+          <p>Bonjour ${user.prenom},</p>
+          <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+          <p style="margin: 30px 0;">
+            <a href="${resetLink}" style="background-color: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+              Réinitialiser mon mot de passe
+            </a>
+          </p>
+          <p style="color: #999; font-size: 12px;">⏱️ Ce lien expire dans 1 heure.</p>
+          <p style="color: #999; font-size: 12px;">Si vous n'avez pas demandé cela, ignorez cet email.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin-top: 30px;">
+          <p style="color: #999; font-size: 11px;">Plateforme Scolaire Global - Soutien en ligne 24/7</p>
+        </div>
+      `
+    });
+
+    res.json({ message: "Email de réinitialisation envoyé avec succès" });
+
+  } catch (err) {
+    console.error("Erreur forgot-password:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// Route: Valider le token
+app.get("/api/auth/verify-token/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const result = await pool.query(
+      "SELECT email FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW()",
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: "Token invalide ou expiré" });
+    }
+
+    res.json({ message: "Token valide", email: result.rows[0].email });
+
+  } catch (err) {
+    console.error("Erreur verify-token:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+// Route: Réinitialiser le mot de passe
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ message: "Token et password requis" });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Le mot de passe doit contenir au moins 8 caractères" });
+    }
+
+    const tokenResult = await pool.query(
+      "SELECT email FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW()",
+      [token]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      return res.status(401).json({ message: "Token invalide ou expiré" });
+    }
+
+    const email = tokenResult.rows[0].email;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const updateResult = await pool.query(
+      "UPDATE users SET password = $1 WHERE email = $2 RETURNING username, prenom",
+      [hashedPassword, email]
+    );
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    await pool.query(
+      "DELETE FROM password_reset_tokens WHERE email = $1",
+      [email]
+    );
+
+    res.json({ message: "Mot de passe réinitialisé avec succès" });
+
+  } catch (err) {
+    console.error("Erreur reset-password:", err);
     res.status(500).json({ message: "Erreur serveur" });
   }
 });
@@ -202,47 +358,113 @@ wss.on("connection", (ws) => {
   console.log("✅ Nouvelle connexion WebSocket");
   let currentUsername = null;
   let currentRole = null;
+  let currentCountry = null;
+  let currentSubjects = [];
+  let currentLanguages = [];
 
   ws.on("message", async (msg) => {
     try {
       const data = JSON.parse(msg);
 
+      // ===== REGISTRATION =====
       if (data.type === "register") {
         currentUsername = data.username;
-        currentRole = data.role || "eleve";
+        currentCountry = data.country || "Inconnu";
+        currentSubjects = data.subjects || [];
+        currentLanguages = data.languages || [];
+
+        try {
+          const userResult = await pool.query(
+            "SELECT role FROM users WHERE username = $1",
+            [currentUsername]
+          );
+
+          if (userResult.rows.length === 0) {
+            ws.send(JSON.stringify({ type: "erreur", message: "Utilisateur introuvable" }));
+            ws.close();
+            return;
+          }
+
+          currentRole = userResult.rows[0].role;
+        } catch (dbErr) {
+          console.error("❌ Erreur récupération role:", dbErr);
+          ws.send(JSON.stringify({ type: "erreur", message: "Erreur serveur" }));
+          ws.close();
+          return;
+        }
 
         if (clients.has(currentUsername)) {
-          ws.send(JSON.stringify({ type: "erreur", message: "Nom d'utilisateur déjà connecté" }));
+          ws.send(JSON.stringify({ type: "erreur", message: "Utilisateur déjà connecté" }));
           ws.close();
           return;
         }
 
         clients.set(currentUsername, ws);
 
+        // Si c'est un prof
         if (currentRole === "prof") {
-          connectedProfs.set(currentUsername, { ws, disponible: true });
+          connectedProfs.set(currentUsername, { 
+            ws, 
+            disponible: true, 
+            country: currentCountry,
+            subjects: currentSubjects,
+            languages: currentLanguages
+          });
           appelsEnAttente.set(currentUsername, []);
         }
 
         broadcastProfList();
+        console.log(`✅ ${currentUsername} connecté (${currentRole})`);
         return;
       }
 
+      // ===== UPDATE PROF PROFILE =====
+      if (data.type === "updateProfProfile") {
+        if (currentRole === "prof") {
+          currentCountry = data.country || currentCountry;
+          currentSubjects = data.subjects || currentSubjects;
+          currentLanguages = data.languages || currentLanguages;
+
+          const prof = connectedProfs.get(currentUsername);
+          if (prof) {
+            prof.country = currentCountry;
+            prof.subjects = currentSubjects;
+            prof.languages = currentLanguages;
+            connectedProfs.set(currentUsername, prof);
+          }
+          broadcastProfList();
+        }
+        return;
+      }
+
+      // ===== DEMAND APPEL =====
       if (data.type === "demandAppel") {
         const prof = connectedProfs.get(data.target);
-        if (!prof) return ws.send(JSON.stringify({ type: "erreur", message: "Prof non disponible" }));
+        if (!prof) {
+          ws.send(JSON.stringify({ type: "erreur", message: "Prof non disponible" }));
+          return;
+        }
 
         const appels = appelsEnAttente.get(data.target) || [];
         if (!appels.find(a => a.eleve === data.sender)) {
-          appels.push({ eleve: data.sender, timestamp: new Date().toISOString(), statut: "en_attente" });
+          appels.push({
+            eleve: data.sender,
+            country: data.senderCountry,
+            subject: data.subject,
+            timestamp: new Date().toISOString(),
+            statut: "en_attente"
+          });
           appelsEnAttente.set(data.target, appels);
 
-          if (prof.ws.readyState === 1) prof.ws.send(JSON.stringify({ type: "appelEnAttente", appels }));
+          if (prof.ws.readyState === 1) {
+            prof.ws.send(JSON.stringify({ type: "appelEnAttente", appels }));
+          }
           ws.send(JSON.stringify({ type: "demandAppelConfirmee", prof: data.target }));
         }
         return;
       }
 
+      // ===== ACCEPTER APPEL =====
       if (data.type === "accepterAppel") {
         const { prof, eleve } = data;
         const key = `${prof}_${eleve}`;
@@ -256,7 +478,12 @@ wss.on("connection", (ws) => {
 
         const eleveWs = clients.get(eleve);
         if (eleveWs && eleveWs.readyState === 1) {
-          eleveWs.send(JSON.stringify({ type: 'appelAccepte', prof, eleve }));
+          eleveWs.send(JSON.stringify({
+            type: 'appelAccepte',
+            prof,
+            profCountry: currentCountry,
+            eleve
+          }));
         }
 
         const timer = setInterval(() => {
@@ -276,6 +503,7 @@ wss.on("connection", (ws) => {
         return;
       }
 
+      // ===== APPEL TERMINE =====
       if (data.type === "appelTermine") {
         const { prof, eleve } = data;
         const key = `${prof}_${eleve}`;
@@ -294,22 +522,53 @@ wss.on("connection", (ws) => {
           );
           appelsEnCours.delete(key);
         }
+        
+        // Notifier l'autre personne
+        const other = clients.get(prof) || connectedProfs.get(eleve)?.ws;
+        if (other && other.readyState === 1) {
+          other.send(JSON.stringify({ type: "appelTermine" }));
+        }
+
+        // Rafraîchir la liste d'attente
+        broadcastWaitingList();
         return;
       }
 
-      if (["offer","answer","ice"].includes(data.type)) {
+      // ===== WEBRTC SIGNALING =====
+      if (["offer", "answer", "ice"].includes(data.type)) {
         const target = clients.get(data.target) || connectedProfs.get(data.target)?.ws;
-        if (target?.readyState === 1) target.send(JSON.stringify({ ...data, sender: currentUsername }));
+        if (target && target.readyState === 1) {
+          target.send(JSON.stringify({ ...data, sender: currentUsername }));
+        }
+        return;
       }
 
+      // ===== CHAT =====
       if (data.type === "chat") {
         const target = clients.get(data.target) || connectedProfs.get(data.target)?.ws;
-        if (target?.readyState === 1) target.send(JSON.stringify({ type:"chat", sender: currentUsername, message: data.message, timestamp: new Date() }));
+        if (target && target.readyState === 1) {
+          target.send(JSON.stringify({
+            type: "chat",
+            sender: currentUsername,
+            message: data.message,
+            timestamp: new Date()
+          }));
+        }
+        return;
       }
 
+      // ===== FILE UPLOAD =====
       if (data.type === "fileUpload") {
         const target = clients.get(data.target) || connectedProfs.get(data.target)?.ws;
-        if (target?.readyState === 1) target.send(JSON.stringify({ type:"newFile", sender: currentUsername, filename: data.filename, content: data.content }));
+        if (target && target.readyState === 1) {
+          target.send(JSON.stringify({
+            type: "newFile",
+            sender: currentUsername,
+            filename: data.filename,
+            content: data.content
+          }));
+        }
+        return;
       }
 
     } catch (error) {
@@ -320,24 +579,43 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (!currentUsername) return;
+    console.log(`❌ ${currentUsername} déconnecté`);
     clients.delete(currentUsername);
     if (currentRole === "prof") {
       connectedProfs.delete(currentUsername);
       appelsEnAttente.delete(currentUsername);
-      broadcastProfList();
     }
+    broadcastProfList();
   });
 });
 
-// --- BROADCAST PROF LIST ---
+// ===== BROADCAST FUNCTIONS =====
 function broadcastProfList() {
   const profList = [];
   for (const [username, prof] of connectedProfs.entries()) {
     const appels = appelsEnAttente.get(username) || [];
-    profList.push({ username, disponible: prof.disponible, appelsEnAttente: appels.length });
+    profList.push({
+      username,
+      disponible: prof.disponible,
+      country: prof.country,
+      subjects: prof.subjects,
+      languages: prof.languages,
+      appelsEnAttente: appels.length
+    });
   }
   const message = JSON.stringify({ type: "profList", profs: profList });
-  for (const ws of clients.values()) if (ws.readyState === 1) ws.send(message);
+  for (const ws of clients.values()) {
+    if (ws.readyState === 1) ws.send(message);
+  }
+}
+
+function broadcastWaitingList() {
+  for (const [profUsername, profData] of connectedProfs.entries()) {
+    const appels = appelsEnAttente.get(profUsername) || [];
+    if (profData.ws.readyState === 1) {
+      profData.ws.send(JSON.stringify({ type: "appelEnAttente", appels }));
+    }
+  }
 }
 
 // --- Export pool pour les autres routes ---

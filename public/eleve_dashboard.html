@@ -2,44 +2,58 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Espace Élève</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dashboard Élève</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', sans-serif; margin:0; padding:20px; background:#f0f2f5; }
   
-  .header { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
-  .header h1 { margin:0 0 8px 0; color:#333; }
-  .header .info { color:#666; font-size:14px; }
+  .header { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }
+  .header h1 { margin:0; color:#333; font-size:24px; }
+  .header-info { color:#666; font-size:13px; }
+  .logout-btn { padding:8px 16px; background:#dc3545; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:500; }
+  .logout-btn:hover { background:#c82333; }
   
-  .card { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
-  .card h2 { margin:0 0 16px 0; color:#333; }
+  .card { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+  .card h2 { margin:0 0 16px 0; color:#333; font-size:18px; }
   
-  .start-section { text-align:center; padding:40px 20px; }
-  .start-section input { padding:10px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; width:200px; }
-  .start-section button { padding:10px 20px; background:#007bff; color:white; border:none; border-radius:6px; cursor:pointer; margin-left:8px; font-weight:500; }
-  .start-section button:hover { background:#0056b3; }
+  .setup-section { background:#e3f2fd; border:1px solid #90caf9; }
+  .setup-input { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .setup-input input, .setup-input select { padding:8px 12px; border:1px solid #90caf9; border-radius:4px; font-size:13px; }
+  .setup-input button { padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:500; }
+  .setup-input button:hover { background:#0056b3; }
   
-  .waiting-section { text-align:center; padding:40px 20px; color:#666; font-size:16px; }
-  .waiting-section .spinner { display:inline-block; animation: spin 1s linear infinite; margin-right:10px; }
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .container { display:grid; grid-template-columns: 1fr 2fr; gap:20px; }
+  @media(max-width:1200px) { .container { grid-template-columns: 1fr; } }
+  
+  .waiting-list { }
+  .prof-item { display:flex; justify-content:space-between; align-items:flex-start; padding:12px; border:1px solid #eee; border-radius:6px; margin-bottom:8px; background:#f9f9f9; }
+  .prof-info { flex:1; }
+  .prof-name { font-weight:600; color:#333; }
+  .prof-meta { font-size:12px; color:#666; margin-top:4px; }
+  .prof-subject { display:inline-block; padding:3px 8px; background:#e3f2fd; color:#007bff; border-radius:3px; font-size:11px; font-weight:500; margin-right:6px; }
+  .prof-country { display:inline-block; padding:2px 6px; background:#fff3cd; border-radius:3px; font-size:11px; }
+  .prof-status { font-size:12px; margin-top:4px; }
+  .prof-actions { display:flex; gap:6px; flex-direction:column; }
+  
+  button { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; transition:all 0.2s; }
+  .primary { background:#007bff; color:white; }
+  .primary:hover { background:#0056b3; }
+  .danger { background:#dc3545; color:white; }
+  .danger:hover { background:#c82333; }
+  .secondary { background:#6c757d; color:white; }
+  .secondary:hover { background:#5a6268; }
   
   .call-section { display:none; }
   .call-section.active { display:block; }
   
   .videos-container { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px; }
-  .video-box { background:#000; border-radius:8px; overflow:hidden; }
-  .video-box video { width:100%; height:auto; display:block; }
+  .video-box { background:#000; border-radius:8px; overflow:hidden; height:300px; }
+  .video-box video { width:100%; height:100%; object-fit:cover; }
   .video-label { font-size:12px; color:#666; margin-bottom:4px; font-weight:500; }
   
   .controls { display:flex; gap:8px; align-items:center; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid #eee; }
   .timer { font-weight:600; color:#dc3545; font-size:18px; }
-  
-  button { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; font-size:14px; font-weight:500; transition:all 0.2s; }
-  .primary { background:#007bff; color:white; }
-  .primary:hover { background:#0056b3; }
-  .danger { background:#dc3545; color:white; }
-  .danger:hover { background:#c82333; }
   
   .chat-box { display:flex; flex-direction:column; height:250px; margin-bottom:16px; border:1px solid #ddd; border-radius:6px; }
   .chat-messages { flex:1; overflow-y:auto; padding:12px; background:#f9f9f9; }
@@ -49,174 +63,190 @@
   .msg-time { font-size:11px; color:#999; margin-top:2px; }
   
   .chat-input { display:flex; gap:8px; }
-  #chatInput { flex:1; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:14px; }
+  #chatInput { flex:1; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:13px; }
   
-  .files-section { }
   .files-list { list-style:none; padding:0; margin:0; }
   .files-list li { padding:8px; background:#f9f9f9; border-radius:4px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
-  .file-name { color:#007bff; font-weight:500; }
-  .file-info { font-size:12px; color:#999; }
+  .file-name { color:#007bff; font-weight:500; font-size:13px; }
+  .file-info { font-size:11px; color:#999; }
   
   .file-upload { display:flex; gap:8px; margin-bottom:12px; }
   #fileInput { flex:1; }
   
-  hr { border:none; border-top:1px solid #eee; margin:16px 0; }
+  .no-prof { text-align:center; padding:40px 20px; color:#999; }
+  .empty-list { padding:20px; text-align:center; color:#999; }
   
-  .prof-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px; margin-top:12px; }
-  .prof-card { background:#f9f9f9; padding:12px; border-radius:6px; border:1px solid #eee; cursor:pointer; transition:all 0.2s; }
-  .prof-card:hover { background:#f0f0f0; border-color:#007bff; }
-  .prof-name { font-weight:600; color:#333; }
-  .prof-status { font-size:12px; color:#999; margin-top:4px; }
+  .prof-detail { background:#f0f7ff; padding:10px; border-radius:4px; margin-bottom:12px; font-size:12px; border-left:4px solid #007bff; }
+  
+  .filter-section { margin-bottom:12px; padding:12px; background:#f0f7ff; border-radius:4px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .filter-section label { font-weight:500; color:#333; font-size:12px; }
+  .filter-section select { padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:12px; }
+  
+  hr { border:none; border-top:1px solid #eee; margin:16px 0; }
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <div class="header">
-  <h1>🎓 Espace Élève</h1>
-  <div class="info">
-    Connecté : <strong id="eleveLabel">—</strong>
+  <div>
+    <h1>🎓 Dashboard Élève</h1>
+    <div class="header-info">Connecté : <strong id="eleveLabel">—</strong> | Matière : <strong id="matiereLabel">—</strong></div>
+  </div>
+  <button class="logout-btn" onclick="logout()">🚪 Déconnexion</button>
+</div>
+
+<!-- SETUP SECTION -->
+<div class="card setup-section" id="setupSection">
+  <h2>⚙️ Configurer votre profil</h2>
+  <div class="setup-input">
+    <input type="text" id="eleveCountryInput" placeholder="Votre pays (ex: France)" value="France">
+    <select id="matiereSelect">
+      <option value="">-- Sélectionnez votre matière --</option>
+      <option value="Mathématiques">📐 Mathématiques</option>
+      <option value="Français">📚 Français</option>
+      <option value="Anglais">🗣️ Anglais</option>
+      <option value="Physique">⚛️ Physique</option>
+      <option value="Chimie">🧪 Chimie</option>
+      <option value="Histoire">🏛️ Histoire</option>
+      <option value="Géographie">🗺️ Géographie</option>
+      <option value="Biologie">🔬 Biologie</option>
+      <option value="Informatique">💻 Informatique</option>
+      <option value="Philosophie">🤔 Philosophie</option>
+      <option value="Espagnol">🇪🇸 Espagnol</option>
+      <option value="Allemand">🇩🇪 Allemand</option>
+    </select>
+    <button onclick="initEleve()" class="primary">Continuer</button>
   </div>
 </div>
 
-<!-- ZONE DE DÉMARRAGE -->
-<div class="card" id="startSection">
-  <div class="start-section">
-    <div style="margin-bottom:20px;">
-      <input type="text" id="eleveName" placeholder="Entrez votre nom" style="width:250px; padding:10px 12px; font-size:14px; border:1px solid #ddd; border-radius:6px;">
-      <button onclick="initEleve()" class="primary" style="margin-left:8px; padding:10px 20px;">Continuer</button>
-    </div>
-  </div>
-</div>
-
-<!-- ZONE D'ATTENTE -->
-<div class="card" id="waitingSection" style="display:none;">
-  <div class="waiting-section">
-    <div class="spinner">⏳</div>
-    <div>En attente qu'un professeur accepte votre appel...</div>
-  </div>
-</div>
-
-<!-- ZONE D'APPEL EN COURS -->
-<div class="card call-section" id="callSection">
-  <h2>📞 En communication avec <span id="profName">—</span></h2>
+<!-- CONTAINER PRINCIPAL -->
+<div class="container" id="mainContainer" style="display:none;">
   
-  <!-- VIDÉOS -->
-  <div class="videos-container">
-    <div>
-      <div class="video-label">📹 Votre vidéo</div>
-      <div class="video-box">
-        <video id="localVideo" autoplay muted playsinline></video>
+  <!-- SALLE D'ATTENTE (Gauche) -->
+  <div class="card waiting-list">
+    <h2>👨‍🏫 Professeurs disponibles</h2>
+    <div class="filter-section">
+      <select id="countryFilter" onchange="filterProfs()">
+        <option value="">🌍 Tous les pays</option>
+      </select>
+    </div>
+    <div id="profList" class="empty-list">Aucun professeur disponible</div>
+  </div>
+
+  <!-- APPEL EN COURS (Droite) -->
+  <div class="card call-section" id="callSection">
+    <h2>📞 En communication avec <span id="profName">—</span></h2>
+    
+    <div class="prof-detail" id="profDetailBox"></div>
+    
+    <!-- VIDÉOS -->
+    <div class="videos-container">
+      <div>
+        <div class="video-label">📹 Votre vidéo</div>
+        <div class="video-box">
+          <video id="localVideo" autoplay muted playsinline></video>
+        </div>
+      </div>
+      <div>
+        <div class="video-label">👨‍🏫 Professeur</div>
+        <div class="video-box">
+          <video id="remoteVideo" autoplay playsinline></video>
+        </div>
       </div>
     </div>
-    <div>
-      <div class="video-label">👨‍🏫 Professeur</div>
-      <div class="video-box">
-        <video id="remoteVideo" autoplay playsinline></video>
-      </div>
+
+    <!-- CONTRÔLES -->
+    <div class="controls">
+      <button id="endCallBtn" class="danger">🔴 Terminer l'appel</button>
+      <div class="timer">⏱️ <span id="callTimer">00:00</span></div>
     </div>
+
+    <hr>
+
+    <!-- CHAT -->
+    <h3 style="margin:0 0 12px 0; font-size:14px;">💬 Chat</h3>
+    <div class="chat-box">
+      <div class="chat-messages" id="chatMessages"></div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="Votre message...">
+      <button id="sendChatBtn" class="primary">Envoyer</button>
+    </div>
+
+    <hr>
+
+    <!-- FICHIERS -->
+    <h3 style="margin:0 0 12px 0; font-size:14px;">📁 Partage de fichiers</h3>
+    <div class="file-upload">
+      <input type="file" id="fileInput">
+      <button id="sendFileBtn" class="primary">Envoyer</button>
+    </div>
+    <ul class="files-list" id="filesList"></ul>
   </div>
 
-  <!-- CONTRÔLES -->
-  <div class="controls">
-    <button id="endCallBtn" class="danger">🔴 Terminer l'appel</button>
-    <div class="timer">⏱️ <span id="callTimer">00:00</span></div>
+  <!-- PAS D'APPEL -->
+  <div class="no-prof" id="noCallSection">
+    <p>👇 Sélectionnez un professeur à gauche pour commencer</p>
   </div>
-
-  <hr>
-
-  <!-- CHAT -->
-  <h3>💬 Chat</h3>
-  <div class="chat-box">
-    <div class="chat-messages" id="chatMessages"></div>
-  </div>
-  <div class="chat-input">
-    <input type="text" id="chatInput" placeholder="Votre message...">
-    <button id="sendChatBtn" class="primary">Envoyer</button>
-  </div>
-
-  <hr>
-
-  <!-- FICHIERS -->
-  <h3>📁 Partage de fichiers</h3>
-  <div class="file-upload">
-    <input type="file" id="fileInput">
-    <button id="sendFileBtn" class="primary">Envoyer</button>
-  </div>
-  <ul class="files-list" id="filesList"></ul>
-</div>
-
-<!-- ZONE DE SÉLECTION DE PROF -->
-<div class="card" id="profListSection" style="display:none;">
-  <h2>📚 Professeurs disponibles</h2>
-  <div class="prof-list" id="profList"></div>
 </div>
 
 <script>
-// ========================
-// VARIABLES GLOBALES
-// ========================
-let eleveName = null;
+// ===== DONNÉES UTILISATEUR =====
+const saved = JSON.parse(localStorage.getItem('eleveConnecte') || 'null');
+const eleveUsername = saved?.username || null;
+const elevePre = saved?.prenom || '';
+const eleveNom = saved?.nom || '';
+
+if (!eleveUsername) {
+  alert('❌ Non connecté');
+  location.href = '/login_eleve.html';
+}
+
+let eleveCountry = 'France';
+let matiereSearching = '';
 let profSelected = null;
 let pc = null;
 let localStream = null;
 let timerInterval = null;
 let callStart = null;
+let allProfs = [];
+
+// ===== WEBSOCKET =====
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 const ws = new WebSocket(WS_URL);
 
-// ========================
-// WEBSOCKET
-// ========================
-ws.onopen = () => {
-  console.log('✅ WebSocket connecté');
-};
+ws.onopen = () => console.log('✅ WebSocket connecté');
 
 ws.onmessage = async (evt) => {
   try {
     const data = JSON.parse(evt.data);
     
-    // Liste des professeurs
-    if (data.type === 'profList') {
-      renderProfList(data.profs || []);
+    if (data.type === 'profList' || data.type === 'profListBySubject') {
+      allProfs = data.profs || [];
+      populateCountryFilter();
+      renderProfList(allProfs);
     }
     
-    // Appel accepté
-    if (data.type === 'appelAccepte' && data.eleve === eleveName) {
+    if (data.type === 'appelAccepte' && data.eleve === eleveUsername) {
       profSelected = data.prof;
-      document.getElementById('profName').textContent = profSelected;
-      document.getElementById('waitingSection').style.display = 'none';
-      document.getElementById('callSection').classList.add('active');
-      document.getElementById('profListSection').style.display = 'none';
-      
-      await initPeerConnection();
-      startClientTimer();
+      startCall(data);
     }
     
-    // Appel rejeté
-    if (data.type === 'appelRejete' && data.eleve === eleveName) {
-      alert('❌ Votre appel a été rejeté');
-      document.getElementById('waitingSection').style.display = 'none';
-      document.getElementById('profListSection').style.display = 'block';
+    if (data.type === 'chat' && data.sender !== eleveUsername) {
+      addChatMessage(data.sender, data.message, data.timestamp);
     }
     
-    // Appel terminé
+    if (data.type === 'newFile' && data.sender !== eleveUsername) {
+      addFileToList(data.filename, data.sender, data.content);
+    }
+    
     if (data.type === 'appelTermine') {
       alert('Le professeur a terminé l\'appel');
       endCall();
     }
     
-    // Chat
-    if (data.type === 'chat' && data.sender !== eleveName) {
-      addChatMessage(data.sender || 'Professeur', data.message, data.timestamp);
-    }
-    
-    // Fichier
-    if (data.type === 'newFile' && data.sender !== eleveName) {
-      addFileToList(data.filename, data.sender || 'Professeur', data.content);
-    }
-    
-    // WebRTC signaling
+    // WebRTC
     if (data.type === 'offer' && data.sender === profSelected) {
       if (!pc) await initPeerConnection();
       await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -231,8 +261,7 @@ ws.onmessage = async (evt) => {
     
     if (data.type === 'ice' && data.sender === profSelected && pc && data.candidate) {
       try {
-        // Vérifier que la description distante existe
-        if (pc.remoteDescription && pc.remoteDescription.type) {
+        if (pc.remoteDescription?.type) {
           await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
         }
       } catch (e) {
@@ -240,87 +269,129 @@ ws.onmessage = async (evt) => {
       }
     }
   } catch (e) {
-    console.error('WS message error:', e);
+    console.error('WS error:', e);
   }
 };
 
-ws.onclose = () => console.log('❌ WebSocket fermé');
-ws.onerror = (err) => console.error('❌ WS Error:', err);
+ws.onclose = () => console.log('❌ WS fermé');
+ws.onerror = (err) => console.error('❌ WS error:', err);
 
-// ========================
-// INITIALISATION ÉLÈVE
-// ========================
+// ===== INITIALISATION =====
 function initEleve() {
-  eleveName = document.getElementById('eleveName').value.trim();
-  if (!eleveName) {
-    alert('Entrez votre nom');
+  eleveCountry = document.getElementById('eleveCountryInput').value.trim() || 'France';
+  matiereSearching = document.getElementById('matiereSelect').value;
+  
+  if (!matiereSearching) {
+    alert('Sélectionnez une matière');
     return;
   }
   
-  document.getElementById('eleveLabel').textContent = eleveName;
-  document.getElementById('startSection').style.display = 'none';
-  document.getElementById('profListSection').style.display = 'block';
+  document.getElementById('eleveLabel').textContent = `${elevePre} ${eleveNom} (${eleveCountry})`;
+  document.getElementById('matiereLabel').textContent = matiereSearching;
+  document.getElementById('setupSection').style.display = 'none';
+  document.getElementById('mainContainer').style.display = 'grid';
   
-  ws.send(JSON.stringify({ type: 'register', username: eleveName, role: 'eleve' }));
+  ws.send(JSON.stringify({ 
+    type: 'register', 
+    username: eleveUsername, 
+    role: 'eleve',
+    country: eleveCountry,
+    subject: matiereSearching
+  }));
 }
 
-// ========================
-// LISTE DES PROFESSEURS
-// ========================
+function populateCountryFilter() {
+  const countries = [...new Set(allProfs.map(p => p.country).filter(Boolean))];
+  const select = document.getElementById('countryFilter');
+  const current = select.value;
+  
+  select.innerHTML = '<option value="">🌍 Tous les pays</option>';
+  countries.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = `🌍 ${c}`;
+    select.appendChild(opt);
+  });
+  select.value = current;
+}
+
+function filterProfs() {
+  const country = document.getElementById('countryFilter').value;
+  const filtered = country ? allProfs.filter(p => p.country === country) : allProfs;
+  renderProfList(filtered);
+}
+
 function renderProfList(profs) {
   const div = document.getElementById('profList');
   div.innerHTML = '';
   
   if (!profs || profs.length === 0) {
-    div.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">Aucun professeur disponible pour le moment</p>';
+    div.innerHTML = '<div class="empty-list">Aucun professeur disponible</div>';
     return;
   }
 
   profs.forEach(prof => {
     const card = document.createElement('div');
-    card.className = 'prof-card';
+    card.className = 'prof-item';
+    
+    const status = prof.disponible ? '🟢 Disponible' : '🔴 Occupé';
+    const subjects = (prof.subjects || []).map(s => `<span class="prof-subject">${escapeHtml(s)}</span>`).join(' ');
+    
     card.innerHTML = `
-      <div class="prof-name">👨‍🏫 ${escapeHtml(prof.username)}</div>
-      <div class="prof-status">${prof.disponible ? '🟢 Disponible' : '🔴 Occupé'}</div>
-      ${prof.appelsEnAttente > 0 ? `<div class="prof-status">${prof.appelsEnAttente} appel(s) en attente</div>` : ''}
+      <div class="prof-info">
+        <div class="prof-name">${escapeHtml(prof.username)}</div>
+        <div class="prof-meta">
+          ${subjects}
+          <span class="prof-country">🌍 ${escapeHtml(prof.country)}</span>
+        </div>
+        <div class="prof-status">${status}</div>
+      </div>
+      <div class="prof-actions">
+        <button class="${prof.disponible ? 'primary' : 'secondary'}" 
+          onclick="demanderProf('${escapeHtml(prof.username)}', '${escapeHtml(prof.subjects[0] || '')}', '${escapeHtml(prof.country)}')"
+          ${!prof.disponible ? 'disabled' : ''}>Demander</button>
+      </div>
     `;
-    
-    if (prof.disponible || prof.appelsEnAttente === 0) {
-      card.style.cursor = 'pointer';
-      card.onclick = () => demanderProf(prof.username);
-    } else {
-      card.style.opacity = '0.6';
-      card.style.cursor = 'not-allowed';
-    }
-    
     div.appendChild(card);
   });
 }
 
-// ========================
-// DEMANDER UN PROFESSEUR
-// ========================
-function demanderProf(prof) {
-  if (!prof) return;
+function demanderProf(prof, subject, country) {
+  ws.send(JSON.stringify({ 
+    type: 'demandAppel', 
+    sender: eleveUsername, 
+    senderCountry: eleveCountry,
+    subject: matiereSearching,
+    target: prof 
+  }));
   
-  profSelected = prof;
-  ws.send(JSON.stringify({ type: 'demandAppel', sender: eleveName, target: prof }));
-  
-  document.getElementById('profListSection').style.display = 'none';
-  document.getElementById('waitingSection').style.display = 'block';
+  alert('⏳ Demande envoyée au professeur...');
 }
 
-// ========================
-// FIN D'APPEL
-// ========================
-document.getElementById('endCallBtn').addEventListener('click', endCall);
+function startCall(data) {
+  document.getElementById('profName').textContent = data.prof;
+  document.getElementById('profDetailBox').innerHTML = `
+    <strong>👨‍🏫 Professeur :</strong> ${escapeHtml(data.prof)}<br>
+    <strong>📚 Matière :</strong> ${escapeHtml(matiereSearching)}<br>
+    <strong>🌍 Pays prof :</strong> ${escapeHtml(data.profCountry || 'Inconnu')}<br>
+    <strong>🌍 Votre pays :</strong> ${escapeHtml(eleveCountry)}
+  `;
+  
+  document.getElementById('callSection').classList.add('active');
+  document.getElementById('noCallSection').style.display = 'none';
+  
+  initPeerConnection();
+  startTimer();
+}
+
+document.getElementById('endCallBtn')?.addEventListener('click', endCall);
 
 function endCall() {
   if (!profSelected) return;
   
-  ws.send(JSON.stringify({ type: 'appelTermine', prof: profSelected, eleve: eleveName }));
+  ws.send(JSON.stringify({ type: 'appelTermine', prof: profSelected, eleve: eleveUsername }));
   
-  stopClientTimer();
+  stopTimer();
   if (pc) {
     pc.close();
     pc = null;
@@ -332,41 +403,29 @@ function endCall() {
   
   profSelected = null;
   document.getElementById('callSection').classList.remove('active');
-  document.getElementById('waitingSection').style.display = 'none';
-  document.getElementById('profListSection').style.display = 'block';
+  document.getElementById('noCallSection').style.display = 'block';
   document.getElementById('chatMessages').innerHTML = '';
   document.getElementById('filesList').innerHTML = '';
 }
 
-// ========================
-// TIMER
-// ========================
-function startClientTimer() {
+// ===== TIMER =====
+function startTimer() {
   callStart = Date.now();
   timerInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - callStart) / 1000);
-    updateTimer(elapsed);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('callTimer').textContent = `${m}:${s}`;
   }, 1000);
 }
 
-function updateTimer(seconds) {
-  const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const s = String(seconds % 60).padStart(2, '0');
-  document.getElementById('callTimer').textContent = `${m}:${s}`;
-}
-
-function stopClientTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
+function stopTimer() {
+  if (timerInterval) clearInterval(timerInterval);
   document.getElementById('callTimer').textContent = '00:00';
 }
 
-// ========================
-// CHAT
-// ========================
-document.getElementById('sendChatBtn').addEventListener('click', () => {
+// ===== CHAT =====
+document.getElementById('sendChatBtn')?.addEventListener('click', () => {
   const msg = document.getElementById('chatInput').value.trim();
   if (!msg || !profSelected) return;
   
@@ -389,10 +448,8 @@ function addChatMessage(sender, message, timestamp) {
   box.scrollTop = box.scrollHeight;
 }
 
-// ========================
-// FICHIERS
-// ========================
-document.getElementById('sendFileBtn').addEventListener('click', () => {
+// ===== FICHIERS =====
+document.getElementById('sendFileBtn')?.addEventListener('click', () => {
   const file = document.getElementById('fileInput').files[0];
   if (!file || !profSelected) return;
   
@@ -415,17 +472,19 @@ function addFileToList(filename, from, content) {
   const ul = document.getElementById('filesList');
   const li = document.createElement('li');
   
-  let html = `<span class="file-name">📄 ${escapeHtml(filename)}</span>`;
-  html += `<span class="file-info">de ${escapeHtml(from)}</span>`;
-  
   if (content) {
     const blob = base64ToBlob(content);
     const url = URL.createObjectURL(blob);
-    html = `<a href="${url}" download="${escapeHtml(filename)}" style="flex:1; color:#007bff; text-decoration:none;">📄 ${escapeHtml(filename)}</a>`;
-    html += `<span class="file-info">de ${escapeHtml(from)}</span>`;
+    li.innerHTML = `
+      <a href="${url}" download="${escapeHtml(filename)}" style="flex:1; color:#007bff; text-decoration:none;">📄 ${escapeHtml(filename)}</a>
+      <span class="file-info">de ${escapeHtml(from)}</span>
+    `;
+  } else {
+    li.innerHTML = `
+      <span class="file-name">📄 ${escapeHtml(filename)}</span>
+      <span class="file-info">de ${escapeHtml(from)}</span>
+    `;
   }
-  
-  li.innerHTML = html;
   ul.appendChild(li);
 }
 
@@ -436,9 +495,7 @@ function base64ToBlob(b64) {
   return new Blob([arr]);
 }
 
-// ========================
-// WEBRTC
-// ========================
+// ===== WEBRTC =====
 async function initPeerConnection() {
   if (pc) return;
   
@@ -451,8 +508,8 @@ async function initPeerConnection() {
     document.getElementById('localVideo').srcObject = localStream;
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
   } catch (err) {
-    console.error('❌ Erreur caméra/micro:', err);
-    alert('Impossible d\'accéder à la caméra/micro. Vérifiez les permissions.');
+    console.error('❌ Erreur caméra:', err);
+    alert('Impossible d\'accéder à la caméra/micro');
   }
 
   pc.ontrack = (ev) => {
@@ -466,15 +523,16 @@ async function initPeerConnection() {
   };
 }
 
-// ========================
-// UTILITAIRES
-// ========================
+function logout() {
+  localStorage.removeItem('eleveConnecte');
+  location.href = '/login_eleve.html';
+}
+
 function escapeHtml(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
 }
 </script>
-
 </body>
 </html>

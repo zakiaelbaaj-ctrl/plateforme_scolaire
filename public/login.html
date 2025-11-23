@@ -20,8 +20,8 @@ button:disabled { opacity:0.7; cursor:not-allowed; }
 .error.show { display:block; }
 .success { margin-top:15px; padding:12px; background:#efe; color:#3c3; border:1px solid #cfc; border-radius:5px; text-align:center; display:none; }
 .success.show { display:block; }
-.link-section { text-align:center; margin-top:20px; }
-.link-section a { color:#667eea; text-decoration:none; font-weight:500; }
+.link-section { text-align:center; margin-top:20px; border-top:1px solid #eee; padding-top:20px; }
+.link-section a { color:#667eea; text-decoration:none; font-weight:500; font-size:14px; display:inline-block; margin:0 8px; }
 .link-section a:hover { text-decoration:underline; }
 </style>
 </head>
@@ -43,7 +43,12 @@ button:disabled { opacity:0.7; cursor:not-allowed; }
     <div id="successDiv" class="success"></div>
   </form>
   <div class="link-section">
-    <p>Pas encore inscrit ? <a href="register_prof.html">📝 Créer un compte</a></p>
+    <p style="margin: 0 0 12px 0; color: #666;">
+      Pas encore inscrit ? <a href="register_prof.html">📝 Créer un compte</a>
+    </p>
+    <p style="margin: 0; color: #666; font-size: 12px;">
+      <a href="forgot_password.html">🔑 Mot de passe oublié?</a>
+    </p>
   </div>
 </div>
 
@@ -85,7 +90,6 @@ form.addEventListener('submit', async (e) => {
       body: JSON.stringify({ username, password, role: 'prof' })
     });
 
-    // Vérifier si c'est du JSON ou non
     const text = await response.text();
     let data;
     try { data = JSON.parse(text); } catch { 
@@ -95,18 +99,18 @@ form.addEventListener('submit', async (e) => {
 
     if (!response.ok) throw new Error(data.message || "Erreur de connexion");
 
-    // On récupère les infos du prof
     const prof = data.user;
 
     if (!prof) throw new Error("Utilisateur introuvable ou réponse invalide");
 
     if (prof.statut !== 'valide') throw new Error("⏳ Votre compte est en attente de validation");
 
-    // Sauvegarde dans localStorage
-    localStorage.setItem('dernier_connecte', JSON.stringify({
+    localStorage.setItem('profConnecte', JSON.stringify({
       username: prof.username,
       prenom: prof.prenom,
       nom: prof.nom,
+      email: prof.email || '',
+      matiere: prof.matiere || '',
       role: 'prof',
       statut: prof.statut
     }));
