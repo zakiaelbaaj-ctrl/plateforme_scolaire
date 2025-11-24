@@ -575,41 +575,49 @@ function base64ToBlob(b64) {
 // ===== WEBRTC =====
 async function initPeerConnection() {
   if (pc) return;
-  
+
   pc = new RTCPeerConnection({
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   });
 
   try {
+    // Demander caméra et micro
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    console.log('✅ Flux local obtenu:', localStream);
     document.getElementById('localVideo').srcObject = localStream;
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
   } catch (err) {
-    console.error('❌ Erreur caméra:', err);
-    alert('Impossible d\'accéder à la caméra/micro');
+    console.error('❌ Erreur caméra/micro:', err);
+    alert('Impossible d\'accéder à la caméra/micro: ' + err.message);
+    return;
   }
 
   pc.ontrack = (ev) => {
+    console.log('🎥 Flux distant reçu:', ev.streams);
     document.getElementById('remoteVideo').srcObject = ev.streams[0];
   };
 
   pc.onicecandidate = (ev) => {
     if (ev.candidate && currentEleve) {
+      console.log('🛠 ICE candidate:', ev.candidate);
       ws.send(JSON.stringify({ type: 'ice', target: currentEleve, candidate: ev.candidate }));
     }
   };
+
+  pc.onconnectionstatechange = () => {
+    console.log('🔗 WebRTC connection state:', pc.connectionState);
+  };
 }
 
+// ===== LOGOUT =====
 function logout() {
   localStorage.removeItem('profConnecte');
   location.href = '/login_prof.html';
 }
 
+// ===== UTIL =====
 function escapeHtml(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
 }
-</script>
-</body>
-</html>
