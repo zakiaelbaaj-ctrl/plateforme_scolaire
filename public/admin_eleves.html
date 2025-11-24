@@ -4,125 +4,215 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gestion des Élèves</title>
-<link rel="stylesheet" href="style.css">
 <style>
-    body {
-        font-family: Verdana, sans-serif;
-        background-color: #f7f7f7;
-        text-align: center;
-        padding: 20px;
-    }
-    h1 {
-        color: #1a1a1a;
-    }
-    table {
-        width: 90%;
-        margin: 20px auto;
-        border-collapse: collapse;
-    }
-    th, td {
-        border: 1px solid #ddd;
-        padding: 10px;
-    }
-    th {
-        background-color: #2193b0;
-        color: white;
-    }
-    button {
-        padding: 6px 12px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        color: white;
-        font-weight: bold;
-    }
-    .validate {
-        background-color: green;
-    }
-    .delete {
-        background-color: red;
-    }
-    .back-home {
-        margin-top: 20px;
-        display: block;
-        color: #2193b0;
-        text-decoration: none;
-        font-size: 14px;
-    }
-    .back-home:hover {
-        text-decoration: underline;
-    }
+    body { font-family: Verdana, sans-serif; background-color: #f7f7f7; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { text-align: center; color: #1a1a1a; }
+    .controls { margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; }
+    input[type="text"] { padding: 10px; border-radius: 4px; border: 1px solid #ddd; width: 250px; }
+    .table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #2193b0; color: white; font-weight: bold; }
+    tr:hover { background-color: #f9f9f9; }
+    .status { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+    .status.pending { background-color: #fff3cd; color: #856404; }
+    .status.validated { background-color: #d4edda; color: #155724; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button { padding: 8px 12px; border-radius: 4px; border: none; cursor: pointer; color: white; font-weight: bold; font-size: 14px; transition: opacity 0.3s; }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .validate-btn { background-color: #28a745; }
+    .delete-btn { background-color: #dc3545; }
+    .back-home { display: inline-block; margin-top: 20px; padding: 10px 15px; color: #2193b0; text-decoration: none; border: 1px solid #2193b0; border-radius: 4px; transition: all 0.3s; }
+    .back-home:hover { background-color: #2193b0; color: white; }
+    .empty-state { text-align: center; padding: 40px; color: #666; }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: white; margin: 15% auto; padding: 20px; border-radius: 8px; width: 90%; max-width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+    .modal-content h3 { margin-top: 0; color: #333; }
+    .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-cancel { background-color: #6c757d; }
+    .btn-confirm { background-color: #dc3545; }
 </style>
 </head>
 <body>
+<div class="container">
+    <h1>👨‍💼 Admin - Gestion des Élèves</h1>
 
-<div class="logo">
-    <img src="logo.png" alt="Logo">
+    <div class="controls">
+        <input type="text" id="searchInput" placeholder="🔍 Chercher un élève...">
+        <button class="validate-btn" onclick="loadEleves()">🔄 Rafraîchir</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="eleveTable">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Nom Complet</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Statut</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- Élèves injectés ici -->
+            </tbody>
+        </table>
+    </div>
+
+    <div style="text-align:center;">
+        <a href="index.html" class="back-home">⬅️ Retour à l'accueil</a>
+    </div>
 </div>
 
-<h1>👨‍💼 Espace Admin : Gestion des Élèves</h1>
-
-<table id="eleveTable">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>Nom</th>
-            <th>Email</th>
-            <th>Statut</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        <!-- Les élèves seront injectés ici -->
-    </tbody>
-</table>
-
-<a href="index.html" class="back-home">⬅️ Retour à l’accueil</a>
+<div id="confirmModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalTitle">Confirmation</h3>
+        <p id="modalMessage"></p>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+            <button class="btn-confirm" id="confirmBtn" onclick="confirmAction()">Confirmer</button>
+        </div>
+    </div>
+</div>
 
 <script>
-// Récupérer les élèves depuis localStorage
-let eleves = JSON.parse(localStorage.getItem("eleves") || "[]");
+let eleves = [];
+let filteredEleves = [];
+let pendingAction = null;
 
-// Afficher les élèves
-function afficherEleves() {
+async function loadEleves() {
+    try {
+        const res = await fetch("/api/users");
+        const data = await res.json();
+        
+        // Filtrer que les élèves (role = 'eleve')
+        eleves = data
+            .filter(u => u.role === 'eleve')
+            .map(u => ({
+                ...u,
+                fullname: `${u.prenom} ${u.nom}`
+            }));
+        
+        filteredEleves = [...eleves];
+        displayEleves();
+    } catch (err) {
+        console.error("❌ Erreur chargement des élèves:", err);
+        alert("❌ Erreur chargement des élèves");
+    }
+}
+
+function displayEleves() {
     const tbody = document.querySelector("#eleveTable tbody");
     tbody.innerHTML = "";
-    eleves.forEach((e, index) => {
+
+    if (filteredEleves.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Aucun élève trouvé.</td></tr>`;
+        return;
+    }
+
+    filteredEleves.forEach((eleve, index) => {
+        const statusClass = eleve.statut === "en_attente" ? "pending" : "validated";
+        const statusText = eleve.statut === "en_attente" ? "⏳ En attente" : "✅ Validé";
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${index + 1}</td>
-            <td>${e.nom}</td>
-            <td>${e.email}</td>
-            <td>${e.statut || "en_attente"}</td>
+            <td>${escapeHtml(eleve.fullname)}</td>
+            <td>${escapeHtml(eleve.email)}</td>
+            <td>${escapeHtml(eleve.role)}</td>
+            <td><span class="status ${statusClass}">${statusText}</span></td>
             <td>
-                ${e.statut === "en_attente" ? `<button class="validate" onclick="validerEleve(${index})">Valider</button>` : ""}
-                <button class="delete" onclick="supprimerEleve(${index})">Supprimer</button>
+                <div class="actions">
+                    ${eleve.statut === "en_attente" ? `<button class="validate-btn" onclick="openValidateModal(${index})">Valider</button>` : ""}
+                    <button class="delete-btn" onclick="openDeleteModal(${index})">Supprimer</button>
+                </div>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-// Valider un élève
-function validerEleve(index) {
-    eleves[index].statut = "validé";
-    localStorage.setItem("eleves", JSON.stringify(eleves));
-    afficherEleves();
-    alert(`✅ L'élève ${eleves[index].nom} est maintenant validé.`);
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-// Supprimer un élève
-function supprimerEleve(index) {
-    if (confirm("Voulez-vous vraiment supprimer cet élève ?")) {
-        const removed = eleves.splice(index, 1);
-        localStorage.setItem("eleves", JSON.stringify(eleves));
-        afficherEleves();
-        alert(`❌ L'élève ${removed[0].nom} a été supprimé.`);
+function openValidateModal(index) {
+    pendingAction = { type: "validate", index };
+    const eleve = filteredEleves[index];
+    document.getElementById("modalTitle").textContent = "Valider cet élève ?";
+    document.getElementById("modalMessage").textContent = `Êtes-vous sûr de valider "${escapeHtml(eleve.fullname)}" ?`;
+    document.getElementById("confirmModal").style.display = "block";
+}
+
+function openDeleteModal(index) {
+    pendingAction = { type: "delete", index };
+    const eleve = filteredEleves[index];
+    document.getElementById("modalTitle").textContent = "Supprimer cet élève ?";
+    document.getElementById("modalMessage").textContent = `Attention : "${escapeHtml(eleve.fullname)}" sera définitivement supprimé.`;
+    document.getElementById("confirmBtn").className = "btn-confirm";
+    document.getElementById("confirmModal").style.display = "block";
+}
+
+async function confirmAction() {
+    if (!pendingAction) return;
+    const { type, index } = pendingAction;
+    const eleve = filteredEleves[index];
+
+    if (type === "validate") {
+        try {
+            const res = await fetch(`/api/users/${eleve.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ statut: "valide" })
+            });
+            if (res.ok) {
+                alert(`✅ "${eleve.fullname}" validé.`);
+            } else {
+                alert("❌ Erreur lors de la validation");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("❌ Erreur lors de la validation");
+        }
+    } else if (type === "delete") {
+        try {
+            const res = await fetch(`/api/users/${eleve.id}`, { method: "DELETE" });
+            if (res.ok) {
+                alert(`❌ "${eleve.fullname}" supprimé.`);
+            } else {
+                alert("❌ Erreur lors de la suppression");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("❌ Erreur lors de la suppression");
+        }
     }
+    closeModal();
+    loadEleves();
 }
 
-// Afficher les élèves au chargement
-afficherEleves();
+function closeModal() {
+    pendingAction = null;
+    document.getElementById("confirmModal").style.display = "none";
+}
+
+document.getElementById("searchInput").addEventListener("keyup", e => {
+    const query = e.target.value.toLowerCase();
+    filteredEleves = eleves.filter(e => e.fullname.toLowerCase().includes(query));
+    displayEleves();
+});
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+});
+
+// Charger les élèves au démarrage
+loadEleves();
 </script>
 
 </body>
