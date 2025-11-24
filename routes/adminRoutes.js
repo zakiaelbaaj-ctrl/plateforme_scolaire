@@ -140,7 +140,6 @@ router.delete("/professeurs/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Récupérer les infos du professeur
     const profResult = await pool.query(
       "SELECT id, username FROM users WHERE id = $1 AND role = 'prof'",
       [id]
@@ -165,7 +164,6 @@ router.delete("/professeurs/:id", async (req, res) => {
         [username]
       );
     } catch (err) {
-      // Table n'existe pas, on continue
       console.log("⚠️ Table heures_prof n'existe pas");
     }
 
@@ -195,6 +193,32 @@ router.get("/users", async (req, res) => {
   } catch (err) {
     console.error("❌ Erreur GET users:", err.message);
     res.status(500).json({ error: "Impossible de récupérer les utilisateurs" });
+  }
+});
+
+// ===== PUT MODIFIER STATUT D'UN UTILISATEUR =====
+router.put("/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const { statut } = req.body;
+
+  if (!statut) {
+    return res.status(400).json({ error: "Statut requis" });
+  }
+
+  try {
+    const result = await pool.query(
+      "UPDATE users SET statut = $1 WHERE id = $2 RETURNING *",
+      [statut, id]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Utilisateur non trouvé" });
+    }
+
+    res.json({ message: "Statut mis à jour avec succès", user: result.rows[0] });
+  } catch (err) {
+    console.error("❌ Erreur PUT user:", err.message);
+    res.status(500).json({ error: "Impossible de mettre à jour l'utilisateur" });
   }
 });
 
