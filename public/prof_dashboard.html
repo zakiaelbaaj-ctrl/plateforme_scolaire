@@ -103,7 +103,10 @@
 <div class="card setup-section" id="setupSection">
   <h2>⚙️ Configuration Profil</h2>
   <div class="setup-input">
+    <!-- Pays -->
     <input type="text" id="profCountryInput" placeholder="Votre pays (ex: France)" value="France">
+
+    <!-- Matières -->
     <select id="profSubjectsInput" multiple style="width:250px; padding:8px 12px; border:1px solid #90caf9; border-radius:4px;">
       <option value="Mathématiques">📐 Mathématiques</option>
       <option value="Français">📚 Français</option>
@@ -118,9 +121,16 @@
       <option value="Espagnol">🇪🇸 Espagnol</option>
       <option value="Allemand">🇩🇪 Allemand</option>
     </select>
+
+    <!-- Langues -->
+    <input type="text" id="profLanguagesInput" placeholder="Langues (ex: Français, Anglais)" value="Français,Anglais">
+
+    <!-- Bouton Sauvegarder -->
     <button onclick="saveProfProfile()" class="accept">Sauvegarder Profil</button>
   </div>
-  <p style="font-size:12px; color:#666; margin-top:8px;">💡 Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs matières</p>
+  <p style="font-size:12px; color:#666; margin-top:8px;">
+    💡 Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs matières
+  </p>
 </div>
 
 <!-- CONTAINER PRINCIPAL -->
