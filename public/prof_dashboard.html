@@ -219,7 +219,7 @@ const profMatiere = saved?.matiere || '';
 
 if (!profUsername) {
   alert('❌ Non connecté');
-  location.href = '/login_prof.html';
+  location.href = './login.html';
 }
 
 let profCountry = localStorage.getItem('prof_country') || 'France';
@@ -459,9 +459,19 @@ function rejectCall(eleve) {
 // ===== FIN D'APPEL =====
 document.getElementById('endCallBtn')?.addEventListener('click', () => {
   if (!currentEleve) return;
-  
-  ws.send(JSON.stringify({ type: 'appelTermine', prof: profUsername, eleve: currentEleve }));
-  
+
+  // ✅ Calculer la durée totale de l'appel en secondes
+  const elapsedSeconds = Math.floor((Date.now() - callStart) / 1000);
+
+  // ✅ Envoyer au serveur/admin la fin de l'appel + durée
+  ws.send(JSON.stringify({ 
+    type: 'appelTermine', 
+    prof: profUsername, 
+    eleve: currentEleve,
+    duration: elapsedSeconds // ajout durée
+  }));
+
+  // Arrêter le timer et WebRTC
   stopTimer();
   if (pc) {
     pc.close();
@@ -471,7 +481,8 @@ document.getElementById('endCallBtn')?.addEventListener('click', () => {
     localStream.getTracks().forEach(t => t.stop());
     localStream = null;
   }
-  
+
+  // Réinitialiser l'appel
   currentEleve = null;
   document.getElementById('callSection').classList.remove('active');
   document.getElementById('noEleveSection').style.display = 'block';
