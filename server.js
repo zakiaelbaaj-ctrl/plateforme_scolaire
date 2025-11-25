@@ -505,34 +505,36 @@ wss.on("connection", (ws) => {
 
       // ===== APPEL TERMINE =====
       if (data.type === "appelTermine") {
-        const { prof, eleve } = data;
-        const key = `${prof}_${eleve}`;
-        const callData = appelsEnCours.get(key);
-        if (callData) {
-          clearInterval(callData.timer);
-          const durationMinutes = Math.round(((new Date() - callData.startTime) / 60000) * 100) / 100;
+  const { prof, eleve, duration } = data; // ← récupérer la durée en secondes depuis le client
+  const key = `${prof}_${eleve}`;
+  const callData = appelsEnCours.get(key);
+  if (callData) {
+    clearInterval(callData.timer);
 
-          await pool.query(
-            `UPDATE appels
-             SET end_time = NOW(),
-                 duree_minutes = $1,
-                 statut = 'termine'
-             WHERE prof_username = $2 AND eleve_username = $3 AND statut = 'en_cours'`,
-            [durationMinutes, prof, eleve]
-          );
-          appelsEnCours.delete(key);
-        }
-        
-        // Notifier l'autre personne
-        const other = clients.get(prof) || connectedProfs.get(eleve)?.ws;
-        if (other && other.readyState === 1) {
-          other.send(JSON.stringify({ type: "appelTermine" }));
-        }
+    // Convertir la durée en minutes avec 2 décimales
+    const durationMinutes = Math.round((duration / 60) * 100) / 100;
 
-        // Rafraîchir la liste d'attente
-        broadcastWaitingList();
-        return;
-      }
+    await pool.query(
+      `UPDATE appels
+       SET end_time = NOW(),
+           duree_minutes = $1,
+           statut = 'termine'
+       WHERE prof_username = $2 AND eleve_username = $3 AND statut = 'en_cours'`,
+      [durationMinutes, prof, eleve]
+    );
+    appelsEnCours.delete(key);
+  }
+
+  // Notifier l'autre personne
+  const other = clients.get(prof) || connectedProfs.get(eleve)?.ws;
+  if (other && other.readyState === 1) {
+    other.send(JSON.stringify({ type: "appelTermine" }));
+  }
+
+  // Rafraîchir la liste d'attente
+  broadcastWaitingList();
+  return;
+}
 
       // ===== WEBRTC SIGNALING =====
       if (["offer", "answer", "ice"].includes(data.type)) {
