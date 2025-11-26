@@ -1,634 +1,341 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Dashboard Professeur</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', sans-serif; margin:0; padding:20px; background:#f0f2f5; }
-  
-  .header { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }
-  .header h1 { margin:0; color:#333; font-size:24px; }
-  .header-info { color:#666; font-size:13px; }
-  .logout-btn { padding:8px 16px; background:#dc3545; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:500; }
-  .logout-btn:hover { background:#c82333; }
-  
-  .card { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
-  .card h2 { margin:0 0 16px 0; color:#333; font-size:18px; }
-  
-  .setup-section { background:#e3f2fd; border:1px solid #90caf9; }
-  .setup-input { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .setup-input input, .setup-input select { padding:8px 12px; border:1px solid #90caf9; border-radius:4px; font-size:13px; }
-  .setup-input button { padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:500; }
-  .setup-input button:hover { background:#218838; }
-  
-  .container { display:grid; grid-template-columns: 1fr 2fr; gap:20px; }
-  @media(max-width:1200px) { .container { grid-template-columns: 1fr; } }
-  
-  .filter-section { margin-bottom:12px; padding:12px; background:#f0f7ff; border-radius:4px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .filter-section label { font-weight:500; color:#333; font-size:12px; }
-  .filter-section select { padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:12px; }
-  
-  .eleve-item { display:flex; justify-content:space-between; align-items:flex-start; padding:12px; border:1px solid #eee; border-radius:6px; margin-bottom:8px; background:#f9f9f9; }
-  .eleve-info { flex:1; }
-  .eleve-name { font-weight:600; color:#333; }
-  .eleve-meta { font-size:12px; color:#666; margin-top:4px; }
-  .eleve-subject { display:inline-block; padding:3px 8px; background:#e3f2fd; color:#007bff; border-radius:3px; font-size:11px; font-weight:500; margin-right:6px; }
-  .eleve-country { display:inline-block; padding:2px 6px; background:#fff3cd; border-radius:3px; font-size:11px; }
-  .eleve-time { font-size:12px; color:#999; margin-top:2px; }
-  .eleve-actions { display:flex; gap:6px; flex-direction:column; }
-  
-  button { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; transition:all 0.2s; }
-  .accept { background:#28a745; color:white; }
-  .accept:hover { background:#218838; }
-  .reject { background:#dc3545; color:white; }
-  .reject:hover { background:#c82333; }
-  .primary { background:#007bff; color:white; }
-  .primary:hover { background:#0056b3; }
-  .secondary { background:#6c757d; color:white; }
-  .secondary:hover { background:#5a6268; }
-  
-  .call-section { display:none; }
-  .call-section.active { display:block; }
-  
-  .videos-container { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px; }
-  .video-box { background:#000; border-radius:8px; overflow:hidden; height:300px; }
-  .video-box video { width:100%; height:100%; object-fit:cover; }
-  .video-label { font-size:12px; color:#666; margin-bottom:4px; font-weight:500; }
-  
-  .controls { display:flex; gap:8px; align-items:center; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid #eee; }
-  .timer { font-weight:600; color:#dc3545; font-size:18px; }
-  
-  .chat-box { display:flex; flex-direction:column; height:250px; margin-bottom:16px; border:1px solid #ddd; border-radius:6px; }
-  .chat-messages { flex:1; overflow-y:auto; padding:12px; background:#f9f9f9; }
-  .chat-message { margin-bottom:8px; }
-  .msg-sender { font-weight:600; color:#007bff; font-size:12px; }
-  .msg-text { color:#333; padding:4px 0; word-wrap:break-word; }
-  .msg-time { font-size:11px; color:#999; margin-top:2px; }
-  
-  .chat-input { display:flex; gap:8px; }
-  #chatInput { flex:1; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:13px; }
-  
-  .files-list { list-style:none; padding:0; margin:0; }
-  .files-list li { padding:8px; background:#f9f9f9; border-radius:4px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
-  .file-name { color:#007bff; font-weight:500; font-size:13px; }
-  .file-info { font-size:11px; color:#999; }
-  
-  .file-upload { display:flex; gap:8px; margin-bottom:12px; }
-  #fileInput { flex:1; }
-  
-  .no-eleve { text-align:center; padding:40px 20px; color:#999; }
-  .empty-list { padding:20px; text-align:center; color:#999; }
-  
-  .eleve-detail { background:#f0f7ff; padding:10px; border-radius:4px; margin-bottom:12px; font-size:12px; border-left:4px solid #007bff; }
-  
-  .stats-badge { display:inline-block; background:#007bff; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px; }
-  
-  hr { border:none; border-top:1px solid #eee; margin:16px 0; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard Professeur</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; margin:0; padding:20px; background:#f0f2f5; }
+
+    .header { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }
+    .header h1 { margin:0; color:#333; font-size:24px; }
+    .header-info { color:#666; font-size:13px; }
+    .logout-btn { padding:8px 16px; background:#dc3545; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:500; }
+    .logout-btn:hover { background:#c82333; }
+
+    .card { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+    .card h2 { margin:0 0 16px 0; color:#333; font-size:18px; }
+
+    .setup-section { background:#e3f2fd; border:1px solid #90caf9; }
+    .setup-input { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .setup-input input, .setup-input select { padding:8px 12px; border:1px solid #90caf9; border-radius:4px; font-size:13px; }
+    .setup-input button { padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:500; }
+    .setup-input button:hover { background:#218838; }
+
+    .container { display:grid; grid-template-columns: 1fr 2fr; gap:20px; }
+
+    .list { display:flex; flex-direction:column; gap:10px; }
+    .student { display:flex; justify-content:space-between; align-items:center; border:1px solid #eee; border-radius:6px; padding:10px; background:#fff; }
+    .student-info { display:flex; flex-direction:column; font-size:13px; color:#444; }
+    .student-actions { display:flex; gap:8px; }
+    .btn { padding:8px 12px; border:none; border-radius:4px; cursor:pointer; font-weight:500; }
+    .btn-primary { background:#007bff; color:#fff; }
+    .btn-primary:hover { background:#0069d9; }
+    .btn-warning { background:#ffc107; color:#333; }
+    .btn-danger { background:#dc3545; color:#fff; }
+    .btn-danger:hover { background:#c82333; }
+
+    .call-status { font-size:14px; color:#555; }
+    .muted { color:#888; font-size:12px; }
+    .badge { background:#eef2ff; color:#334; border:1px solid #ccd; border-radius:12px; padding:2px 8px; font-size:12px; }
+
+    .notif { position:fixed; right:20px; bottom:20px; background:#222; color:#fff; padding:12px 16px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.2); opacity:0; transform:translateY(10px); transition:opacity .2s, transform .2s; }
+    .notif.show { opacity:1; transform:translateY(0); }
+  </style>
 </head>
 <body>
-
-<!-- HEADER -->
-<div class="header">
-  <div>
-    <h1>👨‍🏫 Dashboard Professeur</h1>
-    <div class="header-info">Connecté : <strong id="profLabel">—</strong> | Matières : <strong id="matiereLabel">—</strong> | Pays : <strong id="paysLabel">—</strong></div>
-  </div>
-  <button class="logout-btn" onclick="logout()">🚪 Déconnexion</button>
-</div>
-
-<!-- SETUP SECTION -->
-<div class="card setup-section" id="setupSection">
-  <h2>⚙️ Configuration Profil</h2>
-  <div class="setup-input">
-    <!-- Pays -->
-    <input type="text" id="profCountryInput" placeholder="Votre pays (ex: France)" value="France">
-
-    <!-- Matières -->
-    <select id="profSubjectsInput" multiple style="width:250px; padding:8px 12px; border:1px solid #90caf9; border-radius:4px;">
-      <option value="Mathématiques">📐 Mathématiques</option>
-      <option value="Français">📚 Français</option>
-      <option value="Anglais">🗣️ Anglais</option>
-      <option value="Physique">⚛️ Physique</option>
-      <option value="Chimie">🧪 Chimie</option>
-      <option value="Histoire">🏛️ Histoire</option>
-      <option value="Géographie">🗺️ Géographie</option>
-      <option value="Biologie">🔬 Biologie</option>
-      <option value="Informatique">💻 Informatique</option>
-      <option value="Philosophie">🤔 Philosophie</option>
-      <option value="Espagnol">🇪🇸 Espagnol</option>
-      <option value="Allemand">🇩🇪 Allemand</option>
-    </select>
-
-    <!-- Langues -->
-    <input type="text" id="profLanguagesInput" placeholder="Langues (ex: Français, Anglais)" value="Français,Anglais">
-
-    <!-- Bouton Sauvegarder -->
-    <button onclick="saveProfProfile()" class="accept">Sauvegarder Profil</button>
-  </div>
-  <p style="font-size:12px; color:#666; margin-top:8px;">
-    💡 Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs matières
-  </p>
-</div>
-
-<!-- CONTAINER PRINCIPAL -->
-<div class="container" id="mainContainer" style="display:none;">
-  
-  <!-- SALLE D'ATTENTE (Gauche) -->
-  <div class="card">
-    <h2>📋 Salle d'attente <span class="stats-badge" id="waitingCount">0</span></h2>
-    
-    <div class="filter-section">
-      <select id="subjectFilterProf" onchange="filterWaiting()">
-        <option value="">📚 Toutes les matières</option>
-      </select>
-      <select id="countryFilterProf" onchange="filterWaiting()">
-        <option value="">🌍 Tous les pays</option>
-      </select>
-    </div>
-    
-    <div id="elevesList" class="empty-list">Aucun élève en attente</div>
-  </div>
-
-  <!-- APPEL EN COURS (Droite) -->
-  <div class="card call-section" id="callSection">
-    <h2>📞 Appel avec <span id="currentEleve">—</span></h2>
-    
-    <div class="eleve-detail" id="eleveDetailBox"></div>
-    
-    <!-- VIDÉOS -->
-    <div class="videos-container">
-      <div>
-        <div class="video-label">📹 Votre vidéo</div>
-        <div class="video-box">
-          <video id="localVideo" autoplay muted playsinline></video>
-        </div>
-      </div>
-      <div>
-        <div class="video-label">👤 Élève</div>
-        <div class="video-box">
-          <video id="remoteVideo" autoplay playsinline></video>
-        </div>
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <h1>👨‍🏫 Dashboard Professeur</h1>
+      <div class="header-info">
+        Connecté : <strong id="profLabel">—</strong> |
+        Matières : <strong id="matiereLabel">—</strong> |
+        Pays : <strong id="paysLabel">—</strong>
       </div>
     </div>
-
-    <!-- CONTRÔLES -->
-    <div class="controls">
-      <button id="endCallBtn" class="reject">🔴 Terminer</button>
-      <div class="timer">⏱️ <span id="callTimer">00:00</span></div>
-    </div>
-
-    <hr>
-
-    <!-- CHAT -->
-    <h3 style="margin:0 0 12px 0; font-size:14px;">💬 Chat</h3>
-    <div class="chat-box">
-      <div class="chat-messages" id="chatMessages"></div>
-    </div>
-    <div class="chat-input">
-      <input type="text" id="chatInput" placeholder="Votre message...">
-      <button id="sendChatBtn" class="primary">Envoyer</button>
-    </div>
-
-    <hr>
-
-    <!-- FICHIERS -->
-    <h3 style="margin:0 0 12px 0; font-size:14px;">📁 Partage de fichiers</h3>
-    <div class="file-upload">
-      <input type="file" id="fileInput">
-      <button id="sendFileBtn" class="primary">Envoyer</button>
-    </div>
-    <ul class="files-list" id="filesList"></ul>
+    <button class="logout-btn" onclick="logout()">🚪 Déconnexion</button>
   </div>
 
-  <!-- PAS D'APPEL -->
-  <div class="no-eleve" id="noEleveSection">
-    <p>👇 Sélectionnez un élève à gauche pour commencer</p>
+  <!-- SECTION CONFIGURATION -->
+  <div class="card setup-section" id="setupSection">
+    <h2>⚙️ Configuration Profil</h2>
+    <div class="setup-input">
+      <input type="text" id="profNameInput" placeholder="Votre nom (ex: Mme Dupont)" value="Professeur">
+      <input type="text" id="profCountryInput" placeholder="Votre pays (ex: France)" value="France">
+      <select id="profSubjectsInput" multiple>
+        <option value="Mathématiques">📘 Mathématiques</option>
+        <option value="Français">📚 Français</option>
+        <option value="Anglais">🗣️ Anglais</option>
+        <option value="Physique">🔬 Physique</option>
+      </select>
+      <input type="text" id="profLanguagesInput" placeholder="Langues (ex: Français, Anglais)" value="Français,Anglais">
+      <button onclick="saveProfProfile()">Sauvegarder Profil</button>
+    </div>
+    <p class="muted">Astuce: maintenez Ctrl/⌘ pour sélectionner plusieurs matières.</p>
   </div>
-</div>
 
-<script>
-// ===== DONNÉES UTILISATEUR =====
-const saved = JSON.parse(localStorage.getItem('profConnecte') || 'null');
-const profUsername = saved?.username || null;
-const profPre = saved?.prenom || '';
-const profNom = saved?.nom || '';
-const profMatiere = saved?.matiere || '';
+  <!-- CONTAINER PRINCIPAL -->
+  <div class="container" id="mainContainer" style="display:none;">
+    <!-- Liste d’attente -->
+    <div class="card">
+      <h2>📋 Salle d'attente</h2>
+      <div id="elevesList" class="list"></div>
+      <div class="muted" id="waitingHint">Aucun élève en attente</div>
+    </div>
 
-if (!profUsername) {
-  alert('❌ Non connecté');
-  location.href = './login.html';
-}
+    <!-- Appel en cours -->
+    <div class="card">
+      <h2>📞 Appel en cours</h2>
+      <div class="call-status" id="callSection">—</div>
+      <div class="student-actions" id="callActions" style="margin-top:12px; display:none;">
+        <button class="btn btn-warning" onclick="startCall(currentStudentId)">Relancer</button>
+        <button class="btn btn-danger" onclick="endCall()">Terminer</button>
+      </div>
+      <div id="callMeta" class="muted" style="margin-top:8px;"></div>
+    </div>
+  </div>
 
-let profCountry = localStorage.getItem('prof_country') || 'France';
-let profSubjects = (localStorage.getItem('prof_subjects') || profMatiere || 'Mathématiques,Français').split(',').map(s => s.trim());
-let profLanguages = (localStorage.getItem('prof_languages') || 'Français,Anglais').split(',').map(l => l.trim());
+  <!-- Notification -->
+  <div id="notif" class="notif"></div>
 
-let currentEleve = null;
-let currentEleveCountry = null;
-let currentEleveSubject = null;
-let pc = null;
-let localStream = null;
-let timerInterval = null;
-let callStart = null;
-let allAppels = [];
-let filteredAppels = [];
+  <!-- SCRIPT GLOBAL (doit rester en bas) -->
+  <script>
+    // État global
+    const state = {
+      ws: null,
+      connected: false,
+      profile: { name: 'Professeur', country: 'France', subjects: [], languages: [] },
+      waiting: [],
+      currentCall: null
+    };
 
-// ===== WEBSOCKET =====
-const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
-const ws = new WebSocket(WS_URL);
-
-ws.onopen = () => {
-  console.log('✅ WS connecté');
-  ws.send(JSON.stringify({ 
-    type: 'register', 
-    username: profUsername, 
-    role: 'prof',
-    country: profCountry,
-    subjects: profSubjects,
-    languages: profLanguages
-  }));
-};
-
-ws.onmessage = async (evt) => {
-  try {
-    const data = JSON.parse(evt.data);
-    
-    if (data.type === 'appelEnAttente' || data.type === 'listeEleves') {
-      allAppels = data.appels || data.eleves || [];
-      populateFilters();
-      filterWaiting();
+    // Utilitaires
+    function byId(id) { return document.getElementById(id); }
+    function nowISO() { return new Date().toISOString(); }
+    function formatTime(ts) {
+      try { return new Date(ts).toLocaleString(); } catch { return ts; }
     }
-    
-    if (data.type === 'chat' && data.sender === currentEleve) {
-      addChatMessage(data.sender, data.message, data.timestamp);
+    function escapeHTML(str) {
+      return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
-    
-    if (data.type === 'newFile' && data.sender === currentEleve) {
-      addFileToList(data.filename, data.sender, data.content);
+
+    // Rendus
+    function renderProfile() {
+      byId('profLabel').textContent = state.profile.name || 'Professeur';
+      byId('matiereLabel').textContent = (state.profile.subjects || []).join(', ') || '—';
+      byId('paysLabel').textContent = state.profile.country || '—';
     }
-    
-    if (data.type === 'timerUpdate') {
-      updateTimer(data.elapsed || 0);
+
+    function renderWaiting() {
+      const container = byId('elevesList');
+      container.innerHTML = '';
+      if (state.waiting.length === 0) {
+        byId('waitingHint').style.display = 'block';
+        return;
+      }
+      byId('waitingHint').style.display = 'none';
+
+      state.waiting.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'student';
+        row.innerHTML = `
+          <div class="student-info">
+            <strong>${escapeHTML(s.name)}</strong>
+            <span>Classe: ${escapeHTML(s.grade || '—')} · Sujet: ${escapeHTML(s.topic || '—')}</span>
+            <span class="badge">Arrivé: ${formatTime(s.arrivedAt)}</span>
+          </div>
+          <div class="student-actions">
+            <button class="btn btn-primary" onclick="startCall('${s.id}')">Démarrer</button>
+            <button class="btn" onclick="removeFromWaiting('${s.id}')">Retirer</button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
     }
-    
-    // WebRTC
-    if (data.type === 'offer' && data.sender === currentEleve) {
-      if (!pc) await initPeerConnection();
-      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      ws.send(JSON.stringify({ type: 'answer', target: currentEleve, answer }));
+
+    function renderCall() {
+      const callSection = byId('callSection');
+      const actions = byId('callActions');
+      const meta = byId('callMeta');
+
+      if (!state.currentCall) {
+        callSection.textContent = '—';
+        actions.style.display = 'none';
+        meta.textContent = '';
+        return;
+      }
+      const c = state.currentCall;
+      callSection.textContent = `Avec ${c.student.name} (Sujet: ${c.student.topic || '—'})`;
+      actions.style.display = 'flex';
+      meta.textContent = `Début: ${formatTime(c.startedAt)} · ID: ${c.student.id}`;
     }
-    
-    if (data.type === 'answer' && data.sender === currentEleve && pc) {
-      await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+
+    // Notifications
+    function notify(message, level = 'ok') {
+      const el = byId('notif');
+      el.textContent = message;
+      el.style.background = level === 'error' ? '#b00020'
+                         : level === 'warn' ? '#6a4'
+                         : '#222';
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 1800);
     }
-    
-    if (data.type === 'ice' && data.sender === currentEleve && pc && data.candidate) {
+
+    // WebSocket (optionnel)
+    function connectWS(url) {
+      const paramUrl = new URLSearchParams(location.search).get('ws');
+      const wsUrl = url || paramUrl;
+
+      if (!wsUrl) {
+        console.warn('WS: aucun URL fourni, mode local.');
+        state.connected = false;
+        return null;
+      }
+
       try {
-        if (pc.remoteDescription?.type) {
-          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
+        const ws = new WebSocket(wsUrl);
+        state.ws = ws;
+
+        ws.onopen = () => {
+          state.connected = true;
+          notify('Connecté au serveur', 'ok');
+          ws.send(JSON.stringify({ type: 'prof_connect', payload: { profile: state.profile } }));
+        };
+
+        ws.onmessage = (evt) => {
+          let msg;
+          try { msg = JSON.parse(evt.data); } catch { return; }
+          switch (msg.type) {
+            case 'waiting_update':
+              state.waiting = Array.isArray(msg.payload) ? msg.payload : [];
+              renderWaiting();
+              break;
+            case 'call_start':
+              if (msg.payload && msg.payload.student) {
+                state.currentCall = {
+                  student: msg.payload.student,
+                  startedAt: msg.payload.startedAt || nowISO()
+                };
+                renderCall();
+              }
+              break;
+            case 'call_end':
+              state.currentCall = null;
+              renderCall();
+              break;
+            default:
+              break;
+          }
+        };
+
+        ws.onerror = () => {
+          state.connected = false;
+          notify('Erreur WebSocket', 'error');
+        };
+
+        ws.onclose = () => {
+          state.connected = false;
+          notify('Déconnecté du serveur', 'warn');
+        };
+
+        return ws;
       } catch (e) {
-        console.warn('ICE error:', e);
+        console.error('WS: échec de connexion', e);
+        state.connected = false;
+        return null;
       }
     }
-  } catch (e) {
-    console.error('WS error:', e);
-  }
-};
 
-ws.onclose = () => console.log('❌ WS fermé');
-ws.onerror = (err) => console.error('❌ WS error:', err);
-
-// ===== SAUVEGARDE PROFIL =====
-function saveProfProfile() {
-  profCountry = document.getElementById('profCountryInput').value.trim() || 'France';
-  profLanguages = document.getElementById('profLanguagesInput').value.split(',').map(l => l.trim()).filter(l => l);
-  
-  const subjectsSelect = document.getElementById('profSubjectsInput');
-  profSubjects = Array.from(subjectsSelect.selectedOptions).map(option => option.value);
-  
-  if (profSubjects.length === 0) {
-    alert('Sélectionnez au moins une matière');
-    return;
-  }
-  
-  localStorage.setItem('prof_country', profCountry);
-  localStorage.setItem('prof_subjects', profSubjects.join(','));
-  localStorage.setItem('prof_languages', profLanguages.join(','));
-  
-  document.getElementById('paysLabel').textContent = profCountry;
-  document.getElementById('matiereLabel').textContent = profSubjects.join(', ');
-  document.getElementById('setupSection').style.display = 'none';
-  document.getElementById('mainContainer').style.display = 'grid';
-  
-  ws.send(JSON.stringify({ 
-    type: 'updateProfProfile', 
-    username: profUsername, 
-    country: profCountry,
-    subjects: profSubjects,
-    languages: profLanguages
-  }));
-}
-
-// Initialiser
-document.getElementById('profLabel').textContent = `${profPre} ${profNom}`;
-document.getElementById('paysLabel').textContent = profCountry;
-document.getElementById('matiereLabel').textContent = profSubjects.join(', ');
-document.getElementById('profCountryInput').value = profCountry;
-document.getElementById('profLanguagesInput').value = profLanguages.join(',');
-
-Array.from(document.getElementById('profSubjectsInput').options).forEach(option => {
-  if (profSubjects.includes(option.value)) option.selected = true;
-});
-
-// ===== FILTRES =====
-function populateFilters() {
-  const subjects = [...new Set(allAppels.map(a => a.subject).filter(Boolean))];
-  const countries = [...new Set(allAppels.map(a => a.country || a.senderCountry).filter(Boolean))];
-  
-  const subSelect = document.getElementById('subjectFilterProf');
-  const countSelect = document.getElementById('countryFilterProf');
-  const curSub = subSelect.value;
-  const curCount = countSelect.value;
-  
-  subSelect.innerHTML = '<option value="">📚 Toutes les matières</option>';
-  subjects.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
-    subSelect.appendChild(opt);
-  });
-  subSelect.value = curSub;
-  
-  countSelect.innerHTML = '<option value="">🌍 Tous les pays</option>';
-  countries.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = `🌍 ${c}`;
-    countSelect.appendChild(opt);
-  });
-  countSelect.value = curCount;
-}
-
-function filterWaiting() {
-  const subFilter = document.getElementById('subjectFilterProf').value;
-  const countFilter = document.getElementById('countryFilterProf').value;
-  
-  filteredAppels = allAppels.filter(a => {
-    const subject = a.subject || '';
-    const country = a.country || a.senderCountry || '';
-    const matchSub = !subFilter ? profSubjects.includes(subject) : subject === subFilter;
-    const matchCount = !countFilter || country === countFilter;
-    return matchSub && matchCount;
-  });
-  
-  renderWaiting(filteredAppels);
-}
-
-function renderWaiting(appels) {
-  const ul = document.getElementById('elevesList');
-  ul.innerHTML = '';
-  
-  if (!appels || appels.length === 0) {
-    document.getElementById('waitingCount').textContent = '0';
-    ul.innerHTML = '<div class="empty-list">Aucun élève en attente</div>';
-    return;
-  }
-
-  document.getElementById('waitingCount').textContent = appels.length;
-
-  appels.forEach(a => {
-    const name = a.eleve || a.username || 'Inconnu';
-    const country = a.country || a.senderCountry || 'Inconnu';
-    const subject = a.subject || 'Non spécifiée';
-    const time = new Date(a.timestamp || Date.now()).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
-    
-    const div = document.createElement('div');
-    div.className = 'eleve-item';
-    
-    div.innerHTML = `
-      <div class="eleve-info">
-        <div class="eleve-name">${escapeHtml(name)}</div>
-        <div class="eleve-meta">
-          <span class="eleve-subject">📚 ${escapeHtml(subject)}</span>
-          <span class="eleve-country">🌍 ${escapeHtml(country)}</span>
-        </div>
-        <div class="eleve-time">🕐 ${time}</div>
-      </div>
-      <div class="eleve-actions">
-        <button class="accept" onclick="acceptCall('${escapeHtml(name)}', '${escapeHtml(country)}', '${escapeHtml(subject)}')">✅ Accepter</button>
-        <button class="reject" onclick="rejectCall('${escapeHtml(name)}')">❌ Rejeter</button>
-      </div>
-    `;
-    ul.appendChild(div);
-  });
-}
-
-// ===== ACCEPTER/REJETER =====
-async function acceptCall(eleve, country, subject) {
-  currentEleve = eleve;
-  currentEleveCountry = country;
-  currentEleveSubject = subject;
-  
-  document.getElementById('currentEleve').textContent = eleve;
-  document.getElementById('eleveDetailBox').innerHTML = `
-    <strong>👤 Élève :</strong> ${escapeHtml(eleve)}<br>
-    <strong>📚 Matière :</strong> ${escapeHtml(subject)}<br>
-    <strong>🌍 Pays élève :</strong> ${escapeHtml(country)}<br>
-    <strong>🌍 Votre pays :</strong> ${escapeHtml(profCountry)}<br>
-    <strong>📚 Vos matières :</strong> ${escapeHtml(profSubjects.join(', '))}
-  `;
-  document.getElementById('callSection').classList.add('active');
-  document.getElementById('noEleveSection').style.display = 'none';
-  
-  ws.send(JSON.stringify({ type: 'accepterAppel', prof: profUsername, profCountry, profSubjects, eleve }));
-  
-  await initPeerConnection();
-  startTimer();
-}
-
-function rejectCall(eleve) {
-  ws.send(JSON.stringify({ type: 'rejeterAppel', prof: profUsername, eleveRejete: eleve }));
-}
-
-// ===== FIN D'APPEL =====
-document.getElementById('endCallBtn')?.addEventListener('click', () => {
-  if (!currentEleve) return;
-
-  // ✅ Calculer la durée totale de l'appel en secondes
-  const elapsedSeconds = Math.floor((Date.now() - callStart) / 1000);
-
-  // ✅ Envoyer au serveur/admin la fin de l'appel + durée
-  ws.send(JSON.stringify({ 
-    type: 'appelTermine', 
-    prof: profUsername, 
-    eleve: currentEleve,
-    duration: elapsedSeconds // ajout durée
-  }));
-
-  // Arrêter le timer et WebRTC
-  stopTimer();
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
-
-  // Réinitialiser l'appel
-  currentEleve = null;
-  document.getElementById('callSection').classList.remove('active');
-  document.getElementById('noEleveSection').style.display = 'block';
-  document.getElementById('chatMessages').innerHTML = '';
-  document.getElementById('filesList').innerHTML = '';
-});
-
-// ===== TIMER =====
-function startTimer() {
-  callStart = Date.now();
-  timerInterval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - callStart) / 1000);
-    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
-    const s = String(elapsed % 60).padStart(2, '0');
-    document.getElementById('callTimer').textContent = `${m}:${s}`;
-  }, 1000);
-}
-
-function stopTimer() {
-  if (timerInterval) clearInterval(timerInterval);
-  document.getElementById('callTimer').textContent = '00:00';
-}
-
-function updateTimer(seconds) {
-  const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const s = String(seconds % 60).padStart(2, '0');
-  document.getElementById('callTimer').textContent = `${m}:${s}`;
-}
-
-// ===== CHAT =====
-document.getElementById('sendChatBtn')?.addEventListener('click', () => {
-  const msg = document.getElementById('chatInput').value.trim();
-  if (!msg || !currentEleve) return;
-  
-  ws.send(JSON.stringify({ type: 'chat', target: currentEleve, message: msg }));
-  addChatMessage('Vous', msg, new Date().toISOString());
-  document.getElementById('chatInput').value = '';
-});
-
-function addChatMessage(sender, message, timestamp) {
-  const box = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'chat-message';
-  const time = new Date(timestamp).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
-  div.innerHTML = `
-    <div class="msg-sender">${escapeHtml(sender)}</div>
-    <div class="msg-text">${escapeHtml(message)}</div>
-    <div class="msg-time">${time}</div>
-  `;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}
-
-// ===== FICHIERS =====
-document.getElementById('sendFileBtn')?.addEventListener('click', () => {
-  const file = document.getElementById('fileInput').files[0];
-  if (!file || !currentEleve) return;
-  
-  const reader = new FileReader();
-  reader.onload = () => {
-    const b64 = reader.result.split(',')[1];
-    ws.send(JSON.stringify({
-      type: 'fileUpload',
-      target: currentEleve,
-      filename: file.name,
-      content: b64
-    }));
-    addFileToList(file.name, 'Vous', null);
-    document.getElementById('fileInput').value = '';
-  };
-  reader.readAsDataURL(file);
-});
-
-function addFileToList(filename, from, content) {
-  const ul = document.getElementById('filesList');
-  const li = document.createElement('li');
-  
-  if (content) {
-    const blob = base64ToBlob(content);
-    const url = URL.createObjectURL(blob);
-    li.innerHTML = `
-      <a href="${url}" download="${escapeHtml(filename)}" style="flex:1; color:#007bff; text-decoration:none;">📄 ${escapeHtml(filename)}</a>
-      <span class="file-info">de ${escapeHtml(from)}</span>
-    `;
-  } else {
-    li.innerHTML = `
-      <span class="file-name">📄 ${escapeHtml(filename)}</span>
-      <span class="file-info">de ${escapeHtml(from)}</span>
-    `;
-  }
-  ul.appendChild(li);
-}
-
-function base64ToBlob(b64) {
-  const bytes = atob(b64);
-  const arr = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr]);
-}
-
-// ===== WEBRTC =====
-async function initPeerConnection() {
-  if (pc) return;
-
-  pc = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-  });
-
-  try {
-    // Demander caméra et micro
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    console.log('✅ Flux local obtenu:', localStream);
-    document.getElementById('localVideo').srcObject = localStream;
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-  } catch (err) {
-    console.error('❌ Erreur caméra/micro:', err);
-    alert('Impossible d\'accéder à la caméra/micro: ' + err.message);
-    return;
-  }
-
-  pc.ontrack = (ev) => {
-    console.log('🎥 Flux distant reçu:', ev.streams);
-    document.getElementById('remoteVideo').srcObject = ev.streams[0];
-  };
-
-  pc.onicecandidate = (ev) => {
-    if (ev.candidate && currentEleve) {
-      console.log('🛠 ICE candidate:', ev.candidate);
-      ws.send(JSON.stringify({ type: 'ice', target: currentEleve, candidate: ev.candidate }));
+    // Actions
+    function logout() {
+      alert('Déconnexion...');
+      location.href = '/login.html';
     }
-  };
 
-  pc.onconnectionstatechange = () => {
-    console.log('🔗 WebRTC connection state:', pc.connectionState);
-  };
-}
+    function saveProfProfile() {
+      const name = byId('profNameInput').value.trim() || 'Professeur';
+      const country = byId('profCountryInput').value.trim() || '—';
+      const subjects = Array.from(byId('profSubjectsInput').selectedOptions).map(o => o.value);
+      const languages = byId('profLanguagesInput').value.split(',').map(s => s.trim()).filter(Boolean);
 
-// ===== LOGOUT =====
-function logout() {
-  localStorage.removeItem('profConnecte');
-  location.href = '/login.html';
-}
+      state.profile = { name, country, subjects, languages };
+      renderProfile();
 
-// ===== UTIL =====
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
+      byId('mainContainer').style.display = 'grid';
+      notify('Profil sauvegardé', 'ok');
+
+      if (state.ws && state.ws.readyState === 1) {
+        state.ws.send(JSON.stringify({ type: 'prof_profile', payload: state.profile }));
+      }
+    }
+
+    function startCall(studentId) {
+      const student = state.waiting.find(s => s.id === studentId);
+      if (!student) { notify('Élève introuvable', 'error'); return; }
+
+      state.currentCall = { student, startedAt: nowISO() };
+      state.waiting = state.waiting.filter(s => s.id !== studentId);
+      renderWaiting();
+      renderCall();
+
+      if (state.ws && state.ws.readyState === 1) {
+        state.ws.send(JSON.stringify({ type: 'call_start', payload: { student } }));
+      }
+    }
+
+    function endCall() {
+      if (!state.currentCall) return;
+      const ended = state.currentCall;
+      state.currentCall = null;
+      renderCall();
+
+      if (state.ws && state.ws.readyState === 1) {
+        state.ws.send(JSON.stringify({ type: 'call_end', payload: { student: ended.student } }));
+      }
+      notify('Appel terminé', 'ok');
+    }
+
+    function removeFromWaiting(studentId) {
+      const before = state.waiting.length;
+      state.waiting = state.waiting.filter(s => s.id !== studentId);
+      renderWaiting();
+
+      if (before !== state.waiting.length) {
+        if (state.ws && state.ws.readyState === 1) {
+          state.ws.send(JSON.stringify({ type: 'waiting_remove', payload: { id: studentId } }));
+        }
+        notify('Élève retiré de la file', 'warn');
+      }
+    }
+
+    // Initialisation
+    function initDashboard(options = {}) {
+      renderProfile();
+      renderWaiting();
+      renderCall();
+      connectWS(options.wsUrl);
+
+      // Mode démo local si pas de serveur WS
+      if (!state.ws) {
+        setTimeout(() => {
+          state.waiting = [
+            { id: 'stu-001', name: 'Lina', grade: '6e', topic: 'Fractions', arrivedAt: nowISO() },
+            { id: 'stu-002', name: 'Karim', grade: '5e', topic: 'Grammaire', arrivedAt: nowISO() }
+          ];
+          renderWaiting();
+        }, 600);
+      }
+
+      // Sanity check (doit afficher "function function")
+      console.log(typeof saveProfProfile, typeof logout);
+    }
+
+    // Auto-init quand le DOM est prêt
+    document.addEventListener('DOMContentLoaded', () => {
+      initDashboard(); // passez initDashboard({ wsUrl: 'wss://votre-serveur/ws' }) si besoin
+    });
+  </script>
+</body>
+</html>
