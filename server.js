@@ -248,7 +248,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       [email, token, expiresAt]
     );
 
-    const resetLink = `${process.env.FRONTEND_URL || "http://localhost:4000"}/reset_password.html?token=${token}`;
+    const resetLink = `${process.env.FRONTEND_URL || "http://localhost:10000"}/reset_password.html?token=${token}`;
 
     if (emailEnabled && transporter) {
       // Envoyer l'email sans bloquer la requête
