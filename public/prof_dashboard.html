@@ -646,6 +646,13 @@ function base64ToBlob(b64) {
   return new Blob([arr]);
 }
 
+function base64ToBlob(b64) {
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr]);
+}
+
 // ===== WEBRTC =====
 async function initPeerConnection() {
   if (pc) return;
