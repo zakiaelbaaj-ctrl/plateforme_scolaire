@@ -21,15 +21,12 @@ body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background
 .setup-input button:hover { background: #218838; }
 .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
 @media(max-width:1200px) { .container { grid-template-columns: 1fr; } }
-.filter-section { margin-bottom: 12px; padding: 12px; background: #f0f7ff; border-radius: 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.filter-section select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
 .eleve-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; background: #f9f9f9; }
 .eleve-info { flex: 1; }
 .eleve-name { font-weight: 600; color: #333; }
 .eleve-meta { font-size: 12px; color: #666; margin-top: 4px; }
 .eleve-subject { display: inline-block; padding: 3px 8px; background: #e3f2fd; color: #007bff; border-radius: 3px; font-size: 11px; font-weight: 500; margin-right: 6px; }
 .eleve-country { display: inline-block; padding: 2px 6px; background: #fff3cd; border-radius: 3px; font-size: 11px; }
-.eleve-time { font-size: 12px; color: #999; margin-top: 2px; }
 .eleve-actions { display: flex; gap: 6px; flex-direction: column; }
 button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
 .accept { background: #28a745; color: white; }
@@ -51,19 +48,16 @@ button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; f
 .chat-message { margin-bottom: 8px; }
 .msg-sender { font-weight: 600; color: #007bff; font-size: 12px; }
 .msg-text { color: #333; padding: 4px 0; word-wrap: break-word; }
-.msg-time { font-size: 11px; color: #999; margin-top: 2px; }
 .chat-input { display: flex; gap: 8px; }
 #chatInput { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
 .files-list { list-style: none; padding: 0; margin: 0; }
 .files-list li { padding: 8px; background: #f9f9f9; border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
 .file-name { color: #007bff; font-weight: 500; font-size: 13px; }
-.file-info { font-size: 11px; color: #999; }
-.file-upload { display: flex; gap: 8px; margin-bottom: 12px; }
-#fileInput { flex: 1; }
 .no-eleve { text-align: center; padding: 40px 20px; color: #999; }
 .empty-list { padding: 20px; text-align: center; color: #999; }
-.eleve-detail { background: #f0f7ff; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; border-left: 4px solid #007bff; }
 .stats-badge { display: inline-block; background: #007bff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px; }
+.filter-section { margin-bottom: 12px; padding: 12px; background: #f0f7ff; border-radius: 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.filter-section select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
 hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
 </style>
 </head>
@@ -72,7 +66,7 @@ hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
 <div class="header">
   <div>
     <h1>👨‍🏫 Dashboard Professeur</h1>
-    <div class="header-info">Connecté : <strong id="profLabel">—</strong> | Matières : <strong id="matiereLabel">—</strong> | Pays : <strong id="paysLabel">—</strong></div>
+    <div class="header-info">Connecté : <strong id="profLabel">—</strong></div>
   </div>
   <button class="logout-btn" id="logoutBtn">🚪 Déconnexion</button>
 </div>
@@ -91,7 +85,6 @@ hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
       <option value="Géographie">🗺️ Géographie</option>
       <option value="Biologie">🔬 Biologie</option>
     </select>
-    <input type="text" id="profLanguagesInput" placeholder="Langues" value="Français,Anglais">
     <button id="saveProfileBtn" class="accept">Sauvegarder Profil</button>
   </div>
 </div>
@@ -104,16 +97,12 @@ hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
       <select id="subjectFilterProf">
         <option value="">📚 Toutes les matières</option>
       </select>
-      <select id="countryFilterProf">
-        <option value="">🌍 Tous les pays</option>
-      </select>
     </div>
     <div id="elevesList" class="empty-list">Aucun élève en attente</div>
   </div>
 
   <div class="card call-section" id="callSection">
     <h2>📞 Appel avec <span id="currentEleve">—</span></h2>
-    <div class="eleve-detail" id="eleveDetailBox"></div>
     
     <div class="videos-container">
       <div>
@@ -147,8 +136,8 @@ hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
 
     <hr>
     <h3 style="margin:0 0 12px 0; font-size:14px;">📁 Fichiers</h3>
-    <div class="file-upload">
-      <input type="file" id="fileInput">
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <input type="file" id="fileInput" style="flex:1;">
       <button id="sendFileBtn" class="primary">Envoyer</button>
     </div>
     <ul class="files-list" id="filesList"></ul>
@@ -160,8 +149,6 @@ hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
 </div>
 
 <script>
-console.log('📄 Script professeur chargé');
-
 const saved = JSON.parse(localStorage.getItem('profConnecte') || 'null');
 const profUsername = saved?.username || null;
 const profPre = saved?.prenom || '';
@@ -172,10 +159,8 @@ if (!profUsername) {
   location.href = './login.html';
 }
 
-let profCountry = localStorage.getItem('prof_country') || 'France';
-let profSubjects = (localStorage.getItem('prof_subjects') || 'Mathématiques,Français').split(',').map(s => s.trim());
-let profLanguages = (localStorage.getItem('prof_languages') || 'Français,Anglais').split(',').map(l => l.trim());
-
+let profCountry = 'France';
+let profSubjects = ['Mathématiques', 'Français'];
 let currentEleve = null;
 let pc = null;
 let localStream = null;
@@ -204,15 +189,13 @@ function initWebSocket() {
       username: profUsername, 
       role: 'prof',
       country: profCountry,
-      subjects: profSubjects,
-      languages: profLanguages
+      subjects: profSubjects
     }));
   };
 
   ws.onmessage = async (evt) => {
     try {
       const data = JSON.parse(evt.data);
-      console.log('📨 Message reçu:', data.type, 'de:', data.sender);
       
       if (data.type === 'appelEnAttente') {
         allAppels = data.appels || [];
@@ -221,18 +204,18 @@ function initWebSocket() {
       }
       
       if (data.type === 'chat' && data.sender === currentEleve) {
-        addChatMessage(data.sender, data.message, data.timestamp);
+        addChatMessage(data.sender, data.message);
       }
       
       if (data.type === 'newFile' && data.sender === currentEleve) {
         addFileToList(data.filename, data.sender, data.content);
       }
       
-      // WEBRTC SIGNALING - PROFESSEUR REÇOIT L'OFFRE
+      // WEBRTC - RECEVOIR L'OFFRE DE L'ÉLÈVE
       if (data.type === 'offer' && data.sender === currentEleve) {
-        console.log('📥 OFFRE reçue de l\'élève:', data.sender);
+        console.log('📥 OFFRE reçue de:', currentEleve);
         if (!pc) {
-          console.log('🔄 RTCPeerConnection n\'existe pas, création...');
+          console.log('🔄 Création RTCPeerConnection...');
           await initPeerConnection();
         }
         console.log('📥 Définition remote description (offer)');
@@ -240,12 +223,12 @@ function initWebSocket() {
         console.log('📝 Création answer...');
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        console.log('📤 Envoi ANSWER au serveur');
+        console.log('📤 Envoi ANSWER');
         ws.send(JSON.stringify({ type: 'answer', target: currentEleve, answer: answer }));
       }
       
       if (data.type === 'answer' && data.sender === currentEleve && pc) {
-        console.log('📥 ANSWER reçue de l\'élève');
+        console.log('📥 ANSWER reçue');
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
       }
       
@@ -282,11 +265,7 @@ function saveProfProfile() {
     return;
   }
   
-  localStorage.setItem('prof_country', profCountry);
-  localStorage.setItem('prof_subjects', profSubjects.join(','));
-  
-  document.getElementById('paysLabel').textContent = profCountry;
-  document.getElementById('matiereLabel').textContent = profSubjects.join(', ');
+  document.getElementById('profLabel').textContent = `${profPre} ${profNom} (${profCountry})`;
   document.getElementById('setupSection').style.display = 'none';
   document.getElementById('mainContainer').style.display = 'grid';
   
@@ -307,23 +286,16 @@ function logout() {
 }
 
 document.getElementById('profLabel').textContent = `${profPre} ${profNom}`;
-document.getElementById('paysLabel').textContent = profCountry;
-document.getElementById('matiereLabel').textContent = profSubjects.join(', ');
-
 document.getElementById('saveProfileBtn').addEventListener('click', saveProfProfile);
 document.getElementById('logoutBtn').addEventListener('click', logout);
 document.getElementById('subjectFilterProf').addEventListener('change', filterWaiting);
-document.getElementById('countryFilterProf').addEventListener('change', filterWaiting);
 document.getElementById('sendChatBtn').addEventListener('click', sendChat);
 document.getElementById('sendFileBtn').addEventListener('click', sendFile);
 document.getElementById('endCallBtn').addEventListener('click', endCall);
 
 function populateFilters() {
   const subjects = [...new Set(allAppels.map(a => a.subject).filter(Boolean))];
-  const countries = [...new Set(allAppels.map(a => a.country || a.senderCountry).filter(Boolean))];
-  
   const subSelect = document.getElementById('subjectFilterProf');
-  const countSelect = document.getElementById('countryFilterProf');
   
   subSelect.innerHTML = '<option value="">📚 Toutes les matières</option>';
   subjects.forEach(s => {
@@ -332,26 +304,15 @@ function populateFilters() {
     opt.textContent = s;
     subSelect.appendChild(opt);
   });
-  
-  countSelect.innerHTML = '<option value="">🌍 Tous les pays</option>';
-  countries.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = c;
-    countSelect.appendChild(opt);
-  });
 }
 
 function filterWaiting() {
   const subFilter = document.getElementById('subjectFilterProf').value;
-  const countFilter = document.getElementById('countryFilterProf').value;
   
   const filtered = allAppels.filter(a => {
     const subject = a.subject || '';
-    const country = a.country || a.senderCountry || '';
     const matchSub = !subFilter || subject === subFilter;
-    const matchCount = !countFilter || country === countFilter;
-    return matchSub && matchCount;
+    return matchSub;
   });
   
   renderWaiting(filtered);
@@ -371,7 +332,6 @@ function renderWaiting(appels) {
 
   appels.forEach(a => {
     const name = a.eleve || 'Inconnu';
-    const country = a.country || a.senderCountry || 'Inconnu';
     const subject = a.subject || 'Non spécifiée';
     
     const div = document.createElement('div');
@@ -381,11 +341,10 @@ function renderWaiting(appels) {
         <div class="eleve-name">${name}</div>
         <div class="eleve-meta">
           <span class="eleve-subject">📚 ${subject}</span>
-          <span class="eleve-country">🌍 ${country}</span>
         </div>
       </div>
       <div class="eleve-actions">
-        <button class="accept" onclick="acceptCall('${name}', '${country}', '${subject}')">✅ Accepter</button>
+        <button class="accept" onclick="acceptCall('${name}')">✅ Accepter</button>
         <button class="reject" onclick="rejectCall('${name}')">❌ Rejeter</button>
       </div>
     `;
@@ -393,10 +352,9 @@ function renderWaiting(appels) {
   });
 }
 
-async function acceptCall(eleve, country, subject) {
+async function acceptCall(eleve) {
   currentEleve = eleve;
   document.getElementById('currentEleve').textContent = eleve;
-  document.getElementById('eleveDetailBox').innerHTML = `<strong>Élève:</strong> ${eleve}<br><strong>Matière:</strong> ${subject}`;
   document.getElementById('callSection').classList.add('active');
   document.getElementById('noEleveSection').style.display = 'none';
   
@@ -453,11 +411,11 @@ function sendChat() {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'chat', target: currentEleve, message: msg }));
   }
-  addChatMessage('Vous', msg, new Date().toISOString());
+  addChatMessage('Vous', msg);
   document.getElementById('chatInput').value = '';
 }
 
-function addChatMessage(sender, message, timestamp) {
+function addChatMessage(sender, message) {
   const box = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'chat-message';
@@ -495,9 +453,9 @@ function addFileToList(filename, from, content) {
   if (content) {
     const blob = base64ToBlob(content);
     const url = URL.createObjectURL(blob);
-    li.innerHTML = `<a href="${url}" download="${filename}">📄 ${filename}</a><span class="file-info">de ${from}</span>`;
+    li.innerHTML = `<a href="${url}" download="${filename}">📄 ${filename}</a>`;
   } else {
-    li.innerHTML = `<span class="file-name">📄 ${filename}</span><span class="file-info">de ${from}</span>`;
+    li.innerHTML = `<span class="file-name">📄 ${filename}</span>`;
   }
   ul.appendChild(li);
 }
@@ -512,7 +470,7 @@ function base64ToBlob(b64) {
 async function initPeerConnection() {
   if (pc) return;
   
-  console.log('🔄 Création RTCPeerConnection...');
+  console.log('🔄 Création RTCPeerConnection (prof)...');
   
   pc = new RTCPeerConnection({
     iceServers: [
@@ -540,82 +498,59 @@ async function initPeerConnection() {
   });
 
   try {
-    console.log('🎤 Demande accès caméra/micro...');
+    console.log('🎤 Demande accès caméra/micro (prof)...');
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    console.log('✅ Flux local obtenu');
+    console.log('✅ Flux local obtenu (prof)');
     document.getElementById('localVideo').srcObject = localStream;
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    localStream.getTracks().forEach(t => {
+      console.log('📹 Track ajouté:', t.kind);
+      pc.addTrack(t, localStream);
+    });
   } catch (err) {
-    console.error('❌ Erreur caméra:', err);
-    alert('Impossible d\'accéder à la caméra/micro: ' + err.message);
+    console.error('❌ Erreur caméra (prof):', err);
+    alert('Erreur caméra: ' + err.message);
     return;
   }
 
   pc.ontrack = (ev) => {
-    console.log('🎥 Flux distant reçu:', ev.streams);
+    console.log('🎥 Flux distant reçu (prof):', ev.streams);
+    console.log('🎬 Track type:', ev.track.kind);
     if (ev.streams && ev.streams[0]) {
-      document.getElementById('remoteVideo').srcObject = ev.streams[0];
+      console.log('✅ Assignation flux distant à remoteVideo (prof)');
+      const videoElement = document.getElementById('remoteVideo');
+      if (videoElement) {
+        videoElement.srcObject = ev.streams[0];
+        videoElement.play().catch(err => console.error('Erreur play:', err));
+      }
     }
   };
 
   pc.onicecandidate = (ev) => {
-    if (ev.candidate && profSelected && ws && ws.readyState === WebSocket.OPEN) {
-      console.log('📤 ICE candidate:', ev.candidate.candidate);
-      ws.send(JSON.stringify({ type: 'ice', target: profSelected, candidate: ev.candidate }));
+    if (ev.candidate && currentEleve && ws && ws.readyState === 1) {
+      console.log('📤 Envoi ICE candidate (prof)');
+      ws.send(JSON.stringify({ type: 'ice', target: currentEleve, candidate: ev.candidate }));
     }
   };
 
   pc.onconnectionstatechange = () => {
-    console.log('🔗 Connection state:', pc.connectionState);
-    if (pc.connectionState === 'connected' || pc.connectionState === 'completed') {
-      console.log('✅✅✅ CONNEXION RÉUSSIE ✅✅✅');
-    }
-    if (pc.connectionState === 'failed') {
-      console.error('❌ Connexion échouée');
-      console.log('ICE Connection State:', pc.iceConnectionState);
-      console.log('ICE Gathering State:', pc.iceGatheringState);
-      console.log('Signaling State:', pc.signalingState);
-    }
-  };
-
-  pc.onicegandidatefailed = (ev) => {
-    console.error('❌ ICE candidate échoué:', ev);
-  };
-
-  pc.oniceerror = (ev) => {
-    console.error('❌ ICE error:', ev);
+    console.log('🔗 Connexion état (prof):', pc.connectionState);
   };
 
   pc.onsignalingstatechange = () => {
-    console.log('📡 Signaling state:', pc.signalingState);
+    console.log('📡 Signaling état (prof):', pc.signalingState);
   };
 
   pc.oniceconnectionstatechange = () => {
-    console.log('🧊 ICE connection state:', pc.iceConnectionState);
+    console.log('🧊 ICE connection state (prof):', pc.iceConnectionState);
   };
 
   pc.onicegatheringstatechange = () => {
-    console.log('📍 ICE gathering state:', pc.iceGatheringState);
+    console.log('📍 ICE gathering state (prof):', pc.iceGatheringState);
   };
 
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    console.error('❌ WebSocket non connecté');
-    return;
-  }
-
-  try {
-    console.log('📝 Création offre...');
-    const offer = await pc.createOffer({ 
-      offerToReceiveAudio: true, 
-      offerToReceiveVideo: true 
-    });
-    await pc.setLocalDescription(offer);
-    console.log('✅ Offre créée');
-    ws.send(JSON.stringify({ type: 'offer', target: profSelected, offer: offer }));
-    console.log('✅ Offre envoyée');
-  } catch (err) {
-    console.error('❌ Erreur création offre:', err);
-  }
+  pc.oniceerror = (ev) => {
+    console.error('❌ ICE error (prof):', ev);
+  };
 }
 
 document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
