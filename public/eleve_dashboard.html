@@ -562,6 +562,7 @@ function base64ToBlob(b64) {
 }
 
 // ===== WEBRTC =====
+
 async function initPeerConnection() {
   if (pc) return;
   
@@ -613,18 +614,63 @@ async function initPeerConnection() {
 
   pc.onicecandidate = (ev) => {
     if (ev.candidate && profSelected && ws && ws.readyState === WebSocket.OPEN) {
-      console.log('📤 Envoi ICE candidate');
+      console.log('📤 ICE candidate:', ev.candidate.candidate);
       ws.send(JSON.stringify({ type: 'ice', target: profSelected, candidate: ev.candidate }));
     }
   };
 
   pc.onconnectionstatechange = () => {
-    console.log('🔗 Connexion state:', pc.connectionState);
+    console.log('🔗 Connection state:', pc.connectionState);
+    if (pc.connectionState === 'connected' || pc.connectionState === 'completed') {
+      console.log('✅✅✅ CONNEXION RÉUSSIE ✅✅✅');
+    }
+    if (pc.connectionState === 'failed') {
+      console.error('❌ Connexion échouée');
+      console.log('ICE Connection State:', pc.iceConnectionState);
+      console.log('ICE Gathering State:', pc.iceGatheringState);
+      console.log('Signaling State:', pc.signalingState);
+    }
+  };
+
+  pc.onicegandidatefailed = (ev) => {
+    console.error('❌ ICE candidate échoué:', ev);
+  };
+
+  pc.oniceerror = (ev) => {
+    console.error('❌ ICE error:', ev);
   };
 
   pc.onsignalingstatechange = () => {
     console.log('📡 Signaling state:', pc.signalingState);
   };
+
+  pc.oniceconnectionstatechange = () => {
+    console.log('🧊 ICE connection state:', pc.iceConnectionState);
+  };
+
+  pc.onicegatheringstatechange = () => {
+    console.log('📍 ICE gathering state:', pc.iceGatheringState);
+  };
+
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error('❌ WebSocket non connecté');
+    return;
+  }
+
+  try {
+    console.log('📝 Création offre...');
+    const offer = await pc.createOffer({ 
+      offerToReceiveAudio: true, 
+      offerToReceiveVideo: true 
+    });
+    await pc.setLocalDescription(offer);
+    console.log('✅ Offre créée');
+    ws.send(JSON.stringify({ type: 'offer', target: profSelected, offer: offer }));
+    console.log('✅ Offre envoyée');
+  } catch (err) {
+    console.error('❌ Erreur création offre:', err);
+  }
+}
 
   // ATTENDRE QUE LE WS SOIT CONNECTÉ AVANT DE CRÉER L'OFFRE
   if (!ws || ws.readyState !== WebSocket.OPEN) {
