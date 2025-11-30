@@ -34,7 +34,7 @@ console.log("   DB_USER:", process.env.DB_USER);
 console.log("   DB_NAME:", process.env.DB_NAME);
 console.log("   DB_PORT:", process.env.DB_PORT);
 console.log("   DB_PASS:", process.env.DB_PASS ? "***" : "NON DÉFINI");
-console.log("   EMAIL_USER:", process.env.EMAIL_USER ? "✅" : "❌ NON DÉFINI");
+console.log("   EMAIL_USER:", process.env.EMAIL_USER ? "✅" : "❌ DÉSACTIVÉ");
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -52,29 +52,40 @@ pool.connect()
   .then(() => console.log("✅ Connecté à PostgreSQL"))
   .catch(err => console.error("❌ Erreur PostgreSQL :", err));
 
-// --- Email Configuration (async init) ---
+// --- Email Configuration (OPTIONNEL - Ne pas bloquer le serveur) ---
 let transporter = null;
+let emailEnabled = false;
 
-async function initializeEmailService() {
+function initializeEmailService() {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log("⚠️ Email service skipped: EMAIL_USER ou EMAIL_PASS non défini");
+    console.log("ℹ️  Service email DÉSACTIVÉ (EMAIL_USER/PASS non défini)");
     return;
   }
 
-  transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-
   try {
-    await transporter.verify();
-    console.log("✅ Email service ready");
+    // Configuration avec timeout court et sans vérification
+    transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      connectionTimeout: 5000,
+      socketTimeout: 5000
+    });
+
+    // Ne pas vérifier avec verify() car cela cause le timeout
+    // À la place, on test que lors du premier envoi
+    emailEnabled = true;
+    console.log("✅ Service email configuré (mode optimisé)");
   } catch (error) {
-    console.log("⚠️ Email config warning:", error.message);
-    console.log("💡 Continuer sans service email. Vérifiez votre configuration.");
+    console.log("⚠️  Erreur config email:", error.message);
+    console.log("💡 Le service email est désactivé - Les fonctionnalités principales restent actives");
+    transporter = null;
+    emailEnabled = false;
   }
 }
 
@@ -239,35 +250,35 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 
     const resetLink = `${process.env.FRONTEND_URL || "http://localhost:4000"}/reset_password.html?token=${token}`;
 
-    if (transporter) {
-      try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: "Réinitialiser votre mot de passe - Plateforme Scolaire",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #667eea;">Réinitialisation de mot de passe</h2>
-              <p>Bonjour ${user.prenom},</p>
-              <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
-              <p style="margin: 30px 0;">
-                <a href="${resetLink}" style="background-color: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                  Réinitialiser mon mot de passe
-                </a>
-              </p>
-              <p style="color: #999; font-size: 12px;">⏱️ Ce lien expire dans 1 heure.</p>
-              <hr style="border: none; border-top: 1px solid #eee; margin-top: 30px;">
-              <p style="color: #999; font-size: 11px;">Plateforme Scolaire Global - Soutien en ligne 24/7</p>
-            </div>
-          `
-        });
-        res.json({ message: "Email de réinitialisation envoyé avec succès" });
-      } catch (emailErr) {
-        console.log("⚠️ Email non envoyé:", emailErr.message);
-        res.json({ message: "Token généré mais email non envoyé. Contactez l'admin." });
-      }
+    if (emailEnabled && transporter) {
+      // Envoyer l'email sans bloquer la requête
+      transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Réinitialiser votre mot de passe - Plateforme Scolaire",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #667eea;">Réinitialisation de mot de passe</h2>
+            <p>Bonjour ${user.prenom},</p>
+            <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+            <p style="margin: 30px 0;">
+              <a href="${resetLink}" style="background-color: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                Réinitialiser mon mot de passe
+              </a>
+            </p>
+            <p style="color: #999; font-size: 12px;">⏱️ Ce lien expire dans 1 heure.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin-top: 30px;">
+            <p style="color: #999; font-size: 11px;">Plateforme Scolaire Global - Soutien en ligne 24/7</p>
+          </div>
+        `
+      }).catch(err => {
+        // Logger l'erreur mais ne pas interrompre
+        console.log("⚠️ Email non envoyé:", err.message);
+      });
+
+      res.json({ message: "Email de réinitialisation envoyé" });
     } else {
-      res.json({ message: "Email non disponible. Contactez l'admin." });
+      res.json({ message: "Token généré. Service email indisponible pour l'instant." });
     }
 
   } catch (err) {
@@ -361,8 +372,8 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 // --- WS maps ---
-const clients = new Map();
-const connectedProfs = new Map();
+const clients = new Map(); // Tous les clients (prof + eleve)
+const connectedProfs = new Map(); // Seulement les profs
 const appelsEnAttente = new Map();
 const appelsEnCours = new Map();
 
@@ -426,8 +437,9 @@ wss.on("connection", (ws) => {
           appelsEnAttente.set(currentUsername, []);
         }
 
-        broadcastProfList();
-        console.log(`✅ ${currentUsername} connecté (${currentRole})`);
+        // Broadcaster immédiatement la liste mise à jour
+        broadcastProfListToAll();
+        console.log(`✅ ${currentUsername} connecté (${currentRole}) depuis ${currentCountry}`);
         return;
       }
 
@@ -445,7 +457,7 @@ wss.on("connection", (ws) => {
             prof.languages = currentLanguages;
             connectedProfs.set(currentUsername, prof);
           }
-          broadcastProfList();
+          broadcastProfListToAll();
         }
         return;
       }
@@ -469,7 +481,7 @@ wss.on("connection", (ws) => {
           });
           appelsEnAttente.set(data.target, appels);
 
-          if (prof.ws.readyState === 1) {
+          if (prof.ws && prof.ws.readyState === 1) {
             prof.ws.send(JSON.stringify({ type: "appelEnAttente", appels }));
           }
           ws.send(JSON.stringify({ type: "demandAppelConfirmee", prof: data.target }));
@@ -513,6 +525,9 @@ wss.on("connection", (ws) => {
           if (wsEleve?.readyState === 1) wsEleve.send(msg);
         }, 1000);
         appelsEnCours.get(key).timer = timer;
+        
+        // Broadcast après acceptation pour mettre à jour la disponibilité
+        broadcastProfListToAll();
         return;
       }
 
@@ -542,7 +557,7 @@ wss.on("connection", (ws) => {
           other.send(JSON.stringify({ type: "appelTermine" }));
         }
 
-        broadcastWaitingList();
+        broadcastProfListToAll();
         return;
       }
 
@@ -609,12 +624,12 @@ wss.on("connection", (ws) => {
       connectedProfs.delete(currentUsername);
       appelsEnAttente.delete(currentUsername);
     }
-    broadcastProfList();
+    broadcastProfListToAll();
   });
 });
 
 // ===== BROADCAST FUNCTIONS =====
-function broadcastProfList() {
+function broadcastProfListToAll() {
   const profList = [];
   for (const [username, prof] of connectedProfs.entries()) {
     const appels = appelsEnAttente.get(username) || [];
@@ -627,16 +642,23 @@ function broadcastProfList() {
       appelsEnAttente: appels.length
     });
   }
+
   const message = JSON.stringify({ type: "profList", profs: profList });
-  for (const ws of clients.values()) {
-    if (ws.readyState === 1) ws.send(message);
+  
+  console.log(`📊 Broadcasting ${profList.length} profs à ${clients.size} clients`);
+  
+  // Envoyer à TOUS les clients connectés
+  for (const [username, ws] of clients.entries()) {
+    if (ws && ws.readyState === 1) {
+      ws.send(message);
+    }
   }
 }
 
 function broadcastWaitingList() {
   for (const [profUsername, profData] of connectedProfs.entries()) {
     const appels = appelsEnAttente.get(profUsername) || [];
-    if (profData.ws.readyState === 1) {
+    if (profData.ws && profData.ws.readyState === 1) {
       profData.ws.send(JSON.stringify({ type: "appelEnAttente", appels }));
     }
   }
@@ -647,4 +669,7 @@ export { pool };
 
 // --- Start server ---
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log(`✅ Serveur lancé sur http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  console.log(`✅ Serveur lancé sur http://localhost:${PORT}`);
+  console.log(`📊 Email service: ${emailEnabled ? '✅ ACTIVÉ' : '❌ DÉSACTIVÉ'}`);
+});

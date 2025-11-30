@@ -218,9 +218,23 @@ let allProfs = [];
 let ws = null;
 
 // ===== WEBSOCKET =====
-const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+function getWebSocketURL() {
+  let host = location.host;
+  
+  // Si on est en file:// ou host vide, utiliser localhost:4000
+  if (!host || host === '') {
+    host = 'localhost:4000';
+    console.log('⚠️ Host vide détecté, utilisation de:', host);
+  }
+  
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${protocol}//${host}`;
+  console.log('🔗 WebSocket URL:', url);
+  return url;
+}
 
 function initWebSocket() {
+  const WS_URL = getWebSocketURL();
   ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {

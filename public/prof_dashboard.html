@@ -85,6 +85,10 @@
   
   .stats-badge { display:inline-block; background:#007bff; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px; }
   
+  .status-indicator { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+  .status-online { background:#28a745; }
+  .status-offline { background:#dc3545; }
+  
   hr { border:none; border-top:1px solid #eee; margin:16px 0; }
 </style>
 </head>
@@ -94,7 +98,7 @@
 <div class="header">
   <div>
     <h1>👨‍🏫 Dashboard Professeur</h1>
-    <div class="header-info">Connecté : <strong id="profLabel">—</strong> | Matières : <strong id="matiereLabel">—</strong> | Pays : <strong id="paysLabel">—</strong></div>
+    <div class="header-info">Connecté : <strong id="profLabel">—</strong> | Matières : <strong id="matiereLabel">—</strong> | Pays : <strong id="paysLabel">—</strong> | WS: <span id="wsStatus">🔴 Déconnecté</span></div>
   </div>
   <button class="logout-btn" id="logoutBtn">🚪 Déconnexion</button>
 </div>
@@ -203,6 +207,8 @@
 </div>
 
 <script>
+console.log('📄 Script professeur chargé');
+
 // ===== DONNÉES UTILISATEUR =====
 const saved = JSON.parse(localStorage.getItem('profConnecte') || 'null');
 const profUsername = saved?.username || null;
@@ -228,18 +234,34 @@ let timerInterval = null;
 let callStart = null;
 let allAppels = [];
 let filteredAppels = [];
-
-// ===== WEBSOCKET =====
-// 👉 WebSocket fixé sur ton serveur local : http://localhost:10000
-const WS_URL = "ws://localhost:10000";
 let ws = null;
 
+// ===== WEBSOCKET =====
+function getWebSocketURL() {
+  let host = location.host;
+  
+  // Si on est en file:// ou host vide, utiliser localhost:4000
+  if (!host || host === '') {
+    host = 'localhost:4000';
+    console.log('⚠️ Host vide détecté, utilisation de:', host);
+  }
+  
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${protocol}//${host}`;
+  console.log('🔗 WebSocket URL:', url);
+  return url;
+}
+
 function initWebSocket() {
-  console.log("Connexion WebSocket →", WS_URL);
+  const WS_URL = getWebSocketURL();
+  console.log('🔌 Tentative de connexion WS à:', WS_URL);
+  
   ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {
     console.log('✅ WS connecté');
+    document.getElementById('wsStatus').textContent = '🟢 Connecté';
+    
     ws.send(JSON.stringify({ 
       type: 'register', 
       username: profUsername, 
@@ -253,9 +275,11 @@ function initWebSocket() {
   ws.onmessage = async (evt) => {
     try {
       const data = JSON.parse(evt.data);
+      console.log('📨 Message WS reçu:', data.type);
       
       if (data.type === 'appelEnAttente' || data.type === 'listeEleves') {
         allAppels = data.appels || data.eleves || [];
+        console.log('📊 Élèves en attente:', allAppels.length);
         populateFilters();
         filterWaiting();
       }
@@ -295,17 +319,19 @@ function initWebSocket() {
         }
       }
     } catch (e) {
-      console.error('WS error:', e);
+      console.error('❌ WS error:', e);
     }
   };
 
   ws.onclose = () => {
-    console.log('❌ WS fermé');
+    console.log('❌ WS fermé, reconnexion dans 3s');
+    document.getElementById('wsStatus').textContent = '🔴 Déconnecté';
     setTimeout(initWebSocket, 3000);
   };
 
   ws.onerror = (err) => {
     console.error('❌ WS error:', err);
+    document.getElementById('wsStatus').textContent = '🔴 Erreur';
   };
 }
 
@@ -413,7 +439,7 @@ function filterWaiting() {
   filteredAppels = allAppels.filter(a => {
     const subject = a.subject || '';
     const country = a.country || a.senderCountry || '';
-    const matchSub = !subFilter ? profSubjects.includes(subject) : subject === subFilter;
+    const matchSub = !subFilter ? true : subject === subFilter;
     const matchCount = !countFilter || country === countFilter;
     return matchSub && matchCount;
   });
@@ -655,6 +681,7 @@ async function initPeerConnection() {
     console.log('🔗 WebRTC connection state:', pc.connectionState);
   };
 }
+
 // ===== UTIL =====
 function escapeHtml(s) {
   const d = document.createElement('div');
