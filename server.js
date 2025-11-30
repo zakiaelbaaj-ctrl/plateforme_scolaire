@@ -52,22 +52,33 @@ pool.connect()
   .then(() => console.log("✅ Connecté à PostgreSQL"))
   .catch(err => console.error("❌ Erreur PostgreSQL :", err));
 
-// --- Email Configuration ---
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+// --- Email Configuration (async init) ---
+let transporter = null;
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.log("⚠️ Email config error:", error.message);
-  } else {
-    console.log("✅ Email service ready");
+async function initializeEmailService() {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log("⚠️ Email service skipped: EMAIL_USER ou EMAIL_PASS non défini");
+    return;
   }
-});
+
+  transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+
+  try {
+    await transporter.verify();
+    console.log("✅ Email service ready");
+  } catch (error) {
+    console.log("⚠️ Email config warning:", error.message);
+    console.log("💡 Continuer sans service email. Vérifiez votre configuration.");
+  }
+}
+
+initializeEmailService();
 
 // --- API routes ---
 app.use("/api/auth", authRoutes);
@@ -168,7 +179,7 @@ app.post("/api/auth/register", async (req, res) => {
     const { username, password, prenom, nom, email, role, matiere } = req.body;
 
     if (!username || !password || !prenom || !nom || !email) {
-      return res.status(400).json({ message: "Tous les champs sont requis (username, password, prenom, nom, email)" });
+      return res.status(400).json({ message: "Tous les champs sont requis" });
     }
 
     const check = await pool.query(
@@ -200,7 +211,6 @@ app.post("/api/auth/register", async (req, res) => {
 
 // ===== ROUTES PASSWORD RESET =====
 
-// Route: Demander la réinitialisation
 app.post("/api/auth/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -219,9 +229,8 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     }
 
     const user = userResult.rows[0];
-
     const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 heure
+    const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000);
 
     await pool.query(
       "INSERT INTO password_reset_tokens (email, token, expires_at) VALUES ($1, $2, $3)",
@@ -230,29 +239,36 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 
     const resetLink = `${process.env.FRONTEND_URL || "http://localhost:4000"}/reset_password.html?token=${token}`;
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Réinitialiser votre mot de passe - Plateforme Scolaire",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #667eea;">Réinitialisation de mot de passe</h2>
-          <p>Bonjour ${user.prenom},</p>
-          <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
-          <p style="margin: 30px 0;">
-            <a href="${resetLink}" style="background-color: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-              Réinitialiser mon mot de passe
-            </a>
-          </p>
-          <p style="color: #999; font-size: 12px;">⏱️ Ce lien expire dans 1 heure.</p>
-          <p style="color: #999; font-size: 12px;">Si vous n'avez pas demandé cela, ignorez cet email.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin-top: 30px;">
-          <p style="color: #999; font-size: 11px;">Plateforme Scolaire Global - Soutien en ligne 24/7</p>
-        </div>
-      `
-    });
-
-    res.json({ message: "Email de réinitialisation envoyé avec succès" });
+    if (transporter) {
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: "Réinitialiser votre mot de passe - Plateforme Scolaire",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #667eea;">Réinitialisation de mot de passe</h2>
+              <p>Bonjour ${user.prenom},</p>
+              <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+              <p style="margin: 30px 0;">
+                <a href="${resetLink}" style="background-color: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                  Réinitialiser mon mot de passe
+                </a>
+              </p>
+              <p style="color: #999; font-size: 12px;">⏱️ Ce lien expire dans 1 heure.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin-top: 30px;">
+              <p style="color: #999; font-size: 11px;">Plateforme Scolaire Global - Soutien en ligne 24/7</p>
+            </div>
+          `
+        });
+        res.json({ message: "Email de réinitialisation envoyé avec succès" });
+      } catch (emailErr) {
+        console.log("⚠️ Email non envoyé:", emailErr.message);
+        res.json({ message: "Token généré mais email non envoyé. Contactez l'admin." });
+      }
+    } else {
+      res.json({ message: "Email non disponible. Contactez l'admin." });
+    }
 
   } catch (err) {
     console.error("Erreur forgot-password:", err);
@@ -260,7 +276,6 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   }
 });
 
-// Route: Valider le token
 app.get("/api/auth/verify-token/:token", async (req, res) => {
   try {
     const { token } = req.params;
@@ -282,7 +297,6 @@ app.get("/api/auth/verify-token/:token", async (req, res) => {
   }
 });
 
-// Route: Réinitialiser le mot de passe
 app.post("/api/auth/reset-password", async (req, res) => {
   try {
     const { token, password } = req.body;
@@ -305,7 +319,6 @@ app.post("/api/auth/reset-password", async (req, res) => {
     }
 
     const email = tokenResult.rows[0].email;
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const updateResult = await pool.query(
@@ -505,36 +518,45 @@ wss.on("connection", (ws) => {
 
       // ===== APPEL TERMINE =====
       if (data.type === "appelTermine") {
-  const { prof, eleve, duration } = data; // ← récupérer la durée en secondes depuis le client
-  const key = `${prof}_${eleve}`;
-  const callData = appelsEnCours.get(key);
-  if (callData) {
-    clearInterval(callData.timer);
+        const { prof, eleve, duration } = data;
+        const key = `${prof}_${eleve}`;
+        const callData = appelsEnCours.get(key);
+        
+        if (callData) {
+          clearInterval(callData.timer);
+          const durationMinutes = Math.round((duration / 60) * 100) / 100;
 
-    // Convertir la durée en minutes avec 2 décimales
-    const durationMinutes = Math.round((duration / 60) * 100) / 100;
+          await pool.query(
+            `UPDATE appels
+             SET end_time = NOW(),
+                 duree_minutes = $1,
+                 statut = 'termine'
+             WHERE prof_username = $2 AND eleve_username = $3 AND statut = 'en_cours'`,
+            [durationMinutes, prof, eleve]
+          );
+          appelsEnCours.delete(key);
+        }
 
-    await pool.query(
-      `UPDATE appels
-       SET end_time = NOW(),
-           duree_minutes = $1,
-           statut = 'termine'
-       WHERE prof_username = $2 AND eleve_username = $3 AND statut = 'en_cours'`,
-      [durationMinutes, prof, eleve]
-    );
-    appelsEnCours.delete(key);
-  }
+        const other = clients.get(prof) || connectedProfs.get(eleve)?.ws;
+        if (other && other.readyState === 1) {
+          other.send(JSON.stringify({ type: "appelTermine" }));
+        }
 
-  // Notifier l'autre personne
-  const other = clients.get(prof) || connectedProfs.get(eleve)?.ws;
-  if (other && other.readyState === 1) {
-    other.send(JSON.stringify({ type: "appelTermine" }));
-  }
+        broadcastWaitingList();
+        return;
+      }
 
-  // Rafraîchir la liste d'attente
-  broadcastWaitingList();
-  return;
-}
+      // ===== REJETER APPEL =====
+      if (data.type === "rejeterAppel") {
+        const appels = appelsEnAttente.get(currentUsername) || [];
+        const filtered = appels.filter(a => a.eleve !== data.eleveRejete);
+        appelsEnAttente.set(currentUsername, filtered);
+
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ type: "appelEnAttente", appels: filtered }));
+        }
+        return;
+      }
 
       // ===== WEBRTC SIGNALING =====
       if (["offer", "answer", "ice"].includes(data.type)) {
@@ -598,7 +620,7 @@ function broadcastProfList() {
     const appels = appelsEnAttente.get(username) || [];
     profList.push({
       username,
-      disponible: prof.disponible,
+      disponible: appels.length === 0,
       country: prof.country,
       subjects: prof.subjects,
       languages: prof.languages,

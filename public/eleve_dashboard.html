@@ -82,6 +82,10 @@
   .filter-section label { font-weight:500; color:#333; font-size:12px; }
   .filter-section select { padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:12px; }
   
+  .status-badge { padding:2px 8px; border-radius:3px; font-size:11px; font-weight:500; }
+  .status-available { background:#d4edda; color:#155724; }
+  .status-busy { background:#f8d7da; color:#721c24; }
+  
   hr { border:none; border-top:1px solid #eee; margin:16px 0; }
 </style>
 </head>
@@ -131,7 +135,7 @@
         <option value="">🌍 Tous les pays</option>
       </select>
     </div>
-    <div id="profList" class="empty-list">Aucun professeur disponible</div>
+    <div id="profList" class="empty-list">⏳ Chargement des professeurs...</div>
   </div>
 
   <!-- APPEL EN COURS (Droite) -->
@@ -211,70 +215,88 @@ let localStream = null;
 let timerInterval = null;
 let callStart = null;
 let allProfs = [];
+let ws = null;
 
 // ===== WEBSOCKET =====
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
-const ws = new WebSocket(WS_URL);
 
-ws.onopen = () => console.log('✅ WebSocket connecté');
+function initWebSocket() {
+  ws = new WebSocket(WS_URL);
 
-ws.onmessage = async (evt) => {
-  try {
-    const data = JSON.parse(evt.data);
-    
-    if (data.type === 'profList' || data.type === 'profListBySubject') {
-      allProfs = data.profs || [];
-      populateCountryFilter();
-      renderProfList(allProfs);
-    }
-    
-    if (data.type === 'appelAccepte' && data.eleve === eleveUsername) {
-      profSelected = data.prof;
-      startCall(data);
-    }
-    
-    if (data.type === 'chat' && data.sender !== eleveUsername) {
-      addChatMessage(data.sender, data.message, data.timestamp);
-    }
-    
-    if (data.type === 'newFile' && data.sender !== eleveUsername) {
-      addFileToList(data.filename, data.sender, data.content);
-    }
-    
-    if (data.type === 'appelTermine') {
-      alert('Le professeur a terminé l\'appel');
-      endCall();
-    }
-    
-    // WebRTC
-    if (data.type === 'offer' && data.sender === profSelected) {
-      if (!pc) await initPeerConnection();
-      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      ws.send(JSON.stringify({ type: 'answer', target: profSelected, answer }));
-    }
-    
-    if (data.type === 'answer' && data.sender === profSelected && pc) {
-      await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-    }
-    
-    if (data.type === 'ice' && data.sender === profSelected && pc && data.candidate) {
-      try {
-        if (pc.remoteDescription?.type) {
-          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
-      } catch (e) {
-        console.warn('ICE error:', e);
+  ws.onopen = () => {
+    console.log('✅ WebSocket connecté');
+  };
+
+  ws.onmessage = async (evt) => {
+    try {
+      const data = JSON.parse(evt.data);
+      
+      if (data.type === 'profList' || data.type === 'listeProfs') {
+        allProfs = data.profs || [];
+        console.log('📊 Liste des profs reçue:', allProfs);
+        populateCountryFilter();
+        filterProfs();
       }
+      
+      if (data.type === 'appelAccepte' && data.eleve === eleveUsername) {
+        console.log('✅ Appel accepté par:', data.prof);
+        profSelected = data.prof;
+        startCall(data);
+      }
+      
+      if (data.type === 'chat' && data.sender !== eleveUsername) {
+        addChatMessage(data.sender, data.message, data.timestamp);
+      }
+      
+      if (data.type === 'newFile' && data.sender !== eleveUsername) {
+        addFileToList(data.filename, data.sender, data.content);
+      }
+      
+      if (data.type === 'appelTermine') {
+        alert('Le professeur a terminé l\'appel');
+        endCall();
+      }
+      
+      if (data.type === 'erreur') {
+        console.error('⚠️ Erreur serveur:', data.message);
+      }
+      
+      // WebRTC
+      if (data.type === 'offer' && data.sender === profSelected) {
+        if (!pc) await initPeerConnection();
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        ws.send(JSON.stringify({ type: 'answer', target: profSelected, answer }));
+      }
+      
+      if (data.type === 'answer' && data.sender === profSelected && pc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+      }
+      
+      if (data.type === 'ice' && data.sender === profSelected && pc && data.candidate) {
+        try {
+          if (pc.remoteDescription?.type) {
+            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          }
+        } catch (e) {
+          console.warn('ICE error:', e);
+        }
+      }
+    } catch (e) {
+      console.error('❌ WS error:', e);
     }
-  } catch (e) {
-    console.error('WS error:', e);
-  }
-};
+  };
 
-ws.onclose = () => console.log('❌ WS fermé');
-ws.onerror = (err) => console.error('❌ WS error:', err);
+  ws.onclose = () => {
+    console.log('❌ WS fermé, tentative de reconnexion...');
+    setTimeout(initWebSocket, 3000);
+  };
+
+  ws.onerror = (err) => {
+    console.error('❌ WS error:', err);
+  };
+}
 
 // ===== INITIALISATION =====
 function initEleve() {
@@ -291,13 +313,22 @@ function initEleve() {
   document.getElementById('setupSection').style.display = 'none';
   document.getElementById('mainContainer').style.display = 'grid';
   
-  ws.send(JSON.stringify({ 
-    type: 'register', 
-    username: eleveUsername, 
-    role: 'eleve',
-    country: eleveCountry,
-    subject: matiereSearching
-  }));
+  // Initialiser WebSocket
+  initWebSocket();
+  
+  // Une fois connecté, envoyer l'enregistrement
+  const checkConnection = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      clearInterval(checkConnection);
+      ws.send(JSON.stringify({ 
+        type: 'register', 
+        username: eleveUsername, 
+        role: 'eleve',
+        country: eleveCountry,
+        subject: matiereSearching
+      }));
+    }
+  }, 100);
 }
 
 function populateCountryFilter() {
@@ -317,7 +348,11 @@ function populateCountryFilter() {
 
 function filterProfs() {
   const country = document.getElementById('countryFilter').value;
-  const filtered = country ? allProfs.filter(p => p.country === country) : allProfs;
+  const filtered = country 
+    ? allProfs.filter(p => p.country === country) 
+    : allProfs.filter(p => p.subjects && p.subjects.includes(matiereSearching));
+  
+  console.log('🔍 Filtrage:', { country, matiereSearching, filtered });
   renderProfList(filtered);
 }
 
@@ -326,7 +361,7 @@ function renderProfList(profs) {
   div.innerHTML = '';
   
   if (!profs || profs.length === 0) {
-    div.innerHTML = '<div class="empty-list">Aucun professeur disponible</div>';
+    div.innerHTML = '<div class="empty-list">Aucun professeur disponible pour le moment</div>';
     return;
   }
 
@@ -334,7 +369,9 @@ function renderProfList(profs) {
     const card = document.createElement('div');
     card.className = 'prof-item';
     
-    const status = prof.disponible ? '🟢 Disponible' : '🔴 Occupé';
+    const isAvailable = prof.disponible;
+    const statusText = isAvailable ? '🟢 Disponible' : '🔴 Occupé';
+    const statusClass = isAvailable ? 'status-available' : 'status-busy';
     const subjects = (prof.subjects || []).map(s => `<span class="prof-subject">${escapeHtml(s)}</span>`).join(' ');
     
     card.innerHTML = `
@@ -342,14 +379,14 @@ function renderProfList(profs) {
         <div class="prof-name">${escapeHtml(prof.username)}</div>
         <div class="prof-meta">
           ${subjects}
-          <span class="prof-country">🌍 ${escapeHtml(prof.country)}</span>
+          <span class="prof-country">🌍 ${escapeHtml(prof.country || 'Inconnu')}</span>
         </div>
-        <div class="prof-status">${status}</div>
+        <div class="prof-status"><span class="status-badge ${statusClass}">${statusText}</span></div>
       </div>
       <div class="prof-actions">
-        <button class="${prof.disponible ? 'primary' : 'secondary'}" 
-          onclick="demanderProf('${escapeHtml(prof.username)}', '${escapeHtml(prof.subjects[0] || '')}', '${escapeHtml(prof.country)}')"
-          ${!prof.disponible ? 'disabled' : ''}>Demander</button>
+        <button class="${isAvailable ? 'primary' : 'secondary'}" 
+          onclick="demanderProf('${escapeHtml(prof.username)}', '${escapeHtml((prof.subjects || [])[0] || matiereSearching)}', '${escapeHtml(prof.country || 'Inconnu')}')"
+          ${!isAvailable ? 'disabled' : ''}>📞 Demander</button>
       </div>
     `;
     div.appendChild(card);
@@ -357,6 +394,11 @@ function renderProfList(profs) {
 }
 
 function demanderProf(prof, subject, country) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    alert('⚠️ Connexion perdue, veuillez rafraîchir');
+    return;
+  }
+  
   ws.send(JSON.stringify({ 
     type: 'demandAppel', 
     sender: eleveUsername, 
@@ -365,7 +407,7 @@ function demanderProf(prof, subject, country) {
     target: prof 
   }));
   
-  alert('⏳ Demande envoyée au professeur...');
+  alert('⏳ Demande envoyée au professeur ' + prof + '...');
 }
 
 function startCall(data) {
@@ -389,7 +431,14 @@ document.getElementById('endCallBtn')?.addEventListener('click', endCall);
 function endCall() {
   if (!profSelected) return;
   
-  ws.send(JSON.stringify({ type: 'appelTermine', prof: profSelected, eleve: eleveUsername }));
+  const elapsedSeconds = Math.floor((Date.now() - callStart) / 1000);
+  
+  ws.send(JSON.stringify({ 
+    type: 'appelTermine', 
+    prof: profSelected, 
+    eleve: eleveUsername,
+    duration: elapsedSeconds 
+  }));
   
   stopTimer();
   if (pc) {
@@ -432,6 +481,12 @@ document.getElementById('sendChatBtn')?.addEventListener('click', () => {
   ws.send(JSON.stringify({ type: 'chat', target: profSelected, message: msg }));
   addChatMessage('Vous', msg, new Date().toISOString());
   document.getElementById('chatInput').value = '';
+});
+
+document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('sendChatBtn')?.click();
+  }
 });
 
 function addChatMessage(sender, message, timestamp) {
@@ -505,19 +560,21 @@ async function initPeerConnection() {
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    console.log('✅ Flux local obtenu');
     document.getElementById('localVideo').srcObject = localStream;
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
   } catch (err) {
     console.error('❌ Erreur caméra:', err);
-    alert('Impossible d\'accéder à la caméra/micro');
+    alert('Impossible d\'accéder à la caméra/micro: ' + err.message);
   }
 
   pc.ontrack = (ev) => {
+    console.log('🎥 Flux distant reçu');
     document.getElementById('remoteVideo').srcObject = ev.streams[0];
   };
 
   pc.onicecandidate = (ev) => {
-    if (ev.candidate && profSelected) {
+    if (ev.candidate && profSelected && ws) {
       ws.send(JSON.stringify({ type: 'ice', target: profSelected, candidate: ev.candidate }));
     }
   };
@@ -525,6 +582,7 @@ async function initPeerConnection() {
 
 function logout() {
   localStorage.removeItem('eleveConnecte');
+  if (ws) ws.close();
   location.href = '/login_eleve.html';
 }
 
