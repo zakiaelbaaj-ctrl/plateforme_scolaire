@@ -6,87 +6,87 @@
 <title>Dashboard Élève</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', sans-serif; margin:0; padding:20px; background:#f0f2f5; }
+  body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f0f2f5; }
   
-  .header { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }
-  .header h1 { margin:0; color:#333; font-size:24px; }
-  .header-info { color:#666; font-size:13px; }
-  .logout-btn { padding:8px 16px; background:#dc3545; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:500; }
-  .logout-btn:hover { background:#c82333; }
+  .header { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { margin: 0; color: #333; font-size: 24px; }
+  .header-info { color: #666; font-size: 13px; }
+  .logout-btn { padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
+  .logout-btn:hover { background: #c82333; }
   
-  .card { background:#fff; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
-  .card h2 { margin:0 0 16px 0; color:#333; font-size:18px; }
+  .card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .card h2 { margin: 0 0 16px 0; color: #333; font-size: 18px; }
   
-  .setup-section { background:#e3f2fd; border:1px solid #90caf9; }
-  .setup-input { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .setup-input input, .setup-input select { padding:8px 12px; border:1px solid #90caf9; border-radius:4px; font-size:13px; }
-  .setup-input button { padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:500; }
-  .setup-input button:hover { background:#0056b3; }
+  .setup-section { background: #e3f2fd; border: 1px solid #90caf9; }
+  .setup-input { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .setup-input input, .setup-input select { padding: 8px 12px; border: 1px solid #90caf9; border-radius: 4px; font-size: 13px; }
+  .setup-input button { padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
+  .setup-input button:hover { background: #0056b3; }
   
-  .container { display:grid; grid-template-columns: 1fr 2fr; gap:20px; }
-  @media(max-width:1200px) { .container { grid-template-columns: 1fr; } }
+  .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+  @media(max-width: 1200px) { .container { grid-template-columns: 1fr; } }
   
   .waiting-list { }
-  .prof-item { display:flex; justify-content:space-between; align-items:flex-start; padding:12px; border:1px solid #eee; border-radius:6px; margin-bottom:8px; background:#f9f9f9; }
-  .prof-info { flex:1; }
-  .prof-name { font-weight:600; color:#333; }
-  .prof-meta { font-size:12px; color:#666; margin-top:4px; }
-  .prof-subject { display:inline-block; padding:3px 8px; background:#e3f2fd; color:#007bff; border-radius:3px; font-size:11px; font-weight:500; margin-right:6px; }
-  .prof-country { display:inline-block; padding:2px 6px; background:#fff3cd; border-radius:3px; font-size:11px; }
-  .prof-status { font-size:12px; margin-top:4px; }
-  .prof-actions { display:flex; gap:6px; flex-direction:column; }
+  .prof-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; background: #f9f9f9; }
+  .prof-info { flex: 1; }
+  .prof-name { font-weight: 600; color: #333; }
+  .prof-meta { font-size: 12px; color: #666; margin-top: 4px; }
+  .prof-subject { display: inline-block; padding: 3px 8px; background: #e3f2fd; color: #007bff; border-radius: 3px; font-size: 11px; font-weight: 500; margin-right: 6px; }
+  .prof-country { display: inline-block; padding: 2px 6px; background: #fff3cd; border-radius: 3px; font-size: 11px; }
+  .prof-status { font-size: 12px; margin-top: 4px; }
+  .prof-actions { display: flex; gap: 6px; flex-direction: column; }
   
-  button { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; transition:all 0.2s; }
-  .primary { background:#007bff; color:white; }
-  .primary:hover { background:#0056b3; }
-  .danger { background:#dc3545; color:white; }
-  .danger:hover { background:#c82333; }
-  .secondary { background:#6c757d; color:white; }
-  .secondary:hover { background:#5a6268; }
+  button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+  .primary { background: #007bff; color: white; }
+  .primary:hover { background: #0056b3; }
+  .danger { background: #dc3545; color: white; }
+  .danger:hover { background: #c82333; }
+  .secondary { background: #6c757d; color: white; }
+  .secondary:hover { background: #5a6268; }
   
-  .call-section { display:none; }
-  .call-section.active { display:block; }
+  .call-section { display: none; }
+  .call-section.active { display: block; }
   
-  .videos-container { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px; }
-  .video-box { background:#000; border-radius:8px; overflow:hidden; height:300px; }
-  .video-box video { width:100%; height:100%; object-fit:cover; }
-  .video-label { font-size:12px; color:#666; margin-bottom:4px; font-weight:500; }
+  .videos-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .video-box { background: #000; border-radius: 8px; overflow: hidden; height: 300px; }
+  .video-box video { width: 100%; height: 100%; object-fit: cover; }
+  .video-label { font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 500; }
   
-  .controls { display:flex; gap:8px; align-items:center; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid #eee; }
-  .timer { font-weight:600; color:#dc3545; font-size:18px; }
+  .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #eee; }
+  .timer { font-weight: 600; color: #dc3545; font-size: 18px; }
   
-  .chat-box { display:flex; flex-direction:column; height:250px; margin-bottom:16px; border:1px solid #ddd; border-radius:6px; }
-  .chat-messages { flex:1; overflow-y:auto; padding:12px; background:#f9f9f9; }
-  .chat-message { margin-bottom:8px; }
-  .msg-sender { font-weight:600; color:#007bff; font-size:12px; }
-  .msg-text { color:#333; padding:4px 0; word-wrap:break-word; }
-  .msg-time { font-size:11px; color:#999; margin-top:2px; }
+  .chat-box { display: flex; flex-direction: column; height: 250px; margin-bottom: 16px; border: 1px solid #ddd; border-radius: 6px; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 12px; background: #f9f9f9; }
+  .chat-message { margin-bottom: 8px; }
+  .msg-sender { font-weight: 600; color: #007bff; font-size: 12px; }
+  .msg-text { color: #333; padding: 4px 0; word-wrap: break-word; }
+  .msg-time { font-size: 11px; color: #999; margin-top: 2px; }
   
-  .chat-input { display:flex; gap:8px; }
-  #chatInput { flex:1; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:13px; }
+  .chat-input { display: flex; gap: 8px; }
+  #chatInput { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
   
-  .files-list { list-style:none; padding:0; margin:0; }
-  .files-list li { padding:8px; background:#f9f9f9; border-radius:4px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
-  .file-name { color:#007bff; font-weight:500; font-size:13px; }
-  .file-info { font-size:11px; color:#999; }
+  .files-list { list-style: none; padding: 0; margin: 0; }
+  .files-list li { padding: 8px; background: #f9f9f9; border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .file-name { color: #007bff; font-weight: 500; font-size: 13px; }
+  .file-info { font-size: 11px; color: #999; }
   
-  .file-upload { display:flex; gap:8px; margin-bottom:12px; }
-  #fileInput { flex:1; }
+  .file-upload { display: flex; gap: 8px; margin-bottom: 12px; }
+  #fileInput { flex: 1; }
   
-  .no-prof { text-align:center; padding:40px 20px; color:#999; }
-  .empty-list { padding:20px; text-align:center; color:#999; }
+  .no-prof { text-align: center; padding: 40px 20px; color: #999; }
+  .empty-list { padding: 20px; text-align: center; color: #999; }
   
-  .prof-detail { background:#f0f7ff; padding:10px; border-radius:4px; margin-bottom:12px; font-size:12px; border-left:4px solid #007bff; }
+  .prof-detail { background: #f0f7ff; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; border-left: 4px solid #007bff; }
   
-  .filter-section { margin-bottom:12px; padding:12px; background:#f0f7ff; border-radius:4px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .filter-section label { font-weight:500; color:#333; font-size:12px; }
-  .filter-section select { padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:12px; }
+  .filter-section { margin-bottom: 12px; padding: 12px; background: #f0f7ff; border-radius: 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .filter-section label { font-weight: 500; color: #333; font-size: 12px; }
+  .filter-section select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
   
-  .status-badge { padding:2px 8px; border-radius:3px; font-size:11px; font-weight:500; }
-  .status-available { background:#d4edda; color:#155724; }
-  .status-busy { background:#f8d7da; color:#721c24; }
+  .status-badge { padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+  .status-available { background: #d4edda; color: #155724; }
+  .status-busy { background: #f8d7da; color: #721c24; }
   
-  hr { border:none; border-top:1px solid #eee; margin:16px 0; }
+  hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
 </style>
 </head>
 <body>
@@ -169,7 +169,7 @@
     <hr>
 
     <!-- CHAT -->
-    <h3 style="margin:0 0 12px 0; font-size:14px;">💬 Chat</h3>
+    <h3 style="margin: 0 0 12px 0; font-size: 14px;">💬 Chat</h3>
     <div class="chat-box">
       <div class="chat-messages" id="chatMessages"></div>
     </div>
@@ -181,7 +181,7 @@
     <hr>
 
     <!-- FICHIERS -->
-    <h3 style="margin:0 0 12px 0; font-size:14px;">📁 Partage de fichiers</h3>
+    <h3 style="margin: 0 0 12px 0; font-size: 14px;">📁 Partage de fichiers</h3>
     <div class="file-upload">
       <input type="file" id="fileInput">
       <button id="sendFileBtn" class="primary">Envoyer</button>
@@ -221,7 +221,6 @@ let ws = null;
 function getWebSocketURL() {
   let host = location.host;
   
-  // Si on est en file:// ou host vide, utiliser localhost:4000
   if (!host || host === '') {
     host = 'localhost:4000';
     console.log('⚠️ Host vide détecté, utilisation de:', host);
@@ -327,10 +326,8 @@ function initEleve() {
   document.getElementById('setupSection').style.display = 'none';
   document.getElementById('mainContainer').style.display = 'grid';
   
-  // Initialiser WebSocket
   initWebSocket();
   
-  // Une fois connecté, envoyer l'enregistrement
   const checkConnection = setInterval(() => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       clearInterval(checkConnection);
@@ -568,11 +565,17 @@ function base64ToBlob(b64) {
 async function initPeerConnection() {
   if (pc) return;
   
+  console.log('🔄 Création RTCPeerConnection...');
+  
   pc = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]
   });
 
   try {
+    console.log('🎤 Demande accès caméra/micro...');
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     console.log('✅ Flux local obtenu');
     document.getElementById('localVideo').srcObject = localStream;
@@ -580,18 +583,52 @@ async function initPeerConnection() {
   } catch (err) {
     console.error('❌ Erreur caméra:', err);
     alert('Impossible d\'accéder à la caméra/micro: ' + err.message);
+    return;
   }
 
   pc.ontrack = (ev) => {
-    console.log('🎥 Flux distant reçu');
-    document.getElementById('remoteVideo').srcObject = ev.streams[0];
+    console.log('🎥 Flux distant reçu:', ev.streams);
+    if (ev.streams && ev.streams[0]) {
+      document.getElementById('remoteVideo').srcObject = ev.streams[0];
+    }
   };
 
   pc.onicecandidate = (ev) => {
-    if (ev.candidate && profSelected && ws) {
+    if (ev.candidate && profSelected && ws && ws.readyState === WebSocket.OPEN) {
+      console.log('📤 Envoi ICE candidate');
       ws.send(JSON.stringify({ type: 'ice', target: profSelected, candidate: ev.candidate }));
     }
   };
+
+  pc.onconnectionstatechange = () => {
+    console.log('🔗 Connexion state:', pc.connectionState);
+  };
+
+  pc.onsignalingstatechange = () => {
+    console.log('📡 Signaling state:', pc.signalingState);
+  };
+
+  // ATTENDRE QUE LE WS SOIT CONNECTÉ AVANT DE CRÉER L'OFFRE
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error('❌ WebSocket non connecté, attente...');
+    return;
+  }
+
+  // ÉLÈVE CRÉE L'OFFRE
+  try {
+    console.log('📝 Création offre...');
+    const offer = await pc.createOffer({ 
+      offerToReceiveAudio: true, 
+      offerToReceiveVideo: true 
+    });
+    await pc.setLocalDescription(offer);
+    console.log('✅ Offre créée, envoi au serveur...');
+    console.log('📤 Target:', profSelected);
+    ws.send(JSON.stringify({ type: 'offer', target: profSelected, offer: offer }));
+    console.log('✅ Offre envoyée');
+  } catch (err) {
+    console.error('❌ Erreur création offre:', err);
+  }
 }
 
 function logout() {

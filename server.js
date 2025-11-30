@@ -510,6 +510,12 @@ wss.on("connection", (ws) => {
             eleve
           }));
         }
+         // Marquer le prof comme occupé
+  const profData = connectedProfs.get(prof);
+  if (profData) {
+    profData.enAppel = true;
+    profData.appelAvec = eleve;
+  }
 
         const timer = setInterval(() => {
           const callData = appelsEnCours.get(key);
@@ -541,21 +547,41 @@ wss.on("connection", (ws) => {
           clearInterval(callData.timer);
           const durationMinutes = Math.round((duration / 60) * 100) / 100;
 
-          await pool.query(
+         try {
+      const result = await pool.query(
             `UPDATE appels
              SET end_time = NOW(),
                  duree_minutes = $1,
                  statut = 'termine'
-             WHERE prof_username = $2 AND eleve_username = $3 AND statut = 'en_cours'`,
-            [durationMinutes, prof, eleve]
-          );
+         WHERE prof_username = $2 AND eleve_username = $3 AND statut = 'en_cours'
+         RETURNING id`,
+        [durationMinutes, prof, eleve]
+      );
+       console.log(`✅ Appel sauvegardé en BD (${durationMinutes} min)`);
+    } catch (dbErr) {
+      console.error('❌ Erreur sauvegarde appel:', dbErr);
+    }
           appelsEnCours.delete(key);
         }
+        // Notifier l'autre personne
+        const otherUser = prof === currentUsername ? eleve : prof;
+  const otherWs = clients.get(otherUser) || connectedProfs.get(otherUser)?.ws;
+  
+  if (otherWs && otherWs.readyState === 1) {
+    console.log(`📤 Envoi appelTermine à ${otherUser}`);
+    otherWs.send(JSON.stringify({ type: "appelTermine" }));
+  }
+  // Marquer le prof comme disponible
+  const profData = connectedProfs.get(prof);
+  if (profData) {
+    profData.enAppel = false;
+    profData.appelAvec = null;
+  }
 
-        const other = clients.get(prof) || connectedProfs.get(eleve)?.ws;
-        if (other && other.readyState === 1) {
-          other.send(JSON.stringify({ type: "appelTermine" }));
-        }
+  // Nettoyer la liste d'attente
+  const appels = appelsEnAttente.get(prof) || [];
+  const filtered = appels.filter(a => a.eleve !== eleve);
+  appelsEnAttente.set(prof, filtered);
 
         broadcastProfListToAll();
         return;
@@ -563,24 +589,62 @@ wss.on("connection", (ws) => {
 
       // ===== REJETER APPEL =====
       if (data.type === "rejeterAppel") {
-        const appels = appelsEnAttente.get(currentUsername) || [];
-        const filtered = appels.filter(a => a.eleve !== data.eleveRejete);
-        appelsEnAttente.set(currentUsername, filtered);
+  console.log(`\n❌ APPEL REJETÉ:`);
+  console.log(`   Prof: ${currentUsername}`);
+  console.log(`   Élève rejeté: ${data.eleveRejete}`);
+  
+  const appels = appelsEnAttente.get(currentUsername) || [];
+  const filtered = appels.filter(a => a.eleve !== data.eleveRejete);
+  appelsEnAttente.set(currentUsername, filtered);
 
-        if (ws.readyState === 1) {
-          ws.send(JSON.stringify({ type: "appelEnAttente", appels: filtered }));
-        }
-        return;
-      }
+  if (ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: "appelEnAttente", appels: filtered }));
+  }
+  
+  broadcastProfListToAll();
+  return;
+}
 
       // ===== WEBRTC SIGNALING =====
       if (["offer", "answer", "ice"].includes(data.type)) {
-        const target = clients.get(data.target) || connectedProfs.get(data.target)?.ws;
-        if (target && target.readyState === 1) {
-          target.send(JSON.stringify({ ...data, sender: currentUsername }));
-        }
-        return;
-      }
+  console.log(`\n📤 ${data.type.toUpperCase()} reçu:`);
+  console.log(`   De: ${currentUsername}`);
+  console.log(`   Pour: ${data.target}`);
+  
+  const target = clients.get(data.target) || connectedProfs.get(data.target)?.ws;
+  
+  if (!target) {
+    console.error(`❌ ${data.target} NON TROUVÉ`);
+    console.log(`   Clients disponibles: ${Array.from(clients.keys()).join(', ')}`);
+    console.log(`   Profs disponibles: ${Array.from(connectedProfs.keys()).join(', ')}`);
+    ws.send(JSON.stringify({ 
+      type: "erreur", 
+      message: `${data.target} non disponible` 
+    }));
+    return;
+  }
+
+  if (target.readyState !== 1) {
+    console.error(`❌ ${data.target} déconnecté (readyState: ${target.readyState})`);
+    ws.send(JSON.stringify({ 
+      type: "erreur", 
+      message: `${data.target} déconnecté` 
+    }));
+    return;
+  }
+
+  const message = JSON.stringify({ 
+    type: data.type, 
+    sender: currentUsername,
+    offer: data.offer,
+    answer: data.answer,
+    candidate: data.candidate
+  });
+  
+  console.log(`✅ ${data.type} envoyé à ${data.target}`);
+  target.send(message);
+  return;
+}
 
       // ===== CHAT =====
       if (data.type === "chat") {
