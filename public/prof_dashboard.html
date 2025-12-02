@@ -210,7 +210,27 @@ function initWebSocket() {
       if (data.type === 'newFile' && data.sender === currentEleve) {
         addFileToList(data.filename, data.sender, data.content);
       }
-      
+      if (data.type === 'appelTermine' && data.eleve === currentEleve) {
+  console.log('📞 Appel terminé par élève:', data.eleve);
+  
+  // Fermer immédiatement la connexion WebRTC
+  if (pc) {
+    pc.close();
+    pc = null;
+  }
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+  
+  // Fermer l'interface d'appel
+  currentEleve = null;
+  stopTimer();
+  document.getElementById('callSection').classList.remove('active');
+  document.getElementById('noEleveSection').style.display = 'block';
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('filesList').innerHTML = '';
+}  
       // WEBRTC - RECEVOIR L'OFFRE DE L'ÉLÈVE
       if (data.type === 'offer' && data.sender === currentEleve) {
         console.log('📥 OFFRE reçue de:', currentEleve);
