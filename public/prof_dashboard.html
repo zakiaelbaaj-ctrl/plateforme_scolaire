@@ -200,6 +200,10 @@ function initWebSocket() {
       
       if (data.type === 'appelEnAttente') {
         allAppels = data.appels || [];
+        // 🔧 Retirer les élèves en attente du Set des désactivés
+        allAppels.forEach(a => {
+          disabledElevesAfterCall.delete(a.eleve);
+        });
         populateFilters();
         filterWaiting();
       }
