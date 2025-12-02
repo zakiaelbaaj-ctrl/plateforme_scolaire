@@ -26,11 +26,11 @@ body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background
 .eleve-name { font-weight: 600; color: #333; }
 .eleve-meta { font-size: 12px; color: #666; margin-top: 4px; }
 .eleve-subject { display: inline-block; padding: 3px 8px; background: #e3f2fd; color: #007bff; border-radius: 3px; font-size: 11px; font-weight: 500; margin-right: 6px; }
-.eleve-country { display: inline-block; padding: 2px 6px; background: #fff3cd; border-radius: 3px; font-size: 11px; }
 .eleve-actions { display: flex; gap: 6px; flex-direction: column; }
 button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
 .accept { background: #28a745; color: white; }
-.accept:hover { background: #218838; }
+.accept:hover:not(:disabled) { background: #218838; }
+.accept:disabled { background: #ccc; color: #666; cursor: not-allowed; }
 .reject { background: #dc3545; color: white; }
 .reject:hover { background: #c82333; }
 .primary { background: #007bff; color: white; }
@@ -162,6 +162,7 @@ if (!profUsername) {
 let profCountry = 'France';
 let profSubjects = ['Mathématiques', 'Français'];
 let currentEleve = null;
+let disabledElevesAfterCall = new Set();
 let pc = null;
 let localStream = null;
 let timerInterval = null;
@@ -210,57 +211,49 @@ function initWebSocket() {
       if (data.type === 'newFile' && data.sender === currentEleve) {
         addFileToList(data.filename, data.sender, data.content);
       }
+
       if (data.type === 'appelTermine') {
-  console.log('📞 Appel terminé par élève:', data.eleve);
-  
-  // 🔧 NOUVEAU: Marquer cet élève comme désactivé
-  disabledElevesAfterCall.add(data.eleve);
-  
-  // Fermer immédiatement la connexion WebRTC
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
-  
-  // Fermer l'interface d'appel
-  currentEleve = null;
-  stopTimer();
-  document.getElementById('callSection').classList.remove('active');
-  document.getElementById('noEleveSection').style.display = 'block';
-  document.getElementById('chatMessages').innerHTML = '';
-  document.getElementById('filesList').innerHTML = '';
-  
-  // 🔧 NOUVEAU: Réactualiser la liste pour désactiver le bouton
-  filterWaiting();
-}
-      // WEBRTC - RECEVOIR L'OFFRE DE L'ÉLÈVE
-      if (data.type === 'offer' && data.sender === currentEleve) {
-        console.log('📥 OFFRE reçue de:', currentEleve);
-        if (!pc) {
-          console.log('🔄 Création RTCPeerConnection...');
-          await initPeerConnection();
+        console.log('📞 Appel terminé par élève:', data.eleve);
+        
+        // Marquer cet élève comme désactivé
+        disabledElevesAfterCall.add(data.eleve);
+        
+        // Fermer immédiatement la connexion WebRTC
+        if (pc) {
+          pc.close();
+          pc = null;
         }
-        console.log('📥 Définition remote description (offer)');
+        if (localStream) {
+          localStream.getTracks().forEach(t => t.stop());
+          localStream = null;
+        }
+        
+        // Fermer l'interface d'appel
+        currentEleve = null;
+        stopTimer();
+        document.getElementById('callSection').classList.remove('active');
+        document.getElementById('noEleveSection').style.display = 'block';
+        document.getElementById('chatMessages').innerHTML = '';
+        document.getElementById('filesList').innerHTML = '';
+        
+        // Réactualiser la liste pour désactiver le bouton
+        filterWaiting();
+      }
+
+      if (data.type === 'offer' && data.sender === currentEleve) {
+        if (!pc) await initPeerConnection();
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-        console.log('📝 Création answer...');
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        console.log('📤 Envoi ANSWER');
         ws.send(JSON.stringify({ type: 'answer', target: currentEleve, answer: answer }));
       }
       
       if (data.type === 'answer' && data.sender === currentEleve && pc) {
-        console.log('📥 ANSWER reçue');
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
       }
       
       if (data.type === 'ice' && data.sender === currentEleve && pc && data.candidate) {
         try {
-          console.log('📥 ICE candidate reçu');
           if (pc.remoteDescription?.type) {
             await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
           }
@@ -363,7 +356,7 @@ function renderWaiting(appels) {
     const div = document.createElement('div');
     div.className = 'eleve-item';
     
-    // 🔧 NOUVEAU: Vérifier si le bouton doit être désactivé
+    // Vérifier si le bouton doit être désactivé
     const isDisabled = currentEleve !== null || disabledElevesAfterCall.has(name);
     const buttonDisabledAttr = isDisabled ? 'disabled' : '';
     
@@ -382,8 +375,9 @@ function renderWaiting(appels) {
     ul.appendChild(div);
   });
 }
+
 async function acceptCall(eleve) {
-  // 🔧 NOUVEAU: Retirer cet élève de la liste des désactivés
+  // Retirer cet élève de la liste des désactivés
   disabledElevesAfterCall.delete(eleve);
   
   currentEleve = eleve;
@@ -398,6 +392,7 @@ async function acceptCall(eleve) {
   await initPeerConnection();
   startTimer();
 }
+
 function rejectCall(eleve) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'rejeterAppel', prof: profUsername, eleveRejete: eleve }));
@@ -504,13 +499,12 @@ async function initPeerConnection() {
   
   console.log('🔄 Création RTCPeerConnection (prof)...');
   
-  // 🔑 Récupération automatique des serveurs TURN depuis Metered
-const response = await fetch("https://urgencescolaire.metered.live/api/v1/turn/credentials?apiKey=a3f837be01a24c3ef83581addd77fc75cc48");
-const iceServers = await response.json();
+  const response = await fetch("https://urgencescolaire.metered.live/api/v1/turn/credentials?apiKey=a3f837be01a24c3ef83581addd77fc75cc48");
+  const iceServers = await response.json();
 
-pc = new RTCPeerConnection({
+  pc = new RTCPeerConnection({
     iceServers: iceServers
-});
+  });
 
   try {
     console.log('🎤 Demande accès caméra/micro (prof)...');
@@ -529,7 +523,6 @@ pc = new RTCPeerConnection({
 
   pc.ontrack = (ev) => {
     console.log('🎥 Flux distant reçu (prof):', ev.streams);
-    console.log('🎬 Track type:', ev.track.kind);
     if (ev.streams && ev.streams[0]) {
       console.log('✅ Assignation flux distant à remoteVideo (prof)');
       const videoElement = document.getElementById('remoteVideo');
