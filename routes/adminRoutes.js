@@ -187,7 +187,7 @@ router.delete("/professeurs/:id", async (req, res) => {
 router.get("/users", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, username, prenom, nom, email, role, statut FROM users ORDER BY created_at DESC"
+      "SELECT id, username, prenom, nom, email, role, statut FROM users ORDER BY nom, prenom"
     );
     res.json(result.rows);
   } catch (err) {
