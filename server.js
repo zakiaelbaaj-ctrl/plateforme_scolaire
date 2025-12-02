@@ -568,9 +568,12 @@ wss.on("connection", (ws) => {
   const otherWs = clients.get(otherUser) || connectedProfs.get(otherUser)?.ws;
   
   if (otherWs && otherWs.readyState === 1) {
-    console.log(`📤 Envoi appelTermine à ${otherUser}`);
-    otherWs.send(JSON.stringify({ type: "appelTermine" }));
-  }
+  console.log(`📤 Envoi appelTermine à ${otherUser}`);
+  otherWs.send(JSON.stringify({ 
+    type: "appelTermine",
+    eleve: eleve
+  }));
+}
   // Marquer le prof comme disponible
   const profData = connectedProfs.get(prof);
   if (profData) {
