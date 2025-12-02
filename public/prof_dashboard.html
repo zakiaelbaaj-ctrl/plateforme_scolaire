@@ -210,8 +210,11 @@ function initWebSocket() {
       if (data.type === 'newFile' && data.sender === currentEleve) {
         addFileToList(data.filename, data.sender, data.content);
       }
-      if (data.type === 'appelTermine' && data.eleve === currentEleve) {
+      if (data.type === 'appelTermine') {
   console.log('📞 Appel terminé par élève:', data.eleve);
+  
+  // 🔧 NOUVEAU: Marquer cet élève comme désactivé
+  disabledElevesAfterCall.add(data.eleve);
   
   // Fermer immédiatement la connexion WebRTC
   if (pc) {
@@ -230,7 +233,10 @@ function initWebSocket() {
   document.getElementById('noEleveSection').style.display = 'block';
   document.getElementById('chatMessages').innerHTML = '';
   document.getElementById('filesList').innerHTML = '';
-}  
+  
+  // 🔧 NOUVEAU: Réactualiser la liste pour désactiver le bouton
+  filterWaiting();
+}
       // WEBRTC - RECEVOIR L'OFFRE DE L'ÉLÈVE
       if (data.type === 'offer' && data.sender === currentEleve) {
         console.log('📥 OFFRE reçue de:', currentEleve);
@@ -356,6 +362,11 @@ function renderWaiting(appels) {
     
     const div = document.createElement('div');
     div.className = 'eleve-item';
+    
+    // 🔧 NOUVEAU: Vérifier si le bouton doit être désactivé
+    const isDisabled = currentEleve !== null || disabledElevesAfterCall.has(name);
+    const buttonDisabledAttr = isDisabled ? 'disabled' : '';
+    
     div.innerHTML = `
       <div class="eleve-info">
         <div class="eleve-name">${name}</div>
@@ -364,15 +375,17 @@ function renderWaiting(appels) {
         </div>
       </div>
       <div class="eleve-actions">
-        <button class="accept" onclick="acceptCall('${name}')">✅ Accepter</button>
+        <button class="accept" onclick="acceptCall('${name}')" ${buttonDisabledAttr}>✅ Accepter</button>
         <button class="reject" onclick="rejectCall('${name}')">❌ Rejeter</button>
       </div>
     `;
     ul.appendChild(div);
   });
 }
-
 async function acceptCall(eleve) {
+  // 🔧 NOUVEAU: Retirer cet élève de la liste des désactivés
+  disabledElevesAfterCall.delete(eleve);
+  
   currentEleve = eleve;
   document.getElementById('currentEleve').textContent = eleve;
   document.getElementById('callSection').classList.add('active');
@@ -385,7 +398,6 @@ async function acceptCall(eleve) {
   await initPeerConnection();
   startTimer();
 }
-
 function rejectCall(eleve) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'rejeterAppel', prof: profUsername, eleveRejete: eleve }));
