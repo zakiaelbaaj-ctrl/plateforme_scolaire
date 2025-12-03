@@ -87,6 +87,7 @@
       <option value="Espagnol">🇪🇸 Espagnol</option>
       <option value="Allemand">🇩🇪 Allemand</option>
     </select>
+    <input type="text" id="eleveSujetDemande" placeholder="Sujet que vous souhaitez comprendre (ex: Fractions)" style="padding: 8px 12px; border: 1px solid #90caf9; border-radius: 4px; font-size: 13px; width: 100%;">
     <button onclick="initEleve()" class="primary">Continuer</button>
   </div>
 </div>
@@ -165,6 +166,7 @@ if (!eleveUsername) {
 
 let eleveCountry = 'France';
 let matiereSearching = '';
+let sujetDemande = '';  
 let profSelected = null;
 let pc = null;
 let localStream = null;
@@ -259,6 +261,7 @@ function initWebSocket() {
 function initEleve() {
   eleveCountry = document.getElementById('eleveCountryInput').value.trim() || 'France';
   matiereSearching = document.getElementById('matiereSelect').value;
+  sujetDemande = document.getElementById('eleveSujetDemande').value.trim() || "Sujet non précisé";
   
   if (!matiereSearching) {
     alert('Sélectionnez une matière');
@@ -352,12 +355,13 @@ function demanderProf(prof, subject, country) {
   }
   
   ws.send(JSON.stringify({ 
-    type: 'demandAppel', 
-    sender: eleveUsername, 
-    senderCountry: eleveCountry,
-    subject: matiereSearching,
-    target: prof 
-  }));
+  type: 'demandAppel', 
+  sender: eleveUsername, 
+  senderCountry: country,         
+  subject: subject,                 
+  sujetDemande: sujetDemande,
+  target: prof 
+}));
   
   alert('⏳ Demande envoyée...');
 }

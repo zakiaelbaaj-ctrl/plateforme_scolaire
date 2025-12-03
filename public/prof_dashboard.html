@@ -202,8 +202,9 @@ function initWebSocket() {
         allAppels = data.appels || [];
         // 🔧 Retirer les élèves en attente du Set des désactivés
         allAppels.forEach(a => {
-          disabledElevesAfterCall.delete(a.eleve);
-        });
+  disabledElevesAfterCall.delete(a.eleve);
+});
+console.log('📋 Appels reçus:', allAppels); // Debug
         populateFilters();
         filterWaiting();
       }
@@ -356,6 +357,8 @@ function renderWaiting(appels) {
   appels.forEach(a => {
     const name = a.eleve || 'Inconnu';
     const subject = a.subject || 'Non spécifiée';
+    const sujetDemande = a.sujetDemande || 'Non précisé';
+    const country = a.senderCountry || 'Inconnu';
     
     const div = document.createElement('div');
     div.className = 'eleve-item';
@@ -369,6 +372,8 @@ function renderWaiting(appels) {
         <div class="eleve-name">${name}</div>
         <div class="eleve-meta">
           <span class="eleve-subject">📚 ${subject}</span>
+          <span class="eleve-subject" style="background:#fff3cd; color:#856404;">🎯 ${sujetDemande}</span>
+          <span class="eleve-subject" style="background:#ffe6e6; color:#721c24;">🌍 ${country}</span>
         </div>
       </div>
       <div class="eleve-actions">
