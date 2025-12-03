@@ -96,7 +96,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api", adminRoutes);
 
 app.get("/api", (req, res) => {
-  res.json({ message: "Bienvenue sur l'API soutien scolaire 📚" });
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:10000';
+  res.json({ message: "Bienvenue sur l'API urgence scolaire 📚",
+    frontendUrl: frontendUrl
+  });
 });
 
 // --- ROUTE LOGIN ---
