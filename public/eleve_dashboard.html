@@ -340,7 +340,8 @@ function renderProfList(profs) {
       </div>
       <div class="prof-actions">
         <button class="${isAvailable ? 'primary' : 'secondary'}" 
-          onclick="demanderProf('${prof.username}', '${(prof.subjects || [])[0] || matiereSearching}', '${prof.country || 'Inconnu'}')"
+          onclick="demanderProf('${prof.username}', '${(prof.subjects || [])[0] || matiereSearching}')"
+      ${!isAvailable ? 'disabled' : ''}>📞 Demander</button>
           ${!isAvailable ? 'disabled' : ''}>📞 Demander</button>
       </div>
     `;
@@ -348,20 +349,20 @@ function renderProfList(profs) {
   });
 }
 
-function demanderProf(prof, subject, country) {
+function demanderProf(prof, subject) {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     alert('⚠️ Connexion perdue');
     return;
   }
   
   ws.send(JSON.stringify({ 
-  type: 'demandAppel', 
-  sender: eleveUsername, 
-  senderCountry: country,         
-  subject: subject,                 
-  sujetDemande: sujetDemande,
-  target: prof 
-}));
+    type: 'demandAppel', 
+    sender: eleveUsername, 
+    senderCountry: eleveCountry,    // ✅ C'EST LE PAYS DE L'ÉLÈVE
+    subject: subject,                 
+    sujetDemande: sujetDemande,
+    target: prof 
+  }));
   
   alert('⏳ Demande envoyée...');
 }

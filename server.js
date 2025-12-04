@@ -479,6 +479,7 @@ wss.on("connection", (ws) => {
             eleve: data.sender,
             country: data.senderCountry,
             subject: data.subject,
+            sujetDemande: data.sujetDemande,
             timestamp: new Date().toISOString(),
             statut: "en_attente"
           });
