@@ -507,11 +507,19 @@ pc = new RTCPeerConnection({
   }
 
   pc.ontrack = (ev) => {
-    console.log('🎥 Flux distant reçu:', ev.streams);
-    if (ev.streams && ev.streams[0]) {
-      document.getElementById('remoteVideo').srcObject = ev.streams[0];
+  console.log('🎥 Flux distant reçu:', ev.streams);
+  if (ev.streams && ev.streams[0]) {
+    const videoElement = document.getElementById('remoteVideo');
+    if (videoElement) {
+      videoElement.srcObject = ev.streams[0];
+      videoElement.play().catch(err => {
+        if (err.name !== 'AbortError') {
+          console.error('❌ Erreur play:', err);
+        }
+      });
     }
-  };
+  }
+};
 
   pc.onicecandidate = (ev) => {
     if (ev.candidate && profSelected && ws && ws.readyState === WebSocket.OPEN) {
