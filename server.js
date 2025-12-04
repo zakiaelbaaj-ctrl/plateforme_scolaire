@@ -476,13 +476,13 @@ wss.on("connection", (ws) => {
         const appels = appelsEnAttente.get(data.target) || [];
         if (!appels.find(a => a.eleve === data.sender)) {
           appels.push({
-            eleve: data.sender,
-            country: data.senderCountry,
-            subject: data.subject,
-            sujetDemande: data.sujetDemande,
-            timestamp: new Date().toISOString(),
-            statut: "en_attente"
-          });
+  eleve: data.sender,
+  senderCountry: data.senderCountry || "Inconnu",
+  subject: data.subject,
+  sujetDemande: data.sujetDemande,
+  timestamp: new Date().toISOString(),
+  statut: "en_attente"
+});
           appelsEnAttente.set(data.target, appels);
 
           if (prof.ws && prof.ws.readyState === 1) {
@@ -729,8 +729,15 @@ function broadcastProfListToAll() {
 function broadcastWaitingList() {
   for (const [profUsername, profData] of connectedProfs.entries()) {
     const appels = appelsEnAttente.get(profUsername) || [];
+
+    // ✅ Normaliser senderCountry pour chaque appel
+    const normalizedAppels = appels.map(a => ({
+      ...a,
+      senderCountry: a.senderCountry || "Inconnu"
+    }));
+
     if (profData.ws && profData.ws.readyState === 1) {
-      profData.ws.send(JSON.stringify({ type: "appelEnAttente", appels }));
+      profData.ws.send(JSON.stringify({ type: "appelEnAttente", appels: normalizedAppels }));
     }
   }
 }
