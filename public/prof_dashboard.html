@@ -531,16 +531,20 @@ async function initPeerConnection() {
   }
 
   pc.ontrack = (ev) => {
-    console.log('🎥 Flux distant reçu (prof):', ev.streams);
-    if (ev.streams && ev.streams[0]) {
-      console.log('✅ Assignation flux distant à remoteVideo (prof)');
-      const videoElement = document.getElementById('remoteVideo');
-      if (videoElement) {
-        videoElement.srcObject = ev.streams[0];
-        videoElement.play().catch(err => console.error('Erreur play:', err));
-      }
+  console.log('🎥 Flux distant reçu (prof):', ev.streams);
+  if (ev.streams && ev.streams[0]) {
+    console.log('✅ Assignation flux distant à remoteVideo (prof)');
+    const videoElement = document.getElementById('remoteVideo');
+    if (videoElement) {
+      videoElement.srcObject = ev.streams[0];
+      videoElement.play().catch(err => {
+        if (err.name !== 'AbortError') {
+          console.error('❌ Erreur play:', err);
+        }
+      });
     }
-  };
+  }
+};
 
   pc.onicecandidate = (ev) => {
     if (ev.candidate && currentEleve && ws && ws.readyState === 1) {
