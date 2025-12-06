@@ -11,13 +11,13 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
-
+import Stripe from "stripe";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 const { Pool } = pkg;
-
+const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY);
 // --- Express setup ---
 const app = express();
 app.use(express.json());
@@ -90,11 +90,208 @@ function initializeEmailService() {
 }
 
 initializeEmailService();
+// Vérifier l'accès utilisateur (gratuit ou payant)
+async function checkUserAccess(userId) {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        subscription_status, 
+        free_trial_start, 
+        free_trial_end, 
+        subscription_end_date 
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    );
 
+    if (result.rows.length === 0) return false;
+
+    const user = result.rows[0];
+    const now = new Date();
+
+    // Cas 1: Utilisateur en essai gratuit
+    if (user.subscription_status === 'free') {
+      return now <= new Date(user.free_trial_end);
+    }
+
+    // Cas 2: Utilisateur avec abonnement actif
+    if (user.subscription_status === 'active') {
+      return now <= new Date(user.subscription_end_date);
+    }
+
+    return false;
+  } catch (err) {
+    console.error('Erreur checkUserAccess:', err);
+    return false;
+  }
+}
 // --- API routes ---
 app.use("/api/auth", authRoutes);
 app.use("/api", adminRoutes);
+app.post("/api/check-access", async (req, res) => {
+  try {
+    const { userId } = req.body;
 
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'userId requis' 
+      });
+    }
+
+    const hasAccess = await checkUserAccess(userId);
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: '❌ Accès refusé. Votre essai a expiré.',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '✅ Accès autorisé',
+    });
+  } catch (err) {
+    console.error('Erreur check-access:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.post("/api/create-checkout-session", async (req, res) => {
+  try {
+    const { userId, planType } = req.body;
+
+    if (!userId || !planType) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'userId et planType requis' 
+      });
+    }
+
+    const userResult = await pool.query(
+      "SELECT id, email, username FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Utilisateur non trouvé' 
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    const prices = {
+      monthly: 999,
+      yearly: 9999
+    };
+
+    if (!prices[planType]) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Plan invalide' 
+      });
+    }
+
+    let stripeCustomerId = user.stripe_customer_id;
+    
+    if (!stripeCustomerId) {
+      const customer = await stripeClient.customers.create({
+        email: user.email,
+        name: user.username,
+        metadata: { userId: user.id }
+      });
+      stripeCustomerId = customer.id;
+
+      await pool.query(
+        "UPDATE users SET stripe_customer_id = $1 WHERE id = $2",
+        [stripeCustomerId, user.id]
+      );
+    }
+
+    const session = await stripeClient.checkout.sessions.create({
+      payment_method_types: ['card'],
+      customer: stripeCustomerId,
+      line_items: [
+        {
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: `Abonnement ${planType === 'monthly' ? 'Mensuel' : 'Annuel'}`,
+              description: 'Accès illimité à la plateforme scolaire'
+            },
+            unit_amount: prices[planType]
+          },
+          quantity: 1
+        }
+      ],
+      mode: 'payment',
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:10000'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:10000'}/pricing.html`,
+      metadata: {
+        userId: user.id,
+        planType: planType
+      }
+    });
+
+    res.json({
+      success: true,
+      checkout_url: session.url,
+      session_id: session.id
+    });
+  } catch (err) {
+    console.error('Erreur create-checkout-session:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.post("/api/confirm-payment", async (req, res) => {
+  try {
+    const { sessionId, userId, planType } = req.body;
+
+    if (!sessionId || !userId || !planType) {
+      return res.status(400).json({
+        success: false,
+        message: 'sessionId, userId, planType requis'
+      });
+    }
+
+    const session = await stripeClient.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status !== 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'Paiement non confirmé'
+      });
+    }
+
+    const subscriptionEndDate = new Date();
+    if (planType === 'monthly') {
+      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+    } else {
+      subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
+    }
+
+    await pool.query(
+      `UPDATE users 
+       SET subscription_status = 'active',
+           plan_type = $1,
+           subscription_end_date = $2,
+           stripe_subscription_id = $3
+       WHERE id = $4`,
+      [planType, subscriptionEndDate, session.id, userId]
+    );
+
+    res.json({
+      success: true,
+      message: '✅ Paiement confirmé! Abonnement activé',
+      subscription_end_date: subscriptionEndDate
+    });
+  } catch (err) {
+    console.error('Erreur confirm-payment:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 app.get("/api", (req, res) => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:10000';
   res.json({ message: "Bienvenue sur l'API urgence scolaire 📚",

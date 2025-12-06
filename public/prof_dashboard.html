@@ -658,7 +658,25 @@ async function initPeerConnection() {
 document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') document.getElementById('sendChatBtn')?.click();
 });
-</script>
+// ===== SOLUTION 3 =====
+  document.addEventListener('click', async function() {
+    try {
+      if (notificationSystem && !notificationSystem.initialized) {
+        await notificationSystem.ensureAudioContext();
+        console.log('🔊 Audio débloqué');
+      }
+    } catch (err) {
+      console.warn('⚠️ Audio indisponible');
+    }
+  }, { once: true });
 
+  window.addEventListener('focus', async function() {
+    try {
+      if (notificationSystem && !notificationSystem.initialized) {
+        await notificationSystem.ensureAudioContext();
+      }
+    } catch (err) {}
+  });
+  </script>
 </body>
 </html>

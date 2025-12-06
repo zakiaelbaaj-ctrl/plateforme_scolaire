@@ -1,5 +1,5 @@
 # Ne pas envoyer les dépendances
 node_modules/
-
+.env.local
 # Ne pas envoyer les variables secrètes (DB, JWT, etc.)
 .env

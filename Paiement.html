@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plan d'Abonnement</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      margin: 0; 
+      padding: 20px; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 50px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      margin: 0;
+      font-size: 18px;
+      opacity: 0.9;
+    }
+
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 30px;
+      margin-bottom: 50px;
+    }
+
+    .plan-card {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+    }
+
+    .plan-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .plan-card.featured {
+      border: 3px solid #667eea;
+      transform: scale(1.05);
+    }
+
+    .badge {
+      position: absolute;
+      top: -15px;
+      left: 20px;
+      background: #FFD700;
+      color: #333;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .plan-name {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      margin: 20px 0 10px 0;
+    }
+
+    .plan-price {
+      font-size: 48px;
+      font-weight: 700;
+      color: #667eea;
+      margin: 20px 0;
+    }
+
+    .plan-price span {
+      font-size: 18px;
+      color: #666;
+    }
+
+    .plan-description {
+      color: #666;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .features {
+      list-style: none;
+      padding: 0;
+      margin: 30px 0;
+    }
+
+    .features li {
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+      color: #555;
+      display: flex;
+      align-items: center;
+    }
+
+    .features li:before {
+      content: "✓";
+      color: #4CAF50;
+      font-weight: bold;
+      margin-right: 10px;
+      font-size: 18px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .trial-section {
+      background: rgba(255,255,255,0.95);
+      border-radius: 15px;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .trial-section h2 {
+      color: #333;
+      margin-top: 0;
+    }
+
+    .trial-days {
+      font-size: 72px;
+      color: #667eea;
+      font-weight: 700;
+      margin: 20px 0;
+    }
+
+    .trial-message {
+      font-size: 18px;
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .faq {
+      background: rgba(255,255,255,0.95);
+      border-radius: 15px;
+      padding: 40px;
+      margin-top: 50px;
+    }
+
+    .faq h2 {
+      color: #333;
+      text-align: center;
+    }
+
+    .faq-item {
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 20px;
+    }
+
+    .faq-item:last-child {
+      border-bottom: none;
+    }
+
+    .faq-question {
+      font-weight: 600;
+      color: #667eea;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .faq-answer {
+      color: #666;
+      display: none;
+      line-height: 1.6;
+    }
+
+    .faq-answer.active {
+      display: block;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      color: white;
+      margin: 20px 0;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top: 4px solid white;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .alert {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .alert.show {
+      display: block;
+    }
+
+    .alert.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .alert.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="header">
+    <h1>🎓 Plateforme Scolaire</h1>
+    <p>Choisissez votre plan d'abonnement</p>
+  </div>
+
+  <!-- Essai Gratuit -->
+  <div class="trial-section">
+    <h2>✨ Essai Gratuit</h2>
+    <div class="trial-days" id="trialDays">7</div>
+    <p class="trial-message">Accès complet pendant 7 jours, aucune carte de crédit requise</p>
+    <button class="btn btn-secondary" onclick="startFreeTrial()">Commencer l'essai gratuit</button>
+  </div>
+
+  <!-- Plans d'abonnement -->
+  <div class="plans">
+    <!-- Plan Mensuel -->
+    <div class="plan-card">
+      <div class="plan-name">📅 Plan Mensuel</div>
+      <div class="plan-price">9,99€<span>/mois</span></div>
+      <p class="plan-description">Parfait pour découvrir la plateforme</p>
+      <ul class="features">
+        <li>Accès illimité</li>
+        <li>Support par email</li>
+        <li>Tous les outils</li>
+        <li>Annulation à tout moment</li>
+      </ul>
+      <button class="btn btn-primary" onclick="goToPayment('monthly')">Souscrire</button>
+    </div>
+
+    <!-- Plan Annuel (Meilleur rapport) -->
+    <div class="plan-card featured">
+      <div class="badge">MEILLEURE OFFRE</div>
+      <div class="plan-name">⭐ Plan Annuel</div>
+      <div class="plan-price">99,99€<span>/an</span></div>
+      <p class="plan-description">Économisez 17% par rapport au mensuel</p>
+      <ul class="features">
+        <li>Accès illimité</li>
+        <li>Support prioritaire</li>
+        <li>Tous les outils</li>
+        <li>Annulation flexible</li>
+        <li>Économies garanties</li>
+      </ul>
+      <button class="btn btn-primary" onclick="goToPayment('yearly')">Souscrire</button>
+    </div>
+
+    <!-- Plan Entreprise -->
+    <div class="plan-card">
+      <div class="plan-name">🏢 Plan Entreprise</div>
+      <div class="plan-price">Sur demande</div>
+      <p class="plan-description">Pour les établissements et organisations</p>
+      <ul class="features">
+        <li>Accès illimité</li>
+        <li>Support 24/7</li>
+        <li>API personnalisée</li>
+        <li>Intégrations</li>
+        <li>Administrateur dédié</li>
+      </ul>
+      <button class="btn btn-secondary" onclick="contactSales()">Nous contacter</button>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="faq">
+    <h2>❓ Questions Fréquentes</h2>
+    
+    <div class="faq-item">
+      <div class="faq-question" onclick="toggleFaq(this)">Puis-je annuler mon abonnement à tout moment?</div>
+      <div class="faq-answer">Oui! Vous pouvez annuler votre abonnement à tout moment. Vous conserverez l'accès jusqu'à la fin de votre période de facturation.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="toggleFaq(this)">Comment fonctionne l'essai gratuit de 7 jours?</div>
+      <div class="faq-answer">L'essai gratuit vous donne accès à toutes les fonctionnalités pendant 7 jours. Après, vous devrez choisir un plan payant pour continuer.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="toggleFaq(this)">Quels modes de paiement acceptez-vous?</div>
+      <div class="faq-answer">Nous acceptons toutes les cartes de crédit et de débit (Visa, Mastercard, American Express) via Stripe.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="toggleFaq(this)">Y a-t-il un remboursement possible?</div>
+      <div class="faq-answer">Oui, si vous n'êtes pas satisfait dans les 30 premiers jours, nous vous remboursons intégralement, sans questions posées.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question" onclick="toggleFaq(this)">Comment puis-je changer de plan?</div>
+      <div class="faq-answer">Vous pouvez changer de plan à tout moment depuis votre tableau de bord. Le changement sera appliqué à votre prochain cycle de facturation.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function startFreeTrial() {
+    fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'test_user',
+        email: 'user@example.com',
+        password: 'password123',
+        role: 'eleve'
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('✅ Essai gratuit activé! Valide jusqu\'au: ' + new Date(data.trial_end).toLocaleDateString('fr-FR'));
+        window.location.href = '/login.html';
+      }
+    })
+    .catch(err => console.error('Erreur:', err));
+  }
+
+  function goToPayment(planType) {
+    const userId = localStorage.getItem('userId');
+    
+    if (!userId) {
+      alert('❌ Veuillez d\'abord créer un compte');
+      window.location.href = '/login.html';
+      return;
+    }
+
+    fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        planType: planType
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        window.location.href = data.checkout_url;
+      } else {
+        alert('❌ Erreur: ' + data.error);
+      }
+    })
+    .catch(err => console.error('Erreur:', err));
+  }
+
+  function contactSales() {
+    window.location.href = 'mailto:contact@plateforme.com?subject=Demande Plan Entreprise';
+  }
+
+  function toggleFaq(element) {
+    const answer = element.nextElementSibling;
+    answer.classList.toggle('active');
+  }
+
+  // Mettre à jour les jours restants
+  function updateTrialDays() {
+    const trialEnd = localStorage.getItem('trial_end');
+    if (trialEnd) {
+      const now = new Date();
+      const end = new Date(trialEnd);
+      const days = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+      document.getElementById('trialDays').textContent = Math.max(0, days);
+    }
+  }
+
+  // Mettre à jour à chaque chargement
+  updateTrialDays();
+  setInterval(updateTrialDays, 60000); // Chaque minute
+</script>
+
+</body>
+</html>
