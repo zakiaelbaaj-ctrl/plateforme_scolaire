@@ -7,7 +7,7 @@
 <style>
 /* Corps de la page */
 body {
-    background-color: #e1f6ff;
+    background-color: hsl(60, 36%, 95%);
     font-family: Verdana, sans-serif;
     margin: 0;
     padding: 20px;
@@ -26,6 +26,7 @@ body {
     display: block;
     margin-left: auto;
     margin-right: auto;
+    
 }
 
 .logo h2 {
@@ -33,7 +34,9 @@ body {
     font-size: 32px;
     margin-bottom: 20px;
     font-weight: bold;
-}
+    font-family: 'Lobster', cursive; /* Police choisie */
+    
+    }
 
 /* Titres */
 h1 {
@@ -44,7 +47,7 @@ h1 {
 
 /* Paragraphes */
 p {
-    color: #4906e79d;
+    color: #023b91ea;
     font-size: 20px;
     line-height: 1.4;
     max-width: 600px;
@@ -156,20 +159,30 @@ button:hover {
     p { font-size: 16px; max-width: 90%; }
     .logo h2 { font-size: 28px; }
     button { font-size: 14px; padding: 12px; }
-}
+    .elegant-text {
+      font-family: 'Great Vibes', cursive;
+      font-size: 28px; /* ajustez selon votre besoin */
+    }
+     }
+
 </style>
+<head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
 <body>
 
     <!-- Logo -->
     <div class="logo">
-        <img src="logo.png" alt="Logo Soutien Scolaire">
+        <img src="logo.png" alt="urgencescolaire">
     </div>
 
     <!-- Contenu principal -->
     <div class="container">
-        <h1>Bienvenue sur urgencescolaire.com, un soutien Scolaire Instantané</h1>
-        <p>
+        <h1 style="font-family: 'Pacifico', cursive;">Bienvenue sur urgencescolaire.com,<br> un soutien scolaire instantané</h1>
+        <p style="font-family: 'Dancing Script', cursive;">
             Ici, les élèves peuvent obtenir de l'aide pour leurs devoirs <strong>en temps réel</strong>.<br>
             Vous êtes en <strong>urgence de trouver un professeur</strong> ? Inscrivez-vous et des professeurs qualifiés vous assisteront rapidement.<br>
             Profitez d'un apprentissage rapide, efficace et personnalisé.
@@ -203,7 +216,6 @@ button:hover {
                 <button onclick="window.location.href='register_etudiant.html'">Inscription</button>
             </div>
         </div>
-    </div>
+    <h1 class="elegant-text"></h1>
 
 </body>
-</html>

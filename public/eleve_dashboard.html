@@ -56,6 +56,87 @@
   .filter-section { margin-bottom: 12px; padding: 12px; background: #f0f7ff; border-radius: 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .filter-section select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
   hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
+  /* ===== NOTIFICATION D'APPEL ENTRANT ===== */
+  .call-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    color: white;
+    animation: slideIn 0.4s ease-out, pulse 0.5s ease-out;
+    border-left: 5px solid #FFD700;
+    max-width: 400px;
+  }
+
+  .call-notification h4 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .call-notification p {
+    margin: 8px 0 15px 0;
+    font-size: 14px;
+    opacity: 0.95;
+  }
+
+  .notification-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .notification-actions button {
+    flex: 1;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .btn-accept-call {
+    background-color: #4CAF50;
+    color: white;
+  }
+
+  .btn-accept-call:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  }
+
+  .btn-reject-call {
+    background-color: #f44336;
+    color: white;
+  }
+
+  .btn-reject-call:hover {
+    background-color: #da190b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
 </style>
 </head>
 <body>
@@ -154,6 +235,48 @@
 </div>
 
 <script>
+  // ===== CLASSE NOTIFICATION SONORE =====
+class VideoCallNotificationSystem {
+  constructor() {
+    this.audioContext = null;
+    this.isPlaying = false;
+  }
+
+  playNotificationSound() {
+    if (this.isPlaying) return;
+    this.isPlaying = true;
+
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioContext.currentTime;
+    const notes = [
+      { freq: 800, start: now, duration: 0.2 },
+      { freq: 1000, start: now + 0.25, duration: 0.2 },
+      { freq: 1200, start: now + 0.5, duration: 0.3 }
+    ];
+
+    notes.forEach(note => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      
+      osc.frequency.value = note.freq;
+      osc.type = 'sine';
+      
+      gain.gain.setValueAtTime(0.3, note.start);
+      gain.gain.exponentialRampToValueAtTime(0.01, note.start + note.duration);
+      
+      osc.start(note.start);
+      osc.stop(note.start + note.duration);
+    });
+
+    setTimeout(() => { this.isPlaying = false; }, 1500);
+  }
+}
+
+const notificationSystem = new VideoCallNotificationSystem();
+// ===== FIN CLASSE NOTIFICATION =====
 const saved = JSON.parse(localStorage.getItem('eleveConnecte') || 'null');
 const eleveUsername = saved?.username || null;
 const elevePre = saved?.prenom || '';

@@ -210,15 +210,43 @@ function initWebSocket() {
       const data = JSON.parse(evt.data);
       
       if (data.type === 'appelEnAttente') {
-        allAppels = data.appels || [];
-        // 🔧 Retirer les élèves en attente du Set des désactivés
-        allAppels.forEach(a => {
-  disabledElevesAfterCall.delete(a.eleve);
-});
-console.log('📋 Appels reçus:', allAppels); // Debug
-        populateFilters();
-        filterWaiting();
-      }
+  allAppels = data.appels || [];
+  
+  // 🔊 NOUVEAU: SI NOUVEAUX APPELS: Jouer le son et afficher notification
+  if (allAppels && allAppels.length > 0) {
+    notificationSystem.playNotificationSound();
+    
+    // Afficher notification visuelle pour chaque nouvel appel
+    allAppels.forEach(appel => {
+      const notif = document.createElement('div');
+      notif.className = 'call-notification';
+      notif.innerHTML = `
+        <h4>📞 Appel entrant!</h4>
+        <p>L'élève <strong>${appel.eleve}</strong> demande une visio</p>
+        <p>📚 Matière: <strong>${appel.subject || 'Non spécifiée'}</strong></p>
+        <p>🎯 Sujet: <strong>${appel.sujetDemande || 'Non précisé'}</strong></p>
+        <div class="notification-actions">
+          <button class="btn-accept-call" onclick="acceptCall('${appel.eleve}'); this.closest('.call-notification').remove();">✅ Accepter</button>
+          <button class="btn-reject-call" onclick="rejectCall('${appel.eleve}'); this.closest('.call-notification').remove();">❌ Rejeter</button>
+        </div>
+      `;
+      document.body.appendChild(notif);
+      
+      // Retirer la notification après 30 secondes
+      setTimeout(() => {
+        if (notif.parentNode) notif.remove();
+      }, 30000);
+    });
+  }
+  
+  // GARDER LE CODE EXISTANT:
+  allAppels.forEach(a => {
+    disabledElevesAfterCall.delete(a.eleve);
+  });
+  console.log('📋 Appels reçus:', allAppels);
+  populateFilters();
+  filterWaiting();
+}
       
       if (data.type === 'chat' && data.sender === currentEleve) {
         addChatMessage(data.sender, data.message);
