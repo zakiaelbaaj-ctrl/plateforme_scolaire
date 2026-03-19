@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Quel cours voulez-vous suivre ?</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Base CSS commune -->
+  <link rel="stylesheet" href="vendor/base.css">
+
+  <style>
+    body.eleves {
+      background-color: #f5f5f0; /* fond beige pour élèves */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      font-family: inherit;
+    }
+
+    .form-container {
+      background: white;
+      padding: 40px 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.1);
+      width: 100%;
+      max-width: 500px;
+      font-family: inherit;
+    }
+
+    h1 {
+      text-align: center;
+      color: #1e40af;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-top: 20px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    select, textarea, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 5px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    button.eleves {
+      background-color: var(--color-eleves);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.3s, filter 0.3s;
+    }
+
+    button.eleves:hover {
+      transform: scale(1.05);
+      filter: brightness(0.9);
+    }
+
+    .info {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body class="eleves">
+
+<div class="form-container">
+  <h1>Quel cours voulez-vous suivre ?</h1>
+
+  <div class="info">
+    <p><strong>Nom :</strong> <span id="studentName">Élève</span></p>
+    <p><strong>Pays :</strong> <span id="studentCountry">Pays</span></p>
+    <p><strong>Ville :</strong> <span id="studentCity">Ville</span></p>
+    <p><strong>Heure :</strong> <span id="time">Chargement...</span></p>
+  </div>
+
+  <label for="level-select">Niveau :</label>
+  <select id="level-select">
+    <option value="">--Choisir le niveau--</option>
+    <option value="primaire">Primaire</option>
+    <option value="secondaire">Secondaire</option>
+  </select>
+
+  <label for="subject-select">Sélectionnez votre matière :</label>
+  <select id="subject-select" disabled>
+    <option value="">--Choisir une matière--</option>
+  </select>
+
+  <label for="topic">Indiquez votre sujet :</label>
+  <textarea id="topic" rows="4" placeholder="Décrivez votre question"></textarea>
+
+  <button id="start-session" class="eleves">Commencer la communication</button>
+</div>
+
+<script>
+/* ================================
+   Données élève simulées
+================================ */
+const student = {name:"Yasmine Ben Ali", city:"Paris", country:"France"};
+document.getElementById("studentName").textContent = student.name;
+document.getElementById("studentCity").textContent = student.city;
+document.getElementById("studentCountry").textContent = student.country;
+
+/* ================================
+   Affichage de l'heure
+================================ */
+const timeSpan = document.getElementById("time");
+function updateTime() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    timeSpan.textContent = `${h}:${m}:${s}`;
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+/* ================================
+   Liste des matières par niveau
+================================ */
+const subjectsByLevel = {
+    primaire: [
+      {value:"francais", label:"Français"},
+      {value:"maths", label:"Mathématiques"},
+      {value:"anglais", label:"Anglais"},
+      {value:"histoire", label:"Histoire"},
+      {value:"geographie", label:"Géographie"},
+      {value:"sciences_naturelles", label:"Sciences naturelles"},
+      {value:"arts_plastiques", label:"Arts plastiques"},
+      {value:"musique", label:"Musique"},
+      {value:"eps", label:"Éducation physique et sportive"}
+    ],
+    secondaire: [
+      {value:"francais", label:"Français"},
+      {value:"maths", label:"Mathématiques"},
+      {value:"physique", label:"Physique"},
+      {value:"chimie", label:"Chimie"},
+      {value:"biologie", label:"Biologie"},
+      {value:"histoire", label:"Histoire"},
+      {value:"geographie", label:"Géographie"},
+      {value:"anglais", label:"Anglais"},
+      {value:"espagnol", label:"Espagnol"},
+      {value:"allemand", label:"Allemand"},
+      {value:"informatique", label:"Informatique"},
+      {value:"eps", label:"Éducation physique et sportive"},
+      {value:"arts", label:"Arts"},
+      {value:"philosophie", label:"Philosophie"}
+    ]
+};
+
+/* ================================
+   Remplir les matières selon le niveau
+================================ */
+const levelSelect = document.getElementById("level-select");
+const subjectSelect = document.getElementById("subject-select");
+
+levelSelect.addEventListener("change", ()=>{
+    const level = levelSelect.value;
+    subjectSelect.innerHTML = '<option value="">--Choisir une matière--</option>';
+    if(level && subjectsByLevel[level]){
+        subjectsByLevel[level].forEach(sub => {
+            const option = document.createElement("option");
+            option.value = sub.value;
+            option.textContent = sub.label;
+            subjectSelect.appendChild(option);
+        });
+        subjectSelect.disabled = false;
+    } else {
+        subjectSelect.disabled = true;
+    }
+});
+
+/* ================================
+   Commencer la communication
+================================ */
+document.getElementById("start-session").addEventListener("click", ()=>{
+    const level = levelSelect.value;
+    const subject = subjectSelect.value;
+    const topic = document.getElementById("topic").value.trim();
+
+    if(!level || !subject || !topic){ 
+        alert("Veuillez remplir tous les champs."); 
+        return; 
+    }
+
+    // Stocker le niveau, la matière et le sujet
+    localStorage.setItem("selectedLevel", level);
+    localStorage.setItem("selectedSubject", subject);
+    localStorage.setItem("selectedTopic", topic);
+
+    window.location.href = "liste_professeurs.html";
+});
+</script>
+
+</body>
+</html>

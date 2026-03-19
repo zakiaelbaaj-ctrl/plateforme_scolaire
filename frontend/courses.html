@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Liste des cours</title>
+</head>
+<body>
+    <h1>Liste des cours</h1>
+    <ul id="coursesList"></ul>
+
+    <script>
+        async function fetchCourses() {
+            const response = await fetch('http://127.0.0.1:8000/api/courses/');
+            const courses = await response.json();
+
+            const list = document.getElementById('coursesList');
+            list.innerHTML = '';
+            courses.forEach(c => {
+                const li = document.createElement('li');
+                li.textContent = `${c.title} (Enseignant ID: ${c.teacher_id})`;
+                list.appendChild(li);
+            });
+        }
+
+        fetchCourses();
+    </script>
+</body>
+</html>

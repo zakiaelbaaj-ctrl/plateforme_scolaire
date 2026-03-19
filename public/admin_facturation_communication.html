@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Facturation Communication</title>
+
+  <!-- Dark mode premium -->
+  <link rel="stylesheet" href="/css/admin_dark.css">
+</head>
+
+<body class="admin-page">
+
+<!-- ============================
+     HEADER
+============================= -->
+<header class="page-header">
+  <div class="container">
+    <h1>💬 Facturation Communication</h1>
+    <p class="meta" id="factureCount">Chargement...</p>
+  </div>
+</header>
+
+<!-- ============================
+     CONTENU PRINCIPAL
+============================= -->
+<main class="container">
+
+  <!-- Zone d’actions -->
+  <section class="controls">
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="🔍 Rechercher un élève..."
+      aria-label="Rechercher un élève"
+    >
+    <button class="validate-btn" onclick="loadFacturation()">🔄 Rafraîchir</button>
+  </section>
+
+  <!-- Tableau -->
+  <section class="table-wrapper" aria-label="Facturation communication">
+    <table class="table" id="factureTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Élève</th>
+          <th>Email</th>
+          <th>Chat (h)</th>
+          <th>Visio (h)</th>
+          <th>Total (h)</th>
+          <th>Coût (€)</th>
+          <th>Dernière activité</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Données injectées ici -->
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Retour -->
+  <footer class="page-footer">
+    <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
+  </footer>
+
+</main>
+
+<!-- ============================
+     MODAL
+============================= -->
+<div id="confirmModal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <h3 id="modalTitle">Confirmation</h3>
+    <p id="modalMessage"></p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-confirm" onclick="confirmAction()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     SCRIPT
+============================= -->
+<script>
+let factures = [];
+let filteredFactures = [];
+let pendingAction = null;
+
+/* -----------------------------
+   FETCH FACTURATION
+----------------------------- */
+async function loadFacturation() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token manquant — reconnecte-toi");
+
+    const res = await fetch("http://localhost:4000/api/v1/admin/facturation", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.success !== true) throw new Error(json.message);
+
+    factures = json.data.map(f => ({
+      id: f.id,
+      fullname: `${f.prenom || ""} ${f.nom || ""}`.trim(),
+      email: f.email || "—",
+      chat: f.heures_chat || 0,
+      visio: f.heures_visio || 0,
+      total: (f.heures_chat || 0) + (f.heures_visio || 0),
+      cout: f.cout_total || 0,
+      last: f.derniere_activite || null
+    }));
+
+    filteredFactures = [...factures];
+    afficherFacturation();
+
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
+
+/* -----------------------------
+   AFFICHAGE TABLEAU
+----------------------------- */
+function afficherFacturation() {
+  const tbody = document.querySelector("#factureTable tbody");
+  const count = document.getElementById("factureCount");
+
+  tbody.innerHTML = "";
+  count.textContent = `${filteredFactures.length} élève(s)`;
+
+  if (filteredFactures.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Aucune donnée trouvée.</td></tr>`;
+    return;
+  }
+
+  filteredFactures.forEach((f, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${f.fullname}</td>
+      <td>${f.email}</td>
+      <td>${f.chat.toFixed(2)}</td>
+      <td>${f.visio.toFixed(2)}</td>
+      <td>${f.total.toFixed(2)}</td>
+      <td>${f.cout.toFixed(2)} €</td>
+      <td>${f.last ? new Date(f.last).toLocaleString() : "—"}</td>
+      <td class="actions">
+        <button class="validate-btn" onclick="openDetails(${i})">Détails</button>
+        <button class="delete-btn" onclick="openResetModal(${i})">Reset</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* -----------------------------
+   RECHERCHE
+----------------------------- */
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+  filteredFactures = factures.filter(f =>
+    `${f.fullname} ${f.email}`.toLowerCase().includes(q)
+  );
+  afficherFacturation();
+});
+
+/* -----------------------------
+   MODAL
+----------------------------- */
+function openResetModal(i) {
+  pendingAction = { type: "reset", index: i };
+  showModal("Réinitialiser les heures ?", "Cette action remettra les compteurs à zéro.");
+}
+
+function openDetails(i) {
+  const f = filteredFactures[i];
+  alert(
+    `Détails de ${f.fullname}\n\n` +
+    `Chat : ${f.chat} h\n` +
+    `Visio : ${f.visio} h\n` +
+    `Total : ${f.total} h\n` +
+    `Coût : ${f.cout} €`
+  );
+}
+
+function showModal(title, message) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMessage").textContent = message;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+  pendingAction = null;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
+}
+
+/* -----------------------------
+   CONFIRM ACTION
+----------------------------- */
+async function confirmAction() {
+  if (!pendingAction) return;
+
+  const { index } = pendingAction;
+  const f = filteredFactures[index];
+  const token = localStorage.getItem("token");
+
+  try {
+    await fetch(`http://localhost:4000/api/v1/admin/facturation/${f.id}/reset`, {
+      method: "PATCH",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    f.chat = 0;
+    f.visio = 0;
+    f.total = 0;
+    f.cout = 0;
+
+    afficherFacturation();
+
+  } catch (err) {
+    alert("❌ Erreur lors du reset");
+  }
+
+  closeModal();
+}
+
+/* -----------------------------
+   INIT
+----------------------------- */
+loadFacturation();
+</script>
+
+</body>
+</html>

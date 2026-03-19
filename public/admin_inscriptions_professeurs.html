@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Gestion des Professeurs</title>
+
+  <!-- DARK MODE PREMIUM -->
+  <link rel="stylesheet" href="/css/admin_dark.css">
+
+</head>
+
+<body class="admin-page">
+
+<!-- ============================
+     HEADER
+============================= -->
+<header class="page-header">
+  <div class="container">
+    <h1>👨‍🏫 Gestion des Professeurs</h1>
+    <p class="meta" id="profCount">Chargement...</p>
+  </div>
+</header>
+
+<!-- ============================
+     CONTENU PRINCIPAL
+============================= -->
+<main class="container">
+
+  <!-- Zone d’actions -->
+  <section class="controls" aria-label="Actions de gestion">
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="🔍 Rechercher un professeur..."
+      aria-label="Rechercher un professeur"
+    >
+    <button class="validate-btn" onclick="chargerProfesseurs()">🔄 Rafraîchir</button>
+  </section>
+
+  <!-- Tableau -->
+  <section class="table-wrapper" aria-label="Liste des professeurs">
+    <table class="table" id="profTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nom</th>
+          <th>Prénom</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Heures du mois</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Professeurs injectés ici -->
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Retour -->
+  <footer class="page-footer">
+    <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
+  </footer>
+
+</main>
+
+<!-- ============================
+     MODAL
+============================= -->
+<div id="confirmModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-content">
+    <h3 id="modalTitle">Confirmation</h3>
+    <p id="modalMessage"></p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-confirm" onclick="confirmAction()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     SCRIPT
+============================= -->
+<script>
+let professeurs = [];
+let filteredProfs = [];
+let pendingAction = null;
+
+/* -----------------------------
+   FETCH DES PROFESSEURS
+----------------------------- */
+async function chargerProfesseurs() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token manquant — reconnecte-toi");
+
+    const res = await fetch("http://localhost:4000/api/v1/admin/users?role=prof", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.success !== true) throw new Error(json.message);
+
+    professeurs = json.users.map(u => ({
+      id: u.id,
+      nom: u.nom || "—",
+      prenom: u.prenom || "—",
+      email: u.email || "—",
+      telephone: u.telephone || "—",
+      heures_mois: u.heures_mois || 0,
+      statut: u.statut || "en_attente"
+    }));
+
+    filteredProfs = [...professeurs];
+    afficherProfesseurs();
+
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
+
+/* -----------------------------
+   AFFICHAGE TABLEAU
+----------------------------- */
+function afficherProfesseurs() {
+  const tbody = document.querySelector("#profTable tbody");
+  const count = document.getElementById("profCount");
+
+  tbody.innerHTML = "";
+  count.textContent = `${filteredProfs.length} professeur(s)`;
+
+  if (filteredProfs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Aucun professeur trouvé.</td></tr>`;
+    return;
+  }
+
+  filteredProfs.forEach((p, i) => {
+    const statusClass =
+      p.statut === "valide" ? "validated" :
+      p.statut === "en_attente" ? "pending" : "danger";
+
+    const statusText =
+      p.statut === "valide" ? "✔ Validé" :
+      p.statut === "en_attente" ? "⏳ En attente" :
+      `⛔ ${p.statut}`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${p.nom}</td>
+      <td>${p.prenom}</td>
+      <td>${p.email}</td>
+      <td>${p.telephone}</td>
+      <td>${p.heures_mois} h</td>
+      <td><span class="status ${statusClass}">${statusText}</span></td>
+      <td class="actions">
+        <button class="validate-btn" onclick="changerStatut(${i}, 'valide')">Valider</button>
+        <button class="btn-cancel" onclick="changerStatut(${i}, 'en_attente')">Attente</button>
+        <button class="delete-btn" onclick="openDeleteModal(${i})">Supprimer</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* -----------------------------
+   RECHERCHE
+----------------------------- */
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+  filteredProfs = professeurs.filter(p =>
+    `${p.nom} ${p.prenom} ${p.email}`.toLowerCase().includes(q)
+  );
+  afficherProfesseurs();
+});
+
+/* -----------------------------
+   CHANGEMENT STATUT
+----------------------------- */
+async function changerStatut(index, statut) {
+  const prof = filteredProfs[index];
+  const token = localStorage.getItem("token");
+
+  try {
+    await fetch(`http://localhost:4000/api/v1/admin/users/${prof.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ statut })
+    });
+
+    prof.statut = statut;
+    afficherProfesseurs();
+
+  } catch (err) {
+    alert("❌ Erreur lors de la mise à jour du statut");
+  }
+}
+
+/* -----------------------------
+   SUPPRESSION
+----------------------------- */
+function openDeleteModal(index) {
+  pendingAction = { type: "delete", index };
+  showModal("Supprimer ce professeur ?", "Cette action est irréversible.");
+}
+
+async function confirmAction() {
+  if (!pendingAction) return;
+
+  const { index } = pendingAction;
+  const prof = filteredProfs[index];
+  const token = localStorage.getItem("token");
+
+  try {
+    await fetch(`http://localhost:4000/api/v1/admin/users/${prof.id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    professeurs = professeurs.filter(p => p.id !== prof.id);
+    filteredProfs = filteredProfs.filter(p => p.id !== prof.id);
+
+    afficherProfesseurs();
+  } catch (err) {
+    alert("❌ Erreur lors de la suppression");
+  }
+
+  closeModal();
+}
+
+/* -----------------------------
+   MODAL
+----------------------------- */
+function showModal(title, message) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMessage").textContent = message;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+  pendingAction = null;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
+}
+
+/* -----------------------------
+   INIT
+----------------------------- */
+chargerProfesseurs();
+</script>
+
+</body>
+</html>

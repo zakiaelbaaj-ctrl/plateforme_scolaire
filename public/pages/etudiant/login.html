@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion Étudiant</title>
+  <link rel="stylesheet" href="/css/base.css">
+</head>
+
+<body class="auth-body">
+
+  <div class="container role-etudiant">
+
+    <h1>🎓 Connexion Étudiant</h1>
+    <p class="subtitle">Accédez à votre espace de travail collaboratif</p>
+
+    <form id="loginEtudiantForm">
+
+      <div class="form-group">
+        <label for="username">Nom d'utilisateur ou Email</label>
+        <input type="text" id="username" name="username" required
+               autocomplete="username"
+               placeholder="nom.prenom ou email@example.com">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" name="password" required
+               autocomplete="current-password"
+               placeholder="••••••••">
+      </div>
+
+      <div class="form-group">
+        <label for="matiere">Matière</label>
+        <select id="matiere" name="matiere" required>
+          <option value="">-- Choisir une matière --</option>
+
+          <optgroup label="Lycée">
+            <option value="Mathématiques">Mathématiques</option>
+            <option value="Français">Français</option>
+            <option value="Anglais">Anglais</option>
+            <option value="Physique-Chimie">Physique-Chimie</option>
+            <option value="SVT">SVT</option>
+            <option value="Histoire-Géographie">Histoire-Géographie</option>
+            <option value="Philosophie">Philosophie</option>
+            <option value="Économie">Économie</option>
+            <option value="Informatique">Informatique</option>
+          </optgroup>
+
+          <optgroup label="Supérieur">
+            <option value="Droit">Droit</option>
+            <option value="Médecine">Médecine</option>
+            <option value="Économie-Gestion">Économie-Gestion</option>
+            <option value="Sciences Politiques">Sciences Politiques</option>
+            <option value="Informatique - Programmation">Informatique - Programmation</option>
+            <option value="Comptabilité">Comptabilité</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Réseaux & Systèmes">Réseaux &amp; Systèmes</option>
+            <option value="Biologie">Biologie</option>
+            <option value="Chimie">Chimie</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="niveau">Niveau</label>
+        <select id="niveau" name="niveau" required>
+          <option value="">-- Choisir un niveau --</option>
+
+          <optgroup label="Post-bac">
+            <option value="BTS">BTS</option>
+            <option value="BUT">BUT</option>
+            <option value="Prépa CPGE">Prépa CPGE</option>
+          </optgroup>
+
+          <optgroup label="Université">
+            <option value="Licence 1">Licence 1</option>
+            <option value="Licence 2">Licence 2</option>
+            <option value="Licence 3">Licence 3</option>
+            <option value="Master 1">Master 1</option>
+            <option value="Master 2">Master 2</option>
+            <option value="Doctorat">Doctorat</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <button type="submit" class="etudiant-btn" id="submitBtn">Se connecter</button>
+
+      <div id="loadingDiv" class="loading"></div>
+      <div id="errorDiv"   class="error"></div>
+      <div id="successDiv" class="success"></div>
+
+    </form>
+
+    <div class="link-section">
+      Pas encore inscrit ? <a href="/pages/etudiant/register.html" id="registerLink">S'inscrire</a>
+    </div>
+
+    <div class="link-section" style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 15px;">
+      Vous êtes professeur ? <a href="/pages/professeur/login.html">Connexion professeur</a>
+    </div>
+
+  </div>
+
+  <script type="module" src="/js/auth/login_etudiant.js"></script>
+
+</body>
+</html>

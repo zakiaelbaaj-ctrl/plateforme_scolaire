@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Étudiant - Cours</title>
+  <link rel="stylesheet" href="css/dahboard_etudiant/toast_video.css">
+</head>
+<body>
+  <h1>Dashboard Étudiant</h1>
+
+  <!-- Notifications Toast -->
+  <div id="toastContainer"></div>
+
+  <!-- Tableau des cours -->
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Titre</th><th>Professeur</th><th>Date</th><th>Heure</th><th>Salle</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="coursTable"></tbody>
+  </table>
+
+  <!-- Calendrier -->
+  <div id="calendar" class="calendar"></div>
+
+  <!-- Conteneur Vidéo -->
+  <div id="videoContainer">
+    <video id="studentVideo" controls></video>
+    <div class="video-controls">
+      <button id="joinVideoBtn">Rejoindre Visio</button>
+      <button id="leaveVideoBtn">Quitter Visio</button>
+    </div>
+  </div>
+
+  <!-- Chat Collaboratif -->
+  <div id="chatSection">
+    <h2>Chat Collaboratif</h2>
+    <div id="chatBox" class="chat-box"></div>
+    <form id="chatForm">
+      <input id="chatInput" type="text" placeholder="Écrire un message..." required>
+      <button type="submit">Envoyer</button>
+    </form>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/Dashboard_etudiant/admin_cours.js"></script>
+  <script src="js/Dashboard_etudiant/video.js"></script>
+  <script src="js/Dashboard_etudiant/chat.js"></script>
+</body>
+</html>

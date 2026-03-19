@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Relances</title>
+
+  <!-- Dark mode premium -->
+  <link rel="stylesheet" href="/css/admin_dark.css">
+</head>
+
+<body class="admin-page">
+
+<!-- ============================
+     HEADER
+============================= -->
+<header class="page-header">
+  <div class="container">
+    <h1>📨 Relances</h1>
+    <p class="meta" id="relanceCount">Chargement...</p>
+  </div>
+</header>
+
+<!-- ============================
+     CONTENU PRINCIPAL
+============================= -->
+<main class="container">
+
+  <!-- Zone d’actions -->
+  <section class="controls">
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="🔍 Rechercher une relance..."
+      aria-label="Rechercher une relance"
+    >
+    <button class="validate-btn" onclick="loadRelances()">🔄 Rafraîchir</button>
+  </section>
+
+  <!-- Tableau -->
+  <section class="table-wrapper" aria-label="Liste des relances">
+    <table class="table" id="relanceTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Élève</th>
+          <th>Email</th>
+          <th>Motif</th>
+          <th>Montant dû</th>
+          <th>Status</th>
+          <th>Dernière relance</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Relances injectées ici -->
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Retour -->
+  <footer class="page-footer">
+    <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
+  </footer>
+
+</main>
+
+<!-- ============================
+     MODAL
+============================= -->
+<div id="confirmModal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <h3 id="modalTitle">Confirmation</h3>
+    <p id="modalMessage"></p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-confirm" onclick="confirmAction()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     SCRIPT
+============================= -->
+<script>
+let relances = [];
+let filteredRelances = [];
+let pendingAction = null;
+
+/* ============================================================
+   FETCH DES RELANCES
+============================================================ */
+async function loadRelances() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token manquant — reconnecte-toi");
+
+    const res = await fetch("http://localhost:4000/api/v1/admin/relances", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.success !== true) throw new Error(json.message);
+
+    relances = json.data.map(formatRelance);
+    filteredRelances = [...relances];
+
+    afficherRelances();
+
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
+
+/* ============================================================
+   FORMATAGE DES DONNÉES
+============================================================ */
+function formatRelance(r) {
+  return {
+    id: r.id,
+    fullname: `${r.prenom || ""} ${r.nom || ""}`.trim(),
+    email: r.email || "—",
+    motif: r.motif || "—",
+    montant: r.montant || 0,
+    status: r.status || "en_attente",
+    last: r.last_relance ? new Date(r.last_relance) : null
+  };
+}
+
+/* ============================================================
+   AFFICHAGE TABLEAU
+============================================================ */
+function afficherRelances() {
+  const tbody = document.querySelector("#relanceTable tbody");
+  const count = document.getElementById("relanceCount");
+
+  tbody.innerHTML = "";
+  count.textContent = `${filteredRelances.length} relance(s)`;
+
+  if (filteredRelances.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Aucune relance trouvée.</td></tr>`;
+    return;
+  }
+
+  filteredRelances.forEach((r, i) => {
+    const statusClass =
+      r.status === "envoyee" ? "validated" :
+      r.status === "en_retard" ? "danger" :
+      "pending";
+
+    const statusText =
+      r.status === "envoyee" ? "✔ Envoyée" :
+      r.status === "en_retard" ? "⛔ En retard" :
+      "⏳ En attente";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${escapeHtml(r.fullname)}</td>
+      <td>${escapeHtml(r.email)}</td>
+      <td>${escapeHtml(r.motif)}</td>
+      <td>${r.montant.toFixed(2)} €</td>
+      <td><span class="status ${statusClass}">${statusText}</span></td>
+      <td>${r.last ? r.last.toLocaleString() : "—"}</td>
+      <td class="actions">
+        <button class="validate-btn" onclick="openRelanceModal(${i})">Relancer</button>
+        <button class="delete-btn" onclick="openDeleteModal(${i})">Supprimer</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ============================================================
+   RECHERCHE
+============================================================ */
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+
+  filteredRelances = relances.filter(r =>
+    `${r.fullname} ${r.email} ${r.motif}`.toLowerCase().includes(q)
+  );
+
+  afficherRelances();
+});
+
+/* ============================================================
+   MODAL
+============================================================ */
+function openRelanceModal(i) {
+  pendingAction = { type: "relancer", index: i };
+  showModal("Envoyer une relance ?", "Un email sera envoyé à l'élève.");
+}
+
+function openDeleteModal(i) {
+  pendingAction = { type: "delete", index: i };
+  showModal("Supprimer cette relance ?", "Cette action est irréversible.");
+}
+
+function showModal(title, message) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMessage").textContent = message;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+  pendingAction = null;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
+}
+
+/* ============================================================
+   CONFIRMATION ACTION
+============================================================ */
+async function confirmAction() {
+  if (!pendingAction) return;
+
+  const { type, index } = pendingAction;
+  const r = filteredRelances[index];
+  const token = localStorage.getItem("token");
+
+  try {
+    if (type === "relancer") {
+      await fetch(`http://localhost:4000/api/v1/admin/relances/${r.id}/send`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+    }
+
+    if (type === "delete") {
+      await fetch(`http://localhost:4000/api/v1/admin/relances/${r.id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      relances = relances.filter(x => x.id !== r.id);
+      filteredRelances = filteredRelances.filter(x => x.id !== r.id);
+    }
+
+    afficherRelances();
+
+  } catch (err) {
+    alert("❌ Erreur lors de l'action");
+  }
+
+  closeModal();
+}
+
+/* ============================================================
+   UTILITAIRES
+============================================================ */
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text == null ? "" : String(text);
+  return div.innerHTML;
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+loadRelances();
+</script>
+
+</body>
+</html>

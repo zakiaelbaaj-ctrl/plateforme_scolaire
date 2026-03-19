@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Salle de classe</title>
+</head>
+<body>
+
+<h2>Professeurs disponibles</h2>
+
+<div class="prof">
+  <img src="images/prof1.jpg" width="80">
+  <p><b>Prof. Ahmed</b></p>
+  <p>📍 Paris, France</p>
+  <button onclick="join('ahmed')">🎥 Rejoindre</button>
+</div>
+
+<script>
+function join(prof) {
+  localStorage.setItem("profActif", prof);
+  localStorage.setItem("startTime", Date.now());
+  window.location.href =
+    "https://meet.jit.si/classe-" + prof;
+}
+</script>
+
+</body>
+</html>

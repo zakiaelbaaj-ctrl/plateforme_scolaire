@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion Élève</title>
+
+  <!-- CSS séparé -->
+  <link rel="stylesheet" href="../../css/base.css">
+
+</head>
+
+<body>
+
+<div class="container">
+  <h1>🎓 Connexion Élève</h1>
+  <p class="subtitle">Accédez à votre espace d’apprentissage</p>
+  
+  <form id="loginEleveForm" novalidate>
+    
+    <!-- IDENTIFIANTS -->
+    <div class="form-group">
+      <label for="username">Nom d'utilisateur ou Email</label>
+      <input 
+        type="text" 
+        id="username" 
+        name="username"
+        required 
+        autocomplete="username"
+        placeholder="prenom.nom ou eleve@example.com"
+      >
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Mot de passe</label>
+      <input 
+        type="password" 
+        id="password" 
+        name="password"
+        required 
+        autocomplete="current-password"
+        placeholder="••••••••"
+      >
+    </div>
+
+    <button type="submit" class="eleve-role" id="submitBtn">Se connecter</button>
+    
+    <div id="loadingDiv" class="loading"></div>
+    <div id="errorDiv" class="error"></div>
+    <div id="successDiv" class="success"></div>
+  </form>
+
+  <div class="divider">
+    <p>Vous êtes professeur ? <a href="login_professeur.html">Connexion professeur</a></p>
+  </div>
+</div>
+
+<script src="../../js/auth/login_eleve.js"></script>
+
+</body>
+</html>

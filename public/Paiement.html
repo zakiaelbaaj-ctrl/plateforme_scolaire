@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Paiement Abonnement</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="vendor/base.css">
+
+<style>
+body{margin:0;font-family:"Segoe UI",sans-serif;background:linear-gradient(135deg,#eef2f7,#dbeafe);display:flex;justify-content:center;align-items:center;min-height:100vh;}
+.container{background:white;padding:40px 30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.1);width:100%;max-width:500px;text-align:center;}
+h1{color:#1e40af;}
+button{padding:12px 20px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;margin-top:20px;transition:transform .3s,background .3s;}
+button:hover{background:#1e40af;transform:scale(1.05);}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>Paiement Abonnement</h1>
+<p>Choisissez votre formule :</p>
+<button id="payMonth">Abonnement 1 Mois</button>
+<button id="payYear">Abonnement 1 An</button>
+</div>
+
+<script>
+const subject = new URLSearchParams(window.location.search).get("subject") || "maths";
+
+function completePayment(months){
+    const expiry = new Date();
+    expiry.setMonth(expiry.getMonth() + months);
+    localStorage.setItem("subscriptionActive","true");
+    localStorage.setItem("subscriptionExpiry", expiry.toISOString());
+    alert("Paiement réussi ! Vous êtes maintenant abonné.");
+    window.location.href = `liste_professeurs.html?subject=${subject}`;
+}
+
+document.getElementById("payMonth").addEventListener("click", ()=>completePayment(1));
+document.getElementById("payYear").addEventListener("click", ()=>completePayment(12));
+</script>
+
+</body>
+</html>

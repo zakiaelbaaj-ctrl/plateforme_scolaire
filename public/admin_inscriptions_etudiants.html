@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Gestion des Étudiants</title>
+
+  <!-- Dark mode premium (même que professeurs) -->
+  <link rel="stylesheet" href="/css/admin_dark.css">
+</head>
+
+<body class="admin-page">
+
+<!-- ============================
+     HEADER
+============================= -->
+<header class="page-header">
+  <div class="container">
+    <h1>🎓 Gestion des Étudiants</h1>
+    <p class="meta" id="studentCount">Chargement...</p>
+  </div>
+</header>
+
+<!-- ============================
+     CONTENU PRINCIPAL
+============================= -->
+<main class="container">
+
+  <!-- Zone d’actions -->
+  <section class="controls">
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="🔍 Rechercher un étudiant..."
+      aria-label="Rechercher un étudiant"
+    >
+    <button class="validate-btn" onclick="loadEtudiants()">🔄 Rafraîchir</button>
+  </section>
+
+  <!-- Tableau -->
+  <section class="table-wrapper" aria-label="Liste des étudiants">
+    <table id="etudiantTable" class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nom Complet</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Pays</th>
+          <th>Heures professeurs</th>
+          <th>Inscription</th>
+          <th>Statut</th>
+          <th>Subscription</th>
+          <th>Plan</th>
+          <th>Free Trial</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Étudiants injectés ici -->
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Retour -->
+  <footer class="page-footer">
+    <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
+  </footer>
+
+</main>
+
+<!-- ============================
+     MODAL
+============================= -->
+<div id="confirmModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-content">
+    <h3 id="modalTitle">Confirmation</h3>
+    <p id="modalMessage"></p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-confirm" onclick="confirmAction()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     SCRIPT
+============================= -->
+<script>
+let etudiants = [];
+let filteredEtudiants = [];
+let pendingAction = null;
+
+/* -----------------------------
+   FETCH DES ÉTUDIANTS
+----------------------------- */
+async function loadEtudiants() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token manquant — reconnecte-toi");
+
+    const res = await fetch("http://localhost:4000/api/v1/admin/users?role=etudiant", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.success !== true) throw new Error(json.message);
+
+    etudiants = json.users.map(u => ({
+      id: u.id,
+      fullname: `${u.prenom || ""} ${u.nom || ""}`.trim(),
+      email: u.email || "—",
+      telephone: u.telephone || "—",
+      pays: u.pays || "—",
+      statut: u.statut || "en_attente",
+      subscription_status: u.subscription_status || "—",
+      plan_type: u.plan_type || "—",
+      free_trial_start: u.free_trial_start,
+      free_trial_end: u.free_trial_end,
+      date_inscription: u.date_inscription,
+      heures_contact: u.heures_contact || 0
+    }));
+
+    filteredEtudiants = [...etudiants];
+    displayEtudiants();
+
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
+
+/* -----------------------------
+   AFFICHAGE TABLEAU
+----------------------------- */
+function displayEtudiants() {
+  const tbody = document.querySelector("#etudiantTable tbody");
+  const count = document.getElementById("studentCount");
+
+  tbody.innerHTML = "";
+  count.textContent = `${filteredEtudiants.length} étudiant(s)`;
+
+  if (filteredEtudiants.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty-state">Aucun étudiant trouvé.</td></tr>`;
+    return;
+  }
+
+  filteredEtudiants.forEach((e, i) => {
+    const statusClass = e.statut === "en_attente" ? "pending" : "validated";
+    const statusText = e.statut === "en_attente" ? "⏳ En attente" : "✅ Validé";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${escapeHtml(e.fullname)}</td>
+      <td>${escapeHtml(e.email)}</td>
+      <td>${escapeHtml(e.telephone)}</td>
+      <td>${escapeHtml(e.pays)}</td>
+      <td>${e.heures_contact.toFixed(2)} h</td>
+      <td>${e.date_inscription ? new Date(e.date_inscription).toLocaleDateString() : "—"}</td>
+      <td><span class="status ${statusClass}">${statusText}</span></td>
+      <td>${escapeHtml(e.subscription_status)}</td>
+      <td>${escapeHtml(e.plan_type)}</td>
+      <td>${e.free_trial_start ? new Date(e.free_trial_start).toLocaleDateString() : "—"} → ${e.free_trial_end ? new Date(e.free_trial_end).toLocaleDateString() : "—"}</td>
+      <td>
+        <div class="actions">
+          ${e.statut === "en_attente" ? `<button class="validate-btn" onclick="openValidateModal(${i})">Valider</button>` : ""}
+          <button class="delete-btn" onclick="openDeleteModal(${i})">Supprimer</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* -----------------------------
+   ESCAPE HTML
+----------------------------- */
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/* -----------------------------
+   RECHERCHE
+----------------------------- */
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+  filteredEtudiants = etudiants.filter(e =>
+    `${e.fullname} ${e.email}`.toLowerCase().includes(q)
+  );
+  displayEtudiants();
+});
+
+/* -----------------------------
+   MODAL
+----------------------------- */
+function openValidateModal(i) {
+  pendingAction = { type: "validate", index: i };
+  showModal("Valider cet étudiant ?", `Confirmer la validation de "${escapeHtml(filteredEtudiants[i].fullname)}"`);
+}
+
+function openDeleteModal(i) {
+  pendingAction = { type: "delete", index: i };
+  showModal("Supprimer cet étudiant ?", "Cette action est irréversible.");
+}
+
+function showModal(title, message) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMessage").textContent = message;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+  pendingAction = null;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
+}
+
+/* -----------------------------
+   CONFIRM ACTION
+----------------------------- */
+async function confirmAction() {
+  if (!pendingAction) return;
+
+  const { type, index } = pendingAction;
+  const e = filteredEtudiants[index];
+  const token = localStorage.getItem("token");
+
+  try {
+    if (type === "validate") {
+      await fetch(`/api/v1/etudiants/${e.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ statut: "valide" })
+      });
+      e.statut = "valide";
+
+    } else if (type === "delete") {
+      await fetch(`/api/v1/admin/users/${e.id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      etudiants = etudiants.filter(x => x.id !== e.id);
+      filteredEtudiants = filteredEtudiants.filter(x => x.id !== e.id);
+    }
+
+    displayEtudiants();
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+
+  closeModal();
+}
+
+/* -----------------------------
+   INIT
+----------------------------- */
+loadEtudiants();
+</script>
+
+</body>
+</html>

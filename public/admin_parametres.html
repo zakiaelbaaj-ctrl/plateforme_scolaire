@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paramètres - Plateforme Scolaire</title>
+  <link rel="stylesheet" href="vendor/base.css">
+  <link rel="stylesheet" href="vendor/layout.css">
+  <style>
+    .dashboard-widgets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .widget {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .widget h3 {
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+    .table-actions button {
+      margin-right: 0.5rem;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+    }
+    .theme-toggle {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="container space-between">
+      <h1>Paramètres</h1>
+      <button onclick="logout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <!-- Layout principal -->
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <nav>
+        <ul>
+          <li><a href="admin_inscription_eleve.html">Dashboard</a></li>
+          <li><a href="admin_eleves.html">Gestion des élèves</a></li>
+          <li><a href="admin_etudiant.html">Gestion des étudiants</a></li>
+          <li><a href="admin_professeurs.html">Gestion des professeurs</a></li>
+          <li><a href="admin_cours.html">Gestion des cours</a></li>
+          <li><a href="admin_inscriptions_professeurs.html">Inscriptions</a></li>
+          <li><a href="admin_parametres.html" class="active">Paramètres</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Contenu principal -->
+    <main class="content">
+      <h2>Configuration générale</h2>
+
+      <!-- Widgets -->
+      <section class="dashboard-widgets">
+        <div class="widget">
+          <h3>Thème</h3>
+          <div class="theme-toggle">
+            <label for="themeSelect">Choisir un thème :</label>
+            <select id="themeSelect" onchange="changeTheme()">
+              <option value="light">Clair</option>
+              <option value="dark">Sombre</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="widget">
+          <h3>Notifications</h3>
+          <label>
+            <input type="checkbox" id="notifEmail" checked>
+            Notifications par email
+          </label><br>
+          <label>
+            <input type="checkbox" id="notifSMS">
+            Notifications par SMS
+          </label>
+        </div>
+
+        <div class="widget">
+          <h3>État du système</h3>
+          <p id="systemStatus">Tous les services sont opérationnels ✅</p>
+        </div>
+      </section>
+
+      <!-- Tableau des rôles -->
+      <h2>Gestion des rôles</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Rôle</th>
+            <th>Description</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rolesTable">
+          <tr>
+            <td>1</td>
+            <td>Administrateur</td>
+            <td>Accès complet à la plateforme</td>
+            <td class="table-actions">
+              <button onclick="editRole(1)">Modifier</button>
+              <button onclick="deleteRole(1)">Supprimer</button>
+            </td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Professeur</td>
+            <td>Gestion des cours et des élèves</td>
+            <td class="table-actions">
+              <button onclick="editRole(2)">Modifier</button>
+              <button onclick="deleteRole(2)">Supprimer</button>
+            </td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Élève</td>
+            <td>Accès aux cours et aux ressources</td>
+            <td class="table-actions">
+              <button onclick="editRole(3)">Modifier</button>
+              <button onclick="deleteRole(3)">Supprimer</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 Plateforme Scolaire — Tous droits réservés</p>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    function logout() {
+      window.location.href = "login.html";
+    }
+
+    function changeTheme() {
+      const theme = document.getElementById("themeSelect").value;
+      if (theme === "dark") {
+        document.body.style.backgroundColor = "#222";
+        document.body.style.color = "#eee";
+      } else {
+        document.body.style.backgroundColor = "#f9f9f9";
+        document.body.style.color = "#222";
+      }
+    }
+
+    function editRole(id) {
+      alert("Édition du rôle ID " + id + " à implémenter.");
+    }
+
+    function deleteRole(id) {
+      if (confirm("Supprimer le rôle ID " + id + " ?")) {
+        alert("Suppression du rôle ID " + id + " à implémenter.");
+      }
+    }
+  </script>
+</body>
+</html>

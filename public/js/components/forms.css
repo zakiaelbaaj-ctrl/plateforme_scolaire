@@ -1,0 +1,356 @@
+/* public/js/components/forms.css
+   Senior+++ form component styles
+   - Theming via CSS variables
+   - Accessible focus-visible states and reduced-motion support
+   - Responsive form grid, inputs, selects, checkboxes, radios, file, toggles
+   - Validation UI, helper text, inline errors, strength meter, skeletons
+   - Lightweight utility classes for spacing and layout
+*/
+
+/* =========================
+   Design tokens
+   ========================= */
+:root {
+  --bg: #f7f9fb;
+  --surface: #ffffff;
+  --text: #0f1724;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-600: #1e40af;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #f59e0b;
+  --radius: 10px;
+  --input-radius: 8px;
+  --card-padding: 16px;
+  --gap: 12px;
+  --shadow-sm: 0 6px 18px rgba(2,6,23,0.06);
+  --transition: 180ms cubic-bezier(.2,.9,.2,1);
+  --font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --max-form-width: 900px;
+  --field-height: 44px;
+  --label-size: 13px;
+  --helper-size: 12px;
+  --error-size: 13px;
+  --z-toast: 9999;
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #071018;
+    --surface: #07161a;
+    --text: #e6f0f2;
+    --muted: #9aa6a9;
+    --shadow-sm: 0 6px 18px rgba(0,0,0,0.6);
+  }
+}
+
+/* Global reset */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font-family: var(--font-family); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+/* =========================
+   Form container and grid
+   ========================= */
+.form {
+  width: 100%;
+  max-width: var(--max-form-width);
+  margin: 0 auto;
+  background: transparent;
+  display: block;
+  gap: var(--gap);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+/* column helpers */
+.col-12 { grid-column: 1 / -1; }
+.col-6 { grid-column: span 6; }
+.col-4 { grid-column: span 4; }
+.col-3 { grid-column: span 3; }
+
+/* responsive */
+@media (max-width: 880px) {
+  .col-6, .col-4, .col-3 { grid-column: 1 / -1; }
+}
+
+/* =========================
+   Labels, helper text, errors
+   ========================= */
+.label {
+  display: block;
+  font-size: var(--label-size);
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.helper {
+  display: block;
+  font-size: var(--helper-size);
+  color: var(--muted);
+  margin-top: 6px;
+}
+.error {
+  display: block;
+  font-size: var(--error-size);
+  color: var(--danger);
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+/* =========================
+   Inputs and selects
+   ========================= */
+.field {
+  display: block;
+  width: 100%;
+  height: var(--field-height);
+  padding: 10px 12px;
+  border-radius: var(--input-radius);
+  border: 1px solid rgba(2,6,23,0.06);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  transition: box-shadow var(--transition), border-color var(--transition), transform 120ms ease;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+.field::placeholder { color: var(--muted); opacity: 0.9; }
+
+/* textarea */
+.field.textarea {
+  min-height: 120px;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+/* select */
+.field.select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 13px) calc(1em + 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+/* focus-visible for keyboard users */
+:where(input, textarea, select, button):focus-visible {
+  outline: 3px solid rgba(37,99,235,0.12);
+  outline-offset: 2px;
+}
+.field:focus-visible {
+  border-color: var(--accent-600);
+  box-shadow: 0 8px 20px rgba(37,99,235,0.06);
+}
+
+/* invalid state */
+.field[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: 0 6px 18px rgba(220,53,69,0.06);
+}
+
+/* disabled */
+.field:disabled, .field[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: color-mix(in srgb, var(--surface) 92%, #f0f4f8 8%);
+}
+
+/* =========================
+   Checkboxes and radios
+   ========================= */
+.control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.control input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.checkbox, .radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(2,6,23,0.08);
+  background: var(--surface);
+  transition: background var(--transition), border-color var(--transition), transform 120ms ease;
+}
+.radio { border-radius: 50%; width: 18px; height: 18px; }
+.control input:checked + .checkbox {
+  background: linear-gradient(180deg, var(--accent), var(--accent-600));
+  border-color: transparent;
+  box-shadow: 0 6px 14px rgba(37,99,235,0.12);
+}
+.control input:checked + .radio {
+  background: linear-gradient(180deg, var(--accent), var(--accent-600));
+  border-color: transparent;
+  box-shadow: 0 6px 14px rgba(37,99,235,0.12);
+}
+.control .label-inline { font-size: 14px; color: var(--text); }
+
+/* keyboard focus */
+.control input:focus-visible + .checkbox,
+.control input:focus-visible + .radio {
+  outline: 3px solid rgba(37,99,235,0.12);
+  outline-offset: 2px;
+}
+
+/* =========================
+   Toggle switch
+   ========================= */
+.toggle {
+  --track-w: 44px;
+  --track-h: 24px;
+  --knob: 18px;
+  position: relative;
+  width: var(--track-w);
+  height: var(--track-h);
+  border-radius: 999px;
+  background: rgba(2,6,23,0.06);
+  display: inline-block;
+  transition: background var(--transition);
+}
+.toggle input { display: none; }
+.toggle .knob {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
+  width: var(--knob);
+  height: var(--knob);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(2,6,23,0.08);
+  transition: transform var(--transition), background var(--transition);
+}
+.toggle input:checked + .knob {
+  transform: translateY(-50%) translateX(calc(var(--track-w) - var(--knob) - 8px));
+  background: linear-gradient(180deg, var(--accent), var(--accent-600));
+}
+
+/* =========================
+   File input
+   ========================= */
+.file {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.file .file-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-600));
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  border: 0;
+}
+.file .file-name {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =========================
+   Password strength meter
+   ========================= */
+.pw-meter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pw-bars { display:flex; gap:6px; flex:1; }
+.pw-bar {
+  flex:1; height:8px; border-radius:6px; background:#eef3f4; transition: background var(--transition);
+}
+.pw-bar.weak { background: #ffb3a7; }
+.pw-bar.fair { background: #ffd27a; }
+.pw-bar.good { background: #bfe3a4; }
+.pw-bar.strong { background: var(--success); }
+.pw-text { font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+/* =========================
+   Form actions and buttons
+   ========================= */
+.form-actions {
+  display:flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.btn {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  transition: transform 120ms ease, box-shadow var(--transition);
+}
+.btn-primary { background: linear-gradient(180deg, var(--accent), var(--accent-600)); color: #fff; box-shadow: 0 8px 20px rgba(37,99,235,0.12); }
+.btn-ghost { background: transparent; color: var(--accent-600); border: 1px solid rgba(37,99,235,0.08); }
+.btn[disabled], .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* =========================
+   Inline validation animation
+   ========================= */
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.field[aria-invalid="true"].shake {
+  animation: shake 360ms ease;
+}
+
+/* =========================
+   Skeletons and loading
+   ========================= */
+.skeleton {
+  background: linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.02) 50%, rgba(0,0,0,0.04) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1200ms linear infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+
+/* =========================
+   Utilities
+   ========================= */
+.mt-8 { margin-top: 8px; }
+.mb-8 { margin-bottom: 8px; }
+.p-8 { padding: 8px; }
+.text-muted { color: var(--muted); }
+.text-right { text-align: right; }
+.full-width { width: 100%; }
+
+/* Accessibility: reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

@@ -1,0 +1,164 @@
+/* ===== Style global ===== */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0 20px;
+    color: #333;
+}
+
+h1, h2 {
+    color: #333;
+}
+
+/* ===== Formulaires ===== */
+form {
+    max-width: 400px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+form input[type="text"],
+form input[type="email"],
+form input[type="password"],
+form input[type="date"],
+form select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+form button {
+    width: 100%;
+    padding: 10px;
+    background-color: #337ab7;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+form button:hover {
+    background-color: #285e8e;
+}
+
+/* ===== Dashboards ===== */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+button {
+    padding: 5px 12px;
+    background-color: #28a745;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #218838;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.header a {
+    text-decoration: none;
+    color: #337ab7;
+    font-weight: bold;
+}
+
+.header a:hover {
+    color: #285e8e;
+}
+
+/* ===== Liste des professeurs et boutons ===== */
+#liste-profs li button {
+    margin-left: 10px;
+}
+
+/* ===== Logo ===== */
+.logo {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.logo img {
+    max-width: 150px;
+}
+
+/* ===== Notifications et status ===== */
+#status {
+    margin-top: 10px;
+    font-weight: bold;
+    color: #28a745;
+}
+
+/* ===== Liens ===== */
+a {
+    color: #337ab7;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* ===== Bouton visio ===== */
+.btn {
+    padding: 8px 15px;
+    background-color: #17a2b8;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+    display: inline-block;
+    margin-top: 10px;
+}
+
+.btn:hover {
+    background-color: #117a8b;
+}
+
+/* ===== Responsive ===== */
+@media(max-width: 600px){
+    form, .card {
+        width: 95%;
+        padding: 15px;
+    }
+
+    button, .btn {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+}

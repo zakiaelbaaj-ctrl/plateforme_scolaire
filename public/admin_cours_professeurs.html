@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Cours & Professeurs</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN pour prototypage rapide -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f4f6f8;
+    }
+    .table-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+    }
+    th {
+      background-color: #667eea;
+      color: white;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+    .btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-edit { background-color: #34d399; color: white; }
+    .btn-edit:hover { background-color: #22c55e; }
+    .btn-delete { background-color: #f87171; color: white; }
+    .btn-delete:hover { background-color: #ef4444; }
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #34d399;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container mx-auto">
+  <h1 class="text-3xl font-bold text-gray-800 my-8 text-center">🎓 Admin – Cours & Professeurs</h1>
+
+  <div class="table-container">
+    <table id="coursesTable">
+      <thead>
+        <tr>
+          <th>ID Cours</th>
+          <th>Nom du Cours</th>
+          <th>Professeur</th>
+          <th>Date de création</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Les lignes seront injectées via JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="notification" class="notification"></div>
+
+<script>
+  // ============================
+  // Simulation de données backend
+  // ============================
+  const courses = [
+    { id: 1, name: "Mathématiques", teacher: "Mme Dupont", created: "2026-01-01", status: "actif" },
+    { id: 2, name: "Physique", teacher: "M. Martin", created: "2026-01-03", status: "inactif" },
+    { id: 3, name: "Informatique", teacher: "Mme Leclerc", created: "2026-01-05", status: "actif" }
+  ];
+
+  const tableBody = document.querySelector("#coursesTable tbody");
+  const notification = document.getElementById("notification");
+
+  function showNotification(message, type = "success") {
+    notification.textContent = message;
+    notification.style.backgroundColor = type === "error" ? "#f87171" : "#34d399";
+    notification.style.display = "block";
+    setTimeout(() => { notification.style.display = "none"; }, 3000);
+  }
+
+  function renderTable() {
+    tableBody.innerHTML = "";
+    courses.forEach(course => {
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>${course.id}</td>
+        <td>${course.name}</td>
+        <td>${course.teacher}</td>
+        <td>${course.created}</td>
+        <td>${course.status}</td>
+        <td class="flex space-x-2">
+          <button class="btn btn-edit" onclick="editCourse(${course.id})">Éditer</button>
+          <button class="btn btn-delete" onclick="deleteCourse(${course.id})">Supprimer</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  function editCourse(id) {
+    const course = courses.find(c => c.id === id);
+    if (!course) return showNotification("Cours introuvable", "error");
+
+    const newName = prompt("Modifier le nom du cours:", course.name);
+    if (newName) {
+      course.name = newName;
+      renderTable();
+      showNotification(`Cours "${newName}" mis à jour ✅`);
+    }
+  }
+
+  function deleteCourse(id) {
+    const index = courses.findIndex(c => c.id === id);
+    if (index === -1) return showNotification("Cours introuvable", "error");
+
+    if (confirm(`Voulez-vous vraiment supprimer le cours "${courses[index].name}" ?`)) {
+      const deleted = courses.splice(index, 1);
+      renderTable();
+      showNotification(`Cours "${deleted[0].name}" supprimé ✅`);
+    }
+  }
+
+  // Initial render
+  renderTable();
+</script>
+
+</body>
+</html>

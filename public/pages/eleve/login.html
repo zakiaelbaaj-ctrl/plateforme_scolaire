@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion Élève</title>
+  <link rel="stylesheet" href="/css/base.css">
+</head>
+
+<body class="auth-body">
+
+  <div class="container role-eleve">
+
+    <!-- Logo -->
+    <div class="logo">
+      <img src="../../images/logo.png" alt="Logo plateforme">
+    </div>
+
+    <h1>🎓 Connexion Élève</h1>
+    <p class="subtitle">Accédez à votre espace d'apprentissage</p>
+
+    <form id="loginEleveForm">
+
+      <!-- IDENTIFIANTS -->
+      <div class="form-group">
+        <label for="username">Nom d'utilisateur ou Email</label>
+        <input type="text" id="username" name="username" required
+               autocomplete="username"
+               placeholder="marie.dupont ou marie@example.com">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" name="password" required
+               autocomplete="current-password"
+               placeholder="••••••••">
+      </div>
+
+      <!-- MATIÈRE -->
+      <div class="form-group">
+        <label for="matiere">Matière</label>
+        <select id="matiere" name="matiere" required>
+          <option value="">-- Choisir une matière --</option>
+          <option value="Mathématiques">Mathématiques</option>
+          <option value="Français">Français</option>
+          <option value="Anglais">Anglais</option>
+          <option value="Histoire-Géographie">Histoire-Géographie</option>
+          <option value="Physique-Chimie">Physique-Chimie</option>
+          <option value="SVT">SVT</option>
+          <option value="Informatique">Informatique</option>
+        </select>
+      </div>
+
+      <!-- NIVEAU -->
+      <div class="form-group">
+        <label for="niveau">Niveau scolaire</label>
+        <select id="niveau" name="niveau" required>
+          <option value="">-- Choisir votre niveau --</option>
+          <option value="Primaire">Primaire</option>
+          <option value="Collège">Collège</option>
+          <option value="Secondaire">Secondaire</option>
+        </select>
+      </div>
+
+      <button type="submit" class="eleve-btn" id="submitBtn">Se connecter</button>
+
+      <div id="loadingDiv" class="loading"></div>
+      <div id="errorDiv"   class="error"></div>
+      <div id="successDiv" class="success"></div>
+
+    </form>
+
+    <!-- LIEN VERS REGISTER -->
+    <div class="link-section">
+      Pas encore inscrit ? <a href="register.html" id="registerLink">S'inscrire</a>
+    </div>
+
+    <!-- LIEN VERS PROFESSEUR -->
+    <div class="link-section" style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 15px;">
+      Vous êtes professeur ? <a href="../professeur/login.html">Connexion professeur</a>
+    </div>
+
+  </div>
+
+  <!-- JS -->
+  <script type="module" src="../../js/auth/login_eleve.js"></script>
+
+</body>
+</html>

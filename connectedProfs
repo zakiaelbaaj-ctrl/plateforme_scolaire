@@ -1,0 +1,9 @@
+connectedProfs.set(username, { 
+  ws, 
+  disponible: true, 
+  id: user.id,       // depuis la DB
+  prenom: user.prenom,
+  nom: user.nom,
+  email: user.email,
+  statut: user.statut
+});

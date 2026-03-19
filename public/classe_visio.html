@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Classe en ligne</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="vendor/base.css">
+
+<style>
+body {
+  font-family: "Segoe UI", sans-serif;
+  margin: 0;
+  background: #f5f5f0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+header {
+  background: #2563eb;
+  color: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header div span {
+  font-weight: bold;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  flex: 1;
+  gap: 10px;
+  padding: 10px;
+}
+
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.side {
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat {
+  border:1px solid #ccc;
+  flex:1;
+  overflow:auto;
+  padding:5px;
+  border-radius: 5px;
+  background: #f9f9f9;
+}
+
+input, button {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: var(--color-eleves);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+}
+
+button:hover {
+  transform: scale(1.05);
+  filter: brightness(0.9);
+}
+
+.chat-input {
+  display: flex;
+  gap: 5px;
+}
+
+.chat-input input { flex: 1; }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>🎥 Salle de classe internationale</div>
+  <div>⏱ Temps: <span id="timer">00:00:00</span></div>
+  <button id="endSession">❌ Terminer</button>
+</header>
+
+<main>
+  <iframe id="visio"></iframe>
+
+  <div class="side">
+    <h3>💬 Chat</h3>
+    <div class="chat" id="chat"></div>
+    <div class="chat-input">
+      <input id="msg" placeholder="Message..." onkeydown="send(event)">
+      <button onclick="sendButton()">Envoyer</button>
+    </div>
+
+    <h3>📂 Documents</h3>
+    <input type="file" id="docUpload">
+  </div>
+</main>
+
+<script>
+// ======== SESSION VISIO ==========
+let sessionId = localStorage.getItem("sessionId");
+if(!sessionId){
+  sessionId = "classe-" + Math.random().toString(36).substring(2,10);
+  localStorage.setItem("sessionId", sessionId);
+}
+document.getElementById("visio").src = "https://meet.jit.si/" + sessionId;
+
+// ======== TIMER ==========
+let timerInterval;
+let startTime = localStorage.getItem("visioStartTime") || null;
+
+function startTimer() {
+  if(!startTime){
+    startTime = Date.now();
+    localStorage.setItem("visioStartTime", startTime);
+  }
+  timerInterval = setInterval(updateTimer, 1000);
+}
+
+function updateTimer(){
+  const now = Date.now();
+  const diff = now - startTime;
+  const h = Math.floor(diff/3600000);
+  const m = Math.floor(diff%3600000/60000);
+  const s = Math.floor(diff%60000/1000);
+  document.getElementById("timer").textContent =
+      String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+}
+
+function stopTimer(){
+  clearInterval(timerInterval);
+  const elapsed = Date.now() - startTime;
+  localStorage.setItem("lastSessionDuration", elapsed); // en ms
+  localStorage.removeItem("visioStartTime");
+  localStorage.removeItem("sessionId");
+}
+
+// Démarrer timer dès interaction
+document.getElementById("visio").addEventListener("load", startTimer);
+document.getElementById("msg").addEventListener("focus", startTimer);
+document.getElementById("docUpload").addEventListener("change", startTimer);
+
+// ======== CHAT SIMPLE ==========
+const chat = document.getElementById("chat");
+
+function send(e){
+  if(e.key === "Enter"){
+    appendMessage("👤 Élève", e.target.value);
+    e.target.value="";
+  }
+}
+
+function sendButton(){
+  const input = document.getElementById("msg");
+  appendMessage("👤 Élève", input.value);
+  input.value="";
+}
+
+function appendMessage(user, text){
+  if(!text) return;
+  const div = document.createElement("div");
+  div.textContent = `${user}: ${text}`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ======== FIN DE SESSION ==========
+document.getElementById("endSession").addEventListener("click", ()=>{
+  stopTimer();
+  alert("Session terminée. Durée enregistrée.");
+  window.location.href = "choisir_matiere.html"; // retour à la liste des matières
+});
+
+// ======== AFFICHAGE HEURE ==========
+function updateClock(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById("timer").textContent = `${h}:${m}:${s}`;
+}
+setInterval(updateClock,1000);
+</script>
+
+</body>
+</html>

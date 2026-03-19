@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inscription Élève</title>
+
+  <!-- Base CSS commun -->
+  <link rel="stylesheet" href="vendor/base.css">
+
+  <!-- CSS spécifique à l'inscription -->
+  <link rel="stylesheet" href="css/dashboard_eleve/register.css">
+
+  <!-- Polices manuscrites Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&family=Pacifico&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="container">
+    <h1>📝 Inscription Élève</h1>
+
+    <form id="registerForm">
+      <div class="form-group">
+        <label for="username">Nom d'utilisateur *</label>
+        <input type="text" id="username" name="username" required placeholder="jean_martin">
+      </div>
+
+      <div class="form-group">
+        <label for="prenom">Prénom *</label>
+        <input type="text" id="prenom" name="prenom" required placeholder="Jean">
+      </div>
+
+      <div class="form-group">
+        <label for="nom">Nom *</label>
+        <input type="text" id="nom" name="nom" required placeholder="Martin">
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input type="email" id="email" name="email" required placeholder="jean@test.com">
+      </div>
+
+      <div class="form-group">
+        <label for="telephone">Téléphone</label>
+        <input type="tel" id="telephone" name="telephone" placeholder="0601020304">
+      </div>
+
+      <div class="form-group">
+        <label for="pays">Pays</label>
+        <input type="text" id="pays" name="pays" placeholder="France">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mot de passe *</label>
+        <input type="password" id="password" name="password" required placeholder="••••••">
+      </div>
+
+      <button type="submit" id="submitBtn">S'inscrire</button>
+
+      <div id="errorDiv" class="error"></div>
+      <div id="successDiv" class="success"></div>
+    </form>
+
+    <div class="demo-info">
+      💡 <strong>Test:</strong> username: test_eleve | password: 1234
+    </div>
+
+    <div class="link-section">
+      <p>Déjà inscrit ? <a id="loginLink">🔑 Se connecter</a></p>
+    </div>
+  </div>
+
+  <!-- Script JS -->
+  <script src="js/Dashboard_eleve/register.js"></script>
+  <script>
+    // Redirection vers login
+    document.getElementById('loginLink').addEventListener('click', () => {
+      window.location.href = 'login_eleve.html';
+    });
+  </script>
+
+</body>
+</html>

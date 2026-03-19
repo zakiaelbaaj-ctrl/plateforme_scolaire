@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Connexion – Urgence Scolaire</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Indie+Flower&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --main-color: #2196f3;
+      --error-color: #e74c3c;
+      --bg-color: #f5f5f0;
+      --card-bg: #ffffff;
+    }
+
+    body {
+      font-family: 'Indie Flower', cursive;
+      background: var(--bg-color);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .login-card {
+      background: var(--card-bg);
+      padding: 2rem 2.5rem;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+
+    h1 {
+      font-family: 'Pacifico', cursive;
+      margin-bottom: 1.5rem;
+      color: #333;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 1.8rem;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      background: var(--main-color);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1976d2;
+    }
+
+    #errorMsg {
+      display: none;
+      margin-top: 1rem;
+      color: var(--error-color);
+      font-weight: bold;
+    }
+
+    .back-home {
+      margin-top: 1.5rem;
+      display: inline-block;
+      color: #555;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .back-home:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="login-card">
+    <h1>Connexion 📚</h1>
+
+    <form id="loginForm" novalidate>
+
+      <!-- RÔLE -->
+      <label for="role">Rôle</label>
+<select id="role" name="role" required>
+  <option value="eleve">Élève</option>
+  <option value="etudiant">Étudiant</option>
+  <option value="prof">Professeur</option> <!-- valeur EXACTE = 'prof' -->
+</select>
+
+      <!-- USERNAME -->
+      <label for="usernameInput">Nom d'utilisateur</label>
+      <input
+        type="text"
+        id="usernameInput"
+        name="username"
+        autocomplete="username"
+        required
+      />
+
+      <!-- PASSWORD -->
+      <label for="passwordInput">Mot de passe</label>
+      <input
+        type="password"
+        id="passwordInput"
+        name="password"
+        autocomplete="current-password"
+        required
+      />
+
+      <!-- SUJET (ÉLÈVE / ÉTUDIANT) -->
+      <div id="sujetFormContainer" style="display:none;">
+        <label for="sujetInput">Sujet</label>
+        <input type="text" id="sujetInput" name="sujet" placeholder="Ex: Algèbre" />
+      </div>
+
+      <!-- MATIÈRE -->
+      <label for="matiereInput">Matière</label>
+      <input type="text" id="matiereInput" name="matiere" placeholder="Ex: Mathématiques" />
+
+      <button type="submit">Entrer dans le dashboard</button>
+
+      <div id="errorMsg"></div>
+    </form>
+
+    <a href="index.html" class="back-home">← Retour à l’accueil</a>
+  </div>
+
+  <!-- LOGIN SCRIPT -->
+  <script src="/js/login.js"></script>
+
+  <!-- ROLE PRESELECT VIA INDEX -->
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const roleFromIndex = params.get("role");
+    if (roleFromIndex) {
+      const roleSelect = document.getElementById("role");
+      roleSelect.value = roleFromIndex;
+      roleSelect.dispatchEvent(new Event("change"));
+    }
+  </script>
+
+</body>
+</html>

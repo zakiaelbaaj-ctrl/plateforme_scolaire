@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Élève - Complet</title>
+<script src="https://sdk.twilio.com/js/video/releases/2.30.0/twilio-video.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(10px);
+}
+
+header h1 { margin: 0; font-size: 1.5rem; }
+
+.student-info { display: flex; align-items: center; gap: 1rem; }
+.student-info img { width: 60px; height: 60px; border-radius: 50%; border: 3px solid white; object-fit: cover; }
+
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.orbit-container {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.center-button {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 3px solid white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  z-index: 10;
+  font-weight: bold;
+}
+
+.center-button:hover { transform: scale(1.1); box-shadow: 0 25px 70px rgba(102, 126, 234, 0.8); }
+
+.orbit {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.orbit-item {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid white;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #333;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.orbit-item:hover { transform: scale(1.1) translateY(-5px); }
+.orbit-item-emoji { font-size: 2rem; margin-bottom: 5px; }
+
+.item-1 { top: 0; left: 50%; transform: translate(-50%, -50%); }
+.item-2 { top: 10%; right: 10%; transform: translate(-50%, -50%); }
+.item-3 { top: 50%; right: 0; transform: translate(-50%, -50%); }
+.item-4 { bottom: 10%; right: 10%; transform: translate(-50%, 50%); }
+.item-5 { bottom: 0; left: 50%; transform: translate(-50%, 50%); }
+.item-6 { bottom: 10%; left: 10%; transform: translate(50%, 50%); }
+.item-7 { top: 50%; left: 0; transform: translate(50%, -50%); }
+.item-8 { top: 10%; left: 10%; transform: translate(50%, -50%); }
+
+.info-panel {
+  position: absolute;
+  right: 40px;
+  top: 120px;
+  width: 300px;
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.info-panel h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 10px;
+}
+
+.prof-card {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 10px;
+}
+
+.prof-card:hover { transform: translateX(5px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
+.prof-card strong { display: block; color: #333; margin-bottom: 5px; }
+.prof-card small { color: #666; font-size: 0.8rem; }
+.prof-card button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 8px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.prof-card button:hover { background: #764ba2; }
+
+#visio-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 600px;
+  background: white;
+  border-radius: 15px;
+  padding: 15px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+  z-index: 30;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: none;
+}
+
+#visio-panel.active { display: block; }
+#visio-panel h3 { margin: 0 0 12px 0; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 8px; }
+#visio-panel h5 { margin: 10px 0 8px 0; font-weight: bold; color: #333; font-size: 0.9rem; }
+
+  .video-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  /* 🔥 Ajoute ici */
+  .disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+
+#local-video { width: 150px; height: 120px; background: #000; border-radius: 6px; overflow: hidden; }
+#remote-video { flex: 1; height: 200px; background: #000; border-radius: 6px; overflow: hidden; }
+
+#local-video video, #remote-video video { width: 100%; height: 100%; object-fit: cover; }
+
+.timer { font-weight: bold; color: #667eea; font-size: 1.1rem; padding: 10px; background: #f0f0f0; border-radius: 4px; text-align: center; margin-bottom: 10px; }
+
+.control-buttons { display: flex; gap: 8px; margin-bottom: 10px; }
+.control-buttons button { flex: 1; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+#btn-exit-visio { background: #dc3545; color: white; }
+
+#chat-box {
+  height: 120px;
+  overflow-y: auto;
+  background: #f9f9f9;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid #ddd;
+  font-size: 0.85rem;
+}
+
+.chat-message {
+  margin-bottom: 8px;
+  padding: 6px;
+  background: white;
+  border-left: 3px solid #667eea;
+  border-radius: 2px;
+}
+
+.chat-message strong { color: #667eea; }
+
+#chatForm { display: flex; gap: 5px; margin-bottom: 10px; }
+#chat-input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+#send-msg { padding: 8px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; }
+
+#docInput { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; }
+#sendDocBtn { width: 100%; padding: 8px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 8px; }
+
+#docList { max-height: 80px; overflow-y: auto; background: #f9f9f9; padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
+.doc-link { display: block; color: #667eea; text-decoration: none; font-size: 0.85rem; margin-bottom: 4px; }
+
+/* TABLEAU BLANC */
+.whiteboard-section {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.whiteboard-tools {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.whiteboard-tools input[type="color"] {
+  width: 50px;
+  height: 35px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.whiteboard-tools select,
+.whiteboard-tools input[type="range"] {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.whiteboard-tools button {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.whiteboard-tools button:nth-child(4) { background: #ffc107; color: #333; }
+.whiteboard-tools button:nth-child(5) { background: #28a745; }
+.whiteboard-tools button:nth-child(6) { background: #dc3545; }
+
+#whiteboard-canvas {
+  display: block;
+  width: 100%;
+  height: 250px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: crosshair;
+  background: white;
+  touch-action: none;
+}
+
+/* PARTAGE ÉCRAN */
+.screen-share-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#shareScreenBtn, #stopScreenBtn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  color: white;
+}
+
+#shareScreenBtn { background: #667eea; }
+#stopScreenBtn { background: #dc3545; }
+
+@media (max-width: 768px) {
+  .orbit-container { width: 300px; height: 300px; }
+  .info-panel { display: none; }
+  #visio-panel { width: 95vw; left: 2.5vw; }
+}
+</style>
+</head>
+<body class="eleves"></body>
+
+<header>
+<div class="student-info">
+<img src="https://th.bing.com/th/id/OIP.NgmR4Pm6EgNhysPvrN8oGgHaHa?w=220&h=220&c=7&r=0&o=7&dpr=1.5&pid=1.7&rm=3" alt="Photo">
+<div class="student-details">
+      <h2 id="studentName">Élève</h2>
+      <p id="studentLocation">Ville, Pays</p>
+    </div>
+  </div>
+</header>
+
+<main class="dashboard">
+  <!-- BOUTON CENTRAL -->
+<div class="orbit-container">
+<button class="center-button" id="call-button">
+<div>📞</div>
+<div>Appeler</div>
+<div style="font-size: 0.8rem;">Prof</div>
+</button>
+
+<div class="orbit">
+<button class="orbit-item item-1" onclick="openResource('https://www.tetrisgratuit.fr')"><div class="orbit-item-emoji">🎮</div><div>Jeux</div></button>
+<button class="orbit-item item-2" onclick="openResource('https://www.le-dictionnaire.com')"><div class="orbit-item-emoji">📖</div><div>Dictionnaire</div></button>
+<button class="orbit-item item-3" onclick="openResource('https://www.quizz.fr')"><div class="orbit-item-emoji">🧠</div><div>Quiz</div></button>
+<button class="orbit-item item-4" onclick="openResource('https://times-tables.org/fr')"><div class="orbit-item-emoji">✖️</div><div>Tables</div></button>
+<button class="orbit-item item-5" onclick="openResource('https://conjugaison.bescherelle.com')"><div class="orbit-item-emoji">✍️</div><div>Conjugaison</div></button>
+<button class="orbit-item item-6" onclick="openResource('https://www.bing.com/videos/search?q=Réseau+Canopé')"><div class="orbit-item-emoji">🎬</div><div>Vidéos</div></button>
+<button class="orbit-item item-7" onclick="openResource('#ressources')"><div class="orbit-item-emoji">📚</div><div>Ressources</div></button>
+<button class="orbit-item item-8" onclick="openResource('https://www.coloringbook.ai/fr/online-coloring')"><div class="orbit-item-emoji">🎨</div><div>Coloriage</div></button>
+</div>
+</div>
+
+<!-- PANNEAU LATÉRAL -->
+<div class="side">
+  <h3>📘 Infos de la Session</h3>
+  <div id="infosEleve" style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 3px solid #2563eb; font-size: 0.9rem;">
+    Connecté. En attente d'appel...
+  </div>
+
+  <!-- 🔥 INFOS DU PROFESSEUR (À METTRE ICI) -->
+  <div id="selectedProfInfo" class="prof-info hidden">
+      <img src="https://th.bing.com/th/id/OIP.v6erwFa4W7111O7pRfDH5wHaFO?w=272&h=190&c=7&r=0&o=7&dpr=1.5&pid=1.7&rm=3" alt="Photo prof">
+      <div class="prof-details">
+        <h2 id="selectedProfName">Nom Prénom</h2>
+        <p id="selectedProfLocation">Ville, Pays</p>
+        <p id="selectedProfTime">Heure locale : --:--</p>
+      </div>
+  </div>
+
+  <!-- LISTE DES PROFESSEURS -->
+  <div class="info-panel">
+    <h3>👨‍🏫 Professeurs connectés</h3>
+    <div id="profsList" style="max-height: 300px; overflow-y: auto;"></div>
+  </div>
+</div>
+
+</main>
+
+<div id="panel-visio">
+<h3>📞 Appel Visio</h3>
+<p id="call-status">Aucun appel</p>
+<div id="home-screen">
+  <!-- contenu de l’écran d’accueil -->
+</div>
+
+<div id="call-screen" class="hidden">
+  <!-- contenu de la visio -->
+</div>
+
+<div class="video-container">
+    <div id="local-video"></div>
+    <div id="remote-video"></div>
+</div>
+
+
+<div class="timer">⏱️ Temps: <span id="timer">00:00</span></div>
+
+<div class="control-buttons">
+<button id="btn-exit-visio" onclick="leaveSession()">🚪 Quitter</button>
+</div>
+
+<h5>💬 Chat</h5>
+<div id="chat-box"></div>
+<form id="chatForm" style="margin-bottom: 10px;">
+<input id="chat-input" placeholder="Message..." required>
+<button type="submit" id="send-msg">Envoyer</button>
+</form>
+
+<h5>📄 Documents</h5>
+<input type="file" id="docInput">
+<button id="sendDocBtn">Envoyer</button>
+<div id="docList"></div>
+
+<h5>✏️ Tableau Blanc</h5>
+<div class="whiteboard-section">
+<div class="whiteboard-tools">
+<button id="initWhiteboardBtn">📝 Démarrer</button>
+<input type="color" id="whiteboardColor" value="#000000" title="Couleur">
+<input type="range" id="whiteboardSize" min="1" max="50" value="2" title="Taille">
+<select id="whiteboardTool">
+<option value="pen">✏️ Stylo</option>
+<option value="eraser">🗑️ Gomme</option>
+</select>
+<button id="undoWhiteboardBtn">↩️ Annuler</button>
+<button id="clearWhiteboardBtn">🗑️ Effacer</button>
+<button id="downloadWhiteboardBtn">💾 Télécharger</button>
+</div>
+<canvas id="whiteboard-canvas"></canvas>
+</div>
+
+<h5>📺 Partage d'écran</h5>
+<div class="screen-share-buttons">
+<button id="shareScreenBtn">📺 Partager écran</button>
+<button id="stopScreenBtn">⏹️ Arrêter</button>
+</div>
+</div>
+
+<script src="js/Dashboard_eleve/dashboard_eleve.js" defer></script>
+
+</body>
+</html>

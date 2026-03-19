@@ -1,0 +1,135 @@
+{
+  "eleves": [
+    {
+      "id": "eleve_001",
+      "username": "alice_dupont",
+      "password": "alice123",
+      "email": "alice@example.com",
+      "nom": "Alice Dupont",
+      "prenom": "Alice",
+      "classe": "Terminale S",
+      "etablissement": "Lycée Jean Monnet",
+      "dateInscription": "2025-01-15",
+      "statut": "actif",
+      "salleAttente": []
+    },
+    {
+      "id": "eleve_002",
+      "username": "bob_martin",
+      "password": "bob456",
+      "email": "bob@example.com",
+      "nom": "Bob Martin",
+      "prenom": "Bob",
+      "classe": "Terminale ES",
+      "etablissement": "Lycée Jean Monnet",
+      "dateInscription": "2025-01-20",
+      "statut": "actif",
+      "salleAttente": []
+    },
+    {
+      "id": "eleve_003",
+      "username": "clara_bernard",
+      "password": "clara789",
+      "email": "clara@example.com",
+      "nom": "Clara Bernard",
+      "prenom": "Clara",
+      "classe": "Première S",
+      "etablissement": "Lycée Georges Clemenceau",
+      "dateInscription": "2025-02-01",
+      "statut": "actif",
+      "salleAttente": []
+    },
+    {
+      "id": "eleve_004",
+      "username": "david_lemos",
+      "password": "david999",
+      "email": "david@example.com",
+      "nom": "David Lemos",
+      "prenom": "David",
+      "classe": "Seconde",
+      "etablissement": "Lycée Jean Monnet",
+      "dateInscription": "2025-02-05",
+      "statut": "actif",
+      "salleAttente": []
+    }
+  ],
+  "professeurs": [
+    {
+      "id": "prof_001",
+      "username": "mr_durand",
+      "password": "prof123",
+      "email": "durand@example.com",
+      "nom": "Durand",
+      "prenom": "Jean",
+      "specialites": ["Mathématiques", "Algèbre", "Géométrie"],
+      "etablissements": ["Lycée Jean Monnet"],
+      "tauxHoraire": 45.00,
+      "dateInscription": "2024-12-01",
+      "statut": "validé",
+      "disponible": true,
+      "salleAttente": [],
+      "bio": "Professeur de mathématiques avec 10 ans d'expérience"
+    },
+    {
+      "id": "prof_002",
+      "username": "mme_thomas",
+      "password": "prof456",
+      "email": "thomas@example.com",
+      "nom": "Thomas",
+      "prenom": "Marie",
+      "specialites": ["Physique", "Chimie", "Sciences"],
+      "etablissements": ["Lycée Georges Clemenceau", "Lycée Jean Monnet"],
+      "tauxHoraire": 50.00,
+      "dateInscription": "2024-11-15",
+      "statut": "validé",
+      "disponible": true,
+      "salleAttente": [],
+      "bio": "Professeur de sciences avec passions pour la pédagogie innovante"
+    },
+    {
+      "id": "prof_003",
+      "username": "mr_bernard",
+      "password": "prof789",
+      "email": "bernard@example.com",
+      "nom": "Bernard",
+      "prenom": "Pierre",
+      "specialites": ["Français", "Littérature", "Grammaire"],
+      "etablissements": ["Lycée Jean Monnet"],
+      "tauxHoraire": 40.00,
+      "dateInscription": "2024-10-20",
+      "statut": "validé",
+      "disponible": false,
+      "salleAttente": [],
+      "bio": "Professeur de français, spécialiste en littérature classique"
+    },
+    {
+      "id": "prof_004",
+      "username": "mme_garcia",
+      "password": "prof999",
+      "email": "garcia@example.com",
+      "nom": "Garcia",
+      "prenom": "Sofia",
+      "specialites": ["Anglais", "Langues", "Conversation"],
+      "etablissements": ["Lycée Georges Clemenceau"],
+      "tauxHoraire": 42.50,
+      "dateInscription": "2024-09-30",
+      "statut": "validé",
+      "disponible": true,
+      "salleAttente": [],
+      "bio": "Professeur d'anglais, locutrice native avec expérience internationale"
+    }
+  ],
+  "administrateurs": [
+    {
+      "id": "admin_001",
+      "username": "admin",
+      "password": "admin123",
+      "email": "admin@example.com",
+      "nom": "Admin",
+      "prenom": "Super",
+      "dateInscription": "2024-01-01",
+      "role": "administrateur",
+      "statut": "actif"
+    }
+  ]
+}

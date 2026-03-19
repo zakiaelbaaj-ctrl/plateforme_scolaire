@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "locale": "fr",
+    "name": "Français",
+    "direction": "ltr",
+    "version": "1.0.0"
+  },
+  "common": {
+    "appName": "Plateforme Scolaire",
+    "ok": "OK",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "back": "Retour",
+    "continue": "Continuer",
+    "submit": "Envoyer",
+    "retry": "Réessayer",
+    "loading": "Chargement…",
+    "required": "Obligatoire"
+  },
+  "buttons": {
+    "send": "Envoyer",
+    "sendEmail": "Envoyer un e‑mail",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "requestReset": "Demander la réinitialisation",
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "signUp": "S'inscrire",
+    "changePassword": "Changer le mot de passe",
+    "resend": "Renvoyer"
+  },
+  "placeholders": {
+    "email": "vous@exemple.com",
+    "password": "Entrez votre mot de passe",
+    "passwordConfirm": "Confirmez votre mot de passe",
+    "search": "Rechercher",
+    "code": "Entrez le code"
+  },
+  "auth": {
+    "forgotPassword": {
+      "title": "Mot de passe oublié ?",
+      "lead": "Saisissez l'adresse e‑mail associée à votre compte et nous vous enverrons les instructions pour réinitialiser votre mot de passe.",
+      "success": "Si un compte existe pour {email}, nous avons envoyé les instructions de réinitialisation à cette adresse.",
+      "sent": "E‑mail de réinitialisation envoyé",
+      "sentDetails": "Vérifiez votre boîte de réception pour un message de {from} contenant les instructions. Si vous ne le voyez pas, regardez dans les courriers indésirables.",
+      "notFound": "Aucun compte trouvé pour cette adresse e‑mail.",
+      "rateLimit": "Trop de requêtes. Veuillez attendre {minutes, plural, one {# minute} other {# minutes}} puis réessayer.",
+      "cta": "Envoyer les instructions"
+    },
+    "resetPassword": {
+      "title": "Choisissez un nouveau mot de passe",
+      "lead": "Créez un mot de passe robuste que vous n'utilisez pas ailleurs.",
+      "success": "Votre mot de passe a été mis à jour. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+      "invalidToken": "Ce lien de réinitialisation est invalide ou a expiré. Demandez-en un nouveau.",
+      "expired": "Lien de réinitialisation expiré",
+      "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "passwordRequirements": "Le mot de passe doit contenir au moins {minLength} caractères et inclure un mélange de lettres, chiffres et symboles.",
+      "cta": "Mettre à jour le mot de passe"
+    },
+    "login": {
+      "title": "Se connecter",
+      "lead": "Connectez‑vous pour accéder à vos cours, messages et documents.",
+      "rememberMe": "Se souvenir de moi",
+      "forgotPassword": "Mot de passe oublié ?",
+      "invalidCredentials": "E‑mail ou mot de passe invalide.",
+      "locked": "Votre compte est temporairement verrouillé. Réessayez plus tard.",
+      "twoFactorRequired": "Authentification à deux facteurs requise",
+      "twoFactorPrompt": "Saisissez le code d'authentification depuis votre application."
+    },
+    "register": {
+      "title": "Créer un compte",
+      "lead": "Créez un compte pour rejoindre des cours, partager des documents et commencer le tutorat.",
+      "success": "Bienvenue ! Vérifiez votre e‑mail pour confirmer votre compte.",
+      "emailInUse": "Cette adresse e‑mail est déjà utilisée.",
+      "passwordTooWeak": "Le mot de passe est trop faible.",
+      "cta": "Créer un compte"
+    }
+  },
+  "validation": {
+    "email": "Veuillez saisir une adresse e‑mail valide.",
+    "required": "{field} est requis.",
+    "minLength": "{field} doit contenir au moins {min} caractères.",
+    "maxLength": "{field} doit contenir au plus {max} caractères.",
+    "passwordComplexity": "Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre.",
+    "match": "{field} doit correspondre à {otherField}.",
+    "invalidCode": "Le code saisi est invalide."
+  },
+  "passwordStrength": {
+    "label": "Solidité du mot de passe",
+    "veryWeak": "Très faible",
+    "weak": "Faible",
+    "fair": "Moyen",
+    "good": "Bon",
+    "strong": "Fort",
+    "aria": "Solidité du mot de passe : {strength}"
+  },
+  "errors": {
+    "network": "Erreur réseau. Vérifiez votre connexion et réessayez.",
+    "unexpected": "Une erreur inattendue est survenue. Veuillez réessayer plus tard.",
+    "forbidden": "Vous n'avez pas la permission d'effectuer cette action.",
+    "notFound": "Ressource introuvable.",
+    "validationFailed": "La validation a échoué. Vérifiez les champs en surbrillance et réessayez.",
+    "serviceUnavailable": "Service temporairement indisponible. Veuillez réessayer dans un instant."
+  },
+  "notifications": {
+    "emailSent": "{count, plural, one {Un e‑mail a été envoyé} other {# e‑mails ont été envoyés}}.",
+    "passwordUpdated": "Mot de passe mis à jour avec succès.",
+    "signedOut": "Vous avez été déconnecté.",
+    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter."
+  },
+  "emails": {
+    "from": "no-reply@plateforme-scolaire.example",
+    "forgotPassword": {
+      "subject": "Réinitialisez votre mot de passe Plateforme Scolaire",
+      "greeting": "Bonjour {name},",
+      "intro": "Nous avons reçu une demande de réinitialisation du mot de passe pour votre compte ({email}).",
+      "actionText": "Réinitialiser mon mot de passe",
+      "outro": "Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet e‑mail en toute sécurité.",
+      "signature": "Merci,\nL'équipe Plateforme Scolaire",
+      "expiryNotice": "Ce lien expirera dans {hours, plural, one {# heure} other {# heures}}."
+    },
+    "welcome": {
+      "subject": "Bienvenue sur Plateforme Scolaire",
+      "greeting": "Bienvenue {name},",
+      "intro": "Merci d'avoir créé un compte. Vérifiez votre e‑mail pour commencer.",
+      "actionText": "Vérifier mon e‑mail",
+      "signature": "L'équipe Plateforme Scolaire"
+    }
+  },
+  "accessibility": {
+    "aria": {
+      "close": "Fermer la fenêtre",
+      "openMenu": "Ouvrir le menu",
+      "togglePassword": "Afficher/masquer le mot de passe",
+      "loading": "Chargement du contenu",
+      "error": "Erreur"
+    },
+    "labels": {
+      "email": "Adresse e‑mail",
+      "password": "Mot de passe",
+      "passwordConfirm": "Confirmer le mot de passe",
+      "submit": "Soumettre le formulaire"
+    }
+  },
+  "ui": {
+    "health": {
+      "ok": "Service OK",
+      "ready": "Prêt"
+    },
+    "placeholders": {
+      "email": "vous@ecole.edu"
+    },
+    "links": {
+      "privacy": "Politique de confidentialité",
+      "terms": "Conditions d'utilisation",
+      "support": "Support"
+    }
+  },
+  "dates": {
+    "formats": {
+      "short": "DD/MM/YYYY",
+      "long": "D MMMM YYYY",
+      "time": "HH:mm",
+      "datetime": "D MMMM YYYY HH:mm"
+    },
+    "relative": {
+      "now": "à l'instant",
+      "minutesAgo": "{count, plural, one {il y a # minute} other {il y a # minutes}}",
+      "hoursAgo": "{count, plural, one {il y a # heure} other {il y a # heures}}",
+      "daysAgo": "{count, plural, one {il y a # jour} other {il y a # jours}}"
+    }
+  },
+  "place": {
+    "classroom": "Salle de classe",
+    "dashboard": "Tableau de bord",
+    "profile": "Profil",
+    "documents": "Documents",
+    "messages": "Messages"
+  },
+  "examples": {
+    "interpolation": "Bonjour {name}, votre code de réinitialisation est {code}.",
+    "plural": "Vous avez {count, plural, =0 {aucun nouveau message} one {# nouveau message} other {# nouveaux messages}}."
+  }
+}

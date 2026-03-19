@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Étudiant - Chat Collaboratif</title>
+  <link rel="stylesheet" href="css/dahboard_etudiant/chat.css">
+  <link rel="stylesheet" href="css/dahboard_etudiant/toast_video.css">
+</head>
+<body>
+  <header>
+    <h1>💬 Chat Collaboratif Étudiant</h1>
+  </header>
+
+  <!-- Notifications Toast -->
+  <div id="toastContainer"></div>
+
+  <!-- Statut connexion -->
+  <div id="chatStatus">
+    <span class="status-indicator status-online"></span>
+    <span>En ligne</span>
+  </div>
+
+  <!-- Zone de chat -->
+  <section id="chatSection">
+    <div id="chatBox" class="chat-box">
+      <!-- Exemple de message distant -->
+      <div class="chat-message remote">
+        <div class="chat-avatar">AN</div>
+        <div class="chat-bubble" data-time="14:52">Salut Zaza !</div>
+      </div>
+
+      <!-- Exemple de message local -->
+      <div class="chat-message local">
+        <div class="chat-avatar">ZA</div>
+        <div class="chat-bubble" data-time="14:53">Salut, prêt pour la visio ?</div>
+      </div>
+
+      <!-- Exemple de message système -->
+      <div class="chat-message system">
+        <div class="chat-bubble" data-time="14:54">Vous êtes connecté au chat.</div>
+      </div>
+    </div>
+
+    <!-- Formulaire d'envoi -->
+    <form id="chatForm">
+      <input id="chatInput" type="text" placeholder="Écrire un message..." required>
+      <button type="submit">Envoyer</button>
+    </form>
+  </section>
+
+  <!-- Scripts -->
+  <script src="js/Dashboard_etudiant/chat.js"></script>
+</body>
+</html>

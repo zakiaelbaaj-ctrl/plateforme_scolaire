@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inscription Étudiant</title>
+
+  <!-- ✔ Chemin CSS corrigé -->
+  <link rel="stylesheet" href="/css/base.css">
+</head>
+
+<body>
+
+<div class="container">
+  <h1>📝 Inscription Étudiant</h1>
+
+  <form id="registerForm">
+    <input type="text" id="username" placeholder="Nom d'utilisateur" required autocomplete="username">
+    <input type="text" id="prenom" placeholder="Prénom" required autocomplete="given-name">
+    <input type="text" id="nom" placeholder="Nom" required autocomplete="family-name">
+    <input type="email" id="email" placeholder="Email" required autocomplete="email">
+
+    <!-- ✔ Correction Chrome : autocomplete -->
+    <input type="password" id="password" placeholder="Mot de passe" required autocomplete="new-password">
+
+    <button type="submit">S'inscrire</button>
+
+    <div id="errorDiv" class="error"></div>
+    <div id="successDiv" class="success"></div>
+  </form>
+
+  <p>Déjà inscrit ? <a href="login.html">Se connecter</a></p>
+</div>
+<!-- ✔ Chemin JS corrigé -->
+<script type="module" src="/js/auth/register_etudiant.js"></script>
+
+</body>
+</html>

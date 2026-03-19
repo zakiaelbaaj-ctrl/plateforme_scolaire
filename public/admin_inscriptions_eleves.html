@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Gestion des Élèves</title>
+
+  <!-- Dark mode premium -->
+  <link rel="stylesheet" href="/css/admin_dark.css">
+</head>
+
+<body class="admin-page">
+
+<!-- ============================
+     HEADER
+============================= -->
+<header class="page-header">
+  <div class="container">
+    <h1>🎓 Gestion des Élèves</h1>
+    <p class="meta" id="studentCount">Chargement...</p>
+  </div>
+</header>
+
+<!-- ============================
+     CONTENU PRINCIPAL
+============================= -->
+<main class="container">
+
+  <!-- Zone d’actions -->
+  <section class="controls">
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="🔍 Chercher un élève..."
+      aria-label="Rechercher un élève"
+    >
+    <button class="validate-btn" onclick="loadEleves()">🔄 Rafraîchir</button>
+  </section>
+
+  <!-- Tableau -->
+  <section class="table-wrapper" aria-label="Liste des élèves">
+    <table id="eleveTable" class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nom Complet</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Pays</th>
+          <th>Heures avec professeurs</th>
+          <th>Date d’inscription</th>
+          <th>Statut</th>
+          <th>Subscription</th>
+          <th>Plan</th>
+          <th>Free Trial</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Élèves injectés ici -->
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Retour -->
+  <footer class="page-footer">
+    <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
+  </footer>
+
+</main>
+
+<!-- ============================
+     MODAL
+============================= -->
+<div id="confirmModal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <h3 id="modalTitle">Confirmation</h3>
+    <p id="modalMessage"></p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-confirm" onclick="confirmAction()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     SCRIPT (inchangé)
+============================= -->
+<script>
+let eleves = [];
+let filteredEleves = [];
+let pendingAction = null;
+
+// -----------------------------
+// FETCH DES ÉLÈVES
+// -----------------------------
+async function loadEleves() {
+  const studentCountEl = document.getElementById("studentCount");
+  
+  try {
+    const token = localStorage.getItem("token");
+
+    // 1. Vérification avant l'appel API
+    if (!token) {
+      console.warn("Token manquant au chargement");
+      alert("Accès refusé. Veuillez vous connecter en tant qu'administrateur.");
+      window.location.href = "login_admin.html"; // Redirection immédiate
+      return;
+    }
+
+    const res = await fetch("http://localhost:4000/api/v1/admin/users?role=eleve", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    // 2. Gestion spécifique de l'erreur 401 (Token invalide ou expiré)
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      alert("Votre session a expiré. Redirection vers la page de connexion...");
+      window.location.href = "login_admin.html";
+      return;
+    }
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json.message || "Erreur lors de la récupération des données");
+    }
+
+    // Extraction et formatage des données
+    eleves = json.users.map(u => ({
+      id: u.id,
+      fullname: `${u.prenom || ""} ${u.nom || ""}`.trim() || u.username || "Sans nom",
+      email: u.email || "—",
+      telephone: u.telephone || "—",
+      pays: u.pays || "—",
+      statut: u.statut || "en_attente",
+      subscription_status: u.subscription_status || "—",
+      plan_type: u.plan_type || "—",
+      free_trial_start: u.free_trial_start || null,
+      free_trial_end: u.free_trial_end || null,
+      date_inscription: u.date_inscription || null,
+      heures_contact: u.heures_contact || 0
+    }));
+
+    filteredEleves = [...eleves];
+    
+    // Mise à jour du compteur en haut de page
+    if (studentCountEl) {
+      studentCountEl.textContent = `${eleves.length} élève(s) inscrit(s)`;
+    }
+
+    displayEleves();
+
+  } catch (err) {
+    console.error("❌ Erreur critique:", err);
+    alert("Impossible de charger les données : " + err.message);
+  }
+}
+// -----------------------------
+// AFFICHAGE TABLEAU
+// -----------------------------
+function displayEleves() {
+  const tbody = document.querySelector("#eleveTable tbody");
+  tbody.innerHTML = "";
+
+  if (filteredEleves.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty-state">Aucun élève trouvé.</td></tr>`;
+    return;
+  }
+
+  filteredEleves.forEach((eleve, index) => {
+    const statusClass = eleve.statut === "en_attente" ? "pending" : "validated";
+    const statusText = eleve.statut === "en_attente" ? "⏳ En attente" : "✅ Validé";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${escapeHtml(eleve.fullname)}</td>
+      <td>${escapeHtml(eleve.email)}</td>
+      <td>${escapeHtml(eleve.telephone)}</td>
+      <td>${escapeHtml(eleve.pays)}</td>
+      <td>${eleve.heures_contact.toFixed(2)} h</td>
+      <td>${eleve.date_inscription ? new Date(eleve.date_inscription).toLocaleDateString() : "—"}</td>
+      <td><span class="status ${statusClass}">${statusText}</span></td>
+      <td>${escapeHtml(eleve.subscription_status)}</td>
+      <td>${escapeHtml(eleve.plan_type)}</td>
+      <td>${eleve.free_trial_start ? new Date(eleve.free_trial_start).toLocaleDateString() : "—"} → ${eleve.free_trial_end ? new Date(eleve.free_trial_end).toLocaleDateString() : "—"}</td>
+      <td>
+        <div class="actions">
+          ${eleve.statut === "en_attente" ? `<button class="validate-btn" onclick="openValidateModal(${index})">Valider</button>` : ""}
+          <button class="delete-btn" onclick="openDeleteModal(${index})">Supprimer</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// -----------------------------
+// ESCAPE HTML
+// -----------------------------
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// -----------------------------
+// RECHERCHE
+// -----------------------------
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+  filteredEleves = eleves.filter(e =>
+    `${e.nom} ${e.prenom} ${e.email}`.toLowerCase().includes(q)
+  );
+  displayEleves();
+});
+
+// -----------------------------
+// MODAL
+// -----------------------------
+function openValidateModal(index) {
+  pendingAction = { type: "validate", index };
+  showModal("Valider cet élève ?", `Êtes-vous sûr de valider "${escapeHtml(filteredEleves[index].fullname)}" ?`);
+}
+
+function openDeleteModal(index) {
+  pendingAction = { type: "delete", index };
+  showModal("Supprimer cet élève ?", `Êtes-vous sûr de supprimer "${escapeHtml(filteredEleves[index].fullname)}" ?`);
+}
+
+function showModal(title, message) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMessage").textContent = message;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+  pendingAction = null;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
+}
+
+// -----------------------------
+// CONFIRM ACTION
+// -----------------------------
+async function confirmAction() {
+  if (!pendingAction) return;
+
+  const { type, index } = pendingAction;
+  const eleve = filteredEleves[index];
+  const token = localStorage.getItem("token");
+
+  // 1. Vérification immédiate avant l'appel
+  if (!token) {
+    alert("Session expirée ou Token manquant. Redirection vers la connexion...");
+    window.location.href = "login_admin.html"; // Assure-toi que le nom du fichier est correct
+    return;
+  }
+
+  try {
+    const baseUrl = "http://localhost:4000";
+    
+    let res;
+    if (type === "validate") {
+      res = await fetch(`${baseUrl}/api/v1/admin/users/${eleve.id}`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ statut: "valide" })
+      });
+    } else if (type === "delete") {
+      res = await fetch(`${baseUrl}/api/v1/admin/users/${eleve.id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+    }
+
+    // 2. Gestion de l'erreur 401 (Non autorisé / Token invalide)
+    if (res.status === 401) {
+      localStorage.removeItem("token"); // On nettoie le mauvais token
+      alert("Votre accès admin n'est plus valide. Veuillez vous reconnecter.");
+      window.location.href = "login_admin.html";
+      return;
+    }
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json.message || "Erreur lors de l'opération");
+    }
+
+    // Mise à jour de l'interface si succès
+    if (type === "validate") {
+      eleve.statut = "valide";
+    } else if (type === "delete") {
+      eleves = eleves.filter(e => e.id !== eleve.id);
+      filteredEleves = filteredEleves.filter(e => e.id !== eleve.id);
+    }
+
+    displayEleves();
+    alert("✅ Opération réussie !");
+
+  } catch (err) {
+    console.error("Erreur action:", err);
+    alert("❌ " + err.message);
+  } finally {
+    closeModal();
+  }
+}
+// -----------------------------
+// INIT
+// -----------------------------
+loadEleves();
+</script>
+
+</body>
+</html>

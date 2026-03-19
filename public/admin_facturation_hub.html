@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Hub Facturation</title>
+
+  <!-- Dark mode premium -->
+  <link rel="stylesheet" href="/css/admin_dark.css">
+</head>
+
+<body class="admin-page">
+
+<!-- ============================
+     HEADER
+============================= -->
+<header class="page-header">
+  <div class="container">
+    <h1>📊 Hub Facturation</h1>
+    <p class="meta">Accès centralisé à toutes les factures</p>
+  </div>
+</header>
+
+<!-- ============================
+     CONTENU PRINCIPAL
+============================= -->
+<main class="container">
+
+  <h2 class="section-title">Choisissez une catégorie</h2>
+
+  <div class="grid">
+
+  <!-- Factures PDF internes -->
+  <div class="nav-card" data-route="admin_facturation_historique.html">
+    <div class="nav-card-title">📄 Factures PDF internes</div>
+    <div class="nav-card-desc">
+      Historique des factures générées automatiquement (PDF internes).
+    </div>
+  </div>
+
+  <!-- Factures Stripe officielles -->
+  <div class="nav-card" data-route="admin_factures_stripe.html">
+    <div class="nav-card-title">🧾 Factures Stripe officielles</div>
+    <div class="nav-card-desc">
+      Factures officielles générées par Stripe (paiements, abonnements).
+    </div>
+  </div>
+
+  <!-- Paiements -->
+  <div class="nav-card" data-route="admin_gestion_paiements.html">
+    <div class="nav-card-title">💳 Paiements</div>
+    <div class="nav-card-desc">
+      Historique des paiements effectués par les élèves.
+    </div>
+  </div>
+
+  <!-- Facturation communication -->
+  <div class="nav-card" data-route="admin_facturation_communication.html">
+    <div class="nav-card-title">💬 Facturation communication</div>
+    <div class="nav-card-desc">
+      Heures consommées (chat + visio) et coût total par élève.
+    </div>
+  </div>
+
+  <!-- Relances -->
+  <div class="nav-card" data-route="admin_relances.html">
+    <div class="nav-card-title">📨 Relances</div>
+    <div class="nav-card-desc">
+      Relances automatiques et manuelles pour les paiements en retard.
+    </div>
+  </div>
+
+</div>
+
+
+  <!-- Retour -->
+  <footer class="page-footer">
+    <a href="dashboard_admin.html" class="back-home">⬅️ Retour au tableau de bord</a>
+  </footer>
+
+</main>
+
+<!-- ============================
+     SCRIPT NAVIGATION
+============================= -->
+<script>
+document.querySelectorAll('.nav-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const route = card.dataset.route;
+    if (route) window.location.href = route;
+  });
+});
+</script>
+
+</body>
+</html>

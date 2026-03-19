@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "locale": "en",
+    "name": "English",
+    "direction": "ltr",
+    "version": "1.0.0"
+  },
+  "common": {
+    "appName": "Plateforme Scolaire",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "back": "Back",
+    "continue": "Continue",
+    "submit": "Submit",
+    "retry": "Retry",
+    "loading": "Loading…",
+    "required": "Required"
+  },
+  "buttons": {
+    "send": "Send",
+    "sendEmail": "Send email",
+    "resetPassword": "Reset password",
+    "requestReset": "Request password reset",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signUp": "Sign up",
+    "changePassword": "Change password",
+    "resend": "Resend"
+  },
+  "placeholders": {
+    "email": "you@example.com",
+    "password": "Enter your password",
+    "passwordConfirm": "Confirm your password",
+    "search": "Search",
+    "code": "Enter code"
+  },
+  "auth": {
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "lead": "Enter the email address associated with your account and we'll send instructions to reset your password.",
+      "success": "If an account exists for {email}, we've sent password reset instructions to that address.",
+      "sent": "Password reset email sent",
+      "sentDetails": "Check your inbox for an email from {from} with instructions. If you don't see it, check your spam folder.",
+      "notFound": "No account found for that email address.",
+      "rateLimit": "Too many requests. Please wait {minutes, plural, one {# minute} other {# minutes}} and try again.",
+      "cta": "Send reset instructions"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "lead": "Create a strong password you haven't used elsewhere.",
+      "success": "Your password has been updated. You can now sign in with your new password.",
+      "invalidToken": "This reset link is invalid or has expired. Request a new one.",
+      "expired": "Reset link expired",
+      "passwordMismatch": "Passwords do not match",
+      "passwordRequirements": "Password must be at least {minLength} characters and include a mix of letters, numbers and symbols.",
+      "cta": "Update password"
+    },
+    "login": {
+      "title": "Sign in",
+      "lead": "Sign in to access your classes, messages and documents.",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "invalidCredentials": "Invalid email or password.",
+      "locked": "Your account is temporarily locked. Try again later.",
+      "twoFactorRequired": "Two-factor authentication required",
+      "twoFactorPrompt": "Enter the authentication code from your authenticator app."
+    },
+    "register": {
+      "title": "Create an account",
+      "lead": "Create an account to join classes, share documents and start tutoring.",
+      "success": "Welcome aboard! Check your email to verify your account.",
+      "emailInUse": "This email is already in use.",
+      "passwordTooWeak": "Password is too weak.",
+      "cta": "Create account"
+    }
+  },
+  "validation": {
+    "email": "Please enter a valid email address.",
+    "required": "{field} is required.",
+    "minLength": "{field} must be at least {min} characters.",
+    "maxLength": "{field} must be at most {max} characters.",
+    "passwordComplexity": "Password must contain at least one uppercase letter, one lowercase letter and one number.",
+    "match": "{field} must match {otherField}.",
+    "invalidCode": "The code you entered is invalid."
+  },
+  "passwordStrength": {
+    "label": "Password strength",
+    "veryWeak": "Very weak",
+    "weak": "Weak",
+    "fair": "Fair",
+    "good": "Good",
+    "strong": "Strong",
+    "aria": "Password strength: {strength}"
+  },
+  "errors": {
+    "network": "Network error. Please check your connection and try again.",
+    "unexpected": "An unexpected error occurred. Please try again later.",
+    "forbidden": "You do not have permission to perform this action.",
+    "notFound": "Resource not found.",
+    "validationFailed": "Validation failed. Check the highlighted fields and try again.",
+    "serviceUnavailable": "Service temporarily unavailable. Please try again shortly."
+  },
+  "notifications": {
+    "emailSent": "{count, plural, one {An email has been sent} other {# emails have been sent}}.",
+    "passwordUpdated": "Password updated successfully.",
+    "signedOut": "You have been signed out.",
+    "sessionExpired": "Your session has expired. Please sign in again."
+  },
+  "emails": {
+    "from": "no-reply@plateforme-scolaire.example",
+    "forgotPassword": {
+      "subject": "Reset your Plateforme Scolaire password",
+      "greeting": "Hello {name},",
+      "intro": "We received a request to reset the password for your account ({email}).",
+      "actionText": "Reset my password",
+      "outro": "If you didn't request a password reset, you can safely ignore this email.",
+      "signature": "Thanks,\nThe Plateforme Scolaire team",
+      "expiryNotice": "This link will expire in {hours, plural, one {# hour} other {# hours}}."
+    },
+    "welcome": {
+      "subject": "Welcome to Plateforme Scolaire",
+      "greeting": "Welcome {name},",
+      "intro": "Thanks for creating an account. Verify your email to get started.",
+      "actionText": "Verify email",
+      "signature": "The Plateforme Scolaire team"
+    }
+  },
+  "accessibility": {
+    "aria": {
+      "close": "Close dialog",
+      "openMenu": "Open menu",
+      "togglePassword": "Toggle password visibility",
+      "loading": "Loading content",
+      "error": "Error"
+    },
+    "labels": {
+      "email": "Email address",
+      "password": "Password",
+      "passwordConfirm": "Confirm password",
+      "submit": "Submit form"
+    }
+  },
+  "ui": {
+    "health": {
+      "ok": "Service OK",
+      "ready": "Ready"
+    },
+    "placeholders": {
+      "email": "you@school.edu"
+    },
+    "links": {
+      "privacy": "Privacy policy",
+      "terms": "Terms of service",
+      "support": "Support"
+    }
+  },
+  "dates": {
+    "formats": {
+      "short": "MM/DD/YYYY",
+      "long": "MMMM D, YYYY",
+      "time": "HH:mm",
+      "datetime": "MMMM D, YYYY HH:mm"
+    },
+    "relative": {
+      "now": "just now",
+      "minutesAgo": "{count, plural, one {# minute ago} other {# minutes ago}}",
+      "hoursAgo": "{count, plural, one {# hour ago} other {# hours ago}}",
+      "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
+    }
+  },
+  "place": {
+    "classroom": "Classroom",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "documents": "Documents",
+    "messages": "Messages"
+  },
+  "examples": {
+    "interpolation": "Hello {name}, your reset code is {code}.",
+    "plural": "You have {count, plural, =0 {no new messages} one {# new message} other {# new messages}}."
+  }
+}

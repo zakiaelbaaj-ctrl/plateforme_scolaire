@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Gestion des Cours</title>
+
+  <!-- CSS Admin Senior+++ -->
+  <link rel="stylesheet" href="public/css/admin.css">
+</head>
+
+<body class="admin-page">
+
+<!-- ============================
+     HEADER
+============================= -->
+<header class="page-header">
+  <div class="container">
+    <h1>📚 Gestion des Cours</h1>
+    <p class="meta" id="courseCount">Chargement...</p>
+  </div>
+</header>
+
+<!-- ============================
+     CONTENU PRINCIPAL
+============================= -->
+<main class="container">
+
+  <!-- Zone d’actions -->
+  <section class="controls">
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="🔍 Rechercher un cours..."
+      aria-label="Rechercher un cours"
+    >
+    <button class="validate-btn" onclick="chargerCours()">🔄 Rafraîchir</button>
+  </section>
+
+  <!-- Tableau -->
+  <section class="table-wrapper" aria-label="Liste des cours">
+    <table class="table" id="courseTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Titre</th>
+          <th>Matière</th>
+          <th>Professeur</th>
+          <th>Niveau</th>
+          <th>Nombre d’élèves</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Cours injectés ici -->
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Retour -->
+  <footer class="page-footer">
+    <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
+  </footer>
+
+</main>
+
+<!-- ============================
+     MODAL
+============================= -->
+<div id="confirmModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-content">
+    <h3 id="modalTitle">Confirmation</h3>
+    <p id="modalMessage"></p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-confirm" onclick="confirmAction()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     SCRIPT
+============================= -->
+<script>
+let cours = [];
+let filteredCours = [];
+let pendingAction = null;
+
+/* -----------------------------
+   FETCH DES COURS
+----------------------------- */
+async function chargerCours() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token manquant — reconnecte-toi");
+
+    const res = await fetch("http://localhost:4000/api/v1/admin/cours", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.success !== true) throw new Error(json.message || "Erreur serveur");
+
+    cours = json.cours.map(c => ({
+      id: c.id,
+      titre: c.titre || "—",
+      matiere: c.matiere || "—",
+      professeur: c.professeur_nom || "—",
+      niveau: c.niveau || "—",
+      nb_eleves: c.nb_eleves || 0,
+      statut: c.statut || "brouillon"
+    }));
+
+    filteredCours = [...cours];
+    afficherCours();
+
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
+
+/* -----------------------------
+   AFFICHAGE TABLEAU
+----------------------------- */
+function afficherCours() {
+  const tbody = document.querySelector("#courseTable tbody");
+  const count = document.getElementById("courseCount");
+
+  tbody.innerHTML = "";
+  count.textContent = `${filteredCours.length} cours`;
+
+  if (filteredCours.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Aucun cours trouvé.</td></tr>`;
+    return;
+  }
+
+  filteredCours.forEach((c, i) => {
+    const statusClass =
+      c.statut === "publié" ? "validated" :
+      c.statut === "brouillon" ? "pending" : "danger";
+
+    const statusText =
+      c.statut === "publié" ? "✔ Publié" :
+      c.statut === "brouillon" ? "⏳ Brouillon" :
+      `⛔ ${c.statut}`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${escapeHtml(c.titre)}</td>
+      <td>${escapeHtml(c.matiere)}</td>
+      <td>${escapeHtml(c.professeur)}</td>
+      <td>${escapeHtml(c.niveau)}</td>
+      <td>${c.nb_eleves}</td>
+      <td><span class="status ${statusClass}">${statusText}</span></td>
+      <td class="actions">
+        <button class="validate-btn" onclick="changerStatut(${i}, 'publié')">Publier</button>
+        <button class="btn-cancel" onclick="changerStatut(${i}, 'brouillon')">Brouillon</button>
+        <button class="delete-btn" onclick="openDeleteModal(${i})">Supprimer</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* -----------------------------
+   RECHERCHE
+----------------------------- */
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+  filteredCours = cours.filter(c =>
+    `${c.titre} ${c.matiere} ${c.professeur}`.toLowerCase().includes(q)
+  );
+  afficherCours();
+});
+
+/* -----------------------------
+   CHANGEMENT STATUT
+----------------------------- */
+async function changerStatut(index, statut) {
+  const coursItem = filteredCours[index];
+  const token = localStorage.getItem("token");
+
+  try {
+    await fetch(`http://localhost:4000/api/v1/admin/cours/${coursItem.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ statut })
+    });
+
+    coursItem.statut = statut;
+    afficherCours();
+
+  } catch (err) {
+    alert("❌ Erreur lors de la mise à jour du statut");
+  }
+}
+
+/* -----------------------------
+   SUPPRESSION
+----------------------------- */
+function openDeleteModal(index) {
+  pendingAction = { type: "delete", index };
+  showModal("Supprimer ce cours ?", "Cette action est irréversible.");
+}
+
+async function confirmAction() {
+  if (!pendingAction) return;
+
+  const { index } = pendingAction;
+  const coursItem = filteredCours[index];
+  const token = localStorage.getItem("token");
+
+  try {
+    await fetch(`http://localhost:4000/api/v1/admin/cours/${coursItem.id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    cours = cours.filter(c => c.id !== coursItem.id);
+    filteredCours = filteredCours.filter(c => c.id !== coursItem.id);
+
+    afficherCours();
+  } catch (err) {
+    alert("❌ Erreur lors de la suppression");
+  }
+
+  closeModal();
+}
+
+/* -----------------------------
+   MODAL
+----------------------------- */
+function showModal(title, message) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMessage").textContent = message;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+  pendingAction = null;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
+}
+
+/* -----------------------------
+   ESCAPE HTML
+----------------------------- */
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/* -----------------------------
+   INIT
+----------------------------- */
+chargerCours();
+</script>
+
+</body>
+</html>

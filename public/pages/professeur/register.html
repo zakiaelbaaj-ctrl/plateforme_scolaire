@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inscription Professeur</title>
+<link rel="stylesheet" href="/css/base.css">
+</head>
+
+<body class="professeurs auth-body">
+
+<div class="auth-container"> <h1>🧑‍🏫 Inscription Professeur</h1>
+    
+<p class="subtitle">Partenaire international – enseignez partout dans le monde 🌍</p>
+
+<div class="info">
+📌 Conditions requises :
+<ul>
+  <li>Primaire : Bac +3 minimum</li>
+  <li>Secondaire : Bac +4 minimum</li>
+  <li>Supérieur : Bac +5 minimum</li>
+</ul>
+📎 Copie du diplôme obligatoire.<br>
+⏳ Compte activé uniquement après validation administrateur.
+</div>
+
+<form id="registerForm" enctype="multipart/form-data">
+
+  <div class="form-group">
+    <label>Prénom</label>
+    <input type="text" id="prenom" name="prenom" required>
+  </div>
+
+  <div class="form-group">
+    <label>Nom</label>
+    <input type="text" id="nom" name="nom" required>
+  </div>
+
+  <div class="form-group">
+    <label>Nom d'utilisateur</label>
+    <input type="text" id="username" name="username" required>
+  </div>
+
+  <div class="form-group">
+    <label>Téléphone</label>
+    <input type="tel" id="telephone" name="telephone" required>
+  </div>
+
+  <div class="form-group">
+    <label>Pays</label>
+    <input type="text" id="pays" name="pays" placeholder="France, Canada..." required>
+  </div>
+
+  <div class="form-group">
+    <label>Ville</label>
+    <input type="text" id="ville" name="ville" placeholder="Paris,..." required autocomplete="address-level2">
+  </div>
+
+  <div class="form-group">
+    <label>Niveau enseigné</label>
+    <select id="niveau" name="niveau" required>
+      <option value="">-- Choisir --</option>
+      <option value="primaire">Primaire</option>
+      <option value="secondaire">Secondaire</option>
+      <option value="superieur">Supérieur</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Matière</label>
+    <select id="matiere" name="matiere" required>
+      <option value="">-- Choisir --</option>
+      <option value="Mathématiques">Mathématiques</option>
+      <option value="Français">Français</option>
+      <option value="Anglais">Anglais</option>
+      <option value="Physique">Physique</option>
+      <option value="Chimie">Chimie</option>
+      <option value="Biologie">Biologie</option>
+      <option value="Histoire-Géographie">Histoire-Géographie</option>
+      <option value="Informatique">Informatique</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>📎 Diplôme (PDF ou image)</label>
+    <input type="file" id="diplome" name="diplome" accept=".pdf,.jpg,.jpeg,.png" required>
+  </div>
+<div class="form-group">
+  <label>Email professionnel</label>
+  <input type="email" id="email" name="email" placeholder="exemple@mail.com" required>
+</div>
+  <div class="form-group">
+    <label>Mot de passe</label>
+    <input type="password" id="password" name="password" required autocomplete="current-password">
+  </div>
+
+  <button type="submit" class="professeurs" id="submitBtn">📤 Envoyer ma demande</button>
+
+  <div id="errorDiv" class="error"></div>
+  <div id="successDiv" class="success"></div>
+
+</form>
+
+<div class="link-section">
+Déjà inscrit ? <a href="login.html">Se connecter</a>
+
+
+</div>
+
+<script type="module" src="../../js/auth/register_professeur.js"></script>
+</body>
+</html>

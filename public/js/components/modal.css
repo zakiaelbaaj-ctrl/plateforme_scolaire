@@ -1,0 +1,281 @@
+/* public/js/components/modal.css
+   Senior+++ modal styles
+   - Accessible, responsive, themeable
+   - Centered dialog, side-sheet and full-screen variants
+   - Backdrop, focus-visible, reduced-motion support
+   - Utility classes for scroll-lock, visually-hidden, and stacking
+*/
+
+/* =========================
+   Design tokens
+   ========================= */
+:root {
+  --modal-backdrop: rgba(2,6,23,0.48);
+  --modal-backdrop-blur: 6px;
+  --modal-surface: #ffffff;
+  --modal-text: #0f1724;
+  --modal-muted: #6b7280;
+  --modal-radius: 12px;
+  --modal-shadow: 0 20px 40px rgba(2,6,23,0.12);
+  --modal-padding: 20px;
+  --modal-max-width: 720px;
+  --modal-z: 1000;
+  --transition-fast: 180ms cubic-bezier(.2,.9,.2,1);
+  --close-size: 40px;
+  --backdrop-transition: 160ms ease;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --modal-backdrop: rgba(2,6,23,0.64);
+    --modal-surface: #07161a;
+    --modal-text: #e6f0f2;
+    --modal-muted: #9aa6a9;
+    --modal-shadow: 0 20px 40px rgba(0,0,0,0.6);
+  }
+}
+
+/* =========================
+   Global helpers
+   ========================= */
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
+  border: 0; padding: 0; margin: -1px;
+}
+
+/* When modal is open, add this class to <body> to prevent background scroll */
+.modal-scroll-lock {
+  overflow: hidden !important;
+  touch-action: none !important;
+}
+
+/* =========================
+   Backdrop / overlay
+   ========================= */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--modal-backdrop);
+  backdrop-filter: blur(var(--modal-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--modal-backdrop-blur));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: calc(var(--modal-z) + 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--backdrop-transition) ease;
+}
+
+/* Visible state */
+.modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Clickable area for closing (full-screen) */
+.modal-backdrop .modal-scrim {
+  position: absolute;
+  inset: 0;
+  cursor: default;
+}
+
+/* =========================
+   Dialog (centered)
+   ========================= */
+.modal {
+  position: relative;
+  z-index: calc(var(--modal-z) + 1);
+  width: 100%;
+  max-width: var(--modal-max-width);
+  margin: 20px;
+  background: var(--modal-surface);
+  color: var(--modal-text);
+  border-radius: var(--modal-radius);
+  box-shadow: var(--modal-shadow);
+  transform: translateY(8px) scale(0.995);
+  opacity: 0;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  outline: none;
+}
+
+/* Open state */
+.modal-backdrop.is-open .modal {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* Dialog sizes */
+.modal--sm { max-width: 420px; }
+.modal--md { max-width: 640px; }
+.modal--lg { max-width: 980px; }
+
+/* Fullscreen variant */
+.modal--fullscreen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+/* Side-sheet variant (right) */
+.modal--side {
+  align-self: stretch;
+  justify-self: end;
+  width: min(420px, 100%);
+  height: 100%;
+  max-width: 420px;
+  border-radius: 0;
+  margin: 0;
+  transform: translateX(12px);
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+.modal-backdrop.is-open .modal--side { transform: translateX(0); opacity: 1; }
+
+/* =========================
+   Dialog regions
+   ========================= */
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: var(--modal-padding);
+  border-bottom: 1px solid rgba(2,6,23,0.04);
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.01));
+}
+.modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--modal-text);
+}
+.modal__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--modal-muted);
+}
+
+/* Body */
+.modal__body {
+  padding: var(--modal-padding);
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+  -webkit-overflow-scrolling: touch;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* Footer */
+.modal__footer {
+  display: flex;
+  gap: 12px;
+  padding: calc(var(--modal-padding) - 6px);
+  border-top: 1px solid rgba(2,6,23,0.04);
+  justify-content: flex-end;
+  background: linear-gradient(180deg, rgba(0,0,0,0.01), transparent);
+}
+
+/* =========================
+   Close button
+   ========================= */
+.modal__close {
+  width: var(--close-size);
+  height: var(--close-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--modal-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform 120ms ease;
+}
+.modal__close:hover { background: rgba(2,6,23,0.04); color: var(--modal-text); transform: translateY(-1px); }
+.modal__close:active { transform: translateY(0); }
+.modal__close:focus-visible { outline: 3px solid rgba(37,99,235,0.14); outline-offset: 2px; }
+
+/* Icon sizing inside close */
+.modal__close svg { width: 18px; height: 18px; display: block; }
+
+/* =========================
+   Accessibility helpers
+   ========================= */
+/* Hide content from assistive tech when modal is open (apply to root app nodes) */
+.aria-hidden { display: none !important; }
+
+/* Focus ring for interactive elements inside modal */
+.modal :where(button, a, input, textarea, select):focus-visible {
+  outline: 3px solid rgba(37,99,235,0.14);
+  outline-offset: 2px;
+}
+
+/* Trap focus helper (visual only) */
+.modal__focus-guard { position: absolute; width: 1px; height: 1px; left: -9999px; top: auto; }
+
+/* =========================
+   Small utilities
+   ========================= */
+.modal--centered { align-items: center; justify-content: center; }
+
+/* Simple form spacing inside modal */
+.modal .form-row { margin-bottom: 12px; }
+
+/* Loading state */
+.modal.is-loading { pointer-events: none; opacity: 0.9; filter: blur(0.2px); }
+
+/* =========================
+   Animations & reduced motion
+   ========================= */
+@media (prefers-reduced-motion: reduce) {
+  .modal, .modal--side, .modal-backdrop { transition: none !important; animation: none !important; }
+  .modal { transform: none; opacity: 1; }
+}
+
+/* =========================
+   Responsive tweaks
+   ========================= */
+@media (max-width: 720px) {
+  .modal { margin: 12px; max-width: calc(100% - 24px); }
+  .modal__body { max-height: calc(100vh - 160px); }
+  .modal--side { width: 100%; max-width: none; height: auto; border-radius: 12px; transform: translateY(8px); }
+}
+
+/* =========================
+   Print fallback
+   ========================= */
+@media print {
+  .modal-backdrop, .modal { position: static !important; box-shadow: none !important; border-radius: 0 !important; }
+}
+
+/* =========================
+   Example utility classes for JS hooks
+   ========================= */
+/* Add .is-open on .modal-backdrop to show modal */
+.modal-backdrop.is-open { pointer-events: auto; }
+
+/* Add .no-close-on-backdrop to prevent backdrop click closing (visual only) */
+.modal-backdrop.no-close-on-backdrop { cursor: default; }
+
+/* Stacking helpers for nested modals */
+.modal-backdrop[data-stack="1"] { z-index: calc(var(--modal-z) + 10); }
+.modal-backdrop[data-stack="2"] { z-index: calc(var(--modal-z) + 20); }
+
+/* =========================
+   Notes for integration (no JS included)
+   - Add .modal-backdrop.is-open to show overlay and dialog.
+   - Add .modal-scroll-lock to <body> to prevent background scroll.
+   - Use aria-hidden on background regions when modal is open.
+   - Place focus guards before/after modal content to implement focus trap.
+   - Ensure close button has aria-label="Close" and dialog has role="dialog" and aria-modal="true".
+*/

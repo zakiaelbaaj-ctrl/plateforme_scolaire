@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Élèves - Cours</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Styles globaux -->
+  <link rel="stylesheet" href="css/dashboard_etudiant/toast_video.css">
+</head>
+<body class="dark-theme">
+  <header>
+    <h1>🎓 Dashboard Élèves</h1>
+  </header>
+
+  <!-- Notifications Toast -->
+  <section id="toastContainer" aria-live="assertive"></section>
+
+  <!-- Tableau des cours -->
+  <section aria-labelledby="coursTitle">
+    <h2 id="coursTitle">📚 Mes cours</h2>
+    <table class="cours-table">
+      <thead>
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">Titre</th>
+          <th scope="col">Professeur</th>
+          <th scope="col">Date</th>
+          <th scope="col">Heure</th>
+          <th scope="col">Salle</th>
+          <th scope="col">Durée (h)</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="coursTable"></tbody>
+    </table>
+  </section>
+
+  <!-- Statistiques de contact -->
+  <section aria-labelledby="statsTitle">
+    <h2 id="statsTitle">⏱️ Temps de contact avec les professeurs</h2>
+    <div id="statsContainer">
+      <p>Nombre d’heures par jour : <span id="dailyHours">0</span> h</p>
+      <p>Nombre d’heures par mois : <span id="monthlyHours">0</span> h</p>
+    </div>
+  </section>
+
+  <!-- Tableau des élèves inscrits -->
+  <section aria-labelledby="elevesTitle">
+    <h2 id="elevesTitle">👥 Élèves inscrits</h2>
+    <table class="eleves-table">
+      <thead>
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">Nom</th>
+          <th scope="col">Prénom</th>
+          <th scope="col">Téléphone</th>
+          <th scope="col">Pays</th>
+          <th scope="col">Professeur en ligne</th>
+        </tr>
+      </thead>
+      <tbody id="elevesTable"></tbody>
+    </table>
+  </section>
+
+  <!-- Calendrier -->
+  <aside aria-labelledby="calendarTitle">
+    <h2 id="calendarTitle">🗓️ Calendrier</h2>
+    <div id="calendar" class="calendar"></div>
+  </aside>
+
+  <!-- Conteneur Vidéo -->
+  <section aria-labelledby="videoTitle">
+    <h2 id="videoTitle">🎥 Visio</h2>
+    <div id="videoContainer">
+      <video id="studentVideo" controls aria-label="Flux vidéo élève"></video>
+      <div class="video-controls">
+        <button id="joinVideoBtn" type="button">Rejoindre Visio</button>
+        <button id="leaveVideoBtn" type="button">Quitter Visio</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chat Collaboratif -->
+  <section aria-labelledby="chatTitle">
+    <h2 id="chatTitle">💬 Chat Collaboratif</h2>
+    <div id="chatBox" class="chat-box" aria-live="polite"></div>
+    <form id="chatForm" autocomplete="off">
+      <label for="chatInput" class="sr-only">Message</label>
+      <input 
+        id="chatInput" 
+        type="text" 
+        placeholder="Écrire un message..." 
+        required 
+        aria-label="Message"
+      >
+      <button type="submit">Envoyer</button>
+    </form>
+  </section>
+
+  <!-- Scripts -->
+  <script src="js/Dashboard_etudiant/admin_cours.js" defer></script>
+  <script src="js/Dashboard_etudiant/video.js" defer></script>
+  <script src="js/Dashboard_etudiant/chat.js" defer></script>
+  <script src="js/Dashboard_etudiant/eleves.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Classe en ligne – Professeur</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://sdk.twilio.com/js/video/releases/2.30.0/twilio-video.min.js"></script>
+<style>
+body {
+  font-family: "Segoe UI", sans-serif;
+  margin: 0;
+  background: #f5f5f0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+header {
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,.15);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.prof-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.prof-info img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid white;
+  object-fit: cover;
+}
+
+.prof-details h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.prof-details p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.timer-status {
+  text-align: right;
+}
+
+.timer-status #call-time {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+header button#btn-exit-visio {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-left: 20px;
+  display: none;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  flex: 1;
+  gap: 10px;
+  padding: 10px;
+}
+
+#remote-video {
+  background: #000;
+  border-radius: 10px;
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 5px;
+}
+
+#remote-video video {
+  width: 150px;
+  height: 120px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #222;
+}
+
+#local-video {
+  background: #f0f0f0;
+  border-radius: 10px;
+  height: 150px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+#local-video video {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.side {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.1);
+  overflow-y: auto;
+}
+
+.side h3 {
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #2563eb;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+#eleve-info {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  border-left: 3px solid #2563eb;
+  font-size: 0.9rem;
+}
+
+#incoming-call {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 10px;
+  text-align: center;
+  display: none;
+}
+
+#incoming-call p {
+  margin: 0 0 10px 0;
+  font-weight: bold;
+  color: #856404;
+}
+
+#incoming-call button {
+  padding: 8px 16px;
+  margin: 5px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  color: white;
+  width: calc(50% - 6px);
+}
+
+#incoming-call .accept {
+  background: #28a745;
+}
+
+#incoming-call .reject {
+  background: #dc3545;
+}
+
+.chat {
+  border: 1px solid #ddd;
+  flex: 1;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 5px;
+  background: #f9f9f9;
+  font-size: 0.9rem;
+  max-height: 120px;
+}
+
+#chat-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+#send-msg {
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#file-input {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+#send-file {
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#doc-list {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  max-height: 100px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+}
+
+.doc-link {
+  display: block;
+  margin-bottom: 5px;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+/* WHITEBOARD STYLES */
+.whiteboard-container {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 15px;
+}
+
+.whiteboard-tools {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.whiteboard-tools button {
+  flex: 1;
+  padding: 8px;
+  font-size: 0.8rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.whiteboard-tools button:nth-child(2) {
+  background: #ffc107;
+  color: #333;
+}
+
+.whiteboard-tools button:nth-child(3) {
+  background: #28a745;
+}
+
+#whiteboard-canvas {
+  display: block;
+  width: 100%;
+  height: 300px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: crosshair;
+  background: white;
+  touch-action: none;
+}
+
+@media (max-width: 768px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+  
+  .side {
+    max-height: 200px;
+  }
+  
+  #whiteboard-canvas {
+    height: 200px;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Bienvenue, <span id="prof-name">Professeur</span> 👋</h1>
+  </div>
+
+  <div class="prof-info">
+    <img src="https://th.bing.com/th/id/OIP.v6erwFa4W7111O7pRfDH5wHaFO?w=272&h=190&c=7&r=0&o=7&dpr=1.5&pid=1.7&rm=3" alt="Photo prof">
+    <div class="prof-details">
+      <h2 id="profName">Nom Prénom</h2>
+      <p id="profLocation">Ville, Pays</p>
+    </div>
+  </div>
+
+  <div class="timer-status">
+    <div>⏱️ <span id="call-time">00:00</span></div>
+  </div>
+
+  <button id="btn-exit-visio" onclick="leaveSession()">❌ Quitter</button>
+</header>
+
+<main>
+  <!-- ZONE VISIO -->
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div id="remote-video" style="background: #000; border-radius: 10px; flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px;"></div>
+    <div id="local-video"></div>
+  </div>
+
+  <!-- PANNEAU LATÉRAL -->
+  <div class="side">
+    <!-- APPEL ENTRANT -->
+    <div id="incoming-call">
+      <p id="call-info">Appel entrant...</p>
+      <button class="accept" onclick="acceptCall()">✅ Accepter</button>
+      <button class="reject" onclick="rejectCall()">❌ Refuser</button>
+    </div>
+
+    <!-- INFOS ÉLÈVE -->
+    <div>
+      <h3>📘 Élève</h3>
+      <div id="eleve-info">En attente d'appel…</div>
+    </div>
+
+    <!-- CHAT -->
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <h3>💬 Chat</h3>
+      <div class="chat" id="chat-box"></div>
+      <div style="display: flex; gap: 5px;">
+        <input id="chat-input" placeholder="Message…">
+        <button id="send-msg">Envoyer</button>
+      </div>
+    </div>
+
+    <!-- DOCUMENTS -->
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <h3>📂 Documents</h3>
+      <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+        <input type="file" id="file-input">
+        <button id="send-file">Envoyer</button>
+      </div>
+      <div id="doc-list"></div>
+    </div>
+
+    <!-- TABLEAU BLANC -->
+    <div class="whiteboard-container">
+  <h3 style="margin: 0 0 10px 0; color: #333; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">
+    ✏️ Tableau Blanc
+  </h3>
+  <div class="whiteboard-tools">
+    <button id="initWhiteboardBtn">📝 Démarrer</button>
+    <button id="penToolBtn">✏️ Crayon</button>
+    <button id="eraserToolBtn">🧽 Gomme</button>
+    <button id="lineToolBtn">📏 Ligne</button>
+    <button id="rectToolBtn">▭ Rectangle</button>
+    <button id="textToolBtn">🔤 Texte</button>
+    <button id="clearWhiteboardBtn">🗑️ Effacer</button>
+    <button id="downloadWhiteboardBtn">💾 Télécharger</button>
+  </div>
+  <canvas id="whiteboard-canvas"></canvas>
+</div>
+
+  </div>
+</main>
+
+<script type="module" src="/js/pages/professeur/dashboard.js"></script>
+<script type="module" src="js/Dashboard_professeur/whiteboard_ui.js"></script>
+<script type="module" src="js/whiteboard/initWhiteboard.js"></script>
+<audio id="incomingCallSound" src="assets/sounds/call.mp3" preload="auto"></audio>
+<div id="incomingCallPopup" class="hidden popup"></div>
+
+</body>
+</html>

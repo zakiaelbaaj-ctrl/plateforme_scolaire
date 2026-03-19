@@ -1,0 +1,179 @@
+// services/invoicePdf.js
+
+import fs from "fs";
+import path from "path";
+import PDFDocument from "pdfkit";
+import QRCode from "qrcode";
+
+/**
+ * Génère une facture PDF professionnelle avec QR code
+ * @param {Object} params
+ * @param {number} params.userId
+ * @param {string} params.planType
+ * @param {number} params.amount - Montant TTC en centimes (Stripe)
+ * @param {string} params.invoiceNumber - Numéro de facture unique
+ * @param {Date} params.date
+ * @param {string} params.currency
+ * @returns {Promise<{ buffer: Buffer, filePath: string, fileName: string }>}
+ */
+export async function generateInvoicePdf({
+  userId,
+  planType,
+  amount,
+  invoiceNumber,
+  date = new Date(),
+  currency = "eur",
+}) {
+  if (!userId) throw new Error("userId requis");
+  if (!invoiceNumber) throw new Error("invoiceNumber requis");
+  if (!amount || amount <= 0) throw new Error("Montant invalide");
+
+  const TVA_RATE = 0.20;
+
+  // Calculs
+  const amountHT = Math.round(amount / (1 + TVA_RATE));
+  const tvaAmount = amount - amountHT;
+
+  // Dossier de stockage
+  const invoicesDir = path.join(process.cwd(), "invoices");
+  if (!fs.existsSync(invoicesDir)) {
+    fs.mkdirSync(invoicesDir, { recursive: true });
+  }
+
+  const fileName = `invoice_${invoiceNumber}.pdf`;
+  const filePath = path.join(invoicesDir, fileName);
+
+  // Logo dynamique
+  const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
+
+  // =========================
+  // QR CODE (données encodées)
+  // =========================
+  const qrData = JSON.stringify({
+    invoiceNumber,
+    userId,
+    amount: amount / 100,
+    planType,
+    date: date.toISOString(),
+  });
+
+  const qrImageBuffer = await QRCode.toBuffer(qrData, {
+    errorCorrectionLevel: "H",
+    type: "png",
+    width: 200,
+  });
+
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: "A4", margin: 50 });
+      const chunks = [];
+
+      doc.on("data", (chunk) => chunks.push(chunk));
+      doc.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        fs.writeFileSync(filePath, buffer);
+        resolve({ buffer, filePath, fileName });
+      });
+
+      // =========================
+      // LOGO
+      // =========================
+      if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, 50, 45, { width: 100 });
+      }
+
+      // =========================
+      // HEADER
+      // =========================
+      doc
+        .fontSize(22)
+        .text("FACTURE", 0, 50, { align: "right" })
+        .moveDown();
+
+      doc
+        .fontSize(10)
+        .text(`Facture n° : ${invoiceNumber}`, { align: "right" })
+        .text(`Date : ${date.toLocaleDateString("fr-FR")}`, {
+          align: "right",
+        })
+        .moveDown(2);
+
+      // =========================
+      // ENTREPRISE
+      // =========================
+      doc
+        .fontSize(12)
+        .text("Émetteur :", 50, 150, { underline: true })
+        .fontSize(10)
+        .text("Plateforme Scolaire")
+        .text("Adresse : 123 Rue Exemple, Paris, France")
+        .text("Email : contact@plateforme-scolaire.fr")
+        .moveDown(2);
+
+      // =========================
+      // CLIENT
+      // =========================
+      doc
+        .fontSize(12)
+        .text("Facturé à :", 50, 220, { underline: true })
+        .fontSize(10)
+        .text(`Utilisateur ID : ${userId}`)
+        .moveDown(2);
+
+      // =========================
+      // QR CODE
+      // =========================
+      doc
+        .fontSize(12)
+        .text("QR Code (vérification) :", 50, 280);
+
+      doc.image(qrImageBuffer, 50, 300, { width: 120 });
+
+      // =========================
+      // TABLEAU
+      // =========================
+      const tableTop = 300;
+
+      doc
+        .fontSize(12)
+        .text("Description", 200, tableTop)
+        .text("Montant HT", 350, tableTop)
+        .text("TVA (20%)", 450, tableTop)
+        .text("Total TTC", 530, tableTop);
+
+      doc.moveTo(200, tableTop + 15).lineTo(570, tableTop + 15).stroke();
+
+      doc
+        .fontSize(10)
+        .text(`Abonnement ${planType}`, 200, tableTop + 25)
+        .text(`${(amountHT / 100).toFixed(2)} €`, 350, tableTop + 25)
+        .text(`${(tvaAmount / 100).toFixed(2)} €`, 450, tableTop + 25)
+        .text(`${(amount / 100).toFixed(2)} €`, 530, tableTop + 25);
+
+      // =========================
+      // TOTAL
+      // =========================
+      doc
+        .fontSize(14)
+        .text("TOTAL TTC :", 450, tableTop + 80)
+        .text(`${(amount / 100).toFixed(2)} €`, 530, tableTop + 80);
+
+      // =========================
+      // FOOTER
+      // =========================
+      doc
+        .fontSize(9)
+        .fillColor("#666")
+        .text(
+          "Merci pour votre confiance.\nFacture générée automatiquement.",
+          50,
+          750,
+          { align: "center", width: 500 }
+        );
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}

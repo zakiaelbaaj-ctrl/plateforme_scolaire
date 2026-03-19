@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Gestion des Paiements</title>
+
+  <!-- Dark mode premium -->
+  <link rel="stylesheet" href="/css/admin_dark.css">
+</head>
+
+<body class="admin-page">
+
+<!-- ============================
+     HEADER
+============================= -->
+<header class="page-header">
+  <div class="container">
+    <h1>💳 Gestion des Paiements</h1>
+    <p class="meta" id="paymentCount">Chargement...</p>
+  </div>
+</header>
+
+<!-- ============================
+     CONTENU PRINCIPAL
+============================= -->
+<main class="container">
+
+  <!-- Zone d’actions -->
+  <section class="controls">
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="🔍 Rechercher un paiement..."
+      aria-label="Rechercher un paiement"
+    >
+    <button class="validate-btn" onclick="loadPaiements()">🔄 Rafraîchir</button>
+  </section>
+
+  <!-- Tableau -->
+  <section class="table-wrapper" aria-label="Liste des paiements">
+    <table class="table" id="paiementTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Utilisateur</th>
+          <th>Email</th>
+          <th>Montant</th>
+          <th>Devise</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th>Stripe ID</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Paiements injectés ici -->
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Retour -->
+  <footer class="page-footer">
+    <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
+  </footer>
+
+</main>
+
+<!-- ============================
+     MODAL
+============================= -->
+<div id="confirmModal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <h3 id="modalTitle">Confirmation</h3>
+    <p id="modalMessage"></p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-confirm" onclick="confirmAction()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     SCRIPT
+============================= -->
+<script>
+let paiements = [];
+let filteredPaiements = [];
+let pendingAction = null;
+
+/* ============================================================
+   FETCH DES PAIEMENTS
+============================================================ */
+async function loadPaiements() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token manquant — reconnecte-toi");
+
+    const res = await fetch("http://localhost:4000/api/v1/admin/paiements", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.success !== true) throw new Error(json.message || "Erreur lors du chargement des paiements");
+
+    paiements = json.paiements.map(formatPaiement);
+    filteredPaiements = [...paiements];
+
+    afficherPaiements();
+
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
+
+/* ============================================================
+   FORMATAGE DES DONNÉES
+============================================================ */
+function formatPaiement(p) {
+  return {
+    id: p.id,
+    user_id: p.user_id,
+    fullname: `${p.prenom || ""} ${p.nom || ""}`.trim(),
+    email: p.email || "—",
+    montant: (p.montant || 0) / 100,
+    devise: (p.devise || "eur").toUpperCase(),
+    type: p.type || "—",
+    status: p.status || "inconnu",
+    stripe_id: p.stripe_id || "—",
+    date: p.date ? new Date(p.date) : null
+  };
+}
+
+/* ============================================================
+   AFFICHAGE TABLEAU
+============================================================ */
+function afficherPaiements() {
+  const tbody = document.querySelector("#paiementTable tbody");
+  const count = document.getElementById("paymentCount");
+
+  tbody.innerHTML = "";
+  count.textContent = `${filteredPaiements.length} paiement(s)`;
+
+  if (filteredPaiements.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">Aucun paiement trouvé.</td></tr>`;
+    return;
+  }
+
+  filteredPaiements.forEach((p, i) => {
+    const statusClass =
+      p.status === "succeeded" || p.status === "paid" ? "validated" :
+      p.status === "pending" || p.status === "processing" ? "pending" : "danger";
+
+    const statusText =
+      p.status === "succeeded" || p.status === "paid" ? "✔ Réussi" :
+      p.status === "pending" || p.status === "processing" ? "⏳ En cours" :
+      `⛔ ${p.status}`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${escapeHtml(p.fullname)}</td>
+      <td>${escapeHtml(p.email)}</td>
+      <td>${p.montant.toFixed(2)}</td>
+      <td>${p.devise}</td>
+      <td>${escapeHtml(p.type)}</td>
+      <td><span class="status ${statusClass}">${statusText}</span></td>
+      <td>${p.date ? p.date.toLocaleString() : "—"}</td>
+      <td>${escapeHtml(p.stripe_id)}</td>
+      <td class="actions">
+        <button class="delete-btn" onclick="openDeleteModal(${i})">Supprimer</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ============================================================
+   RECHERCHE
+============================================================ */
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+
+  filteredPaiements = paiements.filter(p =>
+    `${p.fullname} ${p.email} ${p.stripe_id} ${p.type}`.toLowerCase().includes(q)
+  );
+
+  afficherPaiements();
+});
+
+/* ============================================================
+   MODAL
+============================================================ */
+function openDeleteModal(i) {
+  pendingAction = { type: "delete", index: i };
+  showModal("Supprimer ce paiement ?", "Cette action est irréversible.");
+}
+
+function showModal(title, message) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMessage").textContent = message;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+  pendingAction = null;
+  document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
+}
+
+/* ============================================================
+   CONFIRMATION ACTION
+============================================================ */
+async function confirmAction() {
+  if (!pendingAction) return;
+
+  const { index } = pendingAction;
+  const p = filteredPaiements[index];
+  const token = localStorage.getItem("token");
+
+  try {
+    await fetch(`http://localhost:4000/api/v1/admin/paiements/${p.id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    paiements = paiements.filter(x => x.id !== p.id);
+    filteredPaiements = filteredPaiements.filter(x => x.id !== p.id);
+
+    afficherPaiements();
+
+  } catch (err) {
+    alert("❌ Erreur lors de la suppression");
+  }
+
+  closeModal();
+}
+
+/* ============================================================
+   UTILITAIRES
+============================================================ */
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text == null ? "" : String(text);
+  return div.innerHTML;
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+loadPaiements();
+</script>
+
+</body>
+</html>

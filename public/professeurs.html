@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espace Professeurs - Plateforme Scolaire</title>
+
+<!-- Base CSS commune -->
+<link rel="stylesheet" href="vendor/base.css">
+
+<style>
+body.professeur {
+  background-color: #f5f5f0; /* fond beige */
+  font-family: inherit; /* utilise base.css */
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  background: white;
+  padding: 40px 30px;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  max-width: 700px;
+  text-align: center;
+  font-family: inherit;
+}
+
+h1 {
+  color: var(--color-professeurs); /* bleu professeur */
+  margin-bottom: 20px;
+}
+
+p {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+ul {
+  text-align: left;
+  margin: 15px auto;
+  max-width: 450px;
+  font-size: 1rem;
+}
+
+li {
+  margin-bottom: 8px;
+}
+
+strong {
+  color: var(--color-professeurs); /* bleu professeur */
+}
+
+.notice {
+  background: #fff3cd;
+  color: #856404;
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+  font-size: 1rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+button.prof {
+  margin-top: 30px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--color-professeurs); /* bleu professeur */
+  color: white;
+  cursor: pointer;
+  transition: transform 0.3s, filter 0.3s;
+}
+
+button.prof:hover {
+  transform: scale(1.05);
+  filter: brightness(0.9);
+}
+</style>
+</head>
+
+<body class="professeur">
+<div class="container">
+  <h1>Bienvenue sur l’Espace Professeurs</h1>
+
+  <p>Vous pouvez devenir partenaire de notre plateforme et proposer vos cours en ligne.</p>
+  <p>Selon votre disponibilité, vous pourrez donner des cours partout dans le monde et toucher des élèves internationaux.</p>
+  <p>Votre compte doit être validé par un administrateur avant de pouvoir rejoindre les cours et accéder au dashboard.</p>
+
+  <h3>Exigences de diplôme selon le niveau :</h3>
+  <ul>
+    <li>💼 <strong>Primaire :</strong> Bac +3 minimum</li>
+    <li>🎓 <strong>Secondaire :</strong> Bac +4 minimum</li>
+    <li>🏛️ <strong>Supérieur :</strong> Bac +5 ou équivalent</li>
+  </ul>
+
+  <div class="notice">
+    📌 <strong>Important :</strong> Vous devez fournir une copie de votre diplôme lors de l’inscription.  
+    Votre compte ne pourra être validé qu’après vérification par un administrateur.
+  </div>
+
+  <p>Pour commencer, veuillez vous inscrire :</p>
+  <button class="prof" onclick="window.location.href='register_prof.html'">📝 S'inscrire et envoyer votre diplôme</button>
+</div>
+</body>
+</html>

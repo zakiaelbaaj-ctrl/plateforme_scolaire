@@ -1,0 +1,132 @@
+/* ================================
+   TABLEAU ÉLÈVES
+================================ */
+.table-wrapper {
+    overflow-x: auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+    padding: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1100px; /* adapté au nombre de colonnes */
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+    white-space: nowrap; /* évite les retours à la ligne */
+}
+
+th {
+    background-color: #3498db;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* STATUTS */
+.status {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 12px;
+    display: inline-block;
+    text-align: center;
+}
+
+.status.pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status.validated {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+/* BOUTONS ACTIONS */
+button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-weight: 500;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.validate-btn {
+    background-color: #28a745;
+}
+
+.delete-btn {
+    background-color: #dc3545;
+}
+
+/* Actions dans le tableau */
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* CONTROLS SEARCH / REFRESH */
+.controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+input[type="text"] {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    flex: 1;
+    min-width: 200px;
+}
+
+/* LIEN RETOUR */
+.back-home {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 15px;
+    color: #3498db;
+    text-decoration: none;
+    border: 1px solid #3498db;
+    border-radius: 6px;
+    transition: all 0.3s;
+}
+
+.back-home:hover {
+    background-color: #3498db;
+    color: white;
+}
+
+/* EMPTY STATE TABLEAU */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-size: 15px;
+}

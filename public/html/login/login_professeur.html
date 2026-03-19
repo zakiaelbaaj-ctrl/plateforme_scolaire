@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion Professeur</title>
+
+  <!-- CSS séparé -->
+  <link rel="stylesheet" href="../../css/login_professeur.css">
+</head>
+
+<body>
+
+<div class="container">
+  <h1>🧑‍🏫 Connexion Professeur</h1>
+  <p class="subtitle">Accédez à votre espace de cours</p>
+  
+  <form id="loginProfForm" novalidate>
+    
+    <!-- IDENTIFIANTS -->
+    <div class="form-group">
+      <label for="username">Nom d'utilisateur ou Email</label>
+      <input 
+        type="text" 
+        id="username" 
+        name="username"
+        required 
+        autocomplete="username"
+        placeholder="jean.dupont ou jean@example.com"
+      >
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Mot de passe</label>
+      <input 
+        type="password" 
+        id="password" 
+        name="password"
+        required 
+        autocomplete="current-password"
+        placeholder="••••••••"
+      >
+    </div>
+
+    <!-- MATIÈRE -->
+    <div class="form-group">
+      <label for="matiere">Matière enseignée</label>
+      <select id="matiere" name="matiere" required autocomplete="off">
+        <option value="">-- Choisir une matière --</option>
+        <optgroup label="Général">
+          <option value="Mathématiques">Mathématiques</option>
+          <option value="Français">Français</option>
+          <option value="Anglais">Anglais</option>
+          <option value="Histoire-Géographie">Histoire-Géographie</option>
+          <option value="Philosophie">Philosophie</option>
+          <option value="Économie">Économie</option>
+        </optgroup>
+        <optgroup label="Sciences">
+          <option value="Physique-Chimie">Physique-Chimie</option>
+          <option value="SVT">SVT</option>
+        </optgroup>
+        <optgroup label="Techniques">
+          <option value="Informatique">Informatique</option>
+          <option value="Programmation">Programmation</option>
+        </optgroup>
+        <optgroup label="Commerce">
+          <option value="Gestion">Gestion</option>
+          <option value="Marketing">Marketing</option>
+        </optgroup>
+        <optgroup label="Arts">
+          <option value="Musique">Musique</option>
+          <option value="Arts plastiques">Arts plastiques</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <!-- NIVEAU -->
+    <div class="form-group">
+      <label for="niveau">Niveau enseigné</label>
+      <select id="niveau" name="niveau" required autocomplete="off">
+        <option value="">-- Choisir un niveau --</option>
+        <optgroup label="Éducation nationale">
+          <option value="Primaire">Primaire</option>
+          <option value="Collège">Collège</option>
+          <option value="Lycée">Lycée</option>
+        </optgroup>
+        <optgroup label="Supérieur">
+          <option value="Université - Licence">Université - Licence</option>
+          <option value="Université - Master">Université - Master</option>
+          <option value="Université - Doctorat">Université - Doctorat</option>
+        </optgroup>
+        <optgroup label="Autres formations">
+          <option value="BTS">BTS</option>
+          <option value="Prépa">Prépa</option>
+          <option value="Formation professionnelle">Formation professionnelle</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <button type="submit" class="professeurs-role" id="submitBtn">Se connecter</button>
+    
+    <div id="loadingDiv" class="loading"></div>
+    <div id="errorDiv" class="error"></div>
+    <div id="successDiv" class="success"></div>
+  </form>
+
+  <div class="divider">
+    <p>Vous êtes élève ? <a href="login_eleve.html">Connexion élève</a></p>
+  </div>
+</div>
+
+<script src="../../js/auth/login_professeur.js"></script>
+
+</body>
+</html>

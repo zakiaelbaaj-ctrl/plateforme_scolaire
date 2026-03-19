@@ -1,0 +1,164 @@
+/* ---------------------------------------------------------
+   BASE CSS — Reset & tokens globaux uniquement
+   --------------------------------------------------------- */
+
+@import url('https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap');
+
+/* ======================================================
+   TOKENS PARTAGÉS (non redéfinis dans les pages)
+   ====================================================== */
+:root {
+  --eleve-color:      #ff6f61;
+  --etudiant-color:   #4caf50;
+  --professeur-color: #2196f3;
+}
+
+/* ======================================================
+   RESET MINIMAL — global, inoffensif
+   ====================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ======================================================
+   BODY — neutre, chaque page surcharge selon son besoin
+   ====================================================== */
+body {
+  min-height: 100vh;
+}
+
+/* ======================================================
+   TOUT CE QUI SUIT EST SCOPÉ À .auth-body
+   → N'affecte PAS les dashboards
+   ====================================================== */
+
+.auth-body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #ffffff 0%, #f9f8f6 100%);
+  font-family: 'Indie Flower', cursive;
+}
+
+/* Formulaires */
+.auth-body .auth-container {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.auth-body .form-group { margin-bottom: 20px; }
+
+.auth-body label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
+.auth-body input,
+.auth-body select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.auth-body input:focus,
+.auth-body select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  outline: none;
+}
+
+/* Messages */
+.auth-body .error,
+.auth-body .success,
+.auth-body .loading {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 15px;
+  display: none;
+}
+
+.auth-body .error   { background: #fee; color: #c33; border: 1px solid #fbb; }
+.auth-body .success { background: #efe; color: #393; border: 1px solid #bfb; }
+.auth-body .loading { color: #667eea; }
+.auth-body .show    { display: block; }
+
+/* Infos & sous-titres */
+.auth-body .info {
+  background: #f0f7ff;
+  border-left: 4px solid var(--professeur-color);
+  padding: 15px;
+  margin-bottom: 25px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+}
+
+.auth-body .info ul {
+  margin: 10px 0 10px 20px;
+}
+
+.auth-body .subtitle {
+  text-align: center;
+  margin-top: -10px;
+  margin-bottom: 20px;
+  font-style: italic;
+  color: #666;
+}
+
+/* Liens */
+.auth-body .link-section {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.auth-body .link-section a { color: #667eea; text-decoration: none; }
+.auth-body .link-section a:hover { text-decoration: underline; }
+
+/* Logo */
+.auth-body .logo { display: block; width: 120px; margin: 0 auto 20px; }
+.auth-body .logo img { width: 100%; height: auto; }
+
+/* Boutons */
+.auth-body button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  background-color: var(--professeur-color);
+  margin-top: 10px;
+}
+
+.auth-body button:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.auth-body button:active {
+  transform: translateY(0);
+}
+
+.auth-body button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}

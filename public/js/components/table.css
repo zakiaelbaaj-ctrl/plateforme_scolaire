@@ -1,0 +1,256 @@
+/* public/js/components/table.css
+   Senior+++ table styles
+   - Theming via CSS variables
+   - Accessible, responsive, compact and expanded variants
+   - Sticky headers, zebra rows, selectable rows, sortable indicators
+   - Lightweight utilities for actions, empty states and responsive wrapping
+*/
+
+/* Design tokens */
+:root {
+  --table-bg: #ffffff;
+  --table-border: rgba(2,6,23,0.06);
+  --table-muted: #6b7280;
+  --table-text: #0f1724;
+  --accent: #2563eb;
+  --accent-600: #1e40af;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --radius: 8px;
+  --cell-padding: 12px 14px;
+  --compact-cell-padding: 8px 10px;
+  --shadow-sm: 0 6px 18px rgba(2,6,23,0.06);
+  --transition: 160ms cubic-bezier(.2,.9,.2,1);
+  --z-sticky: 20;
+  --row-hover: rgba(37,99,235,0.03);
+  --max-table-width: 1200px;
+  --font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --table-bg: #07161a;
+    --table-border: rgba(255,255,255,0.04);
+    --table-muted: #9aa6a9;
+    --table-text: #e6f0f2;
+    --row-hover: rgba(37,99,235,0.06);
+  }
+}
+
+/* Base table container */
+.table-wrap {
+  width: 100%;
+  max-width: var(--max-table-width);
+  overflow: auto;
+  background: transparent;
+  border-radius: var(--radius);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Table reset */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-family);
+  color: var(--table-text);
+  background: var(--table-bg);
+  min-width: 480px;
+}
+
+/* Header */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.95));
+  border-bottom: 1px solid var(--table-border);
+  padding: var(--cell-padding);
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--table-muted);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Body cells */
+.table tbody td {
+  padding: var(--cell-padding);
+  border-bottom: 1px solid rgba(2,6,23,0.03);
+  vertical-align: middle;
+  font-size: 14px;
+  color: var(--table-text);
+}
+
+/* Zebra rows */
+.table tbody tr:nth-child(odd) {
+  background: transparent;
+}
+.table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--row-hover) 30%, transparent);
+}
+
+/* Hover and focus */
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--row-hover) 60%, transparent);
+}
+.table tbody tr:focus-within {
+  outline: 3px solid rgba(37,99,235,0.12);
+  outline-offset: -3px;
+}
+
+/* Clickable / selectable rows */
+.table tbody tr.selectable { cursor: pointer; }
+.table tbody tr.selected {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,0.06);
+}
+
+/* Compact variant */
+.table--compact tbody td,
+.table--compact thead th {
+  padding: var(--compact-cell-padding);
+  font-size: 13px;
+}
+
+/* Small / dense */
+.table--small { font-size: 13px; }
+
+/* Actions column */
+.table .actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* Buttons inside table */
+.table .btn {
+  padding: 6px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+.table .btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(2,6,23,0.06);
+  color: var(--table-muted);
+}
+
+/* Empty state */
+.table-empty {
+  display: grid;
+  place-items: center;
+  padding: 36px;
+  color: var(--table-muted);
+  font-size: 14px;
+}
+
+/* Sortable headers */
+.table thead th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.table thead th.sortable .sort-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  opacity: 0.9;
+  transition: transform var(--transition), opacity var(--transition);
+}
+.table thead th.sortable .sort-indicator svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+  fill: currentColor;
+  color: var(--table-muted);
+}
+.table thead th.sortable[aria-sort="ascending"] .sort-indicator { transform: rotate(180deg); color: var(--accent-600); }
+.table thead th.sortable[aria-sort="descending"] .sort-indicator { color: var(--accent-600); }
+
+/* Row details / expandable */
+.row-details {
+  display: none;
+  background: color-mix(in srgb, var(--table-bg) 96%, #f8fafc 4%);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--table-border);
+}
+.table tbody tr.expanded + tr.details-row .row-details { display: block; }
+
+/* Responsive: stacked rows for narrow screens */
+@media (max-width: 720px) {
+  .table { min-width: 0; border: 0; }
+  .table thead { display: none; }
+  .table tbody tr { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 10px; border-bottom: 1px solid var(--table-border); background: var(--table-bg); }
+  .table tbody td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border: 0;
+  }
+  .table tbody td[data-label]::before {
+    content: attr(data-label);
+    color: var(--table-muted);
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  .table .actions { justify-content: flex-start; gap: 10px; }
+}
+
+/* Accessibility helpers */
+.table [role="checkbox"] { display: inline-flex; align-items: center; justify-content: center; }
+.table caption { caption-side: top; text-align: left; padding: 8px 12px; font-weight: 700; color: var(--table-muted); }
+
+/* Sticky footer (pagination area) */
+.table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--table-border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.95));
+}
+
+/* Inline filters row */
+.table-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--table-border);
+  background: color-mix(in srgb, var(--table-bg) 98%, #f8fafc 2%);
+}
+
+/* Utility: truncate */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Utility: visually hidden for screen readers */
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
+  border: 0; padding: 0; margin: -1px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Print */
+@media print {
+  .table-wrap { overflow: visible; }
+  .table thead th { position: static; }
+  .table tbody tr { page-break-inside: avoid; }
+  .actions, .btn { display: none !important; }
+}

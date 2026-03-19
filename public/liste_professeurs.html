@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Professeurs Disponibles</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Base CSS commune -->
+<link rel="stylesheet" href="vendor/base.css">
+
+<style>
+body {
+  margin: 0;
+  font-family: inherit;
+  background-color: #f5f5f0; /* fond beige clair */
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #1e40af;
+  margin-bottom: 30px;
+  font-size: 2rem;
+}
+
+.prof-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.prof-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,.1);
+  width: 220px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform .3s, background .3s, color .3s;
+  font-family: inherit;
+}
+
+.prof-card:hover {
+  transform: scale(1.05);
+  background: var(--color-eleves, #2563eb);
+  color: white;
+}
+
+.prof-card img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 10px;
+  border: 2px solid var(--color-eleves, #2563eb);
+}
+
+.prof-info {
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.prof-info p {
+  margin: 4px 0;
+}
+
+/* Bouton retour */
+.back-btn {
+  display: inline-block;
+  margin-bottom: 20px;
+  padding: 10px 15px;
+  background: var(--color-eleves, #2563eb);
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: transform 0.2s, filter 0.2s;
+}
+
+.back-btn:hover {
+  transform: scale(1.05);
+  filter: brightness(0.9);
+}
+</style>
+</head>
+<body>
+
+<h1>Professeurs Disponibles</h1>
+<a class="back-btn" href="Dashboard_eleve.html">← Retour à la sélection</a>
+<div class="prof-container" id="profContainer"></div>
+
+<!-- Audio d'alerte -->
+<audio id="alertSound" src="assets/alert.mp3" preload="auto"></audio>
+<script>
+// Récupérer le token stocké (si tu utilises requireAuth)
+const token = localStorage.getItem("token");
+
+// Récupérer le niveau et la matière
+const level = localStorage.getItem("selectedLevel") || "primaire";
+const subject = localStorage.getItem("selectedSubject") || "maths";
+
+const container = document.getElementById("profContainer");
+const alertSound = document.getElementById("alertSound");
+
+// Fonction pour charger les professeurs connectés depuis le serveur
+async function chargerProfs() {
+  try {
+    const res = await fetch("http://localhost:4000/api/v1/professeurs/online", {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error("Impossible de charger les professeurs");
+    
+    // Filtrer selon matière et niveau
+    return json.profs.filter(p => p.level === level && p.subjects?.includes(subject));
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = `<p>Erreur lors du chargement des professeurs.</p>`;
+    return [];
+  }
+}
+
+// Fonction pour afficher les professeurs
+async function afficherProfs() {
+  const profs = await chargerProfs();
+  container.innerHTML = "";
+
+  if (profs.length === 0) {
+    container.innerHTML = `<p>Aucun professeur connecté pour ${subject} (${level}).</p>`;
+    return;
+  }
+
+  profs.forEach(prof => {
+    const div = document.createElement("div");
+    div.className = "prof-card";
+
+    div.innerHTML = `
+      <img src="${prof.photo || 'images/default_prof.jpg'}" alt="${prof.prenom} ${prof.nom}">
+      <div class="prof-info">
+        <p><strong>${prof.prenom} ${prof.nom}</strong></p>
+        <p>Ville: ${prof.ville || '-'}</p>
+        <p>Pays: ${prof.pays || '-'}</p>
+        <p>Matière: ${prof.subjects?.join(", ") || '-'}</p>
+      </div>
+    `;
+
+    div.addEventListener("click", () => {
+      alertSound.play();
+      const profResponse = confirm(`${prof.prenom} ${prof.nom} a reçu votre demande.\nCliquez sur OK si le professeur accepte l'appel.`);
+      if(profResponse){
+        localStorage.setItem("profChoisi", JSON.stringify(prof));
+        window.location.href = "classe_visio.html";
+      } else {
+        alert("Le professeur n'a pas accepté l'appel pour le moment.");
+      }
+    });
+
+    container.appendChild(div);
+  });
+}
+
+// Chargement initial
+afficherProfs();
+
+</script>
+
+</body>
+</html>

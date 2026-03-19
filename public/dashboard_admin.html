@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tableau de bord administrateur</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+<h2 class="section-title">Inscriptions</h2>
+<div class="grid">
+
+  <!-- PROFESSEURS : validation obligatoire par l'admin -->
+  <div class="nav-card" data-route="admin_inscriptions_professeurs.html">
+    <div class="nav-card-title">Inscriptions professeurs</div>
+    <div class="nav-card-desc">
+      Validation obligatoire par l’administrateur. Documents requis : CV, diplômes.
+    </div>
+    <span class="tag tag-critical">Validation manuelle</span>
+  </div>
+
+  <!-- ÉLÈVES : validation automatique si parents OK -->
+   <div class="nav-card" data-route="admin_inscriptions_eleves.html">
+
+    <div class="nav-card-title">Inscriptions élèves</div>
+    <div class="nav-card-desc">
+      Activation automatique après accord parental. Suivi des parents en attente.
+    </div>
+    <span class="tag">Automatique</span>
+  </div>
+
+  <!-- ÉTUDIANTS : même logique que les élèves si mineurs -->
+  <div class="nav-card" data-route="admin_inscriptions_etudiants.html">
+    <div class="nav-card-title">Inscriptions étudiants</div>
+    <div class="nav-card-desc">
+      Automatique si accord parental (mineurs). Validation directe pour majeurs.
+    </div>
+    <span class="tag">Automatique / Majeurs</span>
+  </div>
+
+  <!-- PARENTS : doivent valider les comptes enfants -->
+  <div class="nav-card" data-route="admin_inscriptions_parents.html">
+    <div class="nav-card-title">Inscriptions parents</div>
+    <div class="nav-card-desc">
+      Gestion des responsables légaux. Accord parental obligatoire pour activer un élève.
+    </div>
+    <span class="tag">Parents</span>
+  </div>
+
+</div>
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-elevated: #111827;
+      --accent: #3b82f6;
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border: #1f2937;
+      --radius: 10px;
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.9);
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: var(--font-sans);
+      background: radial-gradient(circle at top, #1f2937 0, #020617 55%);
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 1250px;
+      background: #020617;
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1.1fr 1.4fr;
+      min-height: 650px;
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+    }
+
+    .shell-left {
+      padding: 28px;
+      border-right: 1px solid var(--border);
+      background: #0f172a;
+      overflow-y: auto;
+    }
+
+    .shell-right {
+      padding: 24px;
+      background: #020617;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 22px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      margin-top: 20px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .nav-card {
+      position: relative;
+      border-radius: var(--radius);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: #111827;
+      padding: 12px;
+      cursor: pointer;
+      transition: 0.18s;
+    }
+
+    .nav-card:hover {
+      border-color: var(--accent);
+      background: #1e293b;
+      transform: translateY(-2px);
+    }
+
+    .nav-card-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .nav-card-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .tag-critical {
+      border-color: #ef4444;
+      color: #fecaca;
+    }
+
+    .right-block {
+      margin-top: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: #020617;
+      padding: 14px;
+      font-size: 13px;
+    }
+
+    .right-block h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .right-block p {
+      margin: 0 0 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .right-list {
+      margin: 6px 0 0;
+      padding-left: 18px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+
+    <!-- ============================
+         COLONNE GAUCHE : NAVIGATION
+         ============================ -->
+    <section class="shell-left">
+
+      <h1>Tableau de bord Administrateur</h1>
+      <p class="subtitle">
+        Gestion complète de la plateforme scolaire virtuelle : utilisateurs, inscriptions, communication, facturation.
+      </p>
+
+      <!-- ============================
+           INSCRIPTIONS
+           ============================ -->
+      <h2 class="section-title">Inscriptions</h2>
+<div class="grid">
+
+  <!-- PROFESSEURS : validation obligatoire par l'admin -->
+  <div class="nav-card" data-route="admin_inscriptions_professeurs.html">
+    <div class="nav-card-title">Inscriptions professeurs</div>
+    <div class="nav-card-desc">
+      Validation obligatoire par l’administrateur. Documents requis : CV, diplômes.
+    </div>
+    <span class="tag tag-critical">Validation manuelle</span>
+  </div>
+
+  <!-- ÉLÈVES : validation automatique si parents OK -->
+  <div class="nav-card" data-route="admin_inscriptions_eleves.html">
+    <div class="nav-card-title">Inscriptions élèves</div>
+    <div class="nav-card-desc">
+      Activation automatique après accord parental. Suivi des parents en attente.
+    </div>
+    <span class="tag">Automatique</span>
+  </div>
+
+  <!-- ÉTUDIANTS : même logique que les élèves si mineurs -->
+  <div class="nav-card" data-route="admin_inscriptions_etudiants.html">
+    <div class="nav-card-title">Inscriptions étudiants</div>
+    <div class="nav-card-desc">
+      Automatique si accord parental (mineurs). Validation directe pour majeurs.
+    </div>
+    <span class="tag">Automatique / Majeurs</span>
+  </div>
+
+  <!-- PARENTS : doivent valider les comptes enfants -->
+  <div class="nav-card" data-route="admin_inscriptions_parents.html">
+    <div class="nav-card-title">Inscriptions parents</div>
+    <div class="nav-card-desc">
+      Gestion des responsables légaux. Accord parental obligatoire pour activer un élève.
+    </div>
+    <span class="tag">Parents</span>
+  </div>
+
+</div>
+
+
+      <!-- ============================
+           UTILISATEURS
+           ============================ -->
+      <h2 class="section-title">Utilisateurs</h2>
+      <div class="grid">
+        <div class="nav-card" data-route="admin_inscriptions_professeurs.html">
+          <div class="nav-card-title">Professeurs</div>
+          <div class="nav-card-desc">Gestion des comptes, matières, droits.</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_eleves_primaire.html">
+          <div class="nav-card-title">Élèves primaire</div>
+          <div class="nav-card-desc">CP → CM2, classes, dossiers.</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_eleves_secondaire.html">
+          <div class="nav-card-title">Élèves secondaire</div>
+          <div class="nav-card-desc">6e → Terminale, suivi scolaire.</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_etudiants.html">
+          <div class="nav-card-title">Étudiants</div>
+          <div class="nav-card-desc">Universitaires, filières, progression.</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_parents.html">
+          <div class="nav-card-title">Parents</div>
+          <div class="nav-card-desc">Responsables légaux, autorisations.</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_roles.html">
+          <div class="nav-card-title">Rôles & permissions</div>
+          <div class="nav-card-desc">Accès, restrictions, sécurité.</div>
+        </div>
+      </div>
+
+      <!-- ============================
+           AUTORISATIONS PARENTALES
+           ============================ -->
+      <h2 class="section-title">Autorisations parentales</h2>
+      <div class="grid">
+        <div class="nav-card" data-route="admin_autorisations_chat.html">
+          <div class="nav-card-title">Chat</div>
+          <div class="nav-card-desc">
+            Autoriser / interdire le chat pour les mineurs.
+          </div>
+        </div>
+
+        <div class="nav-card" data-route="admin_autorisations_visio.html">
+          <div class="nav-card-title">Visios</div>
+          <div class="nav-card-desc">
+            Accès aux classes virtuelles selon l’accord parental.
+          </div>
+        </div>
+
+        <div class="nav-card" data-route="admin_autorisations_documents.html">
+          <div class="nav-card-title">Documents</div>
+          <div class="nav-card-desc">
+            Envoi / réception de fichiers par les mineurs.
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================
+           COMMUNICATION & TEMPS
+           ============================ -->
+      <h2 class="section-title">Communication & temps</h2>
+      <div class="grid">
+        <div class="nav-card" data-route="admin_chat_etudiants.html">
+          <div class="nav-card-title">Chat étudiants</div>
+          <div class="nav-card-desc">Modération, temps de chat, logs.</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_chat_professeurs.html">
+          <div class="nav-card-title">Chat professeurs</div>
+          <div class="nav-card-desc">Canaux pédagogiques, supervision.</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_visios.html">
+          <div class="nav-card-title">Visios</div>
+          <div class="nav-card-desc">
+            Planification, durée, présence, temps total par élève.
+          </div>
+        </div>
+
+        <div class="nav-card" data-route="admin_temps_communication.html">
+          <div class="nav-card-title">Temps de communication</div>
+          <div class="nav-card-desc">
+            Suivi du temps de chat + visio par élève / étudiant.
+          </div>
+          <span class="tag tag-critical">Base facturation</span>
+        </div>
+      </div>
+
+      <!-- ============================
+           DOCUMENTS
+           ============================ -->
+      <h2 class="section-title">Documents</h2>
+      <div class="grid">
+        <div class="nav-card" data-route="admin_documents.html">
+          <div class="nav-card-title">Documents envoyés</div>
+          <div class="nav-card-desc">
+            Contrôle, suppression, filtrage par utilisateur / cours.
+          </div>
+        </div>
+
+        <div class="nav-card" data-route="admin_documents_parents.html">
+          <div class="nav-card-title">Documents parentaux</div>
+          <div class="nav-card-desc">
+            Autorisations signées, justificatifs.
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================
+           ACADÉMIQUE
+           ============================ -->
+      <h2 class="section-title">Académique</h2>
+      <div class="grid">
+        <div class="nav-card" data-route="admin_cours_professeurs.html">
+          <div class="nav-card-title">Cours professeurs</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_cours_eleves.html">
+          <div class="nav-card-title">Cours élèves</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_cours_etudiants.html">
+          <div class="nav-card-title">Cours étudiants</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_classes.html">
+          <div class="nav-card-title">Classes</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_matieres.html">
+          <div class="nav-card-title">Matières</div>
+        </div>
+
+        <div class="nav-card" data-route="admin_emplois_temps.html">
+          <div class="nav-card-title">Emploi du temps</div>
+        </div>
+      </div>
+
+      <!-- ============================
+           FACTURATION
+           ============================ -->
+      <h2 class="section-title">Facturation</h2>
+      <div class="grid">
+        <div class="nav-card" data-route="admin_facturation_communication.html">
+          <div class="nav-card-title">Facturation communication</div>
+          <div class="nav-card-desc">
+            Calcul des factures en fonction du temps de chat et de visio par élève / étudiant.
+          </div>
+          <span class="tag tag-critical">Critique</span>
+        </div>
+
+        <div class="nav-card" data-route="admin_facturation_hub.html">
+          <div class="nav-card-title">Historique factures</div>
+          <div class="nav-card-desc">
+            Factures générées, paiements, relances.
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================
+           SÉCURITÉ & PARAMÈTRES
+           ============================ -->
+      <h2 class="section-title">Sécurité & paramètres</h2>
+      <div class="grid">
+        <div class="nav-card" data-route="admin_logs.html">
+          <div class="nav-card-title">Logs système</div>
+          <div class="nav-card-desc">
+            Connexions, actions sensibles, traçabilité.
+          </div>
+        </div>
+
+        <div class="nav-card" data-route="admin_parametres.html">
+          <div class="nav-card-title">Paramètres globaux</div>
+          <div class="nav-card-desc">
+            Configuration générale de la plateforme.
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================
+         COLONNE DROITE : CONTEXTE
+         ============================ -->
+    <section class="shell-right">
+      <h2>Contexte & logique métier</h2>
+      <div class="right-block">
+        <h3>Inscriptions & parents</h3>
+        <p>
+          Les élèves et étudiants mineurs ne sont activés qu’après validation parentale.
+        </p>
+        <ul class="right-list">
+          <li>Inscription élève / étudiant → lien parent.</li>
+          <li>Parent valide → l’admin active le compte.</li>
+          <li>Les autorisations parentales contrôlent chat, visio, documents.</li>
+        </ul>
+      </div>
+
+      <div class="right-block">
+        <h3>Temps de communication & facturation</h3>
+        <p>
+          Le temps de chat et de visio est suivi par utilisateur. La facturation se base sur ces durées.
+        </p>
+        <ul class="right-list">
+          <li>Module <strong>Temps de communication</strong> : agrège chat + visio.</li>
+          <li>Module <strong>Facturation communication</strong> : génère les montants.</li>
+          <li>Historique des factures consultable et exportable.</li>
+        </ul>
+      </div>
+
+      <div class="right-block">
+        <h3>Documents & sécurité</h3>
+        <p>
+          Tous les documents envoyés (chat, cours, visios) sont traçables et supprimables par l’administration.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    document.querySelectorAll(".nav-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const route = card.getAttribute("data-route");
+        if (route) window.location.href = "/" + route;
+      });
+    });
+  </script>
+</body>
+</html>

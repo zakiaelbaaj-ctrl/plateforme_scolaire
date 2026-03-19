@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inscription Professeur</title>
+
+<link rel="stylesheet" href="vendor/base.css">
+
+<style>
+body.professeurs {
+  background: #f5f5f0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.container {
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  width: 100%;
+  max-width: 440px;
+  padding: 35px;
+}
+
+h1 {
+  text-align: center;
+  color: var(--color-professeurs);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 25px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+input, select {
+  width: 100%;
+  padding: 11px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--color-professeurs);
+}
+
+.info {
+  background: #eef2ff;
+  border-left: 4px solid var(--color-professeurs);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+button.professeurs {
+  width: 100%;
+  padding: 13px;
+  background: var(--color-professeurs);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform .3s, filter .3s;
+}
+
+button.professeurs:hover:not(:disabled) {
+  transform: scale(1.05);
+  filter: brightness(0.9);
+}
+
+button:disabled {
+  opacity: .6;
+}
+
+.error, .success {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  display: none;
+}
+
+.error { background:#fee; color:#c33; }
+.success { background:#efe; color:#2c7; }
+.show { display:block; }
+
+.link-section {
+  text-align: center;
+  margin-top: 18px;
+}
+</style>
+</head>
+
+<body class="professeurs">
+
+<div class="container">
+
+<h1>🧑‍🏫 Inscription Professeur</h1>
+<p class="subtitle">
+  Partenaire international – enseignez partout dans le monde 🌍
+</p>
+
+<div class="info">
+📌 Conditions requises :
+<ul>
+  <li>Primaire : Bac +3 minimum</li>
+  <li>Secondaire : Bac +4 minimum</li>
+  <li>Supérieur : Bac +5 minimum</li>
+</ul>
+📎 Copie du diplôme obligatoire.<br>
+⏳ Compte activé uniquement après validation administrateur.
+</div>
+
+<form id="registerForm" enctype="multipart/form-data">
+
+<div class="form-group">
+<label>Prénom</label>
+<input type="text" id="prenom" required>
+</div>
+
+<div class="form-group">
+<label>Nom</label>
+<input type="text" id="nom" required>
+</div>
+
+<div class="form-group">
+<label>Nom d'utilisateur</label>
+<input type="text" id="username" required>
+</div>
+
+<div class="form-group">
+<label>Téléphone</label>
+<input type="tel" id="telephone" required>
+</div>
+
+<div class="form-group">
+<label>Pays</label>
+<input type="text" id="pays" placeholder="France, Maroc, Canada..." required>
+</div>
+
+<div class="form-group">
+<label>Ville</label>
+<input type="text" id="ville" placeholder="Paris, Casablanca..." required>
+</div>
+
+<div class="form-group">
+<label>Niveau enseigné</label>
+<select id="niveau" required>
+<option value="">-- Choisir --</option>
+<option value="primaire">Primaire</option>
+<option value="secondaire">Secondaire</option>
+<option value="superieur">Supérieur</option>
+</select>
+</div>
+
+<div class="form-group">
+<label>Matière</label>
+<select id="matiere" required>
+<option value="">-- Choisir --</option>
+<option>Mathématiques</option>
+<option>Français</option>
+<option>Anglais</option>
+<option>Physique</option>
+<option>Chimie</option>
+<option>Biologie</option>
+<option>Histoire-Géographie</option>
+<option>Informatique</option>
+</select>
+</div>
+
+<div class="form-group">
+<label>📎 Diplôme (PDF ou image)</label>
+<input type="file" id="diplome" accept=".pdf,.jpg,.jpeg,.png" required>
+</div>
+
+<div class="form-group">
+<label>Mot de passe</label>
+<input type="password" id="password" required>
+</div>
+
+<button type="submit" class="professeurs" id="submitBtn">
+📤 Envoyer ma demande
+</button>
+
+<div id="errorDiv" class="error"></div>
+<div id="successDiv" class="success"></div>
+
+</form>
+
+<div class="link-section">
+Déjà inscrit ? <a href="login_professeur.html">Se connecter</a>
+</div>
+
+</div>
+
+<script>
+const form = document.getElementById("registerForm");
+const errorDiv = document.getElementById("errorDiv");
+const successDiv = document.getElementById("successDiv");
+const submitBtn = document.getElementById("submitBtn");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  errorDiv.classList.remove("show");
+  successDiv.classList.remove("show");
+
+  const formData = new FormData(form);
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "⏳ Envoi...";
+
+  try {
+    const res = await fetch("/api/auth/signup-prof", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) throw new Error("Erreur lors de l'inscription");
+
+    successDiv.innerHTML = `
+      ✅ <strong>Demande envoyée avec succès</strong><br><br>
+      ⏳ Votre compte sera activé après validation par un administrateur.<br>
+      🔐 Vous pourrez ensuite vous connecter.
+      <br><br>
+      ⏩ Redirection vers la page de connexion...
+    `;
+    successDiv.classList.add("show");
+
+    form.reset();
+
+    /* 🔁 Redirection vers login professeur */
+    setTimeout(() => {
+      window.location.href = "login_professeur.html";
+    }, 3500);
+
+  } catch (err) {
+    errorDiv.textContent = "❌ " + err.message;
+    errorDiv.classList.add("show");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "📤 Envoyer ma demande";
+  }
+});
+</script>
+</body>
+</html>

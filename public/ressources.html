@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Espace Ressources - Plateforme Scolaire</title>
+  <link rel="stylesheet" href="vendor/base.css">
+  <link rel="stylesheet" href="vendor/layout.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f4f6f9;
+    }
+    h1 { text-align: center; margin-bottom: 2rem; color: #0066cc; }
+    .upload-section {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      max-width: 500px;
+      margin: 0 auto 2rem auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    input[type="file"] {
+      margin: 1rem 0;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      background: #0066cc;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #0055a3; }
+
+    .files-list {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .files-list ul { list-style: none; padding: 0; }
+    .files-list li { padding: 0.5rem 0; border-bottom: 1px solid #eee; }
+  </style>
+</head>
+<body>
+
+<h1>📂 Espace Ressources</h1>
+
+<div class="upload-section">
+  <h2>Téléverser un fichier</h2>
+  <input type="file" id="fileInput">
+  <br>
+  <button onclick="uploadFile()">Téléverser</button>
+</div>
+
+<div class="files-list">
+  <h2>Fichiers téléversés</h2>
+  <ul id="uploadedFiles"></ul>
+</div>
+
+<script>
+async function uploadFile() {
+  const input = document.getElementById('fileInput');
+  if (!input.files.length) {
+    alert("Veuillez sélectionner un fichier.");
+    return;
+  }
+  const file = input.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/ressources/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("Fichier téléversé avec succès !");
+      listFiles();
+      input.value = '';
+    } else {
+      alert("Erreur : " + data.message);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors du téléversement.");
+  }
+}
+
+// Affiche la liste des fichiers téléversés
+async function listFiles() {
+  const res = await fetch('/api/ressources/list');
+  const files = await res.json();
+  const ul = document.getElementById('uploadedFiles');
+  ul.innerHTML = '';
+  files.forEach(f => {
+    const li = document.createElement('li');
+    li.textContent = f;
+    ul.appendChild(li);
+  });
+}
+
+// Charger la liste au démarrage
+listFiles();
+</script>
+
+</body>
+</html>

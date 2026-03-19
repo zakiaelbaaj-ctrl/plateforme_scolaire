@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Visio etudiant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+
+    #dashboard {
+      display: block; /* Le dashboard sera affiché après login depuis login_etudiant.html */
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .actionBtn {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    video {
+      width: 45%;
+      background: black;
+      margin: 10px;
+      border-radius: 8px;
+    }
+
+    #profs div {
+      margin: 6px 0;
+    }
+
+    #callTimer {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #2c3e50;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- =========================
+     DASHBOARD_Etudiant
+========================= -->
+<div id="dashboard">
+
+  <h2>📚 Dashboard Visio</h2>
+
+  <div>
+    <strong>Nom :</strong> <span id="nom"></span><br>
+    <strong>Ville :</strong> <span id="ville"></span> |
+    <strong>Pays :</strong> <span id="pays"></span><br>
+    <strong>Matière :</strong> <span id="matiere"></span>
+  </div>
+
+  <!-- SUJET : Etudiant UNIQUEMENT -->
+  <div id="sujetDashboardContainer" style="margin-top:10px;">
+    <strong>Sujet :</strong> <span id="sujetDisplay"></span>
+  </div>
+
+  <hr>
+
+  <!-- ACTIONS -->
+  <button id="connectBtn" class="actionBtn">🔌 Se connecter</button>
+  <button id="disconnectBtn" class="actionBtn">🔒 Se déconnecter</button>
+  <button id="onlineTeachersBtn" class="actionBtn">👨‍🏫 Professeurs en ligne</button>
+  <button id="chatBtn" class="actionBtn">💬 Chat</button>
+  <button id="docsBtn" class="actionBtn">📁 Documents</button>
+  <button id="hangupBtn" class="actionBtn">❌ Raccrocher</button>
+
+  <hr>
+
+  <!-- LISTE DES PROFS -->
+  <div id="profs">
+    <h3>👨‍🏫 Professeurs en ligne</h3>
+  </div>
+* ============================
+   Chargement des infos Étudiants
+============================ */
+async function loadStudent() {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    window.location.href = "login_eleve.html";
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost:4000/api/v1/auth/me", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const data = await res.json();
+
+    if (!data.success) return;
+
+    document.getElementById("studentName").textContent =
+      `${data.user.prenom} ${data.user.nom}`;
+
+    document.getElementById("studentPhoto").src =
+      data.user.photo || "images/eleve.jpg";
+
+    document.getElementById("studentLocation").textContent =
+      `${data.user.ville || ""}, ${data.user.pays || ""}`;
+
+  } catch (err) {
+    console.error("Erreur lors du chargement de l'élève :", err);
+  }
+}
+
+loadStudent();
+  <!-- TIMER -->
+  <div id="callTimer">00:00</div>
+
+  <hr>
+
+  <!-- VIDÉOS -->
+  <div id="callButtonContainer">
+    <button id="btn-call" class="btn btn-primary">
+        📞 Lancer un appel
+    </button>
+</div>
+
+
+<!-- JS -->
+<script src="/js/dashboard_etudiant.js"></script>
+
+</body>
+</html>

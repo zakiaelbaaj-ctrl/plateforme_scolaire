@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Urgence Scolaire - Portail</title>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Indie+Flower&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-eleves: #ff6f61;
+      --color-etudiants: #4caf50;
+      --color-professeurs: #2196f3;
+      --text-light: #fff;
+    }
+    body { font-family: 'Indie Flower','Pacifico',cursive; margin: 0; background: #f5f5f0; color: #333; text-align: center; }
+    header { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 1rem 2rem; background: rgba(0,0,0,0.05); }
+    header img { height: 60px; }
+    header h1 { font-family: 'Pacifico', cursive; font-size: 2rem; margin: 0; color: #444; }
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+    .ligne { display: flex; justify-content: center; gap: 2rem; margin: 2rem auto; flex-wrap: wrap; }
+    .carte { border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); flex: 1 1 280px; max-width: 320px; padding: 2rem 1.5rem; cursor: pointer; color: var(--text-light); transition: 0.3s; text-decoration: none; display: block; }
+    .carte:hover { transform: translateY(-6px); box-shadow: 0 0 25px rgba(255,255,255,0.9); }
+    .btn-entrer { display: inline-block; padding: 10px 20px; background: rgba(255,255,255,0.25); color: var(--text-light); border-radius: 6px; font-weight: bold; }
+    .eleves { background: var(--color-eleves); }
+    .etudiants { background: var(--color-etudiants); }
+    .professeurs { background: var(--color-professeurs); }
+
+    /* Zone de session active */
+    #session-info {
+      display: none; 
+      background: #fff;
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      margin: 20px auto;
+      padding: 15px;
+      max-width: 400px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    .btn-resume { background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 10px; }
+    .btn-logout { background: #ef4444; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+    
+    /* Masquer le footer admin si déjà logué en élève */
+    #admin-footer { margin-top: 40px; opacity: 0.6; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="images/logo.png" alt="Logo">
+    <h1>Urgence Scolaire 📚</h1>
+  </header>
+
+  <div id="session-info">
+    <p>👋 Session active détectée : <strong id="user-role-display"></strong></p>
+    <div id="action-buttons">
+        <button onclick="redirectionManuelle()" class="btn-resume">Aller à mon tableau de bord</button>
+        <button onclick="deconnexion()" class="btn-logout">Déconnexion</button>
+    </div>
+  </div>
+
+  <main>
+    <div class="ligne">
+      <a href="pages/eleve/login.html" class="carte eleves">
+        <h2>👦 Élèves</h2>
+        <p>Accédez à vos cours et sessions.</p>
+        <span class="btn-entrer">Entrer</span>
+      </a>
+      <a href="pages/etudiant/login.html" class="carte etudiants">
+        <h2>🎓 Étudiants</h2>
+        <p>Rejoignez vos sessions universitaires.</p>
+        <span class="btn-entrer">Entrer</span>
+      </a>
+      <a href="pages/professeur/login.html" class="carte professeurs">
+        <h2>👨‍🏫 Professeurs</h2>
+        <p>Gérez vos classes et vos élèves.</p>
+        <span class="btn-entrer">Entrer</span>
+      </a>
+    </div>
+  </main>
+
+  <footer id="admin-footer">
+    <a href="login_admin.html" style="color: #333; text-decoration: none; font-size: 0.8rem;">🔐 Accès Admin</a>
+  </footer>
+
+  <script>
+    const userDataRaw = localStorage.getItem("currentUser");
+    let globalUser = null;
+
+    try {
+        if (userDataRaw) {
+            globalUser = JSON.parse(userDataRaw);
+            
+            // On vérifie si l'utilisateur est vraiment logué
+            if (globalUser && (globalUser.isLoggedIn || globalUser.token)) {
+                const role = (globalUser.role || "").toLowerCase();
+                
+                // 1. Afficher le bandeau
+                document.getElementById('session-info').style.display = 'block';
+                document.getElementById('user-role-display').innerText = role;
+
+                // 2. Si un utilisateur normal est connecté, on cache le lien "Accès Admin" du footer
+                if (role !== "admin") {
+                    document.getElementById('admin-footer').style.display = 'none';
+                }
+            }
+        }
+    } catch (e) { 
+        console.error("Erreur de parsing session", e);
+        localStorage.removeItem("currentUser"); 
+    }
+
+    function redirectionManuelle() {
+      if (!globalUser) return;
+      const role = (globalUser.role || "").toLowerCase();
+
+      // Redirection stricte selon le rôle
+      if (role === "admin" || role === "administrateur") {
+        window.location.href = "dashboard_admin.html";
+      } else if (role === "prof" || role === "professeur") {
+        window.location.href = "pages/professeur/dashboard.html";
+      } else if (role === "etudiant") {
+        window.location.href = "pages/etudiant/dashboard.html";
+      } else if (role === "eleve") {
+        window.location.href = "pages/eleve/dashboard.html";
+      } else {
+        alert("Rôle non reconnu, veuillez vous reconnecter.");
+        deconnexion();
+      }
+    }
+
+    function deconnexion() {
+      localStorage.removeItem("currentUser");
+      // Optionnel : supprimer aussi le token si tu en utilises un séparé
+      localStorage.removeItem("token");
+      location.reload();
+    }
+  </script>
+</body>
+</html>

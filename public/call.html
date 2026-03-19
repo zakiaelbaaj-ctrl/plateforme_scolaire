@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appel vidéo</title>
+
+  <!-- Twilio Video SDK -->
+  <script src="https://sdk.twilio.com/js/video/releases/2.27.0/twilio-video.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #videos {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap; /* Permet plusieurs participants */
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    video, .participant-video {
+      width: 45%;
+      max-height: 80vh;
+      background: black;
+      border-radius: 10px;
+      object-fit: cover;
+    }
+
+    #controls {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      padding: 15px;
+      background: #222;
+      border-top: 1px solid #333;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #leaveBtn {
+      background: #e74c3c;
+      color: white;
+    }
+
+    #muteBtn, #cameraBtn {
+      background: #444;
+      color: white;
+    }
+  </style>
+</head>
+
+</div>
+
+  <body>
+
+  <div id="videos">
+    <!-- Vidéo locale -->
+    <video id="localVideo" autoplay muted></video>
+
+    <!-- Vidéo distante (ou plusieurs participants) -->
+    <video id="remoteVideo" autoplay></video>
+
+    <!-- Conteneur pour plusieurs participants si tu veux évoluer plus tard -->
+    <div id="participantsContainer"></div>
+  </div>
+
+  <div id="controls">
+    <button id="muteBtn">Mute</button>
+    <button id="cameraBtn">Cam Off</button>
+    <button id="leaveBtn">Quitter</button>
+  </div>
+
+  <script src="/js/call.js"></script>
+
+</body>
+</html>

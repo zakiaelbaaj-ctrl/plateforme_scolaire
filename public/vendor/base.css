@@ -1,0 +1,125 @@
+/* ================================
+   Base CSS commun pour tout le site
+   ================================ */
+
+/* Reset simple */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Typographie globale et fond de page */
+html, body {
+  font-family: 'Indie Flower', 'Pacifico', cursive; /* police manuscrite */
+  background-color: #f5f5f0; /* fond beige général */
+  color: #222;
+  line-height: 1.5;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Logo */
+header .logo {
+  max-width: 200px;
+}
+
+/* Layout utilitaires */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.flex {
+  display: flex;
+  gap: 1rem;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Liens */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Formulaires héritent de la police */
+input, select, textarea, button {
+  font-family: inherit;
+}
+
+/* ================================
+   Couleurs dynamiques par rôle
+   ================================ */
+:root {
+  --color-eleves: #ff6f61;         /* orange corail */
+  --color-etudiants: #10b981;      /* vert */
+  --color-professeurs: #2563eb;    /* bleu */
+  --color-administrateur: #f59e0b; /* jaune/orangé */
+}
+
+/* Les classes de rôle ne doivent pas colorer le body ! */
+/* Elles seront appliquées uniquement aux boutons et cartes */
+.eleves-role { background-color: var(--color-eleves); }
+.etudiants-role { background-color: var(--color-etudiants); }
+.professeurs-role { background-color: var(--color-professeurs); }
+.administrateur-role { background-color: var(--color-administrateur); }
+
+/* ================================
+   Boutons et cartes dynamiques
+   ================================ */
+button.eleves-role, .advantage-card.eleves-role,
+button.etudiants-role, .advantage-card.etudiants-role,
+button.professeurs-role, .advantage-card.professeurs-role,
+button.administrateur-role, .advantage-card.administrateur-role {
+  color: white;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: transform 0.3s, filter 0.3s;
+  font-family: inherit;
+  border: none;
+}
+
+/* Hover pour tous les boutons/cartes */
+button:hover, .advantage-card:hover {
+  filter: brightness(0.9);
+  transform: scale(1.03);
+}
+
+/* ================================
+   Cartes avantage
+   ================================ */
+.advantage-card {
+  border-radius: 10px;
+  padding: 20px;
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-family: inherit;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.advantage-card span {
+  font-size: 2rem; /* emoji plus gros */
+}
+
+.advantage-card h3 {
+  margin: 0 0 5px 0;
+  font-size: 1.2rem;
+}
+
+.advantage-card p {
+  margin: 0;
+}
