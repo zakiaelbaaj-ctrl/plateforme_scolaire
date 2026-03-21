@@ -4,6 +4,11 @@ import { Sequelize } from "sequelize";
 import 'dotenv/config';
 
 const { Pool } = pkg;
+// --- Vérification de la variable d'environnement ---
+if (!process.env.DATABASE_URL) {
+  throw new Error("❌ DATABASE_URL non défini dans Render");
+}
+
 
 // ---- PostgreSQL Pool (pour requêtes brutes) ----
 export const pool = new Pool({
