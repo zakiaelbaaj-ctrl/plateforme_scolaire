@@ -4,7 +4,7 @@
 
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
-
+import logger from "./logger.js";
 dotenv.config();
 
 let transporter = null;
@@ -12,20 +12,20 @@ let transporter = null;
 if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
   transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    requireTLS: true,
+    port: 465,
+    secure: true,
+    
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
     },
-    connectionTimeout: 5000,
-    socketTimeout: 5000
+    connectionTimeout: 10000,
+    socketTimeout: 10000
   });
 
   logger.info("📧 Service email configuré");
 } else {
-  logger.info("⚠️ Service email désactivé (identifiants manquants)");
+  logger.warn("⚠️ Service email désactivé (identifiants manquants)");
 }
 
 export default transporter;
