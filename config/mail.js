@@ -26,8 +26,9 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     tls: {
       rejectUnauthorized: false // Indispensable pour éviter les blocages de certificats sur Render
     },
-    connectionTimeout: 10000,
-    socketTimeout: 10000
+    connectionTimeout: 60000,
+    greetingTimeout: 60000,
+    socketTimeout: 60000
   }); // La parenthèse doit se fermer ICI après toutes les options
 
   logger.info("📧 Service email configuré");
