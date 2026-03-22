@@ -8,7 +8,10 @@ import logger from "./logger.js";
 dotenv.config();
 
 let transporter = null;
-
+console.log("--- DIAGNOSTIC SMTP ---");
+console.log("Utilisateur trouvé :", !!process.env.EMAIL_USER); // Affiche true ou false
+console.log("Mot de passe trouvé :", !!process.env.EMAIL_PASS); // Affiche true ou false
+console.log("-----------------------");
 if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
   transporter = nodemailer.createTransport({
     pool: true,
