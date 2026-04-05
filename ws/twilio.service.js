@@ -19,7 +19,7 @@ class TwilioServiceClass {
     // Initialisation du client Twilio
     this.client = Twilio(
   process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_API_SECRET
+  process.env.TWILIO_AUTH_TOKEN
   
 );
   }
@@ -33,7 +33,7 @@ class TwilioServiceClass {
 
       await this.client.video.v1.rooms.create({
         uniqueName: roomId,
-        type: "go" // format gratuit / simple
+        type: "peer-to-peer" // Plus compatible avec les comptes Trial
       });
 
       console.log(`✅ Twilio room créée: ${roomId}`);
