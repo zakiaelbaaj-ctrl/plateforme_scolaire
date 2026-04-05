@@ -4,24 +4,40 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorDiv = document.getElementById("errorDiv");
   const successDiv = document.getElementById("successDiv");
 
-  const API_BASE = "http://localhost:4000/api/v1/auth";
+  // 🔹 Détection dynamique de l'URL (Local vs Production)
+  const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:4000" 
+    : "https://plateforme-scolaire-1.onrender.com";
+
+  const API_BASE = `${API_URL}/api/v1/auth`;
+
+  if (!form) return;
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const username = document.getElementById("username").value.trim();
-    const prenom = document.getElementById("prenom").value.trim();
-    const nom = document.getElementById("nom").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
+    // Reset des messages
+    if (errorDiv) { errorDiv.style.display = "none"; errorDiv.classList.remove("show"); }
+    if (successDiv) { successDiv.style.display = "none"; successDiv.classList.remove("show"); }
+
+    const username = document.getElementById("username")?.value.trim();
+    const prenom = document.getElementById("prenom")?.value.trim();
+    const nom = document.getElementById("nom")?.value.trim();
+    const email = document.getElementById("email")?.value.trim();
+    const password = document.getElementById("password")?.value.trim();
+
+    // Validation basique avant envoi
+    if (!username || !email || !password) {
+      showError("Veuillez remplir les champs obligatoires.");
+      return;
+    }
 
     try {
       const res = await fetch(`${API_BASE}/register`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ username, prenom, nom, email, password })
-});
-
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, prenom, nom, email, password })
+      });
 
       const json = await res.json();
 
@@ -29,16 +45,32 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(json.message || "Erreur lors de l'inscription");
       }
 
-      successDiv.textContent = "Inscription réussie ! Redirection...";
-      successDiv.classList.add("show");
+      if (successDiv) {
+        successDiv.textContent = "✅ Inscription réussie ! Redirection...";
+        successDiv.style.display = "block";
+        successDiv.classList.add("show");
+      }
+
+      form.reset();
 
       setTimeout(() => {
         window.location.href = "login.html";
-      }, 1200);
+      }, 1500);
 
     } catch (err) {
-      errorDiv.textContent = "❌ " + err.message;
-      errorDiv.classList.add("show");
+      console.error("❌ REGISTER ERROR:", err);
+      const msg = err.message === "Failed to fetch" 
+        ? "Le serveur est inaccessible." 
+        : err.message;
+      showError(msg);
     }
   });
+
+  function showError(msg) {
+    if (errorDiv) {
+      errorDiv.textContent = "❌ " + msg;
+      errorDiv.style.display = "block";
+      errorDiv.classList.add("show");
+    }
+  }
 });

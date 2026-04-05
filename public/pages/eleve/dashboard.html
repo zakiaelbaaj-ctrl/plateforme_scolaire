@@ -66,22 +66,20 @@
         </div>
 
         <div class="videos">
-          <div class="video-block">
-            <div class="video-label">Vous</div>
-            <div class="video-box">
-              <video id="localVideo" autoplay muted playsinline></video>
-              <div class="video-overlay">CAM</div>
-            </div>
-          </div>
+  <div class="video-block">
+    <div class="video-label">Vous</div>
+    <div id="localVideoContainer" class="video-box">
+      <div class="video-overlay">CAM</div>
+    </div>
+  </div>
 
-          <div class="video-block video-block--remote">
-            <div class="video-label">Professeur</div>
-            <div class="video-box">
-              <video id="remoteVideo" autoplay playsinline></video>
-              <div class="video-overlay">LIVE</div>
-            </div>
-          </div>
-        </div>
+  <div class="video-block video-block--remote">
+    <div class="video-label">Professeur</div>
+    <div id="remoteVideoContainer" class="video-box">
+      <div class="video-overlay">LIVE</div>
+    </div>
+  </div>
+</div>
       </section>
 
       <!-- WHITEBOARD -->
@@ -180,31 +178,35 @@
   <script type="module" src="/js/pages/eleve/dashboard.js"></script>
   <script type="module">
   const stripeBtn = document.getElementById("stripe-onboarding-btn");
+  if (stripeBtn) {
+    stripeBtn.addEventListener("click", async () => {
+      try {
+        const token = localStorage.getItem("token");
+        // Détection de l'URL
+        const API_URL = window.location.hostname === "localhost" 
+          ? "http://localhost:4000" 
+          : "https://plateforme-scolaire-1.onrender.com";
 
-  stripeBtn.addEventListener("click", async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:4000/api/v1/stripeConnect/onboarding", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`
-  }
-});
+        const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        });
 
-      const data = await res.json();
-
-      if (data.stripeLink) {
-        // Redirige vers le lien d'onboarding Stripe
-        window.location.href = data.stripeLink;
-      } else {
-        alert("Votre compte Stripe est déjà connecté ou une erreur est survenue.");
+        const data = await res.json();
+        if (data.stripeLink) {
+          window.location.href = data.stripeLink;
+        } else {
+          alert("Erreur : " + (data.message || "Lien Stripe non reçu."));
+        }
+      } catch (err) {
+        console.error("Erreur Stripe onboarding:", err);
+        alert("Le serveur est injoignable.");
       }
-    } catch (err) {
-      console.error("Erreur Stripe onboarding:", err);
-      alert("Impossible de démarrer l'onboarding Stripe.");
-    }
-  });
+    });
+  }
 </script>
 </body>
 </html>

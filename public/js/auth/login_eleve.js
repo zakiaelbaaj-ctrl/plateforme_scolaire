@@ -10,17 +10,19 @@ if (existingToken) {
   window.location.replace("../../pages/eleve/dashboard.html");
 }
 
-// 🔹 Nettoyer les anciens tokens (sécurité)
-localStorage.removeItem("token");
-localStorage.removeItem("refreshToken");
+// 🔹 Nettoyer les anciens tokens (sécurité au cas où on revient sur la page login)
+// Note : On ne les supprime que si on n'est pas déjà redirigé au-dessus
+if (!existingToken) {
+  localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("currentUser");
+}
 
 document.addEventListener("DOMContentLoaded", () => {
-
   const loginForm = document.getElementById("loginEleveForm");
   const errorDiv = document.getElementById("errorDiv");
-  const registerLink = document.getElementById("registerLink"); // bouton optionnel
+  const registerLink = document.getElementById("registerLink");
 
-  // 🔸 Vérifier que le formulaire existe
   if (!loginForm) return;
 
   loginForm.addEventListener("submit", async (e) => {
@@ -36,10 +38,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    errorDiv.textContent = "";
+    errorDiv.textContent = "Connexion en cours..."; // Feedback visuel
 
     try {
-      const response = await fetch("http://localhost:4000/api/v1/auth/login", {
+      // 🔹 Détection dynamique de l'URL (Local vs Render)
+      const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:4000" 
+        : "https://plateforme-scolaire-1.onrender.com";
+
+      const response = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -52,31 +59,41 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       });
 
+      // 🔹 Gestion sécurisée du JSON
       const data = await response.json();
-       console.log("Réponse serveur complète:", data); // ← ajouter cette ligne
+      console.log("Réponse serveur complète:", data);
+
       if (!response.ok) {
         throw new Error(data.message || "Échec de la connexion");
       }
 
       // ✅ Stockage sécurisé
-      localStorage.setItem("token", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
-      localStorage.setItem("currentUser", JSON.stringify(data.user));
+      // Attention : vérifiez que votre backend renvoie bien data.accessToken et data.refreshToken
+      if (data.accessToken) {
+        localStorage.setItem("token", data.accessToken);
+        localStorage.setItem("refreshToken", data.refreshToken || "");
+        localStorage.setItem("currentUser", JSON.stringify(data.user));
 
-      // 🚀 Redirection vers dashboard élève
-      window.location.replace("../../pages/eleve/dashboard.html");
+        // 🚀 Redirection vers dashboard élève
+        window.location.replace("../../pages/eleve/dashboard.html");
+      } else {
+        throw new Error("Erreur : Token non reçu du serveur.");
+      }
 
     } catch (error) {
       console.error("❌ LOGIN ERROR:", error);
-      errorDiv.textContent = error.message;
+      // "Failed to fetch" devient un message plus clair pour l'utilisateur
+      if (error.message === "Failed to fetch") {
+        errorDiv.textContent = "Impossible de contacter le serveur. Vérifiez votre connexion ou l'URL de l'API.";
+      } else {
+        errorDiv.textContent = error.message;
+      }
     }
   });
 
-  // 🔹 Si bouton "S'inscrire" présent
   if (registerLink) {
     registerLink.addEventListener("click", () => {
       window.location.href = "../../pages/eleve/register.html";
     });
   }
-
 });

@@ -12,33 +12,30 @@ import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
 import { DocumentService } from "/js/domains/document/document.service.js";
 import { addDocument } from "/js/ui/components/document.view.js";
 import { getUserProfile } from "../../services/user.service.js";
-// ======================================================
+/// ======================================================
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
   const userData = await getUserProfile();
   if (!userData) {
-    // redirection si pas connecté
     window.location.replace("/pages/eleve/login.html"); 
     return;
   }
 
   AppState.currentUser = userData;
-  AppState.token       = localStorage.getItem("token") || null; // si tu stockes un token
-  AppState.callState   = "idle";
+  AppState.token = localStorage.getItem("token") || null;
+  AppState.callState = "idle";
 
   renderCurrentUserInfo();
 
-  // ⚡ Si c’est un prof, init Stripe onboarding
-  if (AppState.currentUser.role === "professeur") {
-    initStripeOnboarding(); 
-  }
-
-  // 🔵 Connexion WebSocket et UI
+  // 🔵 Connexion WebSocket
+  // Le SocketService utilisera l'URL dynamique que nous avons corrigée ensemble
   SocketService.connect();
-  SocketService.onMessage((data) => {   // ← ajouter
-  SessionService._handleWs(data);     // ← ajouter
-});                                    // ← ajouter
+  
+  SocketService.onMessage((data) => {
+    SessionService._handleWs(data);
+  });
+
   bindUI();
   subscribeToDomains();
 });
@@ -319,31 +316,33 @@ function toggleWhiteboardFullscreen() {
 // ======================================================
 
 function attachLocalVideo(track) {
-  const container = document.getElementById("localVideo");
+  const container = document.getElementById("localVideoContainer"); // Utilisez un conteneur parent
   if (!container || track.kind !== "video") return;
 
   const el = track.attach();
-  el.autoplay   = true;
+  el.autoplay = true;
   el.playsInline = true;
-  el.muted      = true;
-
-  container.replaceWith(el);
+  el.muted = true;
+  el.style.width = "100%"; // Optionnel : force la taille
   el.id = "localVideo";
+
+  container.innerHTML = ""; // On vide l'ancien flux
+  container.appendChild(el);
 }
 
 function attachRemoteTracks(tracks) {
   tracks?.forEach(track => {
-
     if (track.kind === "video") {
-      const container = document.getElementById("remoteVideo");
+      const container = document.getElementById("remoteVideoContainer");
       if (!container) return;
 
       const el = track.attach();
-      el.autoplay    = true;
+      el.autoplay = true;
       el.playsInline = true;
-
-      container.replaceWith(el);
       el.id = "remoteVideo";
+
+      container.innerHTML = ""; 
+      container.appendChild(el);
     }
 
     if (track.kind === "audio") {
@@ -359,21 +358,26 @@ function updateCallStatus(text) {
   if (el) el.textContent = text;
 }
 
-function cleanupSession(message) {
+// ======================================================
+// CLEANUP - Correction pour éviter les erreurs null
+// ======================================================
 
-  CallService.disconnectTwilio();   // ✅ force fermeture Twilio
-  SessionService.stopTimer?.();     // ✅ stoppe le timer
+function cleanupSession(message) {
+  CallService.disconnectTwilio();
+  SessionService.stopTimer?.();
 
   updateCallStatus(message);
-  const remote = document.getElementById("remoteVideo");
-  const local  = document.getElementById("localVideo");
+  
+  // On vide les conteneurs vidéo
+  const remote = document.getElementById("remoteVideoContainer");
+  const local = document.getElementById("localVideoContainer");
 
-  if (remote) remote.srcObject = null;
-  if (local)  local.srcObject  = null;
+  if (remote) remote.innerHTML = "En attente du professeur...";
+  if (local) local.innerHTML = "";
 
-  // ✅ Reset timer UI
   const timerEl = document.getElementById("call-time");
   if (timerEl) timerEl.textContent = "00:00";
+  
   WhiteboardService.reset?.();
   resetChat();
 }
@@ -392,11 +396,12 @@ function updateToolButtons() {
 // ======================================================
 
 function renderCurrentUserInfo() {
-  const { prenom, nom, ville, pays } = AppState.currentUser || {};
-
+  if (!AppState.currentUser) return;
+  
+  const { prenom, nom, ville, pays } = AppState.currentUser;
   const nameEl = document.getElementById("eleve-name");
   const cityEl = document.getElementById("eleve-location");
 
-  if (nameEl) nameEl.textContent = `${prenom} ${nom}`;
-  if (cityEl) cityEl.textContent = ville && pays ? `${ville}, ${pays}` : "";
+  if (nameEl) nameEl.textContent = `${prenom || ""} ${nom || ""}`.trim();
+  if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || "");
 }

@@ -1,20 +1,27 @@
+// 1. Détection dynamique de l'URL de base
+const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "http://localhost:4000" 
+  : "https://plateforme-scolaire-1.onrender.com";
+
+// 2. Configuration de la route API
+const API_BASE = `${API_URL}/api/v1`; // Utilise maintenant API_URL !
+
 // 🔹 Vérifier si déjà connecté
 const storedUser = localStorage.getItem("currentUser");
 const token = localStorage.getItem("token");
-if (storedUser) {
-  const user = JSON.parse(storedUser);
 
-  if (user.role === "prof" && localStorage.getItem("token")) {
-    window.location.replace("../../pages/professeur/dashboard.html");
+if (storedUser && token) {
+  try {
+    const user = JSON.parse(storedUser);
+    if (user.role === "prof") {
+      window.location.replace("../../pages/professeur/dashboard.html");
+    }
+  } catch (e) {
+    localStorage.clear();
   }
 }
 
-// 🔥 Ne PAS supprimer currentUser ici !
-// On supprime uniquement l'ancien token pour éviter les conflits
 localStorage.removeItem("token");
-
-// Configuration API
-const API_BASE = window.location.origin + "/api/v1";
 
 const loginForm = document.getElementById("loginProfForm");
 const errorDiv = document.getElementById("errorDiv");
