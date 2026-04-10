@@ -10,6 +10,11 @@ import app from "./app.js";
 import { initWebSocketServer } from "./socket.js";
 import { pool } from "./config/db.js";
 import { initDb } from "./config/index.js";
+console.log("--- VÉRIFICATION DOSSIER RACINE ---");
+console.log("AC SID:", process.env.TWILIO_ACCOUNT_SID);
+console.log("AUTH TOKEN:", process.env.TWILIO_AUTH_TOKEN ? "PRÉSENT" : "ABSENT ❌");
+console.log("API KEY:", process.env.TWILIO_API_KEY);
+console.log("API SECRET:", process.env.TWILIO_API_SECRET ? "PRÉSENT" : "ABSENT ❌");
 // =======================================================
 // Initialisation DB
 // =======================================================

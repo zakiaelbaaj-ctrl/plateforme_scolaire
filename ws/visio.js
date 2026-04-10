@@ -3,47 +3,24 @@
 // =======================================================
 
 import { pool } from "../config/db.js";
-import { billCall } from "../services/callBilling.service.js";
 import { safeSend } from "./utils.js";
 import { endSession } from "./state/onlineProfessors.js";
+import * as StripeService from "../services/payment.service.js"; // 👈 Ajoute cet import en haut
+// ws/visio.js
 
-export async function saveVisioSession(ws, { roomId, duration, matiere }, onlineProfessors) {
-  // 🔒 Bloquer les appels du prof : seule l'élève déclenche la facturation
-  if (ws.role !== "eleve") {
-    console.warn("⛔ visioDuration ignoré (non élève)", ws.userId);
+export async function saveVisioSession(ws, { roomId, duration, matiere }) {
+  // 🔒 Seule l'élève envoie la durée
+  if (ws.role !== "eleve") return;
+
+  if (!ws.userId || !roomId || duration == null) return;
+
+  const durationSec = parseInt(duration, 10);
+  if (isNaN(durationSec) || durationSec < 5) {
+    console.warn("⛔ Session trop courte pour être enregistrée:", durationSec);
     return;
   }
 
-  // Vérification des paramètres requis
-  if (!ws.userId || !roomId || duration == null) {
-    return safeSend(ws, {
-      type: "error",
-      message: "Paramètres requis manquants"
-    });
-  }
-
-  // 🔢 Normaliser la durée
-  const durationSec = parseInt(duration, 10);
-  if (isNaN(durationSec) || durationSec <= 0) {
-    return safeSend(ws, {
-      type: "error",
-      message: "Durée invalide"
-    });
-  }
-
-  // ⛔ GARDE-FOU : ignorer les échecs ultra courts (< 5s)
-  if (durationSec < 5) {
-    console.warn("⛔ Visio ignorée (durée trop courte):", durationSec);
-    return safeSend(ws, {
-      type: "visioSaved",
-      minutes: 0,
-      amount: 0,
-      paymentStatus: "ignored",
-      reason: "too_short"
-    });
-  }
-
-  console.log(`💾 Sauvegarde session visio: ${ws.userId} dans ${roomId}`);
+  console.log(`💾 Sauvegarde de la durée en DB: ${durationSec}s pour la room ${roomId}`);
 
   try {
     // 1️⃣ Trouver le professeur associé à la room
@@ -51,110 +28,38 @@ export async function saveVisioSession(ws, { roomId, duration, matiere }, online
       `SELECT prof_id FROM rooms WHERE room_name = $1`,
       [roomId]
     );
-
-    if (rows.length === 0) {
-      throw new Error("Room introuvable");
-    }
-
+    if (rows.length === 0) throw new Error("Room introuvable");
     const professorId = rows[0].prof_id;
 
-    // ✅ Facturation minimum 30 min = 10 €
-    const MINUTES_MINIMUM = 30;
-    const AMOUNT_MINIMUM = 10;
-    const PRICE_PER_MINUTE = AMOUNT_MINIMUM / MINUTES_MINIMUM; // 0.3333 €/min
-
-    const minutes = Math.ceil(durationSec / 60);
-    const billedMinutes = Math.max(minutes, MINUTES_MINIMUM);
-    const billedSeconds = billedMinutes * 60;
-    const rawAmount = billedMinutes * PRICE_PER_MINUTE;
-    const amount = Number(rawAmount.toFixed(2));
-
-    console.log(`💰 Facturation: ${billedMinutes} min → €${amount}`);
-
-    // 3️⃣ Paiement Stripe
-    let paymentIntentId = null;
-    let paymentStatus = "pending";
-
-    try {
-      const intent = await billCall({
-        studentId: ws.userId,
-        amountEuros: amount,
-        description: `Cours ${matiere || "Générique"} – ${minutes} min`,
-      });
-
-      paymentIntentId = intent.id;
-      paymentStatus = "succeeded";
-      console.log("✅ Paiement réussi:", paymentIntentId);
-    } catch (stripeErr) {
-      console.error("❌ Paiement échoué:", stripeErr.message);
-      paymentStatus = "failed";
-      // On continue quand même la sauvegarde
-    }
-
-    // 4️⃣ Sauvegarde BD
+    // 2️⃣ SAUVEGARDE EN DB
     await pool.query(
       `INSERT INTO visio_sessions
-       (user_id, professor_id, room_id, start_time, end_time, duration_seconds, amount, payment_intent_id, payment_status, matiere)
-       VALUES (
-         $1, $2, $3,
-         NOW() - $4 * INTERVAL '1 second',
-         NOW(),
-         $4, $5, $6, $7, $8
-       )`,
-      [
-        ws.userId,
-        professorId,
-        roomId,
-        billedSeconds,    // durée facturée en secondes
-        amount,           // montant NUMERIC
-        paymentIntentId,
-        paymentStatus,
-        matiere || null
-      ]
+       (user_id, professor_id, room_id, start_time, end_time, duration_seconds, matiere, payment_status)
+       VALUES ($1, $2, $3, NOW() - $4 * INTERVAL '1 second', NOW(), $4, $5, 'pending')`,
+      [ws.userId, professorId, roomId, durationSec, matiere || null]
     );
 
-    console.log(`✅ Visio enregistrée: ${billedMinutes}min = €${amount}`);
+    console.log(`✅ Durée sauvegardée en DB (${durationSec}s).`);
 
-    // 5️⃣ Fin de session côté prof
-    if (ws.role === "prof") {
-      const prof = onlineProfessors.get(ws.userId);
-      if (prof) {
-        endSession(ws.userId);
+    // 3️⃣ DÉCLENCHEMENT DU PAIEMENT AVEC DÉLAI DE SÉCURITÉ 🚀
+    // On attend 1 seconde pour laisser la DB finir d'écrire avant que Stripe ne lise.
+    setTimeout(async () => {
+      console.log(`💳 Lancement du service de paiement pour ${roomId}...`);
+      try {
+        await StripeService.processSessionPayment(roomId);
+        console.log("✅ Processus de paiement terminé.");
+      } catch (stripeErr) {
+        console.error("❌ Erreur lors du paiement automatique:", stripeErr.message);
       }
-    }
+    }, 1000); // 1 seconde de battement
 
-    // 6️⃣ Réponse client
-    safeSend(ws, {
-      type: "visioSaved",
-      minutes: billedMinutes,
-      amount,
-      paymentStatus,
-      timestamp: new Date().toISOString()
-    });
-
-    return {
-      success: true,
-      minutes: billedMinutes,
-      amount,
-      paymentStatus
-    };
+    // Accusé de réception au client
+    safeSend(ws, { type: "visioSaved", status: "recorded" });
 
   } catch (err) {
-    console.error("❌ Erreur visio globale:", err);
-
-    safeSend(ws, {
-      type: "error",
-      message: "Erreur lors de la sauvegarde",
-      code: "VISIO_SAVE_ERROR"
-    });
-
-    return {
-      success: false,
-      error: err.message
-    };
+    console.error("❌ Erreur sauvegarde visio:", err.message);
   }
 }
-
 // =======================================================
 // APPEL ACCEPTÉ → notifier l'élève
 // =======================================================

@@ -72,7 +72,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 🔵 Routing WS → SessionService (un seul point d'entrée)
   SocketService.onMessage((data) => {
+    console.log("📨 WS reçu:", data.type, data); 
     SessionService._handleWs(data);
+    CallService.handleEvent(data);
   });
 
   bindUI();
@@ -150,11 +152,6 @@ function bindUI() {
     CallService.endCall(); 
     SessionService.endSession();
   });
-
-  // ================= BOUTON STOP VIDÉO =================
-  const stopVideoBtn = document.getElementById("stop-video-btn");
-  stopVideoBtn?.addEventListener("click", () => endBtn?.click());
-
   // ================= BOUTONS D'APPEL =================
   let acceptInProgress = false;
   const acceptBtn = document.getElementById("accept-call-btn");
@@ -200,7 +197,6 @@ function bindUI() {
   document.getElementById("send-file")?.addEventListener("click", sendDocument);
 
   // ================= VISIO =================
-  document.getElementById("toggle-video-btn")?.addEventListener("click", toggleVideo);
   document.getElementById("toggle-camera-btn")?.addEventListener("click", toggleCamera);
 
   // ================= LOGOUT =================
@@ -230,13 +226,16 @@ function onSessionStarted(event) {
 }
 
 function setSessionActive(active) {
-  const endBtn     = document.getElementById("end-session-btn");
-  const toggleBtn  = document.getElementById("toggle-video-btn");
-  const stopBtn    = document.getElementById("stop-video-btn");
-  const badge      = document.getElementById("session-badge");
+  const endBtn = document.getElementById("end-session-btn");
+  const badge  = document.getElementById("session-badge");
 
-  [endBtn, toggleBtn, stopBtn].forEach(btn => { if (btn) btn.style.display = active ? "" : "none"; });
-  if (badge) badge.classList.toggle("active", active);
+  if (endBtn) {
+    endBtn.style.display = active ? "" : "none";
+  }
+  
+  if (badge) {
+    badge.classList.toggle("active", active);
+  }
 }
 
 function cleanupSession(message) {
@@ -267,27 +266,38 @@ function cleanupSession(message) {
 // ======================================================
 
 function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays }) {
+  console.log("🔔 showIncomingCall appelée", { eleveId, eleveName });
+
   AppState.currentIncomingCallEleveId = eleveId ?? null;
   const audio = document.getElementById("incomingCallSound");
   audio?.play().catch(() => {});
-  const box  = document.getElementById("incoming-call-box");
-  const text = document.getElementById("incoming-call-text");
+  const box    = document.getElementById("incoming-call-box");
+  const text   = document.getElementById("incoming-call-text");
   const noCall = document.getElementById("no-call");
-  if (box)    box.style.display    = "flex";
+
+ console.log("box avant:", box?.className, box?.style.cssText);
+
+  if (box) {
+    box.removeAttribute("style");   // supprime style="display:none;" du HTML
+    box.classList.add("visible");   // le CSS affiche en flex via #incoming-call-box.visible
+  }
   if (noCall) noCall.style.display = "none";
   if (text) {
     const location = eleveVille && elevePays ? ` — ${eleveVille}, ${elevePays}` : "";
     text.textContent = `${eleveName || "Élève"}${location}`;
   }
+  
+  console.log("box après:", box?.className, getComputedStyle(box).display, box?.offsetHeight);
 }
 
 function hideIncomingAlert() {
   const box    = document.getElementById("incoming-call-box");
   const noCall = document.getElementById("no-call");
-  if (box)    box.style.display    = "none";
+  if (box) {
+    box.classList.remove("visible"); // retire .visible → CSS repasse à display: none
+  }
   if (noCall) noCall.style.display = "flex";
 }
-
 // ======================================================
 // VIDEO TRACKS
 // ======================================================

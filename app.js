@@ -43,17 +43,28 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // =======================================================
-// CORS
+// CORS - Configuration Robuste
 // =======================================================
-// 🛠️ CORRECTION 2 : Utiliser la variable d'environnement pour plus de flexibilité
+const allowedOrigins = [
+  "http://localhost:4000", 
+  "https://plateforme-scolaire-1.onrender.com" // ✅ Votre URL Render
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:4000",
+  origin: function (origin, callback) {
+    // Autorise les requêtes sans origine (Postman) ou si l'URL est dans la liste
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Accès refusé par CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true // 🔐 CRUCIAL pour l'auth et Stripe Connect
 }));
 
-app.options("*", cors());
-
+app.options("*", cors()); // Gère les requêtes "Preflight"
 // =======================================================
 // Webhook (doit être AVANT express.json)
 // =======================================================

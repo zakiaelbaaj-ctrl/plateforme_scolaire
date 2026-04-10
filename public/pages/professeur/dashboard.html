@@ -38,7 +38,7 @@
 
     <div class="top-bar__actions">
       <button id="end-session-btn"  class="btn btn--danger btn--sm"  style="display:none;">✕ Terminer</button>
-      <button id="toggle-video-btn" class="btn btn--ghost btn--sm"   style="display:none;">🎥 Couper</button>
+    
       <button id="logout-btn"       class="btn btn--ghost">🚪 Déconnexion</button>
     </div>
 
@@ -54,7 +54,6 @@
       <section class="card card--video">
         <div class="card__header">
           <h3 class="card__title">🎥 Session vidéo</h3>
-          <button id="stop-video-btn" class="btn btn--danger btn--sm" style="display:none;">🔴 Arrêter</button>
         </div>
 
         <div class="videos">
@@ -195,7 +194,14 @@
   stripeBtn.addEventListener("click", async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:4000/api/v1/stripeConnect/onboarding", {
+
+      // 🌐 Détection automatique de l'environnement
+const API_URL = window.location.hostname === "localhost" 
+  ? "http://localhost:4000" 
+  : "https://plateforme-scolaire-1.onrender.com"; // On retire le "/" final pour éviter les doubles slashes //
+
+// 🚀 On utilise la variable dynamique `${API_URL}` ici :
+const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",

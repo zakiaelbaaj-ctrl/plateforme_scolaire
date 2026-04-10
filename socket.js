@@ -6,6 +6,7 @@
 // =======================================================
 import { MatchService } from "./ws/match.service.js";
 import { WebSocketServer } from "ws";
+import { processSessionPayment } from "./services/payment.service.js";
 import jwt from "jsonwebtoken";
 import {
   onlineProfessors,
@@ -293,28 +294,47 @@ if (type === "screenShareStart" || type === "screenShareStop") {
 }
 
 // ======================================================
-// 🔚 FIN DE SESSION (PROF OU ELEVE)
+// 🔚 FIN DE SESSION (ACTION VOLONTAIRE : CLIC "TERMINER")
 // ======================================================
 if (type === "endSession") {
+  let profId = null;
+  let eleveId = null;
+
+  // 1️⃣ Identifier les acteurs de la session
   if (ws.role === "prof") {
     const prof = onlineProfessors.get(ws.userId);
     if (prof && prof.eleveId) {
-      endSessionForDisconnect(ws.userId, prof.eleveId, onlineProfessors, clients);
+      profId = ws.userId;
+      eleveId = prof.eleveId;
+    }
+  } else if (ws.role === "eleve" || ws.role === "etudiant") {
+    for (const prof of onlineProfessors.values()) {
+      if (prof.eleveId === ws.userId) {
+        profId = prof.id;
+        eleveId = ws.userId;
+        break;
+      }
     }
   }
 
-  if (ws.role === "eleve") {
-    for (const prof of onlineProfessors.values()) {
-      if (prof.eleveId === ws.userId) {
-        endSessionForDisconnect(prof.id, ws.userId, onlineProfessors, clients);
-      }
-    }
+  // 2️⃣ Si on a un binôme valide, on ferme la session
+  if (profId && eleveId) {
+    console.log(`🎯 Bouton "Terminer" reçu pour : room_${profId}_${eleveId}`);
+    
+    // NOTE : On ne déclenche PLUS processSessionPayment ici.
+    // C'est le message "visioDuration" envoyé par l'élève juste après 
+    // qui déclenchera le paiement unique dans ws/visio.js.
+
+    // ✅ Nettoyage technique (Twilio, Statuts, Rooms)
+    endSessionForDisconnect(profId, eleveId, onlineProfessors, clients);
+  } else {
+    console.log(`⚠️ Fin de session demandée mais aucun binôme actif trouvé pour ${ws.userId}`);
+    leaveRoom(ws);
   }
 
   broadcastOnlineProfs(onlineProfessors, clients);
   return;
 }
-
 // ------------------------------------------------------
 // 🎯 MATCHING ÉTUDIANT ↔ ÉTUDIANT
 // ------------------------------------------------------

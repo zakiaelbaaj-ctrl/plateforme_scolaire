@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Succès du Paiement | Plateforme Scolaire</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --success: #10b981;
+      --text: #1f2937;
+      --text-light: #6b7280;
+      --bg: #f3f4f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'IBM Plex Sans', sans-serif;
+      background-color: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    .container {
+      background: white;
+      padding: 3rem 2rem;
+      border-radius: 1.25rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      text-align: center;
+      max-width: 480px;
+      width: 90%;
+      border-top: 6px solid var(--success);
+    }
+
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      background: #ecfdf5;
+      color: var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin: 0 auto 1.5rem;
+      animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      margin: 0 0 1rem;
+    }
+
+    p {
+      color: var(--text-light);
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    .details-box {
+      background: #f9fafb;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      font-size: 0.9rem;
+      border: 1px solid #e5e7eb;
+    }
+
+    .details-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .details-label { color: var(--text-light); }
+    .details-value { font-weight: 600; color: var(--text); }
+
+    .btn {
+      display: block;
+      background-color: var(--primary);
+      color: white;
+      text-decoration: none;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn:hover {
+      background-color: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 8px -1px rgba(37, 99, 235, 0.3);
+    }
+
+    @keyframes scaleIn {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="success-icon">✓</div>
+    <h1>Paiement réussi !</h1>
+    <p>
+      Merci Malake. Votre session de cours a été réglée avec succès. Le professeur a été notifié.
+    </p>
+
+    <div class="details-box">
+      <div class="details-row">
+        <span class="details-label">Statut</span>
+        <span class="details-value" style="color: var(--success);">Confirmé</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">ID Transaction</span>
+        <span id="session-id" class="details-value">Récupération...</span>
+      </div>
+    </div>
+    
+    <a href="/pages/eleve/dashboard.html" class="btn">Retour à mon espace</a>
+  </div>
+
+  <script>
+    /**
+     * SÉCURITÉ & RÉCUPÉRATION
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get('session_id');
+      const sessionIdElement = document.getElementById('session-id');
+
+      if (sessionId) {
+        // Affiche une version courte de l'ID Stripe pour l'esthétique
+        sessionIdElement.textContent = sessionId.substring(0, 10) + '...' + sessionId.slice(-5);
+        
+        // Optionnel : Vous pouvez ici envoyer un fetch vers votre API 
+        // pour confirmer en BDD que l'élève a bien vu cette page
+      } else {
+        sessionIdElement.textContent = "Non disponible";
+        // Si quelqu'un arrive ici sans session_id, on peut le rediriger après 5s
+        /*
+        setTimeout(() => {
+          window.location.href = '/pages/eleve/dashboard.html';
+        }, 5000);
+        */
+      }
+    });
+  </script>
+
+</body>
+</html>
