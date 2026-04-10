@@ -95,11 +95,8 @@ export const SessionService = {
         break;
       }
 
-       case "twilioToken": {
-  const token    = data.token;
-  const roomName = data.roomName || data.roomId;
-  if (!token || !roomName) return;
-  CallService.connectToTwilioRoom(token, roomName);
+      case "twilioToken": {
+  CallService.handleEvent(data); // délègue à CallService, pas de double appel
   break;
 }
 
