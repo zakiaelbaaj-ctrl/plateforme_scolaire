@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   SocketService.onMessage((data) => {
     console.log("📨 WS reçu:", data.type, data); 
     SessionService._handleWs(data);
-    CallService.handleEvent(data);
+    
   });
 
   bindUI();
@@ -286,7 +286,7 @@ function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays }) {
     const location = eleveVille && elevePays ? ` — ${eleveVille}, ${elevePays}` : "";
     text.textContent = `${eleveName || "Élève"}${location}`;
   }
-  
+
   console.log("box après:", box?.className, getComputedStyle(box).display, box?.offsetHeight);
 }
 
