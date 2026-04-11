@@ -45,10 +45,10 @@ export async function loginController(req, res) {
       });
     }
 
-    if (user.statut !== "valide") {
+    if (!user.statut || user.statut.toLowerCase().trim() !== "active") {
       return res.status(403).json({
         success: false,
-        message: "Compte non actif"
+        message: "Compte non actif. Veuillez contacter l'administrateur."
       });
     }
 
@@ -70,7 +70,7 @@ export async function loginController(req, res) {
     }
 
     // 🔹 Si c'est un professeur → l'ajouter dans onlineProfessors
-    if (user.role === "prof") {
+    if (user.role === "prof"|| user.role === "professeur") {
       const profData = {
         id: user.id,
         prenom: user.prenom,
