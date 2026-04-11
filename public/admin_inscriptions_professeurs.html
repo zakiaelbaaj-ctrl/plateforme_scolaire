@@ -40,6 +40,7 @@
           <th>Email / Tel</th>
           <th>Diplôme</th>
           <th>Heures</th>
+          <th>Inscription</th> 
           <th>Statut</th>
           <th>Actions</th>
         </tr>
@@ -65,7 +66,6 @@
 </div>
 
 <script>
-// ✅ CORRECTION 1 : URL Dynamique (Indispensable pour Render)
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:4000" 
   : "https://plateforme-scolaire-1.onrender.com";
@@ -74,10 +74,19 @@ let professeurs = [];
 let filteredProfs = [];
 let pendingAction = null;
 
+// ✅ SÉCURITÉ : Vérification immédiate du rôle
+const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+if (currentUser.role !== 'admin') {
+    window.location.replace("/login.html");
+}
+
 /* -----------------------------
    FETCH DES PROFESSEURS
 ----------------------------- */
 async function chargerProfesseurs() {
+  const tbody = document.querySelector("#profTable tbody");
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem;">⌛ Chargement des données...</td></tr>`;
+
   try {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -89,9 +98,8 @@ async function chargerProfesseurs() {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
-    // ✅ Gestion expiration token
     if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem("token");
+        localStorage.clear();
         window.location.replace("/login.html");
         return;
     }
@@ -99,12 +107,12 @@ async function chargerProfesseurs() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.message || "Erreur de chargement");
 
-    professeurs = json.users;
-    filteredProfs = [...professeurs];
-    afficherProfesseurs();
+    // ✅ Récupération et Tri (plus récents en premier)
+    professeurs = (json.data || json.users || []).sort((a, b) => b.id - a.id);
+    appliquerFiltres();
 
   } catch (err) {
-    alert("❌ " + err.message);
+    tbody.innerHTML = `<tr><td colspan="8" style="color:red; text-align:center; padding: 2rem;">❌ ${err.message}</td></tr>`;
   }
 }
 
@@ -119,38 +127,33 @@ function afficherProfesseurs() {
   count.textContent = `${filteredProfs.length} professeur(s)`;
 
   if (filteredProfs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Aucun professeur trouvé.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state" style="text-align:center; padding: 2rem;">Aucun professeur trouvé.</td></tr>`;
     return;
   }
 
   filteredProfs.forEach((p, i) => {
-    // ✅ Harmonisation statuts avec le backend (active, pending, rejected)
-    const statusClass = 
-      p.statut === "active" ? "validated" : 
-      p.statut === "pending" ? "pending" : "danger";
-
-    const statusText = 
-      p.statut === "active" ? "✔ Validé" : 
-      p.statut === "pending" ? "⏳ En attente" : `⛔ ${p.statut}`;
-
-    // ✅ Bouton Diplôme dynamique
-    const diplomeBtn = p.diplome_url 
-      ? `<a href="${p.diplome_url}" target="_blank" class="back-home" style="font-size:11px; padding:4px 8px;">📄 Voir</a>` 
-      : `<span style="color:gray; font-size:11px;">Aucun</span>`;
+    const statusClass = p.statut === "active" ? "validated" : p.statut === "pending" ? "pending" : "danger";
+    const statusText = p.statut === "active" ? "✔ Validé" : p.statut === "pending" ? "⏳ En attente" : `⛔ ${p.statut}`;
+    const dateInsc = p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : '—';
+    // Sécurisation des chaînes
+    const nomComplet = `<strong>${(p.nom || 'N/A').toUpperCase()}</strong><br>${p.prenom || ''}`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td><strong>${p.nom.toUpperCase()}</strong><br>${p.prenom}</td>
-      <td><span style="font-size:12px;">${p.email}</span><br><span style="color:var(--muted)">${p.telephone || '—'}</span></td>
-      <td>${diplomeBtn}</td>
+      <td>${nomComplet}</td>
+      <td><span style="font-size:12px;">${p.email}</span><br><small style="color:gray;">${p.telephone || '—'}</small></td>
+      <td>${p.diplome_url ? `<a href="${p.diplome_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">📄 Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
       <td>${p.heures_mois || 0} h</td>
+      <td><span style="font-size:11px;">${dateInsc}</span></td>
       <td><span class="status ${statusClass}">${statusText}</span></td>
-      <td class="actions">
-        <button class="validate-btn" onclick="changerStatut(${i}, 'active')">Valider</button>
-        <button class="btn-cancel" onclick="changerStatut(${i}, 'pending')" style="background:#4b5563">Attente</button>
-        <button class="delete-btn" onclick="openDeleteModal(${i})">Supprimer</button>
-      </td>
+      
+     <td class="actions">
+    ${p.statut !== 'active' ? `<button class="validate-btn" onclick="changerStatut(${i}, 'active')">Valider</button>` : ''}
+    ${p.statut !== 'rejected' ? `<button class="delete-btn" onclick="changerStatut(${i}, 'rejected')" style="background:#dc2626">Rejeter</button>` : ''}
+    <button class="btn-cancel" onclick="changerStatut(${i}, 'pending')" style="background:#4b5563">Attente</button>
+    <button class="delete-btn" onclick="openDeleteModal(${i})" style="background:none; color:#ef4444; border:1px solid #ef4444;">🗑️</button>
+    </td>
     `;
     tbody.appendChild(tr);
   });
@@ -164,7 +167,10 @@ function appliquerFiltres() {
   const status = document.getElementById("statusFilter").value;
 
   filteredProfs = professeurs.filter(p => {
-    const matchesQuery = `${p.nom} ${p.prenom} ${p.email}`.toLowerCase().includes(q);
+    const nom = (p.nom || "").toLowerCase();
+    const prenom = (p.prenom || "").toLowerCase();
+    const email = (p.email || "").toLowerCase();
+    const matchesQuery = nom.includes(q) || prenom.includes(q) || email.includes(q);
     const matchesStatus = status === "all" ? true : p.statut === status;
     return matchesQuery && matchesStatus;
   });
@@ -188,34 +194,30 @@ async function changerStatut(index, statut) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      // ✅ On envoie le statut ET is_active pour être sûr
       body: JSON.stringify({ statut, is_active: statut === 'active' })
     });
 
     if (!res.ok) throw new Error("Échec de la mise à jour");
 
-    // Mise à jour locale pour éviter de tout recharger
     prof.statut = statut;
-    afficherProfesseurs();
-
+    appliquerFiltres(); // ✅ On ré-applique les filtres pour mettre à jour l'affichage
   } catch (err) {
     alert("❌ " + err.message);
   }
 }
 
 /* -----------------------------
-   SUPPRESSION (DELETE)
+   MODAL & SUPPRESSION
 ----------------------------- */
 function openDeleteModal(index) {
-  pendingAction = { type: "delete", index };
-  showModal("Supprimer ce professeur ?", "Cette action supprimera définitivement le compte.");
+  pendingAction = { index };
+  const prof = filteredProfs[index];
+  showModal("Supprimer ce professeur ?", `Voulez-vous vraiment supprimer le compte de ${prof.nom} ?`);
 }
 
 async function confirmAction() {
   if (!pendingAction) return;
-
-  const { index } = pendingAction;
-  const prof = filteredProfs[index];
+  const prof = filteredProfs[pendingAction.index];
   const token = localStorage.getItem("token");
 
   try {
@@ -228,26 +230,29 @@ async function confirmAction() {
 
     professeurs = professeurs.filter(p => p.id !== prof.id);
     appliquerFiltres();
+    closeModal();
   } catch (err) {
     alert("❌ " + err.message);
   }
-  closeModal();
 }
 
 function showModal(title, message) {
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalMessage").textContent = message;
-  document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
   document.getElementById("confirmModal").style.display = "flex";
 }
 
 function closeModal() {
   pendingAction = null;
-  document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
   document.getElementById("confirmModal").style.display = "none";
 }
 
-chargerProfesseurs();
+window.onclick = function(event) {
+  const modal = document.getElementById("confirmModal");
+  if (event.target == modal) closeModal();
+}
+
+document.addEventListener("DOMContentLoaded", chargerProfesseurs);
 </script>
 </body>
 </html>
