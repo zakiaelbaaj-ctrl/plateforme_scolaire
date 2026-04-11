@@ -139,16 +139,26 @@ app.get("/etudiant/dashboard", requireAuth, (req, res) => {
 
 // 2. ROUTE GÉNÉRIQUE ADMIN (Remplace toutes les routes individuelles admin_*.html)
 // Cette route gère professeurs, élèves, parents, etc., en une seule fois.
+// Route pour servir les pages admin HTML
 app.get("/admin_*.html", requireAuth, (req, res) => {
-  const fileName = req.path.split('/').pop();
-  const filePath = path.join(__dirname, "public/pages/admin", fileName);
+    const fileName = req.path.split("/").pop();
+    
+    // On utilise path.resolve pour garantir un chemin absolu propre
+    const filePath = path.resolve(process.cwd(), "public", fileName);
 
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    console.error(`[404] Page admin non trouvée : ${filePath}`);
-    res.status(404).send("Page admin introuvable dans le dossier public/pages/admin");
-  }
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            // Log précis pour t'aider à débugger dans la console Render si besoin
+            console.error(`[404] Page admin introuvable : ${filePath}`);
+            
+            // On vérifie si c'est une erreur de permission ou de fichier manquant
+            if (!res.headersSent) {
+                res.status(404).send("Désolé, cette page de gestion est introuvable sur le serveur.");
+            }
+        } else {
+            console.log(`[SERVED] ${fileName} envoyé avec succès.`);
+        }
+    });
 });
 
 // 3. Route Paiement
