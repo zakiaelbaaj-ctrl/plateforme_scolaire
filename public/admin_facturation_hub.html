@@ -180,12 +180,16 @@
                     
                     // Affichage des 5 plus récentes avec map() sécurisé
                     factures.slice(0, 5).forEach(f => {
-                        listContainer.innerHTML += `
-                            <div class="facture-item">
-                                <span class="facture-id">Facture #${f.id || 'N/A'}</span>
-                                <span class="facture-amount">${(f.montant || 0).toFixed(2)}€</span>
-                            </div>`;
-                    });
+                    // 1. On sécurise la conversion en nombre pour CHAQUE facture
+                    const montantFacture = parseFloat(f.montant || 0);
+    
+                     // 2. On génère le HTML sans risque de crash
+                    listContainer.innerHTML += `
+                   <div class="facture-item">
+                  <span class="facture-id">Facture #${f.id || 'N/A'}</span>
+                  <span class="facture-amount">${montantFacture.toFixed(2)}€</span>
+                  </div>`;
+ });
                 } else {
                     throw new Error(json.message || "Réponse serveur invalide");
                 }
