@@ -50,6 +50,8 @@ app.use(helmet({
       // 3. On autorise les scripts inline (tes onclick)
       "script-src": ["'self'", "'unsafe-inline'"],
       "script-src-attr": ["'unsafe-inline'"],
+      "script-src": ["'self'", "'unsafe-inline'", "https://sdk.twilio.com"],
+      "connect-src": ["'self'", "https://*.twilio.com", "wss://*.twilio.com"],
       // 4. On autorise les styles
       "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       "img-src": ["'self'", "data:", "https://res.cloudinary.com"],

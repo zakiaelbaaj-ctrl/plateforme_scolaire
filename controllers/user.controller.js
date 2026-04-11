@@ -211,7 +211,15 @@ export async function meUser(req, res) {
     if (!req.user) return res.status(401).json({ ok: false, message: "Non authentifié" });
 
     const user = await userService.findById(req.user.id);
-    return res.status(200).json({ ok: true, data: sanitizeUser(user || req.user) });
+    if (!user) return res.status(404).json({ ok: false, message: "Utilisateur introuvable" });
+
+    // ✅ AJOUT SÉCURITÉ : Empêcher l'accès au profil si le prof n'est pas "active"
+    if ((user.role === "prof" || user.role === "professeur") && 
+        (!user.statut || user.statut.toLowerCase().trim() !== "active")) {
+        return res.status(403).json({ ok: false, message: "Compte non actif" });
+    }
+
+    return res.status(200).json({ ok: true, data: sanitizeUser(user) });
   } catch (err) {
     logger.error("meUser error:", err);
     return res.status(500).json({ ok: false, message: "Erreur serveur" });
@@ -277,14 +285,18 @@ export async function validateAndOnboardProfessor(req, res) {
 
     // 2. Récupérer l'utilisateur
     const user = await userService.findById(id);
-    if (!user || user.role !== "professeur") {
+    // ✅ Correction : Accepter "prof" ou "professeur"
+    if (!user || (user.role !== "professeur" && user.role !== "prof")) {
       await t.rollback();
       return res.status(404).json({ ok: false, message: "Professeur introuvable" });
     }
 
-    // 3. Activer le compte en base de données
-    // On utilise updateUser pour passer is_active à true
-    const updated = await userService.updateUser(id, { is_active: true }, { transaction: t });
+    // 3. Activer le compte
+    // ✅ Correction : On met à jour is_active ET statut
+    const updated = await userService.updateUser(id, { 
+        is_active: true, 
+        statut: "active" 
+    }, { transaction: t });
     if (!updated) {
       await t.rollback();
       return res.status(500).json({ ok: false, message: "Erreur lors de l'activation en base" });

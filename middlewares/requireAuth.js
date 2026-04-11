@@ -19,7 +19,7 @@ export async function requireAuth(req, res, next) {
         role: "admin",
         prenom: "Dev",
         nom: "Mode",
-        statut: "valide"
+        statut: "active" // ✅ Change "valide" par "active" ici aussi
       };
 
       logger.warn("⚠️ Authentification désactivée (DISABLE_JWT=true)");
@@ -70,16 +70,16 @@ export async function requireAuth(req, res, next) {
     }
 
     // --------------------------------------------------
-    // 4. Vérification du statut professeur
+    // 4. Vérification du statut professeur (CORRIGÉ ✅)
     // --------------------------------------------------
-    if (user.role === "prof" && user.statut !== "valide") {
+    if (user.role === "prof" && (!user.statut || user.statut.toLowerCase().trim() !== "active")) {
       logger.warn("Accès refusé : professeur non validé", {
         userId: user.id,
         statut: user.statut
       });
       return res.status(403).json({
         success: false,
-        message: "Compte professeur non validé"
+        message: "Votre compte professeur est en attente de validation par l'administration."
       });
     }
 

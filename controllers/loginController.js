@@ -22,6 +22,13 @@ export async function loginController(req, res) {
     }
 
     const user = await userService.findByUsernameWithPassword(username);
+   // ✅ Place la vérification d'existence ICI avant les console.log
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Identifiants incorrects"
+      });
+    }
     console.log("USER FOUND =", user);
     console.log("DEBUG USER ROLE =", user.role);
     console.log("DEBUG USER EMAIL =", user.email);
