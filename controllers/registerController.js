@@ -13,9 +13,13 @@ export async function registerController(req, res) {
       nom,
       email,
       telephone,
+      ville,
       pays,
       password,
-      role
+      role,
+      matiere,
+      niveau
+
     } = req.body || {};
 
     // ------------------------------
@@ -69,10 +73,13 @@ export async function registerController(req, res) {
       nom,
       email,
       telephone: telephone || null,
+      ville: ville || null,
       pays: pays || "France",
       password,
       role: finalRole,
-      statut: finalStatus // PASSAGE DU STATUT CRUCIAL
+      statut: finalStatus, // PASSAGE DU STATUT CRUCIAL
+      matiere: matiere || null, // ✅ AJOUTÉ
+      niveau: niveau || null
     });
 
     // ------------------------------

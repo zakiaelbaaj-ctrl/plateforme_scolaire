@@ -112,7 +112,7 @@
     <script>
         // 1. CONFIGURATION API & SÉCURITÉ
         const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-            ? "" // Local : utilise le même domaine
+            ? "http://localhost:4000" // Local : utilise le même domaine
             : "https://plateforme-scolaire-1.onrender.com";
 
         const token = localStorage.getItem('token');
@@ -163,7 +163,8 @@
 
                     // Mise à jour du Total (Propriété présente dans ton Controller)
                     if (json.data && json.data.total_revenus !== undefined) {
-                        totalDisplay.textContent = `${parseFloat(json.data.total_revenus).toFixed(2)}€`;
+                        const total = parseFloat(json.data.total_revenus || 0);
+                        totalDisplay.textContent = `${total.toFixed(2)}€`;
                     }
 
                     // Extraction et affichage du tableau sécurisé

@@ -137,6 +137,11 @@
   </div>
 
   <script>
+    // ✅ 1. Détection dynamique de l'URL API (Crucial pour Render)
+    const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "http://localhost:4000" 
+      : "https://plateforme-scolaire-1.onrender.com";
+
     const form = document.getElementById("loginForm");
     const errorDiv = document.getElementById("errorDiv");
     const successDiv = document.getElementById("successDiv");
@@ -153,7 +158,8 @@
       const password = document.getElementById("password").value;
 
       try {
-        const res = await fetch("http://localhost:4000/api/v1/auth/login", {
+        // ✅ 2. Utilisation de l'URL dynamique
+        const res = await fetch(`${API_URL}/api/v1/auth/login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -164,21 +170,21 @@
         const json = await res.json();
         console.log("REPONSE SERVEUR :", json);
 
-        // 1. Vérification du succès (ton serveur renvoie success: true)
+        // 1. Vérification du succès
         if (!res.ok || json.success !== true) {
           throw new Error(json.message || "Identifiants incorrects");
         }
 
-        // 2. Récupération du token (ton serveur l'envoie sous 'accessToken')
+        // 2. Récupération du token
         const token = json.accessToken; 
         if (!token) {
           throw new Error("Token manquant dans la réponse du serveur");
         }
 
-        // 3. Stockage du Token pour les appels API (Gestion élèves/profs)
+        // 3. Stockage du Token
         localStorage.setItem("token", token);
 
-        // 4. Stockage du currentUser pour le Portail (index.html)
+        // 4. Stockage du currentUser (Ton bloc d'origine préservé)
         // Comme le serveur ne renvoie pas l'objet user, on le crée ici
         localStorage.setItem("currentUser", JSON.stringify({
           username: username,
@@ -202,7 +208,7 @@
         submitButton.disabled = false;
       }
     });
-  </script>
+</script>
 
 </body>
 </html>
