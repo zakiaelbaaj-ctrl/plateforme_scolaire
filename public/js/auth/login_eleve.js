@@ -32,7 +32,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const password = document.getElementById("password")?.value.trim();
     const matiere = document.getElementById("matiere")?.value;
     const niveau = document.getElementById("niveau")?.value;
-
+     
+    // Vérification optionnelle : si l'élève choisit "Universitaire", 
+// tu peux ajouter un log pour déboguer
+    if (niveau === "universitaire") {
+    console.log("🎓 Mode Universitaire détecté pour l'utilisateur");
+   }
     if (!username || !password) {
       errorDiv.textContent = "Veuillez remplir tous les champs.";
       return;
@@ -73,6 +78,8 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("token", data.accessToken);
         localStorage.setItem("refreshToken", data.refreshToken || "");
         localStorage.setItem("currentUser", JSON.stringify(data.user));
+        // 📍 AJOUTE LA LIGNE ICI :
+        localStorage.setItem("userLevel", niveau);
 
         // 🚀 Redirection vers dashboard élève
         window.location.replace("../../pages/eleve/dashboard.html");

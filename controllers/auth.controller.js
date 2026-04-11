@@ -3,11 +3,29 @@ import logger from "#config/logger.js";
 import * as authService from "#services/auth.service.js";
 import * as tokenService from "#services/token.service.js";
 import * as mailService from "#services/mail.service.js";
-
+import Stripe from "stripe";
+// Initialisation de Stripe (assurez-vous d'avoir STRIPE_SECRET_KEY dans votre .env)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // Filtre pour ne jamais exposer mot de passe ou tokens
 function sanitizeUser(user) {
   if (!user) return null;
-  const { password, resetToken, resetTokenExpires, ...safe } = user;
+
+  // 1. Vérifie si c'est une instance Sequelize (possède dataValues et toJSON)
+  // ou si c'est déjà un objet plat (issu d'une requête SQL brute db.query)
+  const userJson = (user && typeof user.toJSON === 'function') 
+    ? user.toJSON() 
+    : user;
+  
+  // 2. Déstructuration sécurisée sur l'objet converti
+  const { 
+    password, 
+    resetToken, 
+    resetTokenExpires, 
+    stripe_customer_id, 
+    stripe_account_id, 
+    ...safe 
+  } = userJson;
+  
   return safe;
 }
 
@@ -16,27 +34,83 @@ export async function registerController(req, res) {
   try {
     const { username, prenom, nom, email, telephone, pays, ville, password, role } = req.body;
 
+    // 1. Validation des champs
     if (!email || !password || !prenom || !nom) {
       return res.status(400).json({ success: false, message: "Champs requis manquants" });
     }
 
+    // 2. Vérification base de données (AVANT Stripe)
     const existing = await authService.findByEmail(email);
-    if (existing) return res.status(409).json({ success: false, message: "Un compte existe déjà avec cet email" });
+    if (existing) {
+      return res.status(409).json({ success: false, message: "Un compte existe déjà avec cet email" });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await authService.createUser({ username, prenom, nom, email, telephone, pays, ville, password: hashed, role: role || "professeur" });
 
+    // 3. --- LOGIQUE STRIPE (Élève vs Prof) ---
+    let stripe_customer_id = null;
+    let stripe_account_id = null;
+
+    try {
+      if (role === "professeur") {
+        // Création du compte Connect pour le prof (pour recevoir l'argent)
+        const account = await stripe.accounts.create({
+          type: 'express',
+          email: email,
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+        });
+        stripe_account_id = account.id;
+      } else {
+        // Création du compte Customer pour l'élève (pour payer)
+        const customer = await stripe.customers.create({
+          email,
+          name: `${prenom} ${nom}`,
+          metadata: { username: username || "non_defini" },
+        });
+        stripe_customer_id = customer.id;
+      }
+    } catch (stripeErr) {
+      logger.error("Erreur Stripe lors de l'inscription:", stripeErr);
+      return res.status(500).json({ success: false, message: "Erreur lors de l'initialisation du compte de paiement" });
+    }
+
+    // 4. Création de l'utilisateur avec tous les nouveaux champs
+    const user = await authService.createUser({
+      username,
+      prenom,
+      nom,
+      email,
+      telephone,
+      pays,
+      ville,
+      password: hashed,
+      role: role || "eleve",
+      stripe_customer_id,
+      stripe_account_id,
+      is_active: role !== "professeur" // true pour élève, false pour prof (attente admin)
+    });
+
+    // 5. Génération des tokens et email
     const tokens = await tokenService.generateTokens({ userId: user.id, email: user.email, role: user.role });
+    
+    // On n'attend pas l'envoi de l'email pour répondre au client
     mailService.sendWelcomeEmail(user).catch(() => {});
 
-    return res.status(201).json({ success: true, user: sanitizeUser(user), ...tokens });
+    return res.status(201).json({ 
+      success: true, 
+      message: role === "professeur" ? "Inscription réussie, en attente de validation admin." : "Inscription réussie",
+      user: sanitizeUser(user), 
+      ...tokens 
+    });
 
   } catch (err) {
     logger.error("registerController error:", err);
     return res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 }
-
 // ---------------- LOGIN ----------------
 export async function loginController(req, res) {
   try {
@@ -44,6 +118,12 @@ export async function loginController(req, res) {
 
     const user = email ? await authService.findByEmail(email) : await authService.findByUsername(username);
     if (!user) return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
+    if (!user.is_active) {
+    return res.status(403).json({ 
+    success: false, 
+    message: "Votre compte est en attente de validation par l'administrateur." 
+  });
+}
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });

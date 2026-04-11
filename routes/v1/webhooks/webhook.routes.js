@@ -26,26 +26,18 @@ router.post(
     logger.info("📩 Webhook Stripe reçu", { type: event.type, id: event.id });
 
     try {
-      // ✅ FLUX 1 : ABONNEMENTS (checkout.session.completed)
       if (event.type === "checkout.session.completed") {
         await handleCheckoutSessionCompleted(event.data.object);
-      }
-
-      // ✅ FLUX 2 : APPELS VIDÉO (payment_intent.succeeded)
+      } 
       else if (event.type === "payment_intent.succeeded") {
         await handlePaymentIntentSucceeded(event.data.object);
       }
-
-      // ✅ FLUX 2 : APPELS VIDÉO (payment_intent.payment_failed)
       else if (event.type === "payment_intent.payment_failed") {
         await handlePaymentIntentFailed(event.data.object);
       }
-
-      // ✅ FLUX 2 : APPELS VIDÉO (payment_intent.canceled)
       else if (event.type === "payment_intent.canceled") {
         await handlePaymentIntentCanceled(event.data.object);
       }
-
       else {
         logger.info("⏭️ Webhook non traité", { type: event.type });
       }
@@ -54,8 +46,7 @@ router.post(
     } catch (err) {
       logger.error("❌ Webhook processing failed", { 
         type: event.type,
-        message: err.message, 
-        stack: err.stack 
+        message: err.message 
       });
       res.status(500).send();
     }
@@ -63,192 +54,164 @@ router.post(
 );
 
 /**
- * ✅ FLUX 1 : Gère les abonnements (checkout.session.completed)
+ * ✅ Gère les abonnements (Plans classiques ET Entraide Étudiante à 20€)
  */
 async function handleCheckoutSessionCompleted(session) {
-  const userId = session.metadata?.userId;
-  const planType = session.metadata?.planType;
+  const { userId, planType, type } = session.metadata || {};
   const sessionId = session.id;
 
+  if (!userId) {
+    logger.error("❌ Metadata userId manquante dans la session", { sessionId });
+    return;
+  }
+
   await sequelize.transaction(async (t) => {
-    // Vérifier si déjà traité
+    // 1. Vérifier si déjà traité
     const existing = await sequelize.query(
       `SELECT 1 FROM payments WHERE stripe_session_id = :sessionId LIMIT 1`,
       { replacements: { sessionId }, type: sequelize.QueryTypes.SELECT, transaction: t }
     );
 
-    if (existing.length > 0) {
-      logger.info("💡 Webhook déjà traité", { sessionId });
-      return;
-    }
+    if (existing.length > 0) return;
 
-    const [user] = await sequelize.query(
-      `SELECT subscription_status, subscription_end_date
-       FROM users WHERE id = :userId FOR UPDATE`,
-      { replacements: { userId }, type: sequelize.QueryTypes.SELECT, transaction: t }
-    );
-
-    if (!user) {
-      logger.error("❌ Utilisateur non trouvé", { userId });
-      return;
-    }
-
-    // Calcul date fin
+    // 2. Calcul de la date de fin (1 mois pour l'entraide ou selon planType)
     const end = new Date();
-    if (planType === "monthly") end.setUTCMonth(end.getUTCMonth() + 1);
-    if (planType === "yearly") end.setUTCFullYear(end.getUTCFullYear() + 1);
+    if (type === 'student_subscription' || planType === "monthly") {
+      end.setUTCMonth(end.getUTCMonth() + 1);
+    } else if (planType === "yearly") {
+      end.setUTCFullYear(end.getUTCFullYear() + 1);
+    }
 
-    // Mettre à jour l'utilisateur
+    // 3. Mise à jour de l'utilisateur (Gestion is_subscriber pour l'entraide)
     await sequelize.query(
       `UPDATE users 
        SET subscription_status = 'active', 
-           plan_type = :planType, 
+           is_subscriber = :isSub,
+           plan_type = :plan, 
            subscription_end_date = :end 
        WHERE id = :userId`,
-      { replacements: { planType, end: end.toISOString(), userId }, transaction: t }
+      { 
+        replacements: { 
+          plan: planType || 'student_entraide', 
+          isSub: type === 'student_subscription', // Active l'entraide si c'est le type
+          end: end.toISOString(), 
+          userId 
+        }, 
+        transaction: t 
+      }
     );
 
-    // Mettre à jour le paiement (si créé via billCall)
-    await sequelize.query(
-      `UPDATE payments SET status = 'succeeded' WHERE stripe_session_id = :sessionId`,
-      { replacements: { sessionId }, transaction: t }
+    // 4. Enregistrement du paiement
+    const [paymentResult] = await sequelize.query(
+      `INSERT INTO payments (user_id, amount, currency, status, stripe_session_id, type)
+       VALUES (:userId, :amount, :currency, 'succeeded', :sessionId, :type)
+       RETURNING id`,
+      { 
+        replacements: { 
+          userId, 
+          amount: session.amount_total, 
+          currency: session.currency, 
+          sessionId,
+          type: type || 'subscription'
+        }, 
+        transaction: t 
+      }
     );
 
-    // Génération de la facture PDF
+    // 5. Génération facture PDF
     try {
-      const invoiceNumber = `INV-${userId}-${sessionId}`;
-      const pdfBuffer = await generateInvoicePdf({
+      const invoiceNumber = `INV-${userId}-${Date.now()}`;
+      await generateInvoicePdf({
         userId,
-        planType,
+        planType: planType || 'Entraide Étudiante',
         amount: session.amount_total,
         invoiceNumber,
         date: new Date(),
       });
-      logger.info("🧾 Facture PDF générée (abonnement)", { userId, planType });
+      logger.info("🧾 Facture PDF générée", { userId });
     } catch (pdfErr) {
-      logger.error("❌ Erreur génération facture PDF", { userId, message: pdfErr.message });
+      logger.error("❌ Erreur PDF", { userId, message: pdfErr.message });
     }
-
-    logger.info("✅ Webhook: abonnement activé", { userId, planType, sessionId });
   });
 }
 
 /**
- * ✅ FLUX 2 : Gère le succès des paiements d'appels vidéo
+ * ✅ Gère le succès des paiements d'appels vidéo (20€ ou 40€/h)
  */
 async function handlePaymentIntentSucceeded(paymentIntent) {
+  const { roomId, eleveId, profId } = paymentIntent.metadata;
   const intentId = paymentIntent.id;
-  const studentId = paymentIntent.metadata?.studentId;
 
   await sequelize.transaction(async (t) => {
-    // Vérifier si déjà traité (simple vérification)
-    const existing = await sequelize.query(
-      `SELECT 1 FROM payments WHERE stripe_session_id = :intentId LIMIT 1`,
-      { replacements: { intentId }, type: sequelize.QueryTypes.SELECT, transaction: t }
-    );
-
-    if (existing.length === 0) {
-      logger.error("❌ Paiement non trouvé en base", { intentId });
-      return;
-    }
-
-    const [payment] = await sequelize.query(
-      `SELECT id, user_id, amount, currency
-       FROM payments
-       WHERE stripe_session_id = :intentId
-       LIMIT 1`,
-      { replacements: { intentId }, type: sequelize.QueryTypes.SELECT, transaction: t }
-    );
-
-    if (!payment) {
-      logger.error("❌ Paiement non trouvé", { intentId });
-      return;
-    }
-
-    // Mettre à jour le statut
+    // 1. Mettre à jour la session visio
     await sequelize.query(
-      `UPDATE payments SET status = 'succeeded' WHERE stripe_session_id = :intentId`,
-      { replacements: { intentId }, transaction: t }
+      `UPDATE visio_sessions SET is_paid = true WHERE room_id = :roomId`,
+      { replacements: { roomId }, transaction: t }
     );
 
-    // Récupérer les infos de l'élève
-    const [student] = await sequelize.query(
-      `SELECT id, email, username FROM users WHERE id = :studentId`,
-      { replacements: { studentId }, type: sequelize.QueryTypes.SELECT, transaction: t }
+    // 2. Créer ou mettre à jour le paiement
+    const [payment] = await sequelize.query(
+      `INSERT INTO payments (user_id, amount, currency, status, stripe_session_id, type)
+       VALUES (:eleveId, :amount, :currency, 'succeeded', :intentId, 'visio_call')
+       ON CONFLICT (stripe_session_id) DO UPDATE SET status = 'succeeded'
+       RETURNING id`,
+      { 
+        replacements: { 
+          eleveId, 
+          amount: paymentIntent.amount, 
+          currency: paymentIntent.currency, 
+          intentId 
+        }, 
+        transaction: t 
+      }
     );
 
-    // Générer facture PDF (hors transaction)
-    if (student) {
-      try {
-        const invoiceNumber = `VID-${studentId}-${payment.id}`;
+    // 3. Facture PDF pour l'appel
+    try {
+      const [student] = await sequelize.query(
+        `SELECT id, email, username FROM users WHERE id = :eleveId`,
+        { replacements: { eleveId }, type: sequelize.QueryTypes.SELECT, transaction: t }
+      );
+
+      if (student) {
         await generateInvoicePdf({
-          paymentId: payment.id,
+          paymentId: payment[0].id,
           student,
-          amountCents: payment.amount,
-          currency: payment.currency,
-          invoiceNumber,
+          amountCents: paymentIntent.amount,
+          currency: paymentIntent.currency,
+          invoiceNumber: `VID-${roomId}`,
           createdAt: new Date()
         });
-        logger.info("🧾 Facture PDF générée (appel vidéo)", {
-          studentId,
-          paymentId: payment.id,
-          amount: payment.amount
-        });
-      } catch (pdfErr) {
-        logger.error("❌ Erreur génération facture PDF", {
-          studentId,
-          paymentId: payment.id,
-          message: pdfErr.message
-        });
       }
+    } catch (pdfErr) {
+      logger.error("❌ Erreur PDF Visio", { roomId, message: pdfErr.message });
     }
 
-    logger.info("✅ Paiement appel vidéo confirmé", {
-      studentId,
-      paymentId: payment.id,
-      amount: payment.amount,
-      currency: payment.currency
-    });
+    logger.info("✅ Paiement visio confirmé et session marquée payée", { roomId });
   });
 }
 
 /**
- * ❌ FLUX 2 : Gère l'échec du paiement
+ * ❌ Gère l'échec du paiement
  */
 async function handlePaymentIntentFailed(paymentIntent) {
   const intentId = paymentIntent.id;
-  const studentId = paymentIntent.metadata?.studentId;
-
-  await sequelize.transaction(async (t) => {
-    // Mettre à jour le statut
-    await sequelize.query(
-      `UPDATE payments SET status = 'failed' WHERE stripe_session_id = :intentId`,
-      { replacements: { intentId }, transaction: t }
-    );
-
-    logger.warn("❌ Paiement appel vidéo échoué", {
-      studentId,
-      intentId,
-      reason: paymentIntent.last_payment_error?.message
-    });
-  });
+  await sequelize.query(
+    `UPDATE payments SET status = 'failed' WHERE stripe_session_id = :intentId`,
+    { replacements: { intentId } }
+  );
+  logger.warn("❌ Paiement échoué", { intentId, reason: paymentIntent.last_payment_error?.message });
 }
 
 /**
- * 🚫 FLUX 2 : Gère l'annulation du paiement
+ * 🚫 Gère l'annulation
  */
 async function handlePaymentIntentCanceled(paymentIntent) {
   const intentId = paymentIntent.id;
-
-  await sequelize.transaction(async (t) => {
-    // Mettre à jour le statut
-    await sequelize.query(
-      `UPDATE payments SET status = 'canceled' WHERE stripe_session_id = :intentId`,
-      { replacements: { intentId }, transaction: t }
-    );
-
-    logger.info("🚫 Paiement appel vidéo annulé", { intentId });
-  });
+  await sequelize.query(
+    `UPDATE payments SET status = 'canceled' WHERE stripe_session_id = :intentId`,
+    { replacements: { intentId } }
+  );
 }
 
 export default router;

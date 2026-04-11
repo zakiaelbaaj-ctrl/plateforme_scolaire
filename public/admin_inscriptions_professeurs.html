@@ -4,17 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin – Gestion des Professeurs</title>
-
-  <!-- DARK MODE PREMIUM -->
   <link rel="stylesheet" href="/css/admin_dark.css">
-
 </head>
 
 <body class="admin-page">
 
-<!-- ============================
-     HEADER
-============================= -->
 <header class="page-header">
   <div class="container">
     <h1>👨‍🏫 Gestion des Professeurs</h1>
@@ -22,54 +16,44 @@
   </div>
 </header>
 
-<!-- ============================
-     CONTENU PRINCIPAL
-============================= -->
 <main class="container">
-
-  <!-- Zone d’actions -->
   <section class="controls" aria-label="Actions de gestion">
-    <input 
-      type="text" 
-      id="searchInput" 
-      placeholder="🔍 Rechercher un professeur..."
-      aria-label="Rechercher un professeur"
-    >
+    <div class="search-group">
+        <input type="text" id="searchInput" placeholder="🔍 Rechercher un nom, email...">
+        
+        <select id="statusFilter" class="filter-select">
+            <option value="all">Tous les statuts</option>
+            <option value="pending">⏳ En attente</option>
+            <option value="active">✔ Validés</option>
+            <option value="rejected">⛔ Rejetés</option>
+        </select>
+    </div>
     <button class="validate-btn" onclick="chargerProfesseurs()">🔄 Rafraîchir</button>
   </section>
 
-  <!-- Tableau -->
-  <section class="table-wrapper" aria-label="Liste des professeurs">
+  <section class="table-wrapper">
     <table class="table" id="profTable">
       <thead>
         <tr>
           <th>#</th>
-          <th>Nom</th>
-          <th>Prénom</th>
-          <th>Email</th>
-          <th>Téléphone</th>
-          <th>Heures du mois</th>
+          <th>Nom / Prénom</th>
+          <th>Email / Tel</th>
+          <th>Diplôme</th>
+          <th>Heures</th>
           <th>Statut</th>
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody>
-        <!-- Professeurs injectés ici -->
-      </tbody>
+      <tbody></tbody>
     </table>
   </section>
 
-  <!-- Retour -->
   <footer class="page-footer">
     <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
   </footer>
-
 </main>
 
-<!-- ============================
-     MODAL
-============================= -->
-<div id="confirmModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+<div id="confirmModal" class="modal" aria-hidden="true" role="dialog">
   <div class="modal-content">
     <h3 id="modalTitle">Confirmation</h3>
     <p id="modalMessage"></p>
@@ -80,10 +64,12 @@
   </div>
 </div>
 
-<!-- ============================
-     SCRIPT
-============================= -->
 <script>
+// ✅ CORRECTION 1 : URL Dynamique (Indispensable pour Render)
+const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "http://localhost:4000" 
+  : "https://plateforme-scolaire-1.onrender.com";
+
 let professeurs = [];
 let filteredProfs = [];
 let pendingAction = null;
@@ -94,25 +80,26 @@ let pendingAction = null;
 async function chargerProfesseurs() {
   try {
     const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token manquant — reconnecte-toi");
+    if (!token) {
+        window.location.replace("/login.html");
+        return;
+    }
 
-    const res = await fetch("http://localhost:4000/api/v1/admin/users?role=prof", {
+    const res = await fetch(`${API_URL}/api/v1/admin/users?role=prof`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
+    // ✅ Gestion expiration token
+    if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("token");
+        window.location.replace("/login.html");
+        return;
+    }
+
     const json = await res.json();
-    if (!res.ok || json.success !== true) throw new Error(json.message);
+    if (!res.ok) throw new Error(json.message || "Erreur de chargement");
 
-    professeurs = json.users.map(u => ({
-      id: u.id,
-      nom: u.nom || "—",
-      prenom: u.prenom || "—",
-      email: u.email || "—",
-      telephone: u.telephone || "—",
-      heures_mois: u.heures_mois || 0,
-      statut: u.statut || "en_attente"
-    }));
-
+    professeurs = json.users;
     filteredProfs = [...professeurs];
     afficherProfesseurs();
 
@@ -132,32 +119,36 @@ function afficherProfesseurs() {
   count.textContent = `${filteredProfs.length} professeur(s)`;
 
   if (filteredProfs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Aucun professeur trouvé.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Aucun professeur trouvé.</td></tr>`;
     return;
   }
 
   filteredProfs.forEach((p, i) => {
-    const statusClass =
-      p.statut === "valide" ? "validated" :
-      p.statut === "en_attente" ? "pending" : "danger";
+    // ✅ Harmonisation statuts avec le backend (active, pending, rejected)
+    const statusClass = 
+      p.statut === "active" ? "validated" : 
+      p.statut === "pending" ? "pending" : "danger";
 
-    const statusText =
-      p.statut === "valide" ? "✔ Validé" :
-      p.statut === "en_attente" ? "⏳ En attente" :
-      `⛔ ${p.statut}`;
+    const statusText = 
+      p.statut === "active" ? "✔ Validé" : 
+      p.statut === "pending" ? "⏳ En attente" : `⛔ ${p.statut}`;
+
+    // ✅ Bouton Diplôme dynamique
+    const diplomeBtn = p.diplome_url 
+      ? `<a href="${p.diplome_url}" target="_blank" class="back-home" style="font-size:11px; padding:4px 8px;">📄 Voir</a>` 
+      : `<span style="color:gray; font-size:11px;">Aucun</span>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td>${p.nom}</td>
-      <td>${p.prenom}</td>
-      <td>${p.email}</td>
-      <td>${p.telephone}</td>
-      <td>${p.heures_mois} h</td>
+      <td><strong>${p.nom.toUpperCase()}</strong><br>${p.prenom}</td>
+      <td><span style="font-size:12px;">${p.email}</span><br><span style="color:var(--muted)">${p.telephone || '—'}</span></td>
+      <td>${diplomeBtn}</td>
+      <td>${p.heures_mois || 0} h</td>
       <td><span class="status ${statusClass}">${statusText}</span></td>
       <td class="actions">
-        <button class="validate-btn" onclick="changerStatut(${i}, 'valide')">Valider</button>
-        <button class="btn-cancel" onclick="changerStatut(${i}, 'en_attente')">Attente</button>
+        <button class="validate-btn" onclick="changerStatut(${i}, 'active')">Valider</button>
+        <button class="btn-cancel" onclick="changerStatut(${i}, 'pending')" style="background:#4b5563">Attente</button>
         <button class="delete-btn" onclick="openDeleteModal(${i})">Supprimer</button>
       </td>
     `;
@@ -166,47 +157,58 @@ function afficherProfesseurs() {
 }
 
 /* -----------------------------
-   RECHERCHE
+   FILTRES & RECHERCHE
 ----------------------------- */
-document.getElementById("searchInput").addEventListener("input", (e) => {
-  const q = e.target.value.toLowerCase();
-  filteredProfs = professeurs.filter(p =>
-    `${p.nom} ${p.prenom} ${p.email}`.toLowerCase().includes(q)
-  );
+function appliquerFiltres() {
+  const q = document.getElementById("searchInput").value.toLowerCase();
+  const status = document.getElementById("statusFilter").value;
+
+  filteredProfs = professeurs.filter(p => {
+    const matchesQuery = `${p.nom} ${p.prenom} ${p.email}`.toLowerCase().includes(q);
+    const matchesStatus = status === "all" ? true : p.statut === status;
+    return matchesQuery && matchesStatus;
+  });
   afficherProfesseurs();
-});
+}
+
+document.getElementById("searchInput").addEventListener("input", appliquerFiltres);
+document.getElementById("statusFilter").addEventListener("change", appliquerFiltres);
 
 /* -----------------------------
-   CHANGEMENT STATUT
+   CHANGEMENT STATUT (PATCH)
 ----------------------------- */
 async function changerStatut(index, statut) {
   const prof = filteredProfs[index];
   const token = localStorage.getItem("token");
 
   try {
-    await fetch(`http://localhost:4000/api/v1/admin/users/${prof.id}`, {
+    const res = await fetch(`${API_URL}/api/v1/admin/users/${prof.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ statut })
+      // ✅ On envoie le statut ET is_active pour être sûr
+      body: JSON.stringify({ statut, is_active: statut === 'active' })
     });
 
+    if (!res.ok) throw new Error("Échec de la mise à jour");
+
+    // Mise à jour locale pour éviter de tout recharger
     prof.statut = statut;
     afficherProfesseurs();
 
   } catch (err) {
-    alert("❌ Erreur lors de la mise à jour du statut");
+    alert("❌ " + err.message);
   }
 }
 
 /* -----------------------------
-   SUPPRESSION
+   SUPPRESSION (DELETE)
 ----------------------------- */
 function openDeleteModal(index) {
   pendingAction = { type: "delete", index };
-  showModal("Supprimer ce professeur ?", "Cette action est irréversible.");
+  showModal("Supprimer ce professeur ?", "Cette action supprimera définitivement le compte.");
 }
 
 async function confirmAction() {
@@ -217,41 +219,35 @@ async function confirmAction() {
   const token = localStorage.getItem("token");
 
   try {
-    await fetch(`http://localhost:4000/api/v1/admin/users/${prof.id}`, {
+    const res = await fetch(`${API_URL}/api/v1/admin/users/${prof.id}`, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` }
     });
 
+    if (!res.ok) throw new Error("Échec de la suppression");
+
     professeurs = professeurs.filter(p => p.id !== prof.id);
-    filteredProfs = filteredProfs.filter(p => p.id !== prof.id);
-
-    afficherProfesseurs();
+    appliquerFiltres();
   } catch (err) {
-    alert("❌ Erreur lors de la suppression");
+    alert("❌ " + err.message);
   }
-
   closeModal();
 }
 
-/* -----------------------------
-   MODAL
------------------------------ */
 function showModal(title, message) {
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalMessage").textContent = message;
   document.getElementById("confirmModal").setAttribute("aria-hidden", "false");
+  document.getElementById("confirmModal").style.display = "flex";
 }
 
 function closeModal() {
   pendingAction = null;
   document.getElementById("confirmModal").setAttribute("aria-hidden", "true");
+  document.getElementById("confirmModal").style.display = "none";
 }
 
-/* -----------------------------
-   INIT
------------------------------ */
 chargerProfesseurs();
 </script>
-
 </body>
 </html>

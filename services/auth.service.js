@@ -1,8 +1,4 @@
 // services/auth.service.js
-// --------------------------------------------------
-// Service d'authentification – adapté à ta base users
-// --------------------------------------------------
-
 import bcrypt from "bcryptjs";
 import { sequelize as db } from "../config/index.js";
 import logger from "../config/logger.js";
@@ -13,7 +9,6 @@ const DUMMY_HASH = "$2a$12$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 // ------------------------------
 // Utils
 // ------------------------------
-
 export function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
@@ -31,7 +26,7 @@ export async function comparePassword(password, hash) {
 }
 
 // ------------------------------
-// CREATE USER (adapté à ta base)
+// CREATE USER
 // ------------------------------
 
 export async function createUser({
@@ -43,7 +38,10 @@ export async function createUser({
   pays,
   ville,
   password,
-  role
+  role,
+  stripe_customer_id, // Pour l'élève
+  stripe_account_id,  // Pour le prof
+  is_active           // Statut de validation
 }) {
   const normalizedEmail = normalizeEmail(email);
   const hashed = await hashPassword(password);
@@ -51,101 +49,83 @@ export async function createUser({
   try {
     const result = await db.query(
       `
-      INSERT INTO users (username, prenom, nom, email, telephone, pays, ville, password, role, date_inscription, ville)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-      RETURNING id, username, prenom, nom, email, telephone, pays, ville, role, date_inscription
+      INSERT INTO users (
+        username, prenom, nom, email, telephone, pays, ville, 
+        password, role, stripe_customer_id, stripe_account_id, 
+        is_active, date_inscription
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+      RETURNING id, username, prenom, nom, email, role, stripe_customer_id, stripe_account_id, is_active
       `,
       {
         replacements: [
-          username || null,
-          prenom,
-          nom,
-          normalizedEmail,
-          telephone || null,
-          pays || null,
-          ville || null,
-          hashed,
-          role || "eleve"
-        , ville || null]
+          username || null,        // $1
+          prenom,                 // $2
+          nom,                    // $3
+          normalizedEmail,        // $4
+          telephone || null,      // $5
+          pays || null,           // $6
+          ville || null,          // $7
+          hashed,                 // $8
+          role || "eleve",        // $9
+          stripe_customer_id || null, // $10
+          stripe_account_id || null,  // $11
+          is_active ?? (role === "eleve") // $12: Actif par défaut pour élève, false pour prof
+        ]
       }
     );
 
     const user = result[0][0];
-    logger.info("Utilisateur créé", { userId: user.id });
+    logger.info("Utilisateur créé avec succès", { userId: user.id, role: user.role });
     return user;
 
   } catch (err) {
     if (err?.code === "23505") {
-      logger.warn("Email déjà utilisé", { email: normalizedEmail });
-      const e = new Error("Email déjà existant");
-      e.code = "EMAIL_EXISTS";
-      throw e;
+      throw new Error("Email ou nom d'utilisateur déjà utilisé");
     }
-
     logger.error("createUser error:", err);
     throw err;
   }
 }
-
 // ------------------------------
 // FIND BY EMAIL
 // ------------------------------
-
 export async function findByEmail(email) {
   const normalizedEmail = normalizeEmail(email);
-
   const result = await db.query(
-    `
-    SELECT id, username, prenom, nom, email, telephone, pays, ville, role 
-    FROM users 
-    WHERE email = $1
-    `,
-    { replacements: [normalizedEmail, ville || null] }
+    `SELECT id, username, prenom, nom, email, role, is_active, stripe_customer_id, stripe_account_id 
+     FROM users WHERE email = $1`,
+    { replacements: [normalizedEmail] }
   );
-
   return result[0][0] || null;
 }
 
 // ------------------------------
 // FIND BY EMAIL + PASSWORD
 // ------------------------------
-
 export async function findByEmailWithPassword(email) {
   const normalizedEmail = normalizeEmail(email);
-
   const result = await db.query(
-    `
-    SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password 
-    FROM users 
-    WHERE email = $1
-    `,
-    { replacements: [normalizedEmail, ville || null] }
+    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password, stripe_customer_id FROM users WHERE email = $1`,
+    { replacements: [normalizedEmail] }
   );
-
   return result[0][0] || null;
 }
 
 // ------------------------------
 // FIND BY USERNAME + PASSWORD
 // ------------------------------
-
 export async function findByUsernameWithPassword(username) {
   const result = await db.query(
-    `
-    SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password 
-    FROM users 
-    WHERE username = $1
-    `,
-    { replacements: [username, ville || null] }
+    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password, stripe_customer_id FROM users WHERE username = $1`,
+    { replacements: [username] }
   );
-
   return result[0][0] || null;
 }
 
 // ------------------------------
 // VERIFY CREDENTIALS
 // ------------------------------
-
 export async function verifyCredentials({ email, username, password }) {
   let user = null;
 
@@ -155,7 +135,9 @@ export async function verifyCredentials({ email, username, password }) {
     user = await findByUsernameWithPassword(username);
   }
 
-  const valid = await comparePassword(password, user?.password);
+  if (!user) return null;
+
+  const valid = await comparePassword(password, user.password);
 
   if (!valid) {
     logger.warn("Invalid credentials", { email, username });
@@ -169,77 +151,39 @@ export async function verifyCredentials({ email, username, password }) {
 // ------------------------------
 // FIND BY ID
 // ------------------------------
-
 export async function findById(id) {
   const result = await db.query(
-    `
-    SELECT id, username, prenom, nom, email, telephone, pays, ville, role 
-    FROM users 
-    WHERE id = $1
-    `,
-    { replacements: [id, ville || null] }
+    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, stripe_customer_id FROM users WHERE id = $1`,
+    { replacements: [id] }
   );
-
   return result[0][0] || null;
 }
 
 // ------------------------------
-// RESET PASSWORD
+// RESET PASSWORD FUNCTIONS
 // ------------------------------
-
 export async function saveResetToken(userId, token, expires) {
   await db.query(
-    `
-    UPDATE users 
-    SET resetToken = $1, resetTokenExpires = $2 
-    WHERE id = $3
-    `,
-    { replacements: [token, expires, userId, ville || null] }
+    `UPDATE users SET resetToken = $1, resetTokenExpires = $2 WHERE id = $3`,
+    { replacements: [token, expires, userId] }
   );
 }
 
 export async function findByResetToken(token) {
   const result = await db.query(
-    `
-    SELECT id AS userId, resetToken, resetTokenExpires
-    FROM users 
-    WHERE resetToken = $1
-    `,
-    { replacements: [token, ville || null] }
+    `SELECT id AS userId, resetToken, resetTokenExpires FROM users WHERE resetToken = $1`,
+    { replacements: [token] }
   );
-
   const user = result[0][0] || null;
-  if (!user) return null;
-
-  if (user.resetTokenExpires && new Date(user.resetTokenExpires) < new Date()) {
-    logger.warn("Reset token expiré", { userId: user.userId });
-    return null;
-  }
-
+  if (!user || (user.resetTokenExpires && new Date(user.resetTokenExpires) < new Date())) return null;
   return user;
 }
 
 export async function updatePassword(userId, newPassword) {
   const hashed = await hashPassword(newPassword);
-
-  await db.query(
-    `
-    UPDATE users 
-    SET password = $1 
-    WHERE id = $2
-    `,
-    { replacements: [hashed, userId, ville || null] }
-  );
+  await db.query(`UPDATE users SET password = $1 WHERE id = $2`, { replacements: [hashed, userId] });
 }
 
 export async function clearResetToken(userId) {
-  await db.query(
-    `
-    UPDATE users 
-    SET resetToken = NULL, resetTokenExpires = NULL 
-    WHERE id = $1
-    `,
-    { replacements: [userId, ville || null] }
-  );
+  await db.query(`UPDATE users SET resetToken = NULL, resetTokenExpires = NULL WHERE id = $1`, { replacements: [userId] });
 }
-

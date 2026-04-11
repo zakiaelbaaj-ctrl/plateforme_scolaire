@@ -1,26 +1,26 @@
-// routes/users.routes.js
-
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const authMiddleware = require("../middlewares/auth");
 
-router.get("/me", authMiddleware, async (req, res) => {
-  try {
+// Imports des middlewares et contrôleurs
+// Note: Vérifie bien que l'export dans auth.js est "export const authMiddleware"
+import { authMiddleware } from "../middlewares/auth.js";
+import * as userController from "../controllers/user.controller.js";
 
-    const user = req.user;
+// --- ROUTES UTILISATEUR ---
 
-    res.json({
-      id: user.id,
-      prenom: user.prenom,
-      nom: user.nom,
-      role: user.role,
-      ville: user.ville,
-      pays: user.pays
-    });
+// Récupérer son propre profil
+// On utilise la fonction du contrôleur qui contient déjà la logique et le sanitizeUser
+router.get("/me", authMiddleware, userController.meUser);
 
-  } catch (err) {
-    res.status(500).json({ error: "Erreur serveur" });
-  }
-});
+// --- ROUTES ADMIN ---
 
-module.exports = router;
+/**
+ * Validation d'un professeur par l'admin
+ * Cette route déclenche l'activation en BDD et la génération du lien Stripe Connect
+ */
+router.patch('/:id/validate-prof', authMiddleware, userController.validateAndOnboardProfessor);
+
+// Lister les utilisateurs (utile pour l'admin pour trouver les profs à valider)
+router.get("/", authMiddleware, userController.listUsers);
+
+export default router;

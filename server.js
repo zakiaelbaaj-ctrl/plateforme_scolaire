@@ -102,8 +102,7 @@ pool
   .then(() => console.log("✅ Connecté à PostgreSQL"))
   .catch((err) => console.error("❌ Erreur PostgreSQL :", err));
 
-  import whiteboardRoutes from "./routes/whiteboard.routes.js"; 
-  app.use("/api/whiteboard", whiteboardRoutes);
+  
 // =======================================================
 // WebSocket Server
 // =======================================================

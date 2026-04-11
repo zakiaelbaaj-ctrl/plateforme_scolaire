@@ -267,7 +267,63 @@ if (!access.valid) {
 
   console.log(`📺 Partage d'écran arrêté par ${ws.userName} dans ${roomId}`);
 }
+// =======================================================
+// TABLEAU TEXT (AJOUT DE TEXTE)
+// =======================================================
+export function tableauText(ws, payload) {
+    const { roomId, textStroke } = payload;
 
+    const access = validateRoomAccess(ws, roomId);
+    if (!access.valid || !textStroke) return;
+
+    // Validation simple du texte
+    if (typeof textStroke.text !== "string" || textStroke.text.length > 200) return;
+
+    if (!tableauStates.has(roomId)) {
+        tableauStates.set(roomId, { strokes: [], timestamp: new Date().toISOString() });
+    }
+    const state = tableauStates.get(roomId);
+
+    const fullStroke = {
+        ...textStroke,
+        type: "text", // Différencié du dessin
+        userId: ws.userId,
+        userName: ws.userName,
+        timestamp: new Date().toISOString()
+    };
+
+    state.strokes.push(fullStroke);
+
+    // Diffusion à la room
+    broadcastRoom(roomId, {
+        type: "tableauText",
+        ...fullStroke
+    }, ws); // exclude sender
+
+    console.log(`📝 Texte ajouté dans ${roomId} par ${ws.userName}`);
+}
+
+// =======================================================
+// SAUVEGARDE EN BDD (OPTIONNEL MAIS RECOMMANDÉ)
+// =======================================================
+import { pool } from "../config/db.js";
+
+export async function saveTableauToDB(roomId) {
+    const state = tableauStates.get(roomId);
+    if (!state || state.strokes.length === 0) return;
+
+    try {
+        await pool.query(
+            `INSERT INTO whiteboard_sessions (room_id, data, updated_at) 
+             VALUES ($1, $2, NOW()) 
+             ON CONFLICT (room_id) DO UPDATE SET data = $2, updated_at = NOW()`,
+            [roomId, JSON.stringify(state.strokes)]
+        );
+        console.log(`💾 Backup BDD réussi pour le tableau : ${roomId}`);
+    } catch (err) {
+        console.error("❌ Erreur sauvegarde tableau BDD:", err.message);
+    }
+}
 // =======================================================
 // UTILITAIRES
 // =======================================================

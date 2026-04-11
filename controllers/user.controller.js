@@ -8,7 +8,8 @@ import logger from "#config/logger.js";
 import { sequelize } from "#config/index.js";
 import * as userService from "#services/user.service.js";
 import * as tokenService from "#services/token.service.js";
-
+import Stripe from "stripe"; 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 /**
  * Retire les champs sensibles avant de renvoyer l'objet user
  * @param {object} user
@@ -256,5 +257,63 @@ export async function setRole(req, res) {
     await t.rollback();
     logger.error("setRole error:", err);
     return res.status(500).json({ ok: false, message: "Erreur serveur" });
+  }
+}
+/**
+ * PATCH /api/users/:id/validate-prof
+ * Valide un professeur (admin only) et génère son lien d'onboarding Stripe Connect.
+ */
+export async function validateAndOnboardProfessor(req, res) {
+  const t = await sequelize.transaction();
+  try {
+    const actor = req.user;
+    const { id } = req.params;
+
+    // 1. Vérification des permissions Admin
+    if (!actor || actor.role !== "admin") {
+      await t.rollback();
+      return res.status(403).json({ ok: false, message: "Non autorisé" });
+    }
+
+    // 2. Récupérer l'utilisateur
+    const user = await userService.findById(id);
+    if (!user || user.role !== "professeur") {
+      await t.rollback();
+      return res.status(404).json({ ok: false, message: "Professeur introuvable" });
+    }
+
+    // 3. Activer le compte en base de données
+    // On utilise updateUser pour passer is_active à true
+    const updated = await userService.updateUser(id, { is_active: true }, { transaction: t });
+    if (!updated) {
+      await t.rollback();
+      return res.status(500).json({ ok: false, message: "Erreur lors de l'activation en base" });
+    }
+
+    // 4. Générer le lien Stripe Connect Onboarding
+    // Note: Assurez-vous que l'URL de votre site est correcte dans les variables d'env
+    const accountLink = await stripe.accountLinks.create({
+      account: user.stripe_account_id,
+      refresh_url: `${process.env.FRONTEND_URL}/onboarding-retry?userId=${id}`,
+      return_url: `${process.env.FRONTEND_URL}/onboarding-success`,
+      type: 'account_onboarding',
+    });
+
+    await t.commit();
+    
+    logger.info("Professeur validé et lien Stripe généré", { id, adminId: actor.id });
+
+    return res.status(200).json({ 
+      ok: true, 
+      message: "Professeur validé avec succès",
+      data: {
+        onboardingUrl: accountLink.url // L'admin peut envoyer ce lien au prof ou le prof le verra à sa prochaine connexion
+      }
+    });
+
+  } catch (err) {
+    if (t) await t.rollback();
+    logger.error("validateAndOnboardProfessor error:", err);
+    return res.status(500).json({ ok: false, message: "Erreur lors de la validation Stripe" });
   }
 }
