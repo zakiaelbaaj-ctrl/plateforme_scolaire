@@ -1,10 +1,13 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import Stripe from "stripe";
+// Imports de tes configurations et services (via alias #)
 import logger from "#config/logger.js";
 import * as authService from "#services/auth.service.js";
 import * as tokenService from "#services/token.service.js";
-import * as mailService from "#services/mail.service.js";
-import Stripe from "stripe";
-// Initialisation de Stripe (assurez-vous d'avoir STRIPE_SECRET_KEY dans votre .env)
+import * as mailService from "#services/mail.service.js"; // Gardé une seule fois ici
+
+// Initialisation de Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // Filtre pour ne jamais exposer mot de passe ou tokens
 function sanitizeUser(user) {
@@ -52,7 +55,7 @@ export async function registerController(req, res) {
     let stripe_account_id = null;
 
     try {
-      if (role === "professeur") {
+      if (role === "prof") {
         // Création du compte Connect pour le prof (pour recevoir l'argent)
         const account = await stripe.accounts.create({
           type: 'express',
@@ -90,7 +93,7 @@ export async function registerController(req, res) {
       role: role || "eleve",
       stripe_customer_id,
       stripe_account_id,
-      is_active: role !== "professeur" // true pour élève, false pour prof (attente admin)
+      is_active: role !== "prof" // true pour élève, false pour prof (attente admin)
     });
 
     // 5. Génération des tokens et email
@@ -101,7 +104,7 @@ export async function registerController(req, res) {
 
     return res.status(201).json({ 
       success: true, 
-      message: role === "professeur" ? "Inscription réussie, en attente de validation admin." : "Inscription réussie",
+      message: role === "prof" ? "Inscription réussie, en attente de validation admin." : "Inscription réussie",
       user: sanitizeUser(user), 
       ...tokens 
     });
@@ -116,9 +119,11 @@ export async function loginController(req, res) {
   try {
     const { email, username, password } = req.body;
 
-    const user = email ? await authService.findByEmail(email) : await authService.findByUsername(username);
+    const user = email 
+  ? await authService.findByEmailWithPassword(email) 
+  : await authService.findByUsernameWithPassword(username);
     if (!user) return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
-    if (!user.is_active) {
+    if (!user.is_active && (user.role === "prof" || user.role === "professeur")) {
     return res.status(403).json({ 
     success: false, 
     message: "Votre compte est en attente de validation par l'administrateur." 
@@ -185,3 +190,41 @@ export async function meController(req, res) {
     return res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 }
+export async function forgotPasswordController(req, res) {
+  try {
+    const { email } = req.body;
+
+    // 1. Validation simple
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email requis" });
+    }
+
+    // 2. Recherche de l'utilisateur
+    const user = await authService.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Email introuvable" });
+    }
+
+    // 3. Génération et sauvegarde du token
+    const token = crypto.randomBytes(32).toString("hex");
+    await authService.saveResetToken(user.id, token);
+
+    // 4. Envoi de l'email avec gestion d'erreur SMTP
+    // Note : On a supprimé l'appel en doublon qui était ici
+    try {
+      await mailService.sendResetPasswordEmail(user, token);
+    } catch (mailErr) {
+      logger.error("Erreur SMTP lors du reset password:", mailErr.message);
+      return res.status(503).json({ 
+        success: false, 
+        message: "Le service d'envoi d'emails est temporairement indisponible." 
+      });
+    }
+
+    return res.json({ success: true, message: "Email de réinitialisation envoyé" });
+
+  } catch (err) {
+    logger.error("forgotPasswordController error:", err);
+    return res.status(500).json({ success: false, message: "Erreur serveur" });
+  }
+} 

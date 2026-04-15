@@ -1,6 +1,7 @@
 // services/auth.service.js
 import bcrypt from "bcryptjs";
 import { sequelize as db } from "../config/index.js";
+import { QueryTypes } from "sequelize"; // Ajout de l'import pour les types de requêtes
 import logger from "../config/logger.js";
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS || 12);
@@ -39,65 +40,77 @@ export async function createUser({
   ville,
   password,
   role,
-  stripe_customer_id, // Pour l'élève
-  stripe_account_id,  // Pour le prof
-  is_active           // Statut de validation
+  stripe_customer_id,
+  stripe_account_id,
+  is_active
 }) {
   const normalizedEmail = normalizeEmail(email);
   const hashed = await hashPassword(password);
 
   try {
-    const result = await db.query(
+    // Correction de la double déclaration et de la syntaxe du template string
+    const [result] = await db.query(
       `
       INSERT INTO users (
         username, prenom, nom, email, telephone, pays, ville, 
         password, role, stripe_customer_id, stripe_account_id, 
-        is_active, date_inscription
+        is_active, has_payment_method, date_inscription
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
-      RETURNING id, username, prenom, nom, email, role, stripe_customer_id, stripe_account_id, is_active
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()) 
+      RETURNING id, username, prenom, nom, email, role, stripe_customer_id, stripe_account_id, is_active, has_payment_method
       `,
       {
         replacements: [
-          username || null,        // $1
-          prenom,                 // $2
-          nom,                    // $3
-          normalizedEmail,        // $4
-          telephone || null,      // $5
-          pays || null,           // $6
-          ville || null,          // $7
-          hashed,                 // $8
-          role || "eleve",        // $9
-          stripe_customer_id || null, // $10
-          stripe_account_id || null,  // $11
-          is_active ?? (role === "eleve") // $12: Actif par défaut pour élève, false pour prof
-        ]
+          username || null,               // 1
+          prenom,                         // 2
+          nom,                            // 3
+          normalizedEmail,                // 4
+          telephone || null,              // 5
+          pays || "France",               // 6
+          ville || null,                  // 7
+          hashed,                         // 8
+          role || "eleve",                // 9
+          stripe_customer_id || null,     // 10
+          stripe_account_id || null,      // 11
+          is_active ?? (role === "eleve"),// 12
+          false                           // 13: has_payment_method
+        ],
+        type: QueryTypes.INSERT
       }
     );
 
-    const user = result[0][0];
-    logger.info("Utilisateur créé avec succès", { userId: user.id, role: user.role });
+    const user = result && result.length > 0 ? result[0] : null;
+    logger.info("Utilisateur créé avec succès", { userId: user?.id, role: user?.role });
     return user;
 
   } catch (err) {
-    if (err?.code === "23505") {
+    if (err?.original?.code === "23505" || err?.code === "23505") {
       throw new Error("Email ou nom d'utilisateur déjà utilisé");
     }
     logger.error("createUser error:", err);
     throw err;
   }
 }
+
 // ------------------------------
 // FIND BY EMAIL
 // ------------------------------
 export async function findByEmail(email) {
   const normalizedEmail = normalizeEmail(email);
+  
   const result = await db.query(
-    `SELECT id, username, prenom, nom, email, role, is_active, stripe_customer_id, stripe_account_id 
-     FROM users WHERE email = $1`,
-    { replacements: [normalizedEmail] }
+    `SELECT 
+        id, username, prenom, nom, email, role, 
+        is_active, has_payment_method, stripe_customer_id, stripe_account_id 
+     FROM users 
+     WHERE email = ?`, 
+    { 
+      replacements: [normalizedEmail],
+      type: QueryTypes.SELECT 
+    }
   );
-  return result[0][0] || null;
+
+  return result && result.length > 0 ? result[0] : null;
 }
 
 // ------------------------------
@@ -106,10 +119,13 @@ export async function findByEmail(email) {
 export async function findByEmailWithPassword(email) {
   const normalizedEmail = normalizeEmail(email);
   const result = await db.query(
-    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password, stripe_customer_id FROM users WHERE email = $1`,
-    { replacements: [normalizedEmail] }
+    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password, stripe_customer_id, has_payment_method, is_active FROM users WHERE email = ?`,
+    { 
+      replacements: [normalizedEmail],
+      type: QueryTypes.SELECT
+    }
   );
-  return result[0][0] || null;
+  return result && result.length > 0 ? result[0] : null;
 }
 
 // ------------------------------
@@ -117,10 +133,13 @@ export async function findByEmailWithPassword(email) {
 // ------------------------------
 export async function findByUsernameWithPassword(username) {
   const result = await db.query(
-    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password, stripe_customer_id FROM users WHERE username = $1`,
-    { replacements: [username] }
+    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password, stripe_customer_id, has_payment_method, is_active FROM users WHERE username = ?`,
+    { 
+      replacements: [username],
+      type: QueryTypes.SELECT
+    }
   );
-  return result[0][0] || null;
+  return result && result.length > 0 ? result[0] : null;
 }
 
 // ------------------------------
@@ -153,37 +172,66 @@ export async function verifyCredentials({ email, username, password }) {
 // ------------------------------
 export async function findById(id) {
   const result = await db.query(
-    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, stripe_customer_id FROM users WHERE id = $1`,
-    { replacements: [id] }
+    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, stripe_customer_id, has_payment_method FROM users WHERE id = ?`,
+    { 
+      replacements: [id],
+      type: QueryTypes.SELECT
+    }
   );
-  return result[0][0] || null;
+  return result && result.length > 0 ? result[0] : null;
 }
 
 // ------------------------------
 // RESET PASSWORD FUNCTIONS
 // ------------------------------
-export async function saveResetToken(userId, token, expires) {
+/**
+ * Sauvegarde le token et définit l'expiration à +1 heure
+ */
+export async function saveResetToken(userId, token) {
+  // Calcul interne : 3 600 000 ms = 1 heure
+  const expires = new Date(Date.now() + 3600000); 
+  
   await db.query(
-    `UPDATE users SET resetToken = $1, resetTokenExpires = $2 WHERE id = $3`,
-    { replacements: [token, expires, userId] }
+    `UPDATE users 
+     SET "resetToken" = ?, "resetTokenExpires" = ? 
+     WHERE id = ?`,
+    { 
+      replacements: [token, expires, userId],
+      type: QueryTypes.UPDATE
+    }
   );
 }
 
 export async function findByResetToken(token) {
   const result = await db.query(
-    `SELECT id AS userId, resetToken, resetTokenExpires FROM users WHERE resetToken = $1`,
-    { replacements: [token] }
+    `SELECT id AS "userId", "resetToken", "resetTokenExpires" FROM users WHERE "resetToken" = ?`,
+    { 
+      replacements: [token],
+      type: QueryTypes.SELECT
+    }
   );
-  const user = result[0][0] || null;
+  const user = result && result.length > 0 ? result[0] : null;
   if (!user || (user.resetTokenExpires && new Date(user.resetTokenExpires) < new Date())) return null;
   return user;
 }
 
 export async function updatePassword(userId, newPassword) {
   const hashed = await hashPassword(newPassword);
-  await db.query(`UPDATE users SET password = $1 WHERE id = $2`, { replacements: [hashed, userId] });
+  await db.query(
+    `UPDATE users SET password = ? WHERE id = ?`, 
+    { 
+      replacements: [hashed, userId],
+      type: QueryTypes.UPDATE
+    }
+  );
 }
 
 export async function clearResetToken(userId) {
-  await db.query(`UPDATE users SET resetToken = NULL, resetTokenExpires = NULL WHERE id = $1`, { replacements: [userId] });
+  await db.query(
+    `UPDATE users SET "resetToken" = NULL, "resetTokenExpires" = NULL WHERE id = ?`, 
+    { 
+      replacements: [userId],
+      type: QueryTypes.UPDATE
+    }
+  );
 }

@@ -11,8 +11,7 @@ import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js"
 import { DocumentService } from "/js/domains/document/document.service.js";
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
 import { addDocument } from "/js/ui/components/document.view.js";
-import { getUserProfile } from "../../services/user.service.js"; // service fictif
-import { initStripeOnboarding } from "../../services/stripe.service.js"; // service fictif Stripe
+import { getUserProfile } from "../../services/user.service.js"; // service fictif // service fictif Stripe
 
 // ======================================================
 // INIT
@@ -34,11 +33,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   AppState.canUseTools = false;
 
   renderStudentInfo();
-
-  // 🔹 Si le user est prof, init Stripe
-  if (AppState.currentUser.role === "professeur") {
-    await initStripeOnboarding();
-  }
 
   // 🔹 Connect WebSocket
   SocketService.connect();

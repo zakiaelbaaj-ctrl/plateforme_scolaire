@@ -12,30 +12,35 @@ import { DocumentService }   from "/js/domains/document/document.service.js";
 import { addDocument }    from "/js/ui/components/document.view.js";
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
 import { getUserProfile } from "../../services/user.service.js"; // service fictif qui récupère le user connecté
+import { handleAllStripeReturns, openSetupSession } from '/js/services/stripe.service.js';
+const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "http://localhost:4000" 
+  : "https://plateforme-scolaire-1.onrender.com";
 
+const API_BASE = `${API_URL}/api/v1`;
 // ================= STRIPE ONBOARDING =================
 async function initStripeOnboarding() {
   try {
-    // Utiliser l'URL dynamique que nous avons configurée
-    const API_URL = window.location.hostname === "localhost" ? "http://localhost:4000" : ""; 
-    
-    const resp = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
+    // On utilise API_BASE qui est définie en haut du fichier
+    const resp = await fetch(`${API_BASE}/stripeConnect/onboarding`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("token")}` // 🔐 Crucial pour savoir quel prof onboarder
-      },
-      credentials: "include"
+        "Authorization": `Bearer ${localStorage.getItem("token")}`
+      }
     });
     
     const data = await resp.json();
 
     if (data.stripeLink) {
-      // Redirige le professeur vers Stripe pour compléter l'onboarding
       window.location.href = data.stripeLink;
+    } else {
+      // Ajout d'une alerte si le lien est absent (très utile pour le débug)
+      alert("Erreur : " + (data.message || "Impossible de générer le lien Stripe."));
     }
   } catch (err) {
     console.error("Erreur Stripe onboarding:", err);
+    alert("Une erreur réseau est survenue.");
   }
 }
 
@@ -43,6 +48,8 @@ async function initStripeOnboarding() {
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
+  // 1. Gérer immédiatement le retour de Stripe (Succès/Annulation)
+    handleAllStripeReturns();
   // Débloquer l'audio dès la première interaction
   document.addEventListener("click", () => {
     const audio = document.getElementById("incomingCallSound");
@@ -60,13 +67,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   AppState.token       = localStorage.getItem("token"); // si tu stockes le token
   AppState.callState   = "idle";
 
-  renderCurrentUserInfo();
+  renderCurrentUserInfo(userData);
 
   // 🔹 si c'est un professeur, init Stripe onboarding
-  if (AppState.currentUser?.role === "professeur") {
-    initStripeOnboarding();
+if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboarding_complete) {
+  const stripeBtn = document.getElementById("stripe-onboarding-btn");
+  if (stripeBtn) {
+    stripeBtn.style.display = "block";
+    stripeBtn.addEventListener("click", initStripeOnboarding);
   }
-
+}
   // 🔵 Connexion WebSocket
   SocketService.connect();
 
@@ -423,10 +433,51 @@ function updateCallStatus(text) {
   if (el) el.textContent = text;
 }
 
-function renderCurrentUserInfo() {
-  const { prenom, nom, ville, pays } = AppState.currentUser || {};
+function renderCurrentUserInfo(user) {
+  // 1. Récupération des données (on utilise 'user' passé en paramètre)
+  const { prenom, nom, ville, pays, is_subscriber, role } = user || {};
+
+  // 2. Mise à jour de l'en-tête (ton ancien code)
   const nameEl = document.getElementById("prof-name");
   const locEl  = document.getElementById("prof-location");
   if (nameEl) nameEl.textContent = `${prenom ?? ""} ${nom ?? ""}`.trim();
   if (locEl)  locEl.textContent  = ville && pays ? `${ville}, ${pays}` : "";
+
+  // 3. Mise à jour du conteneur d'infos/Stripe (ton nouveau code)
+  const infoContainer = document.getElementById("user-info"); 
+  if (infoContainer) {
+    infoContainer.innerHTML = `
+        <div class="card">
+            <h3>Mon compte</h3>
+            <p>Utilisateur : ${prenom ?? ""} ${nom ?? ""}</p>
+            <p>Statut : ${is_subscriber ? '✅ Abonné' : '❌ Non abonné'}</p>
+            
+            <button id="stripe-setup-btn" class="btn-primary">
+                ${role === 'prof' ? '⚙️ Configurer mon compte Stripe' : '💳 Enregistrer ma carte bancaire'}
+            </button>
+            
+            <div id="stripe-status" style="margin-top: 10px;"></div>
+        </div>
+    `;
+
+    // 4. Écouteur d'événement pour Stripe
+    const stripeBtn = document.getElementById("stripe-setup-btn");
+    if (stripeBtn) {
+        stripeBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            stripeBtn.disabled = true;
+            const originalText = stripeBtn.textContent;
+            stripeBtn.textContent = "⏳ Chargement...";
+
+            try {
+                await openSetupSession(); // La fonction importée
+            } catch (error) {
+                console.error("Erreur Stripe:", error);
+                alert("Impossible d'ouvrir la session Stripe.");
+                stripeBtn.disabled = false;
+                stripeBtn.textContent = originalText;
+            }
+        });
+    }
+  }
 }

@@ -88,24 +88,38 @@ if (!eventId) {
       try {
         switch (event.type) {
           case "checkout.session.completed": {
-            // ================================
-// Fichier: controllers/webhook.controller.js
-// Emplacement: handleWebhook -> avant activateSubscription
-// ================================
+       const metadata = obj?.metadata || {};
+       // 1. CAS ENREGISTREMENT DE CARTE (Mode setup pour Élève)
+  // On vérifie si la session est en mode 'setup'
+  if (obj.mode === 'setup') {
+    const customerId = obj.customer;
+    try {
+      await db.query(
+        "UPDATE users SET has_payment_method = true WHERE stripe_customer_id = $1",
+        [customerId]
+      );
+      logger.info("💳 Carte enregistrée avec succès (Webhook)", { customerId });
+      return res.status(200).json({ ok: true }); // On termine ici pour ce cas
+    } catch (dbErr) {
+      logger.error("❌ Erreur DB Webhook (Setup)", { message: dbErr.message, customerId });
+      return res.status(500).json({ ok: false, message: "Erreur DB lors du setup" });
+    }
+  }
 
-const metadata = obj?.metadata || {};
-if (!metadata.userId || !metadata.planType) {
-  logger.warn("Stripe checkout.session.completed missing metadata", {
-    metadata,
-    eventId: eventId,
-    objKeys: Object.keys(obj || {}),
-  });
-  return res.status(400).json({
-    ok: false,
-    message: "Metadata Stripe manquante",
-    debug: { metadata, obj }
-  });
-}
+  // 2. CAS ABONNEMENT (Ton code actuel, légèrement ajusté)
+  // On ne fait cette validation que si ce n'est pas un setup
+  if (!metadata.userId || !metadata.planType) {
+    logger.warn("Stripe checkout.session.completed missing metadata", {
+      metadata,
+      eventId: eventId,
+      objKeys: Object.keys(obj || {}),
+    });
+    return res.status(400).json({
+      ok: false,
+      message: "Metadata Stripe manquante",
+      debug: { metadata, obj }
+    });
+  }
 
 const userId = metadata.userId;
 const planType = metadata.planType;

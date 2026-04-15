@@ -3,7 +3,7 @@ import { sequelize } from "#config/db.js";
 import stripe from "#config/stripe.js";
 import logger from "#config/logger.js";
 import { generateInvoicePdf } from "../../../services/invoicePdf.js";
-
+import { requireAuth } from "#middlewares/auth.middleware.js";
 const router = express.Router();
 
 router.post(
@@ -57,6 +57,20 @@ router.post(
  * ✅ Gère les abonnements (Plans classiques ET Entraide Étudiante à 20€)
  */
 async function handleCheckoutSessionCompleted(session) {
+  if (session.mode === 'setup') {
+    const customerId = session.customer;
+    try {
+      await sequelize.query(
+        `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = :customerId`,
+        { replacements: { customerId } }
+      );
+      logger.info("💳 Carte enregistrée avec succès pour l'élève", { customerId });
+      return; // On s'arrête là pour un setup
+    } catch (err) {
+      logger.error("❌ Erreur mise à jour has_payment_method", { customerId, message: err.message });
+      return;
+    }
+  }
   const { userId, planType, type } = session.metadata || {};
   const sessionId = session.id;
 
@@ -213,5 +227,51 @@ async function handlePaymentIntentCanceled(paymentIntent) {
     { replacements: { intentId } }
   );
 }
+// ✅ Crée une session Stripe pour enregistrer une carte (Setup Intent)
+router.post("/create-setup-session", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.userId; // ✅ correct avec requireAuth
 
+    // 1. Récupérer ou créer le customer Stripe de l'élève
+    const [users] = await sequelize.query(
+      `SELECT stripe_customer_id, email, prenom, nom FROM users WHERE id = :userId`,
+      { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
+    );
+
+    if (!users) return res.status(404).json({ error: "Utilisateur introuvable" });
+
+    let customerId = users.stripe_customer_id;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: users.email,
+        name: `${users.prenom} ${users.nom}`,
+        metadata: { userId: String(userId) },
+      });
+      customerId = customer.id;
+
+      await sequelize.query(
+        `UPDATE users SET stripe_customer_id = :customerId WHERE id = :userId`,
+        { replacements: { customerId, userId } }
+      );
+    }
+
+    // 2. Créer la Checkout Session en mode "setup"
+    const session = await stripe.checkout.sessions.create({
+      mode: "setup",
+      customer: customerId,
+      currency: "eur",
+      payment_method_types: ["card"],
+      success_url: `${process.env.CLIENT_URL}/pages/eleve/dashboard.html?setup=success`,
+      cancel_url:  `${process.env.CLIENT_URL}/pages/eleve/dashboard.html?setup=cancel`,
+      metadata: { userId: String(userId) },
+    });
+
+    res.json({ url: session.url });
+
+  } catch (err) {
+    logger.error("❌ Erreur création setup session", { message: err.message });
+    res.status(500).json({ error: "Erreur serveur Stripe" });
+  }
+});
 export default router;

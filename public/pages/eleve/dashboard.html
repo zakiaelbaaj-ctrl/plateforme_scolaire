@@ -158,20 +158,22 @@
         <button id="send-file" class="btn btn--primary full-width">Envoyer le document</button>
         <ul id="doc-list" class="doc-list"></ul>
       </div>
-       <!-- STRIPE CONNECT -->
-<div class="card card--stripe-connect">
-  <div class="card__header">
-    <h3 class="card__title">💳 Stripe Connect</h3>
-  </div>
-  <div class="card__body">
-    <button id="stripe-onboarding-btn" class="btn btn--primary full-width">
-      Connecter mon compte Stripe
-    </button>
-  </div>
-</div>
-    </aside>
+       <!-- STRIPE payement -->
+      <div class="card card--stripe-payment">
+      <div class="card__header">
+      <h3 class="card__title">💳 Mode de paiement</h3>
+      </div>
+       <div class="card__body">
+      <div id="stripe-status" style="margin-bottom: 15px; font-weight: bold;"></div>
 
-  </main>
+     <button id="stripe-setup-btn" class="btn btn--primary full-width">
+      Ajouter une carte bancaire
+      </button>
+         </div>
+         </div>
+       </aside>
+
+     </main>
 
   <!-- ================= JS ================= -->
   

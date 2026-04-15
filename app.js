@@ -2,9 +2,8 @@
 // app.js - CONFIGURATION FINALE SANS OUBLI
 // ============================================
 
-console.log("NODE SERVER TIME =", new Date());
-
-import "dotenv/config"; 
+console.log("NODE SERVER TIME =", new Date()); 
+console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 import express from "express";
 import cors from "cors";
 import path from "path";
@@ -43,25 +42,29 @@ const app = express();
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      // 1. On autorise 'self' au lieu de 'none' pour ne plus tout bloquer par défaut
-      "default-src": ["'self'"], 
-      // 2. On ouvre connect-src pour Chrome DevTools et tes APIs
-      "connect-src": ["'self'", "http://localhost:4000", "https://plateforme-scolaire-1.onrender.com", "wss://*", "http://localhost:*"],
-      // 3. On autorise les scripts inline (tes onclick)
-      "script-src": ["'self'", "'unsafe-inline'"],
+      "default-src": ["'self'"],
+      "connect-src": [
+        "'self'", 
+        "http://localhost:4000", 
+        "http://localhost:*", // Optionnel mais utile pour le debug
+        "https://plateforme-scolaire-1.onrender.com", 
+        "wss://*", 
+        "https://*.twilio.com", 
+        "wss://*.twilio.com"
+      ],
+      "script-src": [
+        "'self'", 
+        "'unsafe-inline'", 
+        "https://sdk.twilio.com"
+      ],
       "script-src-attr": ["'unsafe-inline'"],
-      "script-src": ["'self'", "'unsafe-inline'", "https://sdk.twilio.com"],
-      "connect-src": ["'self'", "https://*.twilio.com", "wss://*.twilio.com"],
-      // 4. On autorise les styles
       "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       "img-src": ["'self'", "data:", "https://res.cloudinary.com"],
       "font-src": ["'self'", "https://fonts.gstatic.com"],
     },
   },
-  // Désactive le blocage XSS automatique qui peut parfois gêner le JS local
-  xssFilter: false, 
+  xssFilter: false,
 }));
-
 // ✅ AJOUTE CETTE ROUTE juste après tes middlewares pour supprimer les 404 polluants
 app.use((req, res, next) => {
   if (req.url.includes('6babaf8f') || req.url.includes('.well-known')) {
@@ -94,6 +97,7 @@ app.use(express.urlencoded({ extended: true }));
 // =======================================================
 // VUES & STATIQUE
 // =======================================================
+app.get("/favicon.ico", (req, res) => res.status(204).send());
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
@@ -166,6 +170,18 @@ app.get("/admin_*.html", requireAuth, (req, res) => {
 // 3. Route Paiement
 app.get("/paiement", requireAuth, (req, res) => {
   res.sendFile(path.join(publicPath, "paiement.html"));
+});
+// ✅ Retour après onboarding Stripe professeu
+// ✅ Après — redirection selon le rôle
+app.get("/stripe/success", (req, res) => {
+  const token = req.query.token || req.cookies?.token;
+  // On redirige selon l'URL de retour Stripe qui contient le rôle
+  // Par défaut on redirige vers élève car c'est le Setup Intent
+  res.redirect("/pages/eleve/dashboard.html?stripe=success");
+});
+
+app.get("/stripe/refresh", (req, res) => {
+  res.redirect("/pages/professeur/dashboard.html?stripe=refresh");
 });
 // =======================================================
 // API ROUTES

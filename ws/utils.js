@@ -29,7 +29,10 @@ export function safeSend(ws, data) {
 // BROADCAST AUX ÉLÈVES
 // =======================================================
 export function broadcastOnlineProfs(onlineProfessors, clients) {
-  
+  console.log("📡 Broadcast vers clients:");
+  clients.forEach((client, id) => {
+    console.log("→", id, client.role, client.readyState);
+  });
   const allProfs = onlineProfessors || new Map();
 
   // Convertir en tableau et trier: disponibles en top
@@ -60,6 +63,7 @@ export function broadcastOnlineProfs(onlineProfessors, clients) {
   // Envoyer à tous les élèves
   for (const ws of clients.values()) {
     if (ws.role === "eleve" && ws.readyState === 1) {
+     console.log("📤 ENVOI ONLINE_PROFESSORS → user:", ws.userId, "readyState:", ws.readyState); 
       safeSend(ws, {
         type: "onlineProfessors",
         profs,

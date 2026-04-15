@@ -841,3 +841,83 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* ======================================================
+   15. EXTENSION STRIPE & USER CARD (DYNAMIC)
+   ====================================================== */
+
+.user-card__body {
+  padding: var(--space-md) var(--space-lg);
+}
+
+.user-name {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.user-role.badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--ink-muted);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--accent);
+  margin-bottom: var(--space-md);
+}
+
+.stripe-box {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+  line-height: 1.4;
+}
+
+.stripe-box.success {
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.stripe-box.warning {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.stripe-box strong {
+  display: block;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  font-size: 0.75rem;
+  cursor: pointer;
+  margin-top: var(--space-sm);
+  transition: color 0.2s;
+}
+
+.btn-link:hover {
+  color: var(--text-primary);
+}
+
+#stripe-status-message {
+  margin-top: var(--space-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}

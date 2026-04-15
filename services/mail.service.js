@@ -107,9 +107,13 @@ export async function sendWelcomeEmail(user) {
 // ------------------------------------------------------
 // 5. Envoi email de reset password
 // ------------------------------------------------------
+// ------------------------------------------------------
+// 5. Envoi email de reset password
+// ------------------------------------------------------
 export async function sendResetPasswordEmail(user, token) {
-  const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
-  const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`;
+  const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:4000";
+  // Vérifie si ton fichier est bien reset_password.html ou reset-password
+  const resetUrl = `${FRONTEND_URL}/reset_password.html?token=${token}`;
 
   if (!transporter || process.env.MAILER_DISABLED === "true") {
     logger.info("Mailer disabled — reset email skipped", { to: user.email });
@@ -122,11 +126,23 @@ export async function sendResetPasswordEmail(user, token) {
     await transporter.sendMail({
       from: defaultFrom,
       to: user.email,
-      subject: "Réinitialisation de mot de passe",
-      text: `Bonjour ${displayName}, utilisez ce lien pour réinitialiser votre mot de passe: ${resetUrl}`,
-      html: `<p>Bonjour <strong>${displayName}</strong>,</p>
-             <p>Utilisez ce lien pour réinitialiser votre mot de passe :</p>
-             <a href="${resetUrl}">${resetUrl}</a>`,
+      subject: "Réinitialisation de votre mot de passe",
+      text: `Bonjour ${displayName}, utilisez ce lien pour réinitialiser votre mot de passe : ${resetUrl}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333;">
+          <h2>Réinitialisation de mot de passe</h2>
+          <p>Bonjour <strong>${displayName}</strong>,</p>
+          <p>Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour continuer :</p>
+          <div style="margin: 25px 0;">
+            <a href="${resetUrl}" 
+               style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+               Changer mon mot de passe
+            </a>
+          </div>
+          <p style="font-size: 0.8em; color: #666;">Ce lien est valable pendant 1 heure.</p>
+          <p style="font-size: 0.8em; color: #666;">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+        </div>
+      `,
     });
 
     logger.info("Reset password email sent", { to: user.email });

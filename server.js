@@ -5,87 +5,21 @@
 
 import "dotenv/config"; // Chargement des variables d'environnement
 import http from "http";
-import nodemailer from "nodemailer";
 import app from "./app.js";
 import { initWebSocketServer } from "./socket.js";
 import { pool } from "./config/db.js";
 import { initDb } from "./config/index.js";
-console.log("--- VÉRIFICATION DOSSIER RACINE ---");
-console.log("AC SID:", process.env.TWILIO_ACCOUNT_SID);
-console.log("AUTH TOKEN:", process.env.TWILIO_AUTH_TOKEN ? "PRÉSENT" : "ABSENT ❌");
-console.log("API KEY:", process.env.TWILIO_API_KEY);
-console.log("API SECRET:", process.env.TWILIO_API_SECRET ? "PRÉSENT" : "ABSENT ❌");
+import { 
+  verifyMailer,
+  sendWelcomeEmail,
+  sendResetPasswordEmail,
+  sendPaymentActionRequiredEmail
+} from "./services/mail.service.js";
+
 // =======================================================
 // Initialisation DB
 // =======================================================
 await initDb({ syncModels: false }); // ou true en dev
-
-// =======================================================
-// Email configuration – Nodemailer
-// =======================================================
-let transporter = null;
-let emailEnabled = false;
-
-function initializeEmailService() {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
-
-  if (!user || !pass) {
-    console.log("ℹ️ Service email désactivé (EMAIL_USER ou EMAIL_PASS non défini)");
-    emailEnabled = false;
-    return;
-  }
-
-  try {
-    transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      requireTLS: true,
-      auth: { user, pass },
-      connectionTimeout: 5000,
-      socketTimeout: 5000,
-      logger: false,
-      debug: false,
-    });
-
-    transporter.verify((err) => {
-      if (err) {
-        console.log("⚠️ Service email NON configuré:", err.message);
-        emailEnabled = false;
-      } else {
-        emailEnabled = true;
-        console.log("✅ Service email configuré et testé avec succès");
-
-        transporter
-          .sendMail({
-            from: process.env.EMAIL_USER,
-            to: "ton_email_de_test@gmail.com", // remplace par ton email
-            subject: "Test Email – Plateforme Scolaire",
-            text: "Bonjour, votre mailer fonctionne correctement !",
-          })
-          .then((info) => {
-            console.log("✅ Email de test envoyé :", info.response);
-          })
-          .catch((err) => {
-            console.error("❌ Erreur envoi email :", err.message);
-          });
-      }
-
-      console.log(`📊 Email service: ${emailEnabled ? "✅ ACTIVÉ" : "❌ DÉSACTIVÉ"}`);
-    });
-  } catch (error) {
-    transporter = null;
-    emailEnabled = false;
-    console.log("⚠️ Erreur config email:", error.message);
-  }
-}
-
-initializeEmailService();
-
-// favicon
-app.get("/favicon.ico", (req, res) => res.status(204).send());
-
 
 // =======================================================
 // PostgreSQL Pool
@@ -101,8 +35,6 @@ pool
   .connect()
   .then(() => console.log("✅ Connecté à PostgreSQL"))
   .catch((err) => console.error("❌ Erreur PostgreSQL :", err));
-
-  
 // =======================================================
 // WebSocket Server
 // =======================================================
@@ -160,6 +92,11 @@ function gracefulShutdown(signal) {
 // Start server
 // =======================================================
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
+
+server.listen(PORT, async () => {
+  // ✅ Mailer vérifié une fois que le serveur est prêt
+  await verifyMailer().catch(err =>
+    console.warn("⚠️ Mailer en mode dégradé:", err.message)
+  );
   console.log(`✅ Serveur lancé sur http://localhost:${PORT}`);
 });

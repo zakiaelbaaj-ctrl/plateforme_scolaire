@@ -35,47 +35,65 @@ export async function createUser(data) {
     try {
         const {
             username, prenom, nom, email, telephone, ville, pays, 
-            password, role, statut, matiere, niveau, diplome_url
+            password, role, matiere, niveau, diplome_url,
+            stripe_customer_id
         } = data;
 
         const normalizedEmail = normalizeEmail(email);
         const hashed = await hashPassword(password);
 
-        const [result] = await db.query(
-            `INSERT INTO users 
-            (username, prenom, nom, email, telephone, ville, pays, password, role, statut, matiere, niveau, diplome_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            RETURNING id, username, email, role, statut, date_inscription`,
-            {
-                replacements: [
-                    username || null, prenom, nom, normalizedEmail, telephone || null, 
-                    ville || null, pays || "France", hashed, role || "eleve", 
-                    statut || "pending", matiere || null, niveau || null, diplome_url || null
-                ],
-                type: QueryTypes.INSERT
-            }
-        );
+        // ✅ Logique automatique : seuls les profs sont mis en attente
+        const isStudent = (role === 'eleve' || role === 'etudiant');
+        const finalStatut = isStudent ? 'active' : 'pending';
+        const finalIsActive = isStudent ? true : false; // Forçage booléen
 
-        return result[0];
+        const [result] = await db.query(
+        `INSERT INTO users 
+        (username, prenom, nom, email, telephone, ville, pays, password, role, statut, is_active, matiere, niveau, diplome_url, stripe_customer_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) -- ✅ 2. Ajouter un "?"
+        RETURNING id, username, email, role, statut, is_active, stripe_customer_id, date_inscription`,
+        {
+                replacements: [
+                    username || null, 
+                    prenom, 
+                    nom, 
+                    normalizedEmail, 
+                    telephone || null, 
+                    ville || null, 
+                    pays || "France", 
+                    hashed, 
+                    role || "eleve", 
+                    finalStatut, 
+                   finalIsActive,
+                   matiere || null, 
+                   niveau || null, 
+                   diplome_url || null,
+                   stripe_customer_id || null // ✅ 3. L'ajouter à la fin
+                 ],
+                 type: QueryTypes.INSERT
+               }
+                );
+
+        // ✅ Retour sécurisé pour éviter le "undefined"
+        return result && result.length > 0 ? result[0] : null;
 
     } catch (err) {
-        logger.error("createUser error", err);
-        if (err?.original?.code === "23505" || err?.code === "23505") {
-            const detail = err?.original?.detail || "";
+        logger.error("❌ createUser error", err);
+        // Gestion des doublons
+        if (err?.original?.code === "23505") {
+            const detail = err.original.detail || "";
             if (detail.includes("email")) throw new Error("Email déjà existant");
             if (detail.includes("username")) throw new Error("Nom d'utilisateur déjà pris");
         }
         throw err;
     }
 }
-
 // ------------------------------
 // FINDERS
 // ------------------------------
-
 export async function findByEmail(email) {
     const [result] = await db.query(
-        `SELECT * FROM users WHERE email = ?`,
+        `SELECT id, email, prenom, nom, role, has_payment_method, stripe_customer_id, is_active, statut FROM users WHERE email = ?`,
         { replacements: [normalizeEmail(email)], type: QueryTypes.SELECT }
     );
     return result || null;
@@ -97,12 +115,18 @@ export async function findByUsernameWithPassword(username) {
     return result || null;
 }
 
+// services/usersService.js
+
 export async function findById(id) {
-    const [result] = await db.query(
-        `SELECT * FROM users WHERE id = ?`,
-        { replacements: [id], type: QueryTypes.SELECT }
-    );
-    return result || null;
+  const result = await db.query(
+    `SELECT id, email, prenom, nom, role, ville, pays, 
+            stripe_customer_id, 
+            has_payment_method, 
+            is_active, statut 
+     FROM users WHERE id = ?`, // ✅ Utilise "?" au lieu de "$1"
+    { replacements: [id], type: QueryTypes.SELECT }
+  );
+  return result && result.length > 0 ? result[0] : null; // ✅ Syntaxe Sequelize
 }
 
 // ------------------------------
@@ -117,8 +141,9 @@ export async function updateUser(userId, data) {
     const allowedColumns = [
         "statut", "is_active", "role", "prenom", "nom", 
         "telephone", "ville", "pays", "matiere", "niveau", 
-        "is_university_prof", "is_subscriber"
-    ];
+        "is_university_prof", "is_subscriber",
+        "has_payment_method", "stripe_customer_id"
+        ];
     
     const fields = Object.keys(data).filter(key => allowedColumns.includes(key));
     if (fields.length === 0) return await findById(userId);

@@ -47,6 +47,9 @@ class SocketServiceCore {
 
     ws.onopen = () => {
       console.log("✅ WebSocket connecté");
+      ws.onmessage = (event) => {
+  console.log("📩 MESSAGE REÇU BRUT:", event.data);
+};
       AppState.wsConnected = true;
       AppState.wsReconnectAttempts = 0;
 

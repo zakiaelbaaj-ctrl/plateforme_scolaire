@@ -2,20 +2,22 @@
 // 🔐 LOGIN ELEVE
 // ============================================
 
-// 🔹 Vérifier si l'élève est déjà connecté
+// 1️⃣ Vérifier si quelqu'un est déjà connecté
 const existingToken = localStorage.getItem("token");
+const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
-if (existingToken) {
-  // ✅ Déjà connecté → aller directement au dashboard
-  window.location.replace("../../pages/eleve/dashboard.html");
-}
-
-// 🔹 Nettoyer les anciens tokens (sécurité au cas où on revient sur la page login)
-// Note : On ne les supprime que si on n'est pas déjà redirigé au-dessus
-if (!existingToken) {
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("currentUser");
+if (existingToken && currentUser) {
+    // ✅ Déjà connecté -> Rediriger selon le rôle stocké
+    if (currentUser.role === "eleve") {
+        window.location.replace("../../pages/eleve/dashboard.html");
+    } else if (currentUser.role === "prof") {
+        window.location.replace("../../pages/professeur/dashboard.html");
+    }
+    // Si on est redirigé, le reste du script s'arrête ici.
+} else {
+    // 2️⃣ Si PAS de token ou données corrompues -> On nettoie TOUT pour repartir à zéro
+    // C'est ici que le nettoyage est utile
+    localStorage.clear(); 
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -71,22 +73,36 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!response.ok) {
         throw new Error(data.message || "Échec de la connexion");
       }
-
-      // ✅ Stockage sécurisé
-      // Attention : vérifiez que votre backend renvoie bien data.accessToken et data.refreshToken
-      if (data.accessToken) {
-        localStorage.setItem("token", data.accessToken);
-        localStorage.setItem("refreshToken", data.refreshToken || "");
-        localStorage.setItem("currentUser", JSON.stringify(data.user));
-        // 📍 AJOUTE LA LIGNE ICI :
+// ✅ Stockage sécurisé
+if (data.accessToken) {
+    // 1. On stocke les jetons
+    localStorage.setItem("token", data.accessToken);
+    localStorage.setItem("refreshToken", data.refreshToken || "");
+    
+    // 2. On stocke l'objet utilisateur complet (contient id, nom, rôle, etc.)
+    localStorage.setItem("currentUser", JSON.stringify(data.user));
+    
+    // 3. On stocke le niveau (spécifique à l'élève)
+    if (niveau) {
         localStorage.setItem("userLevel", niveau);
+    }
 
-        // 🚀 Redirection vers dashboard élève
+    // 🚀 REDIRECTION DYNAMIQUE SELON LE RÔLE
+    // On récupère le rôle directement depuis l'objet user renvoyé par le backend
+    const userRole = data.user.role; 
+
+    if (userRole === "eleve") {
         window.location.replace("../../pages/eleve/dashboard.html");
-      } else {
-        throw new Error("Erreur : Token non reçu du serveur.");
-      }
+    } else if (userRole === "prof") {
+        window.location.replace("../../pages/professeur/dashboard.html");
+    } else {
+        console.error("Rôle inconnu :", userRole);
+        alert("Erreur de configuration de compte.");
+    }
 
+} else {
+    throw new Error("Erreur : Token non reçu du serveur.");
+}
     } catch (error) {
       console.error("❌ LOGIN ERROR:", error);
       // "Failed to fetch" devient un message plus clair pour l'utilisateur

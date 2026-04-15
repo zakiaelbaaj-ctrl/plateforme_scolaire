@@ -4,15 +4,17 @@
 
 import express from "express";
 import { body, validationResult } from "express-validator";
+import { 
+  registerController, 
+  loginController, 
+  logoutController, 
+  refreshTokenController, 
+  meController, 
+  forgotPasswordController 
+} from "#controllers/auth.controller.js";
 
 // Controllers
-import { registerController } from "#controllers/registerController.js";
-import { loginController } from "#controllers/loginController.js";
-import { logoutController } from "#controllers/logoutController.js";
-import { refreshTokenController } from "#controllers/refreshTokenController.js";
-import { forgotPasswordController } from "#controllers/forgotPasswordController.js";
 import { resetPasswordController } from "#controllers/resetPasswordController.js";
-import { meController } from "#controllers/meController.js";
 
 // Middlewares
 import { requireAuth } from "#middlewares/requireAuth.js";

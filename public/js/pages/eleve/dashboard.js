@@ -12,32 +12,63 @@ import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
 import { DocumentService } from "/js/domains/document/document.service.js";
 import { addDocument } from "/js/ui/components/document.view.js";
 import { getUserProfile } from "../../services/user.service.js";
+import { handleAllStripeReturns, openSetupSession, initStripeOnboarding } from '/js/services/stripe.service.js';
+
 /// ======================================================
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
+  console.log("🚀 Initialisation du Dashboard...");
+
+  // ✅ Lire AVANT nettoyage
+  const urlParams = new URLSearchParams(window.location.search);
+  const stripeStatus = urlParams.get("stripe");
+
+  // ✅ Puis traiter Stripe UNE seule fois
+  handleAllStripeReturns();
+
+  // ✅ Si succès → refresh après webhook
+  if (stripeStatus === "success") {
+    setTimeout(refreshUI, 2500);
+  }
+
+  // 🔓 Débloquer audio
+  document.addEventListener("click", () => {
+    const audio = document.getElementById("incomingCallSound");
+    if (audio) { 
+      audio.muted = false; 
+      audio.play().catch(() => {}); 
+    }
+  }, { once: true });
+
+  // 👤 User
   const userData = await getUserProfile();
+  
   if (!userData) {
-    window.location.replace("/pages/eleve/login.html"); 
+    window.location.replace("/pages/eleve/login.html");
     return;
   }
 
   AppState.currentUser = userData;
-  AppState.token = localStorage.getItem("token") || null;
+  localStorage.setItem("currentUser", JSON.stringify(userData));
+  AppState.token = localStorage.getItem("token");
   AppState.callState = "idle";
 
-  renderCurrentUserInfo();
+  // 🎨 UI
+  renderCurrentUserInfo(userData);
 
-  // 🔵 Connexion WebSocket
-  // Le SocketService utilisera l'URL dynamique que nous avons corrigée ensemble
+  // 🔌 WebSocket
   SocketService.connect();
-  
   SocketService.onMessage((data) => {
     SessionService._handleWs(data);
   });
 
+  // 🔗 Bind
   bindUI();
   subscribeToDomains();
+
+
+  console.log("🚀 Dashboard initialisé pour:", userData.prenom || userData.username || "Utilisateur");
 });
 
 // ======================================================
@@ -157,6 +188,7 @@ function bindUI() {
   CallService.endCall(); // informe le serveur
   SessionService.endSession();
 });
+
 // ================= WHITEBOARD =================
 document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
@@ -199,6 +231,21 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
 });
 
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", toggleWhiteboardFullscreen);
+ // ✅ AJOUT ICI (TRÈS IMPORTANT)
+  document.addEventListener("click", async (e) => {
+    if (e.target.id === "stripe-setup-btn") {
+      console.log("🔥 Bouton Stripe cliqué");
+
+      const btn = e.target;
+      btn.disabled = true;
+      btn.innerHTML = "⏳ Connexion sécurisée...";
+
+      await openSetupSession();
+
+      btn.disabled = false;
+    }
+  });
+
 }
 // ======================================================
 // CHAT
@@ -395,13 +442,108 @@ function updateToolButtons() {
 // USER INFO
 // ======================================================
 
-function renderCurrentUserInfo() {
-  if (!AppState.currentUser) return;
-  
-  const { prenom, nom, ville, pays } = AppState.currentUser;
-  const nameEl = document.getElementById("eleve-name");
-  const cityEl = document.getElementById("eleve-location");
+// ======================================================
+// 1. GESTION DE L'INTERFACE UTILISATEUR (UI)
+// ======================================================
 
+/**
+ * Rafraîchit les données utilisateur depuis le serveur et met à jour l'UI
+ */
+async function refreshUI() {
+  console.log("🔄 Actualisation des données utilisateur...");
+  const userData = await getUserProfile();
+  if (userData) {
+    AppState.currentUser = userData;
+    renderCurrentUserInfo(userData);
+  }
+}
+
+/**
+ * Affiche les informations de profil et l'état des paiements Stripe
+ */
+function renderCurrentUserInfo(user) {
+  if (!user) return;
+  const { prenom, nom, ville, pays, role, has_payment_method, stripe_onboarding_complete } = user;
+
+  // --- MISE À JOUR DES ÉLÉMENTS FIXES (TEXTE) ---
+  const nameEl = document.getElementById("eleve-name") || document.getElementById("user-full-name");
+  const cityEl = document.getElementById("eleve-location") || document.getElementById("user-city");
+  
   if (nameEl) nameEl.textContent = `${prenom || ""} ${nom || ""}`.trim();
-  if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || "");
+  if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || "Lieu non précisé");
+
+  // --- GESTION DU CONTENEUR STRIPE ---
+  const infoContainer = document.getElementById("user-info");
+  if (!infoContainer) return;
+
+  let stripeHTML = "";
+
+  // Cas ÉLÈVE : Inscription d'une carte bancaire
+  if (role === "eleve") {
+    if (has_payment_method) {
+      stripeHTML = `
+        <div class="stripe-box success">
+          <p>✅ <strong>Carte bancaire enregistrée</strong></p>
+          <p class="small">Votre moyen de paiement est prêt pour vos prochains cours.</p>
+          <button id="stripe-setup-btn" class="btn-link">Mettre à jour ma carte</button>
+        </div>`;
+    } else {
+      stripeHTML = `
+        <div class="stripe-box warning">
+          <p>⚠️ <strong>Paiement requis</strong></p>
+          <p class="small">Veuillez enregistrer une carte pour pouvoir appeler un professeur.</p>
+          <button id="stripe-setup-btn" class="btn-primary">💳 Ajouter une carte bancaire</button>
+        </div>`;
+    }
+  } 
+  // Cas PROFESSEUR : Onboarding Stripe Connect
+  else if (role === "prof") {
+    if (stripe_onboarding_complete) {
+      stripeHTML = `
+        <div class="stripe-box success">
+          <p>✅ <strong>Compte Stripe configuré</strong></p>
+          <p class="small">Vous pouvez recevoir des paiements de vos élèves.</p>
+        </div>`;
+    } else {
+      stripeHTML = `
+        <div class="stripe-box warning">
+          <p>💰 <strong>Revenus en attente</strong></p>
+          <p class="small">Configurez votre compte pour recevoir vos virements.</p>
+          <button id="stripe-onboarding-btn" class="btn-primary">⚙️ Activer Stripe Connect</button>
+        </div>`;
+    }
+  }
+
+  // Injection du HTML dans la carte dédiée
+  infoContainer.innerHTML = `
+    <div class="user-card">
+      <div class="user-card__header">
+        <h3 class="card-title">💳 Paramètres de paiement</h3>
+      </div>
+      <div class="user-card__body">
+        <div class="user-card__stripe-content">
+          ${stripeHTML}
+        </div>
+        <div id="stripe-status-message"></div>
+      </div>
+    </div>
+  `;
+
+  // --- ATTACHEMENT SÉCURISÉ DES ÉVÉNEMENTS ---
+  const setupBtn = document.getElementById("stripe-setup-btn");
+  console.log("🔍 setupBtn =", setupBtn);
+  if (setupBtn) {
+    setupBtn.addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.innerHTML = "⏳ Connexion sécurisée...";
+      await openSetupSession(); // Importé de stripe.service.js
+      btn.disabled = false;
+    });
+  }
+
+  const onboardingBtn = document.getElementById("stripe-onboarding-btn");
+  if (onboardingBtn) {
+    onboardingBtn.addEventListener("click", initStripeOnboarding);
+  }
 }

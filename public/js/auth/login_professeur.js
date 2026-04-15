@@ -6,7 +6,7 @@ const API_URL = window.location.hostname === "localhost" || window.location.host
 // 2. Configuration de la route API
 const API_BASE = `${API_URL}/api/v1`; // Utilise maintenant API_URL !
 
-// 🔹 Vérifier si déjà connecté
+// 🔹 Vérifier si déjà connecté (Correction)
 const storedUser = localStorage.getItem("currentUser");
 const token = localStorage.getItem("token");
 
@@ -15,13 +15,18 @@ if (storedUser && token) {
     const user = JSON.parse(storedUser);
     if (user.role === "prof") {
       window.location.replace("../../pages/professeur/dashboard.html");
+      // On s'arrête ici pour ne pas exécuter la suite du script
+    } else if (user.role === "eleve") {
+      window.location.replace("../../pages/eleve/dashboard.html");
     }
   } catch (e) {
     localStorage.clear();
   }
+} else {
+    // On ne nettoie QUE si on n'est pas connecté, pour éviter les résidus
+    localStorage.clear(); 
 }
 
-localStorage.removeItem("token");
 
 const loginForm = document.getElementById("loginProfForm");
 const errorDiv = document.getElementById("errorDiv");

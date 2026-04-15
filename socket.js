@@ -190,7 +190,22 @@ async function handleMessage(ws, data) {
 
   // Identify
   if (type === "identify") return handleIdentify(ws, data);
+   if (type === "onlineProfessors") {
+  if (ws.role === "prof") {
+    return safeSend(ws, {
+      type: "error",
+      message: "Les professeurs ne peuvent pas demander cette liste."
+    });
+  }
 
+  console.log(`📡 Demande liste profs par ${ws.userId}`);
+
+  return safeSend(ws, {
+    type: "onlineProfessors",
+    profs: getOnlineProfessors(),
+    timestamp: new Date().toISOString()
+  });
+}
   // Rooms
   if (type === "joinRoom") return joinRoom(ws, data, onlineProfessors, clients);
   if (type === "chatMessage") return chatMessage(ws, data);
@@ -473,17 +488,17 @@ function handleDisconnect(ws) {
     clearPendingCall(ws.userId);
   }
 
-  if (ws.role === "eleve") {
+  if (ws.role === "eleve" || ws.role === "etudiant") {
+    // 1. On cherche si cet utilisateur (peu importe son rôle) était en cours avec un prof
     for (const prof of onlineProfessors.values()) {
       if (prof.eleveId === ws.userId) {
-        console.log(`🔄 Élève ${ws.userId} déconnecté → libère prof ${prof.id}`);
+        console.log(`🔄 Utilisateur ${ws.userId} déconnecté → libère prof ${prof.id}`);
         endSessionForDisconnect(prof.id, ws.userId, onlineProfessors, clients);
       }
     }
-  }
 
-  if (ws.role === "etudiant") {
-    if (MatchService && MatchService.removeStudent) {
+    // 2. Si c'est un étudiant, on le retire aussi de la file d'attente du matching
+    if (ws.role === "etudiant" && MatchService?.removeStudent) {
       MatchService.removeStudent(ws.userId);
     }
   }

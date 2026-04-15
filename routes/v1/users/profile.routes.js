@@ -10,13 +10,12 @@ const router = express.Router();
 // GET /api/v1/users/profile/me
 // ======================================================
 router.get("/me", requireAuth, async (req, res) => {
-
   try {
-
     const userId = req.user.id;
 
     const { rows } = await pool.query(
-      `SELECT id, prenom, nom, email, role, ville, pays, matiere, sujet
+      `SELECT id, prenom, nom, email, role, ville, pays, matiere, sujet, 
+              stripe_customer_id, has_payment_method -- ✅ AJOUTE CES DEUX COLONNES
        FROM users
        WHERE id = $1`,
       [userId]
@@ -27,19 +26,11 @@ router.get("/me", requireAuth, async (req, res) => {
     }
 
     res.json(rows[0]);
-
   } catch (err) {
-
     console.error("❌ get profile:", err.message);
-
-    res.status(500).json({
-      message: "Erreur récupération profil"
-    });
-
+    res.status(500).json({ message: "Erreur récupération profil" });
   }
-
 });
-
 
 // ======================================================
 // UPDATE PROFIL
