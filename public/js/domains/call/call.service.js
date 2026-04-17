@@ -1,86 +1,59 @@
 // ======================================================
-// CALL DOMAIN SERVICE — LOGIQUE VISIO / APPEL
+// CALL DOMAIN SERVICE — ARCHITECTURE CLEAN (STATE MACHINE)
 // ======================================================
 
-import { AppState } from "/js/core/state.js";
-import { SocketService } from "/js/core/socket.service.js";
+import { AppState } from "../../core/state.js";
+import { socketService } from "../../core/socket.service.js";
 import { VideoService } from "./video.service.js";
-
-// ============================
-// CALLBACKS UI
-// ============================
-const _cb = {
-  callSent: null,
-  callAccepted: null,
-  callRejected: null,
-  callEnded: null,
-  localTrack: null,
-  remoteTracks: null,
-  disconnected: null,
-  incomingCall: null,
-  connected: null,
-  professorsList: null,
-  // ❌ documentOpened supprimé pour éviter ouverture automatique
-};
+import { CallStateMachine } from "../../core/call.state.machine.js";
 
 export const CallService = {
 
-  // ============================
-  // ABONNEMENTS UI
-  // ============================
-  onCallSent(cb) { _cb.callSent = cb; },
-  onCallAccepted(cb) { _cb.callAccepted = cb; },
-  onCallRejected(cb) { _cb.callRejected = cb; },
-  onCallEnded(cb) { _cb.callEnded = cb; },
-  onLocalTrack(cb) { _cb.localTrack = cb; },
-  onRemoteTracks(cb) { _cb.remoteTracks = cb; },
-  onDisconnected(cb) { _cb.disconnected = cb; },
-  onIncomingCall(cb) { _cb.incomingCall = cb; },
-  onConnected(cb) { _cb.connected = cb; },
-  onProfessorsList(cb) { _cb.professorsList = cb; },
-
-  // ============================
-  // RÉCEPTION ÉVÉNEMENTS
-  // ============================
+  /* ======================================================
+     EVENT INBOUND (WS → STATE MACHINE)
+  ====================================================== */
   handleEvent(data) {
+    if (!data || !data.type) return;
+
     switch (data.type) {
 
+      /* ---------------------------
+         PRESENCE
+      --------------------------- */
       case "professorsList":
-        if (!Array.isArray(data.professors)) break;
-        AppState.professors = data.professors;
-        _cb.professorsList?.(data.professors);
+        if (Array.isArray(data.professors)) {
+          AppState.setOnlineProfessors(data.professors);
+        }
         break;
 
-      case "documentOpened":
-        if (!data || !data.url) break;
-        console.log("📄 Document reçu (stocké pour téléchargement) :", data);
-        // 🔹 Stockage uniquement
-        AppState.pendingDocument = {
-          url: data.url,
-          fileName: data.fileName || data.url.split("/").pop()
-        };
-        // ❌ NE PAS appeler _cb.documentOpened
-        break;
-
+      /* ---------------------------
+         CALL FLOW
+      --------------------------- */
       case "callSent":
-        AppState.callState = "calling";
-        _cb.callSent?.();
+        CallStateMachine.setState(CallStateMachine.STATES.CALLING);
         break;
 
-        case "callAccepted": {
-        AppState.callState = "inCall";
-        AppState.call.start(AppState.call.professorId); // ← ajouter
-       _cb.callAccepted?.();
-          break;
-      }
+      case "callAccepted":
+        CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
+
+        AppState.startTimer?.();
+
+        if (data.professorId) {
+          AppState.call = AppState.call || {};
+          AppState.call.professorId = data.professorId;
+        }
+        break;
 
       case "callRejected":
-        AppState.callState = "idle";
-        _cb.callRejected?.();
+        CallStateMachine.setState(CallStateMachine.STATES.IDLE);
         break;
 
       case "incomingCall":
-        _cb.incomingCall?.({
+        AppState.setIncomingCallEleveId?.(data.eleveId);
+
+        CallStateMachine.setState(CallStateMachine.STATES.RINGING);
+
+        AppState._notify("call:incoming", {
           eleveId: data.eleveId,
           eleveName: data.eleveName || data.userName || "Élève",
           eleveVille: data.eleveVille || "",
@@ -88,110 +61,123 @@ export const CallService = {
         });
         break;
 
+      /* ---------------------------
+         SESSION
+      --------------------------- */
       case "twilioToken":
-        if (!data.token || !data.roomName) break;
-        CallService.connectToTwilioRoom(data.token, data.roomName)
-          .catch(err => console.error("❌ Erreur connexion Twilio:", err));
+        if (data.token && data.roomName) {
+          this.connectToTwilioRoom(data.token, data.roomName)
+            .catch(err => console.error("❌ Twilio error:", err));
+        }
         break;
 
       case "callEnded":
-        AppState.callState = "idle";
-        _cb.callEnded?.();
+      case "session:stop":
+        this.handleSessionEnded();
         break;
 
+      /* ---------------------------
+         VIDEO SIGNALING
+      --------------------------- */
       case "twilioLocalTrack":
-        _cb.localTrack?.(data.track);
+        AppState._notify("video:localTrack", data.track);
         break;
 
       case "twilioRemoteTracks":
-        _cb.remoteTracks?.(data.tracks);
-        break;
-
-      case "twilioDisconnected":
-        AppState.callState = "idle";
-        _cb.disconnected?.();
+        AppState._notify("video:remoteTracks", data.tracks);
         break;
     }
   },
 
-  // ============================
-// FIN DE SESSION
-// ============================
+  /* ======================================================
+     SESSION END
+  ====================================================== */
+  handleSessionEnded() {
+    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
 
-     handleSessionEnded() {
-     AppState.callState = "idle";
-     AppState.call.end(); // ← remet startedAt à null
-     VideoService.disconnect();
-    _cb.callEnded?.();
-   },
+    AppState.stopTimer?.();
+    AppState.endSession?.();
 
-// ============================
-// ACTIONS SORTANTES
-// ============================
+    VideoService.disconnect?.();
 
-callProfessor(profId) {
-  if (!profId) return;
+    AppState._notify("ui:closeCallOverlay");
+  },
 
-  if (AppState.callState === "calling" || AppState.callState === "inCall") {
-    console.warn("Appel déjà en cours");
-    return;
-  }
+  /* ======================================================
+     OUTGOING CALL
+  ====================================================== */
+  callProfessor(profId) {
+    if (!profId) return;
 
-  AppState.callState = "calling";
+    const state = CallStateMachine.getState?.();
 
-  SocketService.send({
-    type: "callProfessor",
-    profId
-  });
-},
+    if (
+      state === CallStateMachine.STATES.CALLING ||
+      state === CallStateMachine.STATES.IN_CALL
+    ) {
+      console.warn("⚠️ Call already active");
+      return;
+    }
 
-endCall() {
-  // ✅ Envoyer la durée avant de terminer
-  if (AppState.call.startedAt) {
-    const durationSec = Math.floor((Date.now() - AppState.call.startedAt) / 1000);
-    SocketService.send({
-      type: "visioDuration",
-      roomId: AppState.currentRoomId,
-      duration: durationSec,
-      matiere: AppState.currentUser?.matiere || null
+    CallStateMachine.setState(CallStateMachine.STATES.CALLING);
+
+    socketService.send({
+      type: "callProfessor",
+      profId
     });
-  }
-       SocketService.send({ type: "endSession" });
-      },
-       leaveRoom() {
-        SocketService.send({ type: "leaveRoom" });
-      },
-  // ============================
-  // TWILIO
-  // ============================
-  async connectToTwilioRoom(token, roomName) {
-    if (VideoService.clearListeners) VideoService.clearListeners();
+  },
 
-    VideoService.onLocalTrack(track => _cb.localTrack?.(track));
-    VideoService.onRemoteTracks(tracks => _cb.remoteTracks?.(tracks));
+  /* ======================================================
+     END CALL
+  ====================================================== */
+  endCall() {
+    const duration = AppState.callSeconds || 0;
+
+    if (duration > 0) {
+      socketService.send({
+        type: "visioDuration",
+        roomId: AppState.currentRoomId,
+        duration,
+        matiere: AppState.currentUser?.matiere || null
+      });
+    }
+
+    socketService.send({ type: "endSession" });
+
+    this.handleSessionEnded();
+  },
+
+  /* ======================================================
+     TWILIO / VIDEO
+  ====================================================== */
+  async connectToTwilioRoom(token, roomName) {
+
+    VideoService.onLocalTrack(track =>
+      AppState._notify("video:localTrack", track)
+    );
+
+    VideoService.onRemoteTracks(tracks =>
+      AppState._notify("video:remoteTracks", tracks)
+    );
+
     VideoService.onDisconnected(() => {
-      AppState.callState = "idle";
-      _cb.disconnected?.();
+      this.handleSessionEnded();
     });
 
     const room = await VideoService.connect(token, roomName);
 
     if (room) {
-      AppState.callState = "inCall";
-      // 🔹 NE JAMAIS OUVRIR DE DOCUMENT ICI
-      _cb.connected?.({ roomName: room.name });
-      if (room.document) {
-        AppState.pendingDocument = {
-          url: room.document.url,
-          fileName: room.document.fileName || room.document.url.split("/").pop()
-        };
-      }
+      CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
+
+      AppState._notify("video:connected", {
+        roomName: room.name
+      });
     }
 
     return room;
   },
 
   disconnectTwilio() {
-    VideoService.disconnect();
+    VideoService.disconnect?.();
   }
 };

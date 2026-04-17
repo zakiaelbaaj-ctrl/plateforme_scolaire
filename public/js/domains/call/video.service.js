@@ -48,7 +48,7 @@ export const VideoService = {
       console.log("✅ Twilio connecté, room:", room.name);
 
       AppState.twilioRoom = room;
-      AppState.callState  = "inCall";
+      CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
 
       // ✅ Émet les tracks locales immédiatement
       room.localParticipant.tracks.forEach(publication => {
@@ -93,7 +93,7 @@ room.on("participantConnected", participant => {
       // ✅ Après
 room.on("disconnected", (room, error) => {
   AppState.twilioRoom = null;
-  AppState.callState  = "idle";
+  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
 
   if (error) {
     console.warn("⚠️ Twilio déconnecté:", error.message);
@@ -115,7 +115,7 @@ room.on("disconnected", (room, error) => {
 
     } catch (error) {
       console.error("❌ Erreur Twilio.Video.connect:", error);
-      AppState.callState = "idle";
+      CallStateMachine.setState(CallStateMachine.STATES.IDLE);
       return null;
     }
   },
@@ -141,7 +141,7 @@ room.on("disconnected", (room, error) => {
     }
 
     AppState.twilioRoom = null;
-    AppState.callState  = "idle";
+    CallStateMachine.setState(CallStateMachine.STATES.IDLE);
   },
 
 

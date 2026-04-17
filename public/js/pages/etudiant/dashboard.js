@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   AppState.currentUser = userData;
   AppState.token = localStorage.getItem("token") || null;
-  AppState.callState = "idle";
+  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
   AppState.sessionInProgress = false;
   AppState.currentRoomId = null;
   AppState.currentSessionType = null; // "eleve" ou "prof"

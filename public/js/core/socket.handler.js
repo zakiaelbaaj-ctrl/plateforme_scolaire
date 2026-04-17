@@ -1,138 +1,238 @@
-// ======================================================
-// CORE / SOCKET HANDLER (PROF) — VERSION FINALE SÛRE
-// ======================================================
+// public/js/core/socket.handler.prof.js
 
-import { WhiteboardService } from "../services/whiteboard.service.js";
+import { socketService } from "./socket.service.js";
 import { AppState } from "./state.js";
 import { SessionService } from "../services/session.service.js";
-import { sendWs } from "./socket.service.js"; // ✅ AJOUT — manquait
+import { WhiteboardService } from "../services/whiteboard.service.js";
+import { WSLogger } from "./ws.logger.js";
 
-// ======================================================
-// SOCKET HANDLER CENTRAL
-// Enregistré dans socket.service.js via registerWsHandler
-// UN SEUL appel par message — zéro doublon possible
-// ======================================================
-export function handleSocketMessage(data) {
-  if (!data || typeof data !== "object" || typeof data.type !== "string") {
-    console.warn("⚠️ Message WS invalide :", data);
-    return;
+/**
+ * SOCKET HANDLER (PROF)
+ * Mappe les messages bruts du transport vers AppState.
+ * API AppState : setters plats (setCallState, addChatMessage, startTimer…)
+ */
+class SocketHandlerProf {
+  constructor() {
+    this._unsubscribeSocket = socketService.onMessage((data) => this.handle(data));
+    this._unsubscribeCall = AppState.on("ui:requestCall", (prof) => this.handleOutgoingCall(prof));
   }
-  console.log("🧠 HANDLE SOCKET PROF :", data.type);
-  console.log("📩 WS PROF :", data.type, data);
 
-  switch (data.type) {
+  handle(data) {
+    if (!data || !data.type) return;
+    WSLogger.debug("HANDLER PROF RECEIVE:", data.type);
 
-    case "tableauStroke":
-      SessionService._emit({
-        type: "tableauStroke",
-        stroke: data.stroke
+    switch (data.type) {
+
+      /* ======================================================
+         TRANSPORT
+      ====================================================== */
+      case "TRANSPORT_OPEN":
+        this.onTransportOpen();
+        break;
+
+      case "TRANSPORT_CLOSED":
+        AppState.setWsConnected(false);
+        break;
+
+      /* ======================================================
+         PRÉSENCE
+      ====================================================== */
+      case "professorsList":
+        AppState.setOnlineProfessors(data.professors ?? []);
+        break;
+
+      /* ======================================================
+         TABLEAU BLANC
+      ====================================================== */
+      case "tableauStroke":
+      case "tableauSync":
+        SessionService._emit(data);
+        break;
+
+      case "tableauClear":
+        WhiteboardService.applyRemoteClear(false);
+        break;
+
+      /* ======================================================
+         APPELS
+      ====================================================== */
+      case "incomingCall":
+        this.handleIncomingCall(data);
+        break;
+
+      case "callAccepted":
+        AppState.setCallState("inCall");
+        AppState.startSession({ roomId: AppState.currentRoomId });
+        AppState.startTimer();
+        break;
+
+      case "callRejected":
+        AppState.setIncomingCallEleveId(null);
+        AppState.setCallState(null);
+        break;
+
+      case "callEnded":
+      case "session:stop":
+        this.endSessionClean();
+        break;
+
+      /* ======================================================
+         SESSION
+      ====================================================== */
+      case "startSession":
+        this.handleStartSession(data);
+        break;
+
+      case "joinedRoom":
+        WSLogger.info("Room jointe :", data.roomId);
+        break;
+
+      /* ======================================================
+         CHAT
+      ====================================================== */
+      case "chatMessage":
+        AppState.addChatMessage({
+          sender: data.sender ?? "Inconnu",
+          text: data.text ?? "",
+          messageId: data.messageId ?? null,
+        });
+        SessionService._emit(data);
+        break;
+
+      /* ======================================================
+         DOCUMENTS
+      ====================================================== */
+      case "document":
+        AppState.addDocument({
+          fileName: data.fileName,
+          fileData: data.fileData,
+          sender: data.sender ?? "Inconnu",
+        });
+        SessionService._emit(data);
+        break;
+
+      /* ======================================================
+         FACTURATION
+      ====================================================== */
+      case "invoice":
+        AppState.showInvoice({
+          amount: data.amount,
+          duration: data.duration,
+          sessionId: data.sessionId,
+        });
+        break;
+
+      case "visioSaved":
+        SessionService._emit(data);
+        break;
+
+      case "error":
+        WSLogger.warn("Erreur serveur :", data.message);
+        SessionService._emit(data);
+        break;
+
+      default:
+        WSLogger.warn("Type WS non géré (prof) :", data.type);
+    }
+  }
+
+  /* ======================================================
+     TRANSPORT OPEN
+  ====================================================== */
+  onTransportOpen() {
+    AppState.setWsConnected(true);
+
+    if (AppState.currentUser?.id) {
+      socketService.send({
+        type: "identify",
+        ...AppState.currentUser,
+        tabId: sessionStorage.getItem("tabId"),
       });
-      return;
-
-     case "tableauClear":
-     WhiteboardService.applyRemoteClear(false); // ⬅️ IMPORTANT : ne pas réémettre
-      return;
-
-
-    case "tableauSync":
-      SessionService._emit(data);
-      return;
-
-    // ================= APPELS =================
- case "incomingCall": {
-  console.log("📩 WS PROF : incomingCall", data);
-
-  if (typeof AppState.sessionCallback !== "function") {
-    console.warn("⚠️ sessionCallback non défini");
-    return;
+    }
   }
 
-  // 🔥 On forward UNIQUEMENT au système session
-  AppState.sessionCallback({
-    type: "incomingCall",
-    payload: {
-      eleveId:    data?.eleveId ?? null,
-      eleveName:  data?.eleveName ?? "Élève",
-      eleveVille: data?.eleveVille ?? "",
-      elevePays:  data?.elevePays ?? "",
-      timestamp:  data?.timestamp ?? null
+  /* ======================================================
+     APPEL ENTRANT
+  ====================================================== */
+  handleIncomingCall(data) {
+    AppState.setIncomingCallEleveId(data?.eleveId ?? null);
+    AppState.setCallState("incoming");
+
+    if (typeof AppState.sessionCallback === "function") {
+      AppState.sessionCallback({
+        type: "incomingCall",
+        payload: {
+          eleveId:    data?.eleveId    ?? null,
+          eleveName:  data?.eleveName  ?? "Élève",
+          eleveVille: data?.eleveVille ?? "",
+          elevePays:  data?.elevePays  ?? "",
+          timestamp:  data?.timestamp  ?? null,
+        },
+      });
+    } else {
+      WSLogger.warn("AppState.sessionCallback non défini");
     }
-  });
+  }
 
-  break;
-}
-    case "callAccepted":
-      console.log("✅ callAccepted — en attente de startSession");
-      AppState.callState         = "inCall";
-      AppState.sessionInProgress = true;
-      return;
+  /* ======================================================
+     APPEL SORTANT
+  ====================================================== */
+  handleOutgoingCall(prof) {
+    if (!prof?.id) return;
 
-    case "callRejected":
-      AppState.currentIncomingCallEleveId = null;
-      return;
+    AppState.setCallState("calling");
+    AppState.selectedStudentId = prof.id;
 
-    case "callEnded":
-      endSessionClean();
-      return;
+    socketService.send({
+      type: "callEleve",
+      eleveId: prof.id,
+      profId: AppState.currentUser?.id,
+    });
 
-    case "joinedRoom":
-      console.log("🎓 Room jointe :", data.roomId ?? "inconnue");
-      return;
+    WSLogger.info("Appel sortant vers :", prof.prenom, prof.nom);
+  }
 
-    case "userJoined":
-      console.log("👤 Utilisateur rejoint :", data.userId ?? data);
-      return;
+  /* ======================================================
+     DÉMARRAGE SESSION
+  ====================================================== */
+  handleStartSession(data) {
+    const roomId = data.roomId ?? data.room ?? null;
+    if (!roomId) return;
 
-    // ================= SESSION =================
-    case "startSession": {
-      const roomId = data.roomId ?? data.room ?? null;
-      if (!roomId) {
-        console.error("❌ startSession sans roomId :", data);
-        return;
-      }
+    AppState.startSession({ roomId, studentId: AppState.selectedStudentId });
 
-      AppState.currentRoomId     = roomId;
-      AppState.sessionInProgress = true;
-      // 🟦 Initialiser le nom complet pour le chat
-      window.userNameGlobal = `${data.prenom ?? ""} ${data.nom ?? ""}`.trim();
-      // ✅ Rejoindre la room pour le tableau
-      sendWs({ type: "joinRoom", roomId });
+    window.userNameGlobal = `${data.prenom ?? ""} ${data.nom ?? ""}`.trim();
 
-      SessionService.startVideoCall({ roomId, role: "prof" })
-        .catch((err) => console.error("❌ startVideoCall :", err));
+    socketService.send({ type: "joinRoom", roomId });
 
-      console.log("🎬 Session PROF démarrée — room :", roomId);
-      return;
-    }
+    SessionService.startVideoCall({ roomId, role: "prof" })
+      .catch((err) => WSLogger.error("startVideoCall :", err));
+  }
 
-    case "session:stop":
-      endSessionClean();
-      return;
+  /* ======================================================
+     FIN DE SESSION
+  ====================================================== */
+  endSessionClean() {
+    WhiteboardService.stopAutoSnapshot?.();
+    SessionService.stopVideoCall();
+    WhiteboardService.reset?.();
 
-    case "chatMessage":
-    case "document":
-    case "visioSaved":
-    case "error":
-      SessionService._emit(data);
-      return;
+    AppState.stopTimer();
+    AppState.endSession();
+    AppState.setCallState(null);
+    AppState.setIncomingCallEleveId(null);
+    AppState.selectedStudentId = null;
 
-    default:
-      console.warn("⚠️ Type WS non géré :", data.type);
+    WSLogger.info("Session prof nettoyée");
+  }
+
+  /* ======================================================
+     NETTOYAGE
+  ====================================================== */
+  destroy() {
+    this._unsubscribeSocket();
+    this._unsubscribeCall();
   }
 }
 
-// ======================================================
-// CLEANUP SESSION
-// ======================================================
-function endSessionClean() {
-  WhiteboardService.stopAutoSnapshot?.();
-  SessionService.stopVideoCall();
-  WhiteboardService.reset?.();
-  // ⏱️ Stopper le timer côté prof 
-  AppState.stopTimer();
-  AppState.currentIncomingCallEleveId = null;
-  AppState.selectedStudentId          = null;
-  AppState.currentRoomId              = null;
-  AppState.sessionInProgress          = false;
-  AppState.callState                  = null;
-}
+export const socketHandlerProf = new SocketHandlerProf();

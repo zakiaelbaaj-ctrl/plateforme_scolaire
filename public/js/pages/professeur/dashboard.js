@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   AppState.currentUser = userData;
   AppState.token       = localStorage.getItem("token"); // si tu stockes le token
-  AppState.callState   = "idle";
+  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
 
   renderCurrentUserInfo(userData);
 
@@ -250,7 +250,7 @@ function setSessionActive(active) {
 
 function cleanupSession(message) {
   CallService.disconnectTwilio();
-  AppState.callState         = "idle";
+  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
   AppState.sessionInProgress = false;
   SessionService.stopTimer?.();
   setSessionActive(false);

@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   AppState.currentUser = userData;
   localStorage.setItem("currentUser", JSON.stringify(userData));
   AppState.token = localStorage.getItem("token");
-  AppState.callState = "idle";
+  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
 
   // 🎨 UI
   renderCurrentUserInfo(userData);

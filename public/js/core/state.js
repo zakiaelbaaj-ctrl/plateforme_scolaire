@@ -1,5 +1,5 @@
 // ======================================================
-// APP STATE — SINGLE SOURCE OF TRUTH (PROF + ELEVE)
+// APP STATE — SINGLE SOURCE OF TRUTH (CLEAN VERSION)
 // ======================================================
 
 export const AppState = {
@@ -11,7 +11,7 @@ export const AppState = {
 
   currentUser: {
     id: null,
-    role: null,        // "prof" | "eleve"
+    role: null,
     prenom: null,
     nom: null,
     email: null,
@@ -20,78 +20,88 @@ export const AppState = {
     niveau: null
   },
 
+  setCurrentUser(user = {}) {
+    this.currentUser = { ...this.currentUser, ...user };
+    this._notify("user:update", this.currentUser);
+  },
+
   // ==================================================
   // WEBSOCKET
   // ==================================================
-  ws: null,
-  wsUrl: null,
   wsConnected: false,
-  wsQueue: [],
-  wsReconnectAttempts: 0,
-  wsMaxReconnectAttempts: 5,
-  wsExpectedClose: false,
-  lastHeartbeat: null,
-  latency: null,
+  wsReady: false,
 
-  // ==================================================
-  // PRESENCE / PROFESSORS (ELEVE)
-  // ==================================================
-  hasOnlineProfessors: false,
+  setWsConnected(value) {
+    this.wsConnected = value;
+    this._notify("ws:connected", value);
+  },
 
-  professors: {
-    list: [],
-
-    setOnlineList: (profs = []) => {
-      AppState.professors.list = profs;
-      AppState.hasOnlineProfessors = profs.length > 0;
-    },
-
-    clear: () => {
-      AppState.professors.list = [];
-      AppState.hasOnlineProfessors = false;
-    }
+  setWsReady(value) {
+    this.wsReady = value;
+    this._notify("ws:ready", value);
   },
 
   // ==================================================
-  // CALL (ELEVE)
+  // PRESENCE
   // ==================================================
-  call: {
-    inProgress: false,
-    professorId: null,
-    startedAt: null,
+  onlineProfessors: [],
 
-    start: (professorId) => {
-      AppState.call.inProgress = true;
-      AppState.call.professorId = professorId;
-      AppState.call.startedAt = Date.now();
-    },
+  get hasOnlineProfessors() {
+  return this.onlineProfessors.length > 0;
+},
 
-    end: () => {
-      AppState.call.inProgress = false;
-      AppState.call.professorId = null;
-      AppState.call.startedAt = null;
-    }
+  setOnlineProfessors(profs = []) {
+    this.onlineProfessors = profs;
+    this._notify("professors:update", profs);
+  },
+
+ // ======================================================
+// CALL STATE
+// ======================================================
+_callState: null,
+
+setCallState(state) {
+  this._callState = state;
+  this._notify("callState:change", state);
+},
+
+getCallState() {
+  return this._callState;
+},
+ requestCall(prof) {
+  this._notify("ui:requestCall", prof);
+},
+  currentIncomingCallEleveId: null,
+
+  setIncomingCallEleveId(id) {
+    this.currentIncomingCallEleveId = id;
+    this._notify("call:incomingId", id);
   },
 
   // ==================================================
-  // SESSION / VISIO (PROF + ELEVE)
+  // SESSION / VISIO
   // ==================================================
   sessionInProgress: false,
-  selectedStudentId: null,
   currentRoomId: null,
+  selectedStudentId: null,
 
   startSession({ roomId, studentId = null }) {
     this.sessionInProgress = true;
     this.currentRoomId = roomId ?? null;
     this.selectedStudentId = studentId;
+
+    this._notify("session:start", {
+      roomId: this.currentRoomId,
+      studentId: this.selectedStudentId
+    });
   },
 
-  resetSession() {
+  endSession() {
     this.sessionInProgress = false;
-    this.selectedStudentId = null;
     this.currentRoomId = null;
-    AppState.call.end();
-    AppState.stopTimer();
+    this.selectedStudentId = null;
+
+    this._notify("session:end");
   },
 
   // ==================================================
@@ -107,9 +117,11 @@ export const AppState = {
     this.timerRunning = true;
     this.callSeconds = 0;
 
+    this._notify("timer:start");
+
     this.timerInterval = setInterval(() => {
-      AppState.callSeconds++;
-      AppState._notify("timer:update", AppState.callSeconds);
+      this.callSeconds++;
+      this._notify("timer:update", this.callSeconds);
     }, 1000);
   },
 
@@ -117,90 +129,77 @@ export const AppState = {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
+
     this.timerInterval = null;
     this.timerRunning = false;
     this.callSeconds = 0;
 
-    AppState._notify("timer:reset");
+    this._notify("timer:reset");
   },
 
   // ==================================================
   // CHAT
   // ==================================================
-  chat: {
-  messages: [],
-  _seenIds: new Set(),
+  chatMessages: [],
+  _seenMessageIds: new Set(),
 
-  addMessage: ({ messageId, sender, text }) => {
-
-    // 🔒 Anti-duplication
-    if (messageId && AppState.chat._seenIds.has(messageId)) {
-      return;
-    }
+  addChatMessage({ messageId, sender, text }) {
+    if (messageId && this._seenMessageIds.has(messageId)) return;
 
     if (messageId) {
-      AppState.chat._seenIds.add(messageId);
+      this._seenMessageIds.add(messageId);
     }
 
-    AppState.chat.messages.push({ messageId, sender, text });
+    const msg = { messageId, sender, text };
 
-    AppState._notify("chat:new", {
-      messageId,
-      sender,
-      text
-    });
-  }
-},
+    this.chatMessages.push(msg);
+    this._notify("chat:new", msg);
+  },
+
+  clearChat() {
+    this.chatMessages = [];
+    this._seenMessageIds.clear();
+    this._notify("chat:clear");
+  },
 
   // ==================================================
   // DOCUMENTS
   // ==================================================
- documents: {
-  list: [],
+  documents: [],
 
-  add: ({ fileName, fileData, sender, userName }) => {
-    const finalSender = sender || userName || "Inconnu";
-
-    AppState.documents.list.push({
+  addDocument({ fileName, fileData, sender }) {
+    const doc = {
       fileName,
       fileData,
-      sender: finalSender
-    });
+      sender: sender || "Inconnu"
+    };
 
-    AppState._notify("documents:new", {
-      fileName,
-      fileData,
-      sender: finalSender
-    });
+    this.documents.push(doc);
+    this._notify("documents:new", doc);
   },
 
-  clear: () => {
-    AppState.documents.list = [];
-    AppState._notify("documents:clear");
-  }
-},
-
-  // ==================================================
-  // FACTURATION (PROF)
-  // ==================================================
-  invoice: {
-    last: null,
-
-    show: (data) => {
-      AppState.invoice.last = data;
-      AppState._notify("invoice:show", data);
-    }
+  clearDocuments() {
+    this.documents = [];
+    this._notify("documents:clear");
   },
 
   // ==================================================
-  // GLOBAL RESET (LOGOUT / HARD RESET)
+  // FACTURATION
+  // ==================================================
+  invoice: null,
+
+  showInvoice(data) {
+    this.invoice = data;
+    this._notify("invoice:show", data);
+  },
+
+  // ==================================================
+  // RESET GLOBAL
   // ==================================================
   resetAll() {
-    this.resetSession();
-
     this.token = null;
 
-    this.currentUser = {
+    this.setCurrentUser({
       id: null,
       role: null,
       prenom: null,
@@ -209,37 +208,68 @@ export const AppState = {
       ville: null,
       pays: null,
       niveau: null
-    };
+    });
 
-    this.professors.clear();
-    this.chat.clear();
-    this.documents.clear();
+    this.setWsConnected(false);
+    this.setWsReady(false);
 
-    this.wsQueue = [];
-    this.wsConnected = false;
-    this.wsReconnectAttempts = 0;
-    this.wsExpectedClose = false;
-    this.lastHeartbeat = null;
-    this.latency = null;
+    this.setOnlineProfessors([]);
 
-    this.invoice.last = null;
+    this.setCallState(null);
+    this.setIncomingCallEleveId(null);
+
+    this.endSession();
+    this.stopTimer();
+
+    this.clearChat();
+    this.clearDocuments();
+
+    this.invoice = null;
+    this._notify("invoice:clear");
+
+
+    this._notify("app:reset");
 
     console.log("♻️ AppState réinitialisé");
   },
 
   // ==================================================
-  // EVENT SYSTEM (UI LISTENERS)
+  // EVENT SYSTEM (REACTIF)
   // ==================================================
   _listeners: {},
 
   on(event, callback) {
-    if (!this._listeners[event]) this._listeners[event] = [];
+    if (!this._listeners[event]) {
+      this._listeners[event] = [];
+    }
+
     this._listeners[event].push(callback);
+
+    // ✅ unsubscribe propre
+    return () => {
+      this._listeners[event] =
+        this._listeners[event].filter(cb => cb !== callback);
+    };
   },
 
   _notify(event, payload = null) {
     const list = this._listeners[event];
     if (!list) return;
-    list.forEach(cb => cb(payload));
+
+    list.forEach(cb => {
+      try {
+        cb(payload);
+      } catch (e) {
+        console.error(`Listener error (${event})`, e);
+      }
+    });
   }
 };
+// ======================================================
+// 🔥 BRIDGE CALL STATE MACHINE → APPSTATE
+// ======================================================
+import { CallStateMachine } from "../domains/call/call.state.machine.js";
+
+CallStateMachine.onChange((state) => {
+  AppState.setCallState(state);
+});
