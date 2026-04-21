@@ -1,15 +1,15 @@
 // public/js/modules/ui/uiRenderers.js
-// UI RENDERERS — REACTION ONLY (LISTEN TO APPSTATE)
+// UI RENDERERS â€” REACTION ONLY (LISTEN TO APPSTATE)
 
 import { AppState } from "/js/core/state.js";
 
 /**
- * Initialise les branchements entre l'état et le DOM.
- * À appeler une seule fois au démarrage (boot.js).
+ * Initialise les branchements entre l'Ã©tat et le DOM.
+ * Ã€ appeler une seule fois au dÃ©marrage (boot.js).
  */
 export function initUIRenderers() {
 
-    // --- DONNÉES ---
+    // --- DONNÃ‰ES ---
     AppState.on("professors:update", (profs) => renderProfessorsList(profs));
     AppState.on("chat:new",          (msg)   => renderChatMessage(msg));
     AppState.on("documents:new",     (doc)   => renderDocumentItem(doc));
@@ -22,19 +22,14 @@ export function initUIRenderers() {
     // --- FACTURATION ---
     AppState.on("invoice:show", (data) => renderInvoice(data));
 
-    // --- ÉTAT APPEL (manquait dans l'original) ---
+    // --- Ã‰TAT APPEL (manquait dans l'original) ---
     AppState.on("callState:change", (state) => updateCallButtonState(state));
-    // --- NOUVEAU (CALL INCOMING UI EVENT) ---
-    AppState.on("call:incoming", (data) => {
-        updateCallButtonState("incoming");
-    });
-
     // --- RESET GLOBAL ---
     AppState.on("app:reset", () => {
         clearChatUI();
         clearDocumentsUI();
         resetTimerUI();
-        updateCallButtonState(null); // bouton remis à "ready"
+        updateCallButtonState(null); // bouton remis Ã  "ready"
     });
 }
 
@@ -48,7 +43,7 @@ function renderProfessorsList(profs = []) {
   container.innerHTML = "";
 
   if (!profs.length) {
-    container.innerHTML = "<li class='empty'>Aucun professeur connecté</li>";
+    container.innerHTML = "<li class='empty'>Aucun professeur connectÃ©</li>";
     return;
   }
 
@@ -57,13 +52,23 @@ function renderProfessorsList(profs = []) {
     li.className = "prof-item";
     li.textContent = `${prof.prenom} ${prof.nom}`;
    li.onclick = () => {
-  const state = AppState.getCallState();
-  if (state === "calling" || state === "inCall" || state === "incoming") return;
+      const state = AppState.callState;
+      
+      // 1. On affiche l'état actuel au moment du clic
+      console.log(`[DEBUG] Clic sur ${prof.nom}. État de l'appel :`, state);
 
-  AppState.requestCall(prof);
-};
+      if (state === "calling" || state === "inCall" || state === "incoming") {
+        // 2. On crie si on est bloqué
+        console.warn(`[DEBUG] ❌ Clic bloqué ! Le système pense que vous êtes déjà en état : ${state}`);
+        return;
+      }
 
-    container.appendChild(li); // ✅ en dehors du onclick
+      // 3. On confirme si ça passe
+      console.log(`[DEBUG] ✅ Clic autorisé ! Lancement de l'appel vers ${prof.nom}...`);
+      AppState.requestCall(prof);
+    };
+
+    container.appendChild(li); // âœ… en dehors du onclick
   });
 }
 
@@ -97,7 +102,7 @@ function renderDocumentItem({ fileName, fileData, sender }) {
     a.href = fileData;
     a.className = "document-link";
     a.download = fileName;
-    a.textContent = `📄 ${fileName} (${sender})`;
+    a.textContent = `ðŸ“„ ${fileName} (${sender})`;
     a.target = "_blank";
     list.appendChild(a);
 }
@@ -116,10 +121,10 @@ function renderInvoice({ amount, duration, sessionId }) {
 
     box.innerHTML = `
         <div class="invoice-card">
-            <h4>💳 Facture</h4>
+            <h4>ðŸ’³ Facture</h4>
             <p>Session : ${sessionId}</p>
-            <p>Durée : ${duration} min</p>
-            <p><strong>Total : ${amount} €</strong></p>
+            <p>DurÃ©e : ${duration} min</p>
+            <p><strong>Total : ${amount} â‚¬</strong></p>
         </div>
     `;
 }
@@ -154,6 +159,7 @@ export function updateCallButtonState(state) {
         case "calling":  btn.classList.add("active");   break;
         case "inCall":   btn.classList.add("in-call");  break;
         case "incoming": btn.classList.add("disabled"); break;
-        default: break; // null → état "ready", aucune classe
+        default: break; // null â†’ Ã©tat "ready", aucune classe
     }
 }
+

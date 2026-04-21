@@ -1,14 +1,14 @@
-// ======================================================
+﻿// ======================================================
 // WHITEBOARD DOMAIN SERVICE
 // /js/domains/whiteboard/whiteboard.service.js
 // ======================================================
 
 import { AppState }                                   from "/js/core/state.js";
-import { SocketService }                              from "/js/core/socket.service.js";
+import { socketService }                              from "/js/core/socket.service.js";
 import { WhiteboardEvents, WhiteboardPayloadFactory } from "./whiteboard.contract.js";
 
 // --------------------------------------------------
-// ÉTAT INTERNE
+// Ãƒâ€°TAT INTERNE
 // --------------------------------------------------
 
 let _paths       = [];
@@ -50,7 +50,7 @@ export const WhiteboardService = {
 
   initSession() {
     _myUserId = AppState.currentUserId ?? AppState.userId ?? null;
-    if (!_myUserId) console.warn("⚠️ WhiteboardService : userId introuvable dans AppState");
+    if (!_myUserId) console.warn("Ã¢Å¡Â Ã¯Â¸Â WhiteboardService : userId introuvable dans AppState");
     this.resetSession();
   },
 
@@ -84,14 +84,14 @@ export const WhiteboardService = {
 
 
   // ============================
-  // RÉCEPTION — appelé par SessionService
+  // RÃƒâ€°CEPTION Ã¢â‚¬â€ appelÃƒÂ© par SessionService
   // ============================
 
   handleEvent(data) {
     switch (data.type) {
 
       case WhiteboardEvents.TABLEAU_STROKE: {
-  const path = data.path ?? data.stroke;  // ← accepte les deux
+  const path = data.path ?? data.stroke;  // Ã¢â€ Â accepte les deux
   if (!path) break;
   if (!_paths.find(p => p.id === path.id)) {
     _paths.push(path);
@@ -138,13 +138,13 @@ export const WhiteboardService = {
         _cb.redo?.(path);
         break;
       }
-       case WhiteboardEvents.TABLEAU_TEXT: {   // 🔹 Ajouter ce case
-       if (!data.textStroke) break;          // ⚡ Vérifie que le texte existe
-       _cb.text?.(data.textStroke);          // ⚡ Appelle le callback UI
+       case WhiteboardEvents.TABLEAU_TEXT: {   // Ã°Å¸â€Â¹ Ajouter ce case
+       if (!data.textStroke) break;          // Ã¢Å¡Â¡ VÃƒÂ©rifie que le texte existe
+       _cb.text?.(data.textStroke);          // Ã¢Å¡Â¡ Appelle le callback UI
         break;
       }
       default:
-        console.warn("⚠️ WhiteboardService : event inconnu", data.type);
+        console.warn("Ã¢Å¡Â Ã¯Â¸Â WhiteboardService : event inconnu", data.type);
        }
      },
   // ============================
@@ -177,16 +177,16 @@ export const WhiteboardService = {
     _redoStack = [];
 
     _cb.stroke?.(path);
-    SocketService.send(WhiteboardPayloadFactory.createStroke(path, AppState.currentRoomId));
+    socketService.send(WhiteboardPayloadFactory.createStroke(path, AppState.currentRoomId));
   },
-  sendText(textStroke) {                  // 🔹 Nouvelle méthode
+  sendText(textStroke) {                  // Ã°Å¸â€Â¹ Nouvelle mÃƒÂ©thode
   if (!textStroke || !_myUserId) return;
-  SocketService.send(WhiteboardPayloadFactory.createText(textStroke, AppState.currentRoomId));
-  _cb.text?.(textStroke);               // ⚡ Callback local pour redessiner immédiatement
+  socketService.send(WhiteboardPayloadFactory.createText(textStroke, AppState.currentRoomId));
+  _cb.text?.(textStroke);               // Ã¢Å¡Â¡ Callback local pour redessiner immÃƒÂ©diatement
   },
   setTool(tool) {
   this._currentTool = tool;
-  // ⚡ Optionnel : notifier le canvas pour redessiner si nécessaire
+  // Ã¢Å¡Â¡ Optionnel : notifier le canvas pour redessiner si nÃƒÂ©cessaire
   if (this._canvas) this._canvas.setTool?.(tool);
   },
   undo() {
@@ -197,7 +197,7 @@ export const WhiteboardService = {
     _paths = _paths.filter(p => p.id !== path.id);
 
     _cb.undo?.(path);
-    SocketService.send(WhiteboardPayloadFactory.createUndo(_myUserId, AppState.currentRoomId));
+    socketService.send(WhiteboardPayloadFactory.createUndo(_myUserId, AppState.currentRoomId));
   },
 
   redo() {
@@ -208,7 +208,7 @@ export const WhiteboardService = {
     _paths.push(path);
 
     _cb.redo?.(path);
-    SocketService.send(WhiteboardPayloadFactory.createRedo(_myUserId, AppState.currentRoomId));
+    socketService.send(WhiteboardPayloadFactory.createRedo(_myUserId, AppState.currentRoomId));
   },
 
   clearBoard() {
@@ -217,7 +217,7 @@ export const WhiteboardService = {
     _redoStack = _redoStack.filter(p => p.authorId !== _myUserId);
 
     _cb.clear?.();
-    SocketService.send(WhiteboardPayloadFactory.createClear(AppState.currentRoomId));
+    socketService.send(WhiteboardPayloadFactory.createClear(AppState.currentRoomId));
   },
 
   getPaths() {
@@ -228,3 +228,10 @@ export const WhiteboardService = {
     this.resetSession();
   }
 };
+
+
+// Forçage de la visibilité globale
+if (typeof window !== 'undefined') {
+    window.WhiteboardService = WhiteboardService;
+    console.log("🚀 WhiteboardService exposé globalement sur window");
+}

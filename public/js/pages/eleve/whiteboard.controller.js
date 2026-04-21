@@ -56,3 +56,4 @@ export class WhiteboardController {
     this.canvas.redraw();
   }
 }
+

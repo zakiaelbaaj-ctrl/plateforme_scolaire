@@ -1,4 +1,4 @@
-import { SocketService } from "/js/core/socket.service.js";
+import { socketService } from "/js/core/socket.service.js";
 import { WhiteboardPayloadFactory } from "./whiteboard.contract.js";
 import { WhiteboardSocketEvents as SocketEvents } from "./whiteboard.contract.js";
 
@@ -14,23 +14,23 @@ export class WhiteboardSocket {
   }
 
   sendStroke(path) {
-    SocketService.send(WhiteboardPayloadFactory.createStroke(path, this.roomId));
+    socketService.send(WhiteboardPayloadFactory.createStroke(path, this.roomId));
   }
 
   sendUndo(path) {
-    SocketService.send(WhiteboardPayloadFactory.createUndo(path, this.roomId));
+    socketService.send(WhiteboardPayloadFactory.createUndo(path, this.roomId));
   }
 
   sendRedo(path) {
-    SocketService.send(WhiteboardPayloadFactory.createRedo(path, this.roomId));
+    socketService.send(WhiteboardPayloadFactory.createRedo(path, this.roomId));
   }
 
   sendClear() {
-    SocketService.send(WhiteboardPayloadFactory.createClear(this.roomId));
+    socketService.send(WhiteboardPayloadFactory.createClear(this.roomId));
   }
 
   sendSyncRequest() {
-    SocketService.send(WhiteboardPayloadFactory.createSyncRequest(this.roomId));
+    socketService.send(WhiteboardPayloadFactory.createSyncRequest(this.roomId));
   }
 
   _registerSocketListeners() {
@@ -66,13 +66,14 @@ export class WhiteboardSocket {
           break;
       }
     };
-    SocketService.onMessage(this._listener);
+    socketService.onMessage(this._listener);
   }
 
   destroy() {
     if (this._listener) {
-      SocketService.offMessage(this._listener);
+      socketService.offMessage(this._listener);
       this._listener = null;
     }
   }
 }
+

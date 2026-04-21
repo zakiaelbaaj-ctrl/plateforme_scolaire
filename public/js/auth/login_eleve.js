@@ -1,25 +1,31 @@
 // ============================================
-// 🔐 LOGIN ELEVE
+// ðŸ” LOGIN ELEVE
 // ============================================
 
 // 1️⃣ Vérifier si quelqu'un est déjà connecté
 const existingToken = localStorage.getItem("token");
-const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+let currentUser = null;
 
-if (existingToken && currentUser) {
-    // ✅ Déjà connecté -> Rediriger selon le rôle stocké
-    if (currentUser.role === "eleve") {
-        window.location.replace("../../pages/eleve/dashboard.html");
-    } else if (currentUser.role === "prof") {
-        window.location.replace("../../pages/professeur/dashboard.html");
-    }
-    // Si on est redirigé, le reste du script s'arrête ici.
-} else {
-    // 2️⃣ Si PAS de token ou données corrompues -> On nettoie TOUT pour repartir à zéro
-    // C'est ici que le nettoyage est utile
-    localStorage.clear(); 
+try {
+    currentUser = JSON.parse(localStorage.getItem("currentUser"));
+} catch (e) {
+    console.error("Erreur lecture session", e);
 }
 
+if (existingToken && currentUser) {
+    if (currentUser.role === "eleve") {
+        // ✅ C'est un élève déjà connecté, on l'envoie sur son dashboard
+        window.location.replace("../../pages/eleve/dashboard.html");
+    } else {
+        // ⚠️ Un professeur (ou autre) arrive sur le login élève !
+        // On détruit sa session prof pour éviter les bugs et le laisser se connecter en élève.
+        console.warn("Session non-élève détectée. Déconnexion automatique.");
+        localStorage.clear();
+    }
+} else {
+    // 2️⃣ Si PAS de token ou données corrompues -> On nettoie TOUT pour repartir à zéro
+    localStorage.clear();
+}
 document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("loginEleveForm");
   const errorDiv = document.getElementById("errorDiv");
@@ -35,10 +41,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const matiere = document.getElementById("matiere")?.value;
     const niveau = document.getElementById("niveau")?.value;
      
-    // Vérification optionnelle : si l'élève choisit "Universitaire", 
-// tu peux ajouter un log pour déboguer
+    // VÃ©rification optionnelle : si l'Ã©lÃ¨ve choisit "Universitaire", 
+// tu peux ajouter un log pour dÃ©boguer
     if (niveau === "universitaire") {
-    console.log("🎓 Mode Universitaire détecté pour l'utilisateur");
+    console.log("ðŸŽ“ Mode Universitaire dÃ©tectÃ© pour l'utilisateur");
    }
     if (!username || !password) {
       errorDiv.textContent = "Veuillez remplir tous les champs.";
@@ -48,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
     errorDiv.textContent = "Connexion en cours..."; // Feedback visuel
 
     try {
-      // 🔹 Détection dynamique de l'URL (Local vs Render)
+      // ðŸ”¹ DÃ©tection dynamique de l'URL (Local vs Render)
       const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
         ? "http://localhost:4000" 
         : "https://plateforme-scolaire-1.onrender.com";
@@ -66,29 +72,29 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       });
 
-      // 🔹 Gestion sécurisée du JSON
+      // ðŸ”¹ Gestion sÃ©curisÃ©e du JSON
       const data = await response.json();
-      console.log("Réponse serveur complète:", data);
+      console.log("RÃ©ponse serveur complÃ¨te:", data);
 
       if (!response.ok) {
-        throw new Error(data.message || "Échec de la connexion");
+        throw new Error(data.message || "Ã‰chec de la connexion");
       }
-// ✅ Stockage sécurisé
+// âœ… Stockage sÃ©curisÃ©
 if (data.accessToken) {
     // 1. On stocke les jetons
     localStorage.setItem("token", data.accessToken);
     localStorage.setItem("refreshToken", data.refreshToken || "");
     
-    // 2. On stocke l'objet utilisateur complet (contient id, nom, rôle, etc.)
+    // 2. On stocke l'objet utilisateur complet (contient id, nom, rÃ´le, etc.)
     localStorage.setItem("currentUser", JSON.stringify(data.user));
     
-    // 3. On stocke le niveau (spécifique à l'élève)
+    // 3. On stocke le niveau (spÃ©cifique Ã  l'Ã©lÃ¨ve)
     if (niveau) {
         localStorage.setItem("userLevel", niveau);
     }
 
-    // 🚀 REDIRECTION DYNAMIQUE SELON LE RÔLE
-    // On récupère le rôle directement depuis l'objet user renvoyé par le backend
+    // ðŸš€ REDIRECTION DYNAMIQUE SELON LE RÃ”LE
+    // On rÃ©cupÃ¨re le rÃ´le directement depuis l'objet user renvoyÃ© par le backend
     const userRole = data.user.role; 
 
     if (userRole === "eleve") {
@@ -96,18 +102,18 @@ if (data.accessToken) {
     } else if (userRole === "prof") {
         window.location.replace("../../pages/professeur/dashboard.html");
     } else {
-        console.error("Rôle inconnu :", userRole);
+        console.error("RÃ´le inconnu :", userRole);
         alert("Erreur de configuration de compte.");
     }
 
 } else {
-    throw new Error("Erreur : Token non reçu du serveur.");
+    throw new Error("Erreur : Token non reÃ§u du serveur.");
 }
     } catch (error) {
-      console.error("❌ LOGIN ERROR:", error);
+      console.error("âŒ LOGIN ERROR:", error);
       // "Failed to fetch" devient un message plus clair pour l'utilisateur
       if (error.message === "Failed to fetch") {
-        errorDiv.textContent = "Impossible de contacter le serveur. Vérifiez votre connexion ou l'URL de l'API.";
+        errorDiv.textContent = "Impossible de contacter le serveur. VÃ©rifiez votre connexion ou l'URL de l'API.";
       } else {
         errorDiv.textContent = error.message;
       }
@@ -120,3 +126,4 @@ if (data.accessToken) {
     });
   }
 });
+

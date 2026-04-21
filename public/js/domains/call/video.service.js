@@ -1,167 +1,86 @@
-// ======================================================
-// VIDEO DOMAIN SERVICE — TWILIO LOGIC
-// ======================================================
-
-import { AppState } from "/js/core/state.js";
-
-// ✅ Callbacks vers CallService
-const _cb = {
-  localTrack:   null,
-  remoteTracks: null,
-  disconnected: null,
-};
+import { CallStateMachine } from "./call.state.machine.js";
 
 export const VideoService = {
+  room: null,
 
-  // ============================
-  // ABONNEMENTS (enregistrés par CallService)
-  // ============================
-
-  onLocalTrack(cb)   { _cb.localTrack   = cb; },
-  onRemoteTracks(cb) { _cb.remoteTracks = cb; },
-  onDisconnected(cb) { _cb.disconnected = cb; },
-
-
-  // ============================
-  // CONNECT TO TWILIO ROOM
-  // ============================
-
-  async connect(token, roomName) {
-    console.log("🔌 VideoService.connect appelé", { roomName });
-
-    if (!window.Twilio?.Video) {
-      console.error("❌ Twilio SDK non chargé");
-      return null;
-    }
-
+  async connect(token) {
+    console.log("?? Tentative de connexion vid�o...");
     try {
-      console.log("⏳ Twilio.Video.connect en cours...");
+      this.room = await Twilio.Video.connect(token, { audio: true, video: { width: 640 } });
+      console.log("? Connect� � Twilio Room:", this.room.name);
 
-      const room = await window.Twilio.Video.connect(token, {
-        name:  roomName,
-        audio: true,
-        video: true,
-        networkQuality: true,      // ← ajouter
-        reconnectOnNetworkError: true  // ← ajouter
+      this.room.localParticipant.tracks.forEach(publication => {
+        if (publication.track) this.attachTrack(publication.track, "local");
       });
 
-      console.log("✅ Twilio connecté, room:", room.name);
-
-      AppState.twilioRoom = room;
-      CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
-
-      // ✅ Émet les tracks locales immédiatement
-      room.localParticipant.tracks.forEach(publication => {
-        if (publication.track) {
-          _cb.localTrack?.(publication.track);
-        }
+      this.room.participants.forEach(participant => {
+        participant.tracks.forEach(pub => {
+          if (pub.isSubscribed && pub.track) this.attachTrack(pub.track, "remote");
+        });
+        participant.on("trackSubscribed", track => this.attachTrack(track, "remote"));
       });
 
-      // ✅ Émet les tracks des participants déjà présents
-      this._emitRemoteTracks(room);
-
-      // ✅ Écoute les nouveaux participants
-          // ✅ APRÈS — gère les participants déjà présents ET les nouveaux
-
-// Participants déjà présents au moment de la connexion
-room.participants.forEach(participant => {
-  participant.on("trackSubscribed", () => {
-    this._emitRemoteTracks(room);
-  });
-
-  // ✅ Tracks déjà publiées avant l'abonnement
-  participant.tracks.forEach(publication => {
-    if (publication.isSubscribed && publication.track) {
-      this._emitRemoteTracks(room);
-    }
-  });
-});
-
-// Nouveaux participants qui arrivent après
-room.on("participantConnected", participant => {
-  participant.on("trackSubscribed", () => {
-    this._emitRemoteTracks(room);
-  });
-});
-
-      // ✅ Écoute les départs de participants
-      room.on("participantDisconnected", () => {
-        this._emitRemoteTracks(room);
+      this.room.on("participantConnected", p => {
+        p.on("trackSubscribed", track => this.attachTrack(track, "remote"));
       });
 
-      // ✅ Écoute la déconnexion de la room
-      // ✅ Après
-room.on("disconnected", (room, error) => {
-  AppState.twilioRoom = null;
-  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
+      this.room.on("disconnected", () => {
+        CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+      });
 
-  if (error) {
-    console.warn("⚠️ Twilio déconnecté:", error.message);
+    } catch (e) { console.error("? Erreur VideoService:", e); }
+  },
 
-    // Reconnexion automatique si déconnexion réseau
-    if (error.code === 53001 || error.code === 53405) {
-      console.log("🔄 Tentative de reconnexion Twilio...");
-      setTimeout(() => {
-        VideoService.connect(token, roomName);
-      }, 2000);
+  attachTrack(track, side, attempts = 0) {
+    if (track.kind !== "video" && track.kind !== "audio") return;
+
+    const containerId = side === "local"
+      ? (document.getElementById("localVideoContainer") ? "localVideoContainer" : "localVideo")
+      : (document.getElementById("remoteVideoContainer") ? "remoteVideoContainer" : "remoteVideo");
+
+    const container = document.getElementById(containerId);
+
+    if (!container) {
+      if (attempts < 10) setTimeout(() => this.attachTrack(track, side, attempts + 1), 500);
       return;
     }
-  }
 
-  _cb.disconnected?.();
-});
+    console.log("?? Flux attach� �:", containerId);
 
-      return room;
-
-    } catch (error) {
-      console.error("❌ Erreur Twilio.Video.connect:", error);
-      CallStateMachine.setState(CallStateMachine.STATES.IDLE);
-      return null;
+    if (track.kind === "audio") {
+      const el = track.attach();
+      el.autoplay = true;
+      document.body.appendChild(el);
+      return;
+    }
+    if (container.tagName === "VIDEO") {
+      const newEl = track.attach();
+      newEl.autoplay = true;
+      newEl.playsInline = true;
+      newEl.muted = (side === "local");
+      newEl.style.cssText = "width:100%;height:100%;object-fit:cover;";
+      container.replaceWith(newEl);
+      newEl.id = containerId;
+    } else {
+      const existing = container.querySelector("video");
+      if (existing) existing.remove();
+      const el = track.attach();
+      el.autoplay = true;
+      el.playsInline = true;
+      el.muted = (side === "local");
+      el.style.cssText = "width:100%;height:100%;object-fit:cover;";
+      container.appendChild(el);
     }
   },
-
-
-  // ============================
-  // DISCONNECT
-  // ============================
 
   disconnect() {
-    const room = AppState.twilioRoom;
-    if (!room) return;
-
-    // ✅ Arrête les tracks locales — éteint caméra et micro
-    room.localParticipant.tracks.forEach(publication => {
-      publication.track?.stop();
-    });
-
-    try {
-      room.disconnect();
-    } catch (err) {
-      console.warn("⚠️ Erreur disconnect Twilio :", err);
-    }
-
-    AppState.twilioRoom = null;
-    CallStateMachine.setState(CallStateMachine.STATES.IDLE);
-  },
-
-
-  // ============================
-  // UTILITAIRES PRIVÉS
-  // ============================
-
-  // ✅ Collecte et émet toutes les tracks distantes actives
-  _emitRemoteTracks(room) {
-    const tracks = [];
-
-    room.participants.forEach(participant => {
-      participant.tracks.forEach(publication => {
-        if (publication.track) {
-          tracks.push(publication.track);
-        }
+    if (this.room) {
+      this.room.localParticipant.tracks.forEach(pub => {
+        if (pub.track) { pub.track.stop(); pub.unpublish(); }
       });
-    });
-
-    _cb.remoteTracks?.(tracks);
+      this.room.disconnect();
+      this.room = null;
+    }
+    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
   }
-
 };

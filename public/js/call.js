@@ -1,16 +1,16 @@
 // public/js/call.js
-// Gestion de l’appel Twilio Video pour call.html
+// Gestion de lâ€™appel Twilio Video pour call.html
 
 // --------------------------------------------------
-// Paramètres d'URL
+// ParamÃ¨tres d'URL
 // --------------------------------------------------
 const urlParams = new URLSearchParams(window.location.search);
 let roomName = urlParams.get("room");
-console.log("📌 Room détectée :", roomName);
+console.log("ðŸ“Œ Room dÃ©tectÃ©e :", roomName);
 let tokenFromUrl = urlParams.get("token") || null;
 
 // --------------------------------------------------
-// Références DOM
+// RÃ©fÃ©rences DOM
 // --------------------------------------------------
 const localVideoEl = document.getElementById("localVideo");
 const participantsContainer = document.getElementById("participantsContainer");
@@ -42,7 +42,7 @@ function getCurrentUser() {
 async function fetchTokenFromBackend() {
   const currentUser = getCurrentUser();
   if (!currentUser) {
-    alert("Utilisateur non authentifié. Retour au dashboard.");
+    alert("Utilisateur non authentifiÃ©. Retour au dashboard.");
     window.location.href = "/dashboard.html";
     return null;
   }
@@ -66,7 +66,7 @@ async function fetchTokenFromBackend() {
     const data = await res.json();
     return data.token || null;
   } catch (err) {
-    console.error("Erreur réseau token Twilio:", err);
+    console.error("Erreur rÃ©seau token Twilio:", err);
     return null;
   }
 }
@@ -94,22 +94,22 @@ function detachAllTracksFromElement(element) {
 // --------------------------------------------------
 async function startCall() {
   try {
-    // Récupération du token depuis le backend ou URL
+    // RÃ©cupÃ©ration du token depuis le backend ou URL
     const token = tokenFromUrl || await fetchTokenFromBackend();
     if (!token) return;
 
-    // Création des tracks locaux (audio + vidéo)
+    // CrÃ©ation des tracks locaux (audio + vidÃ©o)
     localTracks = await Twilio.Video.createLocalTracks({ audio: true, video: { width: 1280, height: 720 } });
 
     const localVideoTrack = localTracks.find(t => t.kind === "video");
     if (localVideoTrack) attachTrackToElement(localVideoTrack, localVideoEl);
 
-    // Connexion à la room Twilio
+    // Connexion Ã  la room Twilio
     room = await Twilio.Video.connect(token, { name: roomName, tracks: localTracks });
 
-    console.log("✅ Connecté à la room:", roomName);
+    console.log("âœ… ConnectÃ© Ã  la room:", roomName);
 
-    // Gérer les participants déjà présents
+    // GÃ©rer les participants dÃ©jÃ  prÃ©sents
     room.participants.forEach(handleParticipantConnected);
 
     // Nouveaux participants
@@ -119,7 +119,7 @@ async function startCall() {
 
   } catch (err) {
     console.error("Erreur connexion Twilio:", err);
-    alert("Erreur connexion visioconférence. Vérifie la console.");
+    alert("Erreur connexion visioconfÃ©rence. VÃ©rifie la console.");
   }
 }
 
@@ -127,14 +127,14 @@ async function startCall() {
 // Gestion participants
 // --------------------------------------------------
 function handleParticipantConnected(participant) {
-  console.log("Participant connecté:", participant.identity);
+  console.log("Participant connectÃ©:", participant.identity);
 
   const participantDiv = document.createElement("div");
   participantDiv.id = participant.sid;
   participantDiv.className = "participant-video";
   participantsContainer.appendChild(participantDiv);
 
-  // Tracks déjà publiés
+  // Tracks dÃ©jÃ  publiÃ©s
   participant.tracks.forEach(pub => {
     if (pub.isSubscribed && pub.track.kind === "video") attachTrackToElement(pub.track, participantDiv);
   });
@@ -149,7 +149,7 @@ function handleParticipantConnected(participant) {
 }
 
 function handleParticipantDisconnected(participant) {
-  console.log("Participant déconnecté:", participant.identity);
+  console.log("Participant dÃ©connectÃ©:", participant.identity);
   const participantDiv = document.getElementById(participant.sid);
   if (participantDiv) participantDiv.remove();
 }
@@ -211,6 +211,7 @@ leaveBtn.addEventListener("click", leaveRoom);
 // Lancement automatique
 // --------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("📞 Initialisation de la visioconférence Twilio...");
+  console.log("ðŸ“ž Initialisation de la visioconfÃ©rence Twilio...");
   startCall();
 });
+

@@ -1,16 +1,19 @@
 // ======================================================
-// DASHBOARD ÉLÈVE — UI PURE
+// DASHBOARD ELEVE _ UI PURE
 // ======================================================
 
 import { AppState }          from "/js/core/state.js";
-import { SocketService }     from "/js/core/socket.service.js";
+import { socketService }     from "/js/core/socket.service.js";
 import { SessionService }    from "/js/domains/session/session.service.js";
 import { ChatService }       from "/js/domains/chat/chat.service.js";
 import { CallService }       from "/js/domains/call/call.service.js";
+import { VideoService }      from "/js/domains/call/video.service.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
 import { DocumentService } from "/js/domains/document/document.service.js";
 import { addDocument } from "/js/ui/components/document.view.js";
+import { initUIRenderers } from "/js/modules/ui/uiRenderers.js";
+import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
 import { getUserProfile } from "../../services/user.service.js";
 import { handleAllStripeReturns, openSetupSession, initStripeOnboarding } from '/js/services/stripe.service.js';
 
@@ -20,19 +23,19 @@ import { handleAllStripeReturns, openSetupSession, initStripeOnboarding } from '
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("🚀 Initialisation du Dashboard...");
 
-  // ✅ Lire AVANT nettoyage
+  // Lire AVANT nettoyage
   const urlParams = new URLSearchParams(window.location.search);
   const stripeStatus = urlParams.get("stripe");
 
-  // ✅ Puis traiter Stripe UNE seule fois
+  // Puis traiter Stripe UNE seule fois
   handleAllStripeReturns();
 
-  // ✅ Si succès → refresh après webhook
+  // Si succÃƒÂ¨s Ã¢â€ â€™ refresh après webhook
   if (stripeStatus === "success") {
     setTimeout(refreshUI, 2500);
   }
 
-  // 🔓 Débloquer audio
+  // Débloquer audio
   document.addEventListener("click", () => {
     const audio = document.getElementById("incomingCallSound");
     if (audio) { 
@@ -41,7 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }, { once: true });
 
-  // 👤 User
+  // User
   const userData = await getUserProfile();
   
   if (!userData) {
@@ -49,22 +52,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  AppState.currentUser = userData;
+  AppState.setCurrentUser(userData);
   localStorage.setItem("currentUser", JSON.stringify(userData));
   AppState.token = localStorage.getItem("token");
-  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
+  AppState.setCallState(null);
 
-  // 🎨 UI
+  // Initialisation de l'UI
   renderCurrentUserInfo(userData);
 
-  // 🔌 WebSocket
-  SocketService.connect();
-  SocketService.onMessage((data) => {
-    SessionService._handleWs(data);
-  });
-
-  // 🔗 Bind
+  // WebSocket
+  const _wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const _wsToken = localStorage.getItem("token") ?? AppState.token ?? "";
+  if (!_wsToken) {
+  console.warn("⚠️ Aucun token WebSocket");
+}
+  socketHandlerEleve.init();
+  socketService.connect(`${_wsProtocol}//${window.location.host}?token=${_wsToken}`);
+  
+  // Bind
   bindUI();
+   initUIRenderers();
   subscribeToDomains();
 
 
@@ -78,29 +85,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     function subscribeToDomains() {
 
   // ================= SESSION =================
-   SessionService.init((event) => {
-  if (event.type === "onlineProfessors") {
-    renderProfList(event.profs);
-  }
-
-  if (event.type === "sessionStarted") {
-    WhiteboardService.initCanvas("whiteboard-canvas", event.roomId);
-  }
-
-  // ⚡ Gestion utilisateur qui quitte
-  if (event.type === "userLeft") {
-    const listEl = document.getElementById("remote-users");
-    if (!listEl) return;
-    const el = listEl.querySelector(`[data-user-id="${event.userId}"]`);
-    if (el) el.remove();
-    updateCallStatus(`${event.userName || "Utilisateur"} a quitté la session`);
-  }
+  AppState.on('session:start', (session) => {
+    WhiteboardService.initCanvas('whiteboard-canvas', session?.roomId);
 });
 
   // ================= CHAT =================
-  // ✅ Un seul abonnement, ici, avec appendMessage
+  // Un seul abonnement, ici, avec appendMessage
   ChatService.onMessage((msg) => {
-    appendMessage(msg.sender, msg.text);
+    if (!msg?.text) return;
+   appendMessage(msg.sender, msg.text);
   });
 
   // ================= WHITEBOARD =================
@@ -121,45 +114,30 @@ WhiteboardService.onText((textStroke) => {
 });
 
   // ================= CALL =================
-  CallService.onCallSent(() => {
-    updateCallStatus("Appel en cours…");
+  AppState.on('ui:updateTools', (canUse) => { 
+  AppState.canUseTools = canUse;
+  updateToolButtons();
+});
+  AppState.on('callState:change', (state) => {
+    switch (state) {
+      case 'calling':  updateCallStatus('Appel en cours...'); break;
+      case 'ringing':  updateCallStatus('Appel entrant...'); break;
+      case 'inCall':   updateCallStatus('En communication'); break;
+      case null:
+      default:         cleanupSession('Session terminee'); break;
+    }
   });
+  AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
+  AppState.on('video:connected',    ()       => updateCallStatus('En communication'));
+  AppState.on("documents:new", (doc) => {
+  console.log("🔥 EVENT documents:new déclenché", doc);
 
-  CallService.onCallAccepted(() => {
-  updateCallStatus("Connexion en cours…");
+  addDocument({
+    id:       doc.id ?? doc.fileName,
+    name:     doc.fileName ?? doc.name,
+    fileData: doc.fileData,
+    url:      doc.url ?? doc.fileUrl ?? null
   });
-
-   CallService.onConnected(() => {
-  updateCallStatus("En communication");
-  SessionService.startTimer?.(updateTimerUI);
- });
-  CallService.onCallRejected(() => {
-    updateCallStatus("Appel refusé");
-  });
-
-  CallService.onCallEnded(() => {
-    cleanupSession("Session terminée");
-  });
-
-  CallService.onLocalTrack((track) => {
-    attachLocalVideo(track);
-  });
-
-  CallService.onRemoteTracks((tracks) => {
-    attachRemoteTracks(tracks);
-  });
-
-  CallService.onDisconnected(() => {
-    cleanupSession("Déconnexion vidéo");
-  });
-  DocumentService.onDocument((doc) => {
-    console.log("📄 doc.fileData:", doc.fileData?.substring(0, 50)); 
-    addDocument({
-       id:       doc.id ?? doc.fileName,
-  name:     doc.fileName ?? doc.name,
-  fileData: doc.fileData,
-  url:      doc.url ?? doc.fileUrl ?? null
-      });
 });
 }
 // ======================================================
@@ -171,18 +149,16 @@ function bindUI() {
   document.getElementById("send-msg")?.addEventListener("click", sendChat);
 
   document.getElementById("chat-input")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") sendChat();
+    if (e.key === "Enter" && e.target.value.trim()) sendChat();
   });
 
   document.getElementById("send-file")?.addEventListener("click", sendDocument);
 
   document.getElementById("logout-btn")?.addEventListener("click", () => {
-    CallService.disconnectTwilio();
+    VideoService.disconnect();
     localStorage.clear();
     window.location.href = "/pages/eleve/login.html";
   });
-
-  document.getElementById("wb-fullscreen-btn")?.addEventListener("click", toggleWhiteboardFullscreen);
 
   document.getElementById("end-session-btn")?.addEventListener("click", () => {
   CallService.endCall(); // informe le serveur
@@ -231,20 +207,6 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
 });
 
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", toggleWhiteboardFullscreen);
- // ✅ AJOUT ICI (TRÈS IMPORTANT)
-  document.addEventListener("click", async (e) => {
-    if (e.target.id === "stripe-setup-btn") {
-      console.log("🔥 Bouton Stripe cliqué");
-
-      const btn = e.target;
-      btn.disabled = true;
-      btn.innerHTML = "⏳ Connexion sécurisée...";
-
-      await openSetupSession();
-
-      btn.disabled = false;
-    }
-  });
 
 }
 // ======================================================
@@ -279,7 +241,7 @@ function renderProfList(profs = []) {
     const li   = document.createElement("li");
     li.className = "prof-item";
 
-    // ✅ textContent — plus de XSS
+    // Ã¢Å“â€¦ textContent Ã¢â‚¬â€ plus de XSS
     const span = document.createElement("span");
     span.textContent = `${prof.prenom} ${prof.nom}`;
 
@@ -301,13 +263,20 @@ function renderProfList(profs = []) {
 // DOCUMENT
 // ======================================================
 
+let isSendingDocument = false;
+
 function sendDocument() {
   const input = document.getElementById("file-input");
   if (!input?.files?.[0]) return;
 
-  SessionService.sendDocument(input.files[0]);
-}
+  if (isSendingDocument) return;
+  isSendingDocument = true;
 
+  SessionService.sendDocument(input.files[0]);
+  input.value = "";
+
+  setTimeout(() => isSendingDocument = false, 1000);
+}
 
 // ======================================================
 // WHITEBOARD UI
@@ -318,6 +287,7 @@ function drawStroke(stroke) {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
+  if (!ctx) return;
   ctx.strokeStyle = stroke.color;
   ctx.lineWidth   = stroke.size;
   ctx.lineCap     = "round";
@@ -335,6 +305,10 @@ function drawText(textStroke) {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  if (!textStroke?.text) return;
+
   ctx.fillStyle = textStroke.color;
   ctx.font = `${textStroke.size * 5}px sans-serif`;
   ctx.fillText(textStroke.text, textStroke.x, textStroke.y);
@@ -346,6 +320,7 @@ function clearCanvas() {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
+if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
@@ -395,7 +370,7 @@ function attachRemoteTracks(tracks) {
     if (track.kind === "audio") {
       const audio = track.attach();
       audio.autoplay = true;
-      document.body.appendChild(audio);
+      audio.onended = () => audio.remove();
     }
   });
 }
@@ -410,7 +385,7 @@ function updateCallStatus(text) {
 // ======================================================
 
 function cleanupSession(message) {
-  CallService.disconnectTwilio();
+  VideoService.disconnect();
   SessionService.stopTimer?.();
 
   updateCallStatus(message);
@@ -428,7 +403,7 @@ function cleanupSession(message) {
   WhiteboardService.reset?.();
   resetChat();
 }
-// ✅ Ajouter avant la dernière fonction renderCurrentUserInfo
+// ✔ Ajouter avant la derniÃƒÂ¨re fonction renderCurrentUserInfo
 function updateTimerUI(time) {
   const el = document.getElementById("call-time");
   if (el) el.textContent = time;
@@ -447,13 +422,15 @@ function updateToolButtons() {
 // ======================================================
 
 /**
- * Rafraîchit les données utilisateur depuis le serveur et met à jour l'UI
+ * Rafraichit les données utilisateur depuis le serveur et met ÃƒÂ  jour l'UI
  */
 async function refreshUI() {
   console.log("🔄 Actualisation des données utilisateur...");
+
   const userData = await getUserProfile();
+
   if (userData) {
-    AppState.currentUser = userData;
+    AppState.setCurrentUser(userData);
     renderCurrentUserInfo(userData);
   }
 }
@@ -465,7 +442,7 @@ function renderCurrentUserInfo(user) {
   if (!user) return;
   const { prenom, nom, ville, pays, role, has_payment_method, stripe_onboarding_complete } = user;
 
-  // --- MISE À JOUR DES ÉLÉMENTS FIXES (TEXTE) ---
+  // --- MISE Ãƒâ‚¬ JOUR DES Ãƒâ€°LÃƒâ€°MENTS FIXES (TEXTE) ---
   const nameEl = document.getElementById("eleve-name") || document.getElementById("user-full-name");
   const cityEl = document.getElementById("eleve-location") || document.getElementById("user-city");
   
@@ -478,21 +455,21 @@ function renderCurrentUserInfo(user) {
 
   let stripeHTML = "";
 
-  // Cas ÉLÈVE : Inscription d'une carte bancaire
+  // Cas Ãƒâ€°LÃƒË†VE : Inscription d'une carte bancaire
   if (role === "eleve") {
     if (has_payment_method) {
       stripeHTML = `
         <div class="stripe-box success">
-          <p>✅ <strong>Carte bancaire enregistrée</strong></p>
-          <p class="small">Votre moyen de paiement est prêt pour vos prochains cours.</p>
-          <button id="stripe-setup-btn" class="btn-link">Mettre à jour ma carte</button>
+          <p>Ã¢Å“â€¦ <strong>Carte bancaire enregistrée</strong></p>
+          <p class="small">Votre moyen de paiement est prÃƒÂªt pour vos prochains cours.</p>
+          <button id="stripe-setup-btn" class="btn-link">Mettre ÃƒÂ  jour ma carte</button>
         </div>`;
     } else {
       stripeHTML = `
         <div class="stripe-box warning">
-          <p>⚠️ <strong>Paiement requis</strong></p>
+          <p>Ã¢Å¡Â Ã¯Â¸Â <strong>Paiement requis</strong></p>
           <p class="small">Veuillez enregistrer une carte pour pouvoir appeler un professeur.</p>
-          <button id="stripe-setup-btn" class="btn-primary">💳 Ajouter une carte bancaire</button>
+          <button id="stripe-setup-btn" class="btn-primary">Ã°Å¸â€™Â³ Ajouter une carte bancaire</button>
         </div>`;
     }
   } 
@@ -501,15 +478,15 @@ function renderCurrentUserInfo(user) {
     if (stripe_onboarding_complete) {
       stripeHTML = `
         <div class="stripe-box success">
-          <p>✅ <strong>Compte Stripe configuré</strong></p>
-          <p class="small">Vous pouvez recevoir des paiements de vos élèves.</p>
+          <p>Ã¢Å“â€¦ <strong>Compte Stripe configuré</strong></p>
+          <p class="small">Vous pouvez recevoir des paiements de vos élÃƒÂ¨ves.</p>
         </div>`;
     } else {
       stripeHTML = `
         <div class="stripe-box warning">
-          <p>💰 <strong>Revenus en attente</strong></p>
+          <p>Ã°Å¸â€™Â° <strong>Revenus en attente</strong></p>
           <p class="small">Configurez votre compte pour recevoir vos virements.</p>
-          <button id="stripe-onboarding-btn" class="btn-primary">⚙️ Activer Stripe Connect</button>
+          <button id="stripe-onboarding-btn" class="btn-primary">Ã¢Å¡â„¢Ã¯Â¸Â Activer Stripe Connect</button>
         </div>`;
     }
   }
@@ -518,7 +495,7 @@ function renderCurrentUserInfo(user) {
   infoContainer.innerHTML = `
     <div class="user-card">
       <div class="user-card__header">
-        <h3 class="card-title">💳 Paramètres de paiement</h3>
+        <h3 class="card-title">Ã°Å¸â€™Â³ ParamÃƒÂ¨tres de paiement</h3>
       </div>
       <div class="user-card__body">
         <div class="user-card__stripe-content">
@@ -528,22 +505,45 @@ function renderCurrentUserInfo(user) {
       </div>
     </div>
   `;
+// --- ATTACHEMENT SÉCURISÉ DES ÉVÉNEMENTS ---
+const setupBtn = document.getElementById("stripe-setup-btn");
+console.log("🔍 setupBtn =", setupBtn);
 
-  // --- ATTACHEMENT SÉCURISÉ DES ÉVÉNEMENTS ---
-  const setupBtn = document.getElementById("stripe-setup-btn");
-  console.log("🔍 setupBtn =", setupBtn);
-  if (setupBtn) {
-    setupBtn.addEventListener("click", async (e) => {
-      const btn = e.currentTarget;
-      btn.disabled = true;
-      btn.innerHTML = "⏳ Connexion sécurisée...";
-      await openSetupSession(); // Importé de stripe.service.js
+if (setupBtn) {
+  setupBtn.replaceWith(setupBtn.cloneNode(true));
+  const cleanBtn = document.getElementById("stripe-setup-btn");
+
+  cleanBtn.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+
+    const originalText = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = "⏳ Connexion sécurisée...";
+
+    try {
+      await openSetupSession();
+    } catch (err) {
+      console.error("Erreur Stripe:", err);
+      btn.innerHTML = "❌ Erreur, réessayer";
+    } finally {
       btn.disabled = false;
-    });
-  }
+
+      // optionnel : restaurer le texte si erreur
+      if (btn.innerHTML.includes("Erreur")) {
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+        }, 2000);
+      }
+    }
+  });
+}
 
   const onboardingBtn = document.getElementById("stripe-onboarding-btn");
   if (onboardingBtn) {
     onboardingBtn.addEventListener("click", initStripeOnboarding);
   }
 }
+
+
+window.renderProfList = renderProfList;

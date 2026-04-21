@@ -12,7 +12,7 @@ export class WhiteboardCanvas {
   }
 
   // ============================
-  // HELPER COORDONNÉES
+  // HELPER COORDONNÃ‰ES
   // ============================
 
   _getCanvasPos(e) {
@@ -64,7 +64,7 @@ export class WhiteboardCanvas {
   }
 
   // ============================
-  // DESSIN TEMPS RÉEL
+  // DESSIN TEMPS RÃ‰EL
   // ============================
 
   _drawSegment(x, y) {
@@ -118,3 +118,4 @@ export class WhiteboardCanvas {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }
+

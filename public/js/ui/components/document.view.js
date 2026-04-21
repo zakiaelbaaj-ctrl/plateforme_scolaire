@@ -20,7 +20,7 @@ export function addDocument(doc) {
 
   const btn = document.createElement("button");
   btn.className = "document-link";
-  btn.textContent = "Télécharger";
+  btn.textContent = "TÃ©lÃ©charger";
   btn.addEventListener("click", () => {
     const link = document.createElement("a");
     link.href = doc.fileData ?? doc.url;
@@ -32,3 +32,4 @@ export function addDocument(doc) {
   item.appendChild(btn);
   container.appendChild(item);
 }
+

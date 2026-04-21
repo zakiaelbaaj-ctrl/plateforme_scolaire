@@ -1,14 +1,14 @@
 // ======================================================
-// DOCUMENT DOMAIN SERVICE — LOGIQUE MÉTIER PURE
+// DOCUMENT DOMAIN SERVICE â€” LOGIQUE MÃ‰TIER PURE
 // ======================================================
 
-import { SocketService } from "/js/core/socket.service.js";
+import { socketService } from "/js/core/socket.service.js";
 import { AppState }      from "/js/core/state.js";
 
 export const DocumentService = {
 
   // --------------------------------------------------
-  // SYSTÈME D'ABONNEMENT
+  // SYSTÃˆME D'ABONNEMENT
   // --------------------------------------------------
 
   _listeners: [],
@@ -24,7 +24,7 @@ export const DocumentService = {
   },
 
   // --------------------------------------------------
-  // ENVOI DOCUMENT (élève → serveur)
+  // ENVOI DOCUMENT (Ã©lÃ¨ve â†’ serveur)
   // --------------------------------------------------
 
   send(file) {
@@ -37,9 +37,9 @@ export const DocumentService = {
         ? `${AppState.currentUser.prenom ?? ""} ${AppState.currentUser.nom ?? ""}`.trim()
         : "Utilisateur";
 
-      console.log("🟢 Envoi document:", file.name, AppState.currentRoomId, "sender:", userName);
+      console.log("ðŸŸ¢ Envoi document:", file.name, AppState.currentRoomId, "sender:", userName);
 
-      SocketService.send({
+      socketService.send({
         type: "document",
         roomId: AppState.currentRoomId,
         userName,
@@ -53,25 +53,25 @@ export const DocumentService = {
   },
 
   // --------------------------------------------------
-  // RÉCEPTION DOCUMENT
+  // RÃ‰CEPTION DOCUMENT
   // --------------------------------------------------
 
   async handleEvent(data) {
-    console.log("🔍 handleEvent appelé, currentUser role:", AppState.currentUser?.role);
+    console.log("ðŸ” handleEvent appelÃ©, currentUser role:", AppState.currentUser?.role);
   const { userId, userName, fileName, fileType, fileData } = data;
-   console.log("📄 fileData reçu:", fileData?.substring(0, 100));
+   console.log("ðŸ“„ fileData reÃ§u:", fileData?.substring(0, 100));
   const finalUser = userName?.trim() || "Utilisateur inconnu";
   const finalType = fileType || guessFileType(fileName);
 
-  console.log("📥 Document reçu:", {
+  console.log("ðŸ“¥ Document reÃ§u:", {
     fileName,
     from: userId,
     userName: finalUser
   });
 
-  // 🔹 Télécharger automatiquement le document
+  // ðŸ”¹ TÃ©lÃ©charger automatiquement le document
   await this._downloadFile(fileName, fileData);
-  // 🔹 Notifier l'UI si besoin
+  // ðŸ”¹ Notifier l'UI si besoin
   this._notify({
     userName: finalUser,
     fileName,
@@ -81,13 +81,13 @@ export const DocumentService = {
 },
 
   // --------------------------------------------------
-  // PROF → ENVOI DOCUMENT CIBLÉ
+  // PROF â†’ ENVOI DOCUMENT CIBLÃ‰
   // --------------------------------------------------
 
   sendDocumentToEleve(doc, eleveId) {
     if (!doc || !eleveId || !AppState.currentRoomId) return;
 
-    SocketService.send({
+    socketService.send({
       type: "document",
       roomId: AppState.currentRoomId,
       targetUserId: eleveId,
@@ -99,10 +99,10 @@ export const DocumentService = {
   },
 
   // --------------------------------------------------
-  // TÉLÉCHARGEMENT LOCAL
+  // TÃ‰LÃ‰CHARGEMENT LOCAL
   // --------------------------------------------------
 
-  // APRÈS — à coller ici
+  // APRÃˆS â€” Ã  coller ici
 async _downloadFile(fileName, fileData) {
   let href = fileData;
   if (fileData.startsWith("http")) {
@@ -119,7 +119,7 @@ async _downloadFile(fileName, fileData) {
   if (href !== fileData) URL.revokeObjectURL(href);
 }
 
-}; // ← fermeture propre du service
+}; // â† fermeture propre du service
 
 
 // --------------------------------------------------
@@ -148,3 +148,4 @@ function guessFileType(name) {
 
   return "application/octet-stream";
 }
+

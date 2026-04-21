@@ -6,3 +6,4 @@ export const WhiteboardEvents = {
   BOARD_CLEARED: "whiteboard.board.cleared",
   SYNCED: "whiteboard.synced"
 };
+

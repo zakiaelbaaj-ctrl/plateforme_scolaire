@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorDiv = document.getElementById("errorDiv");
   const successDiv = document.getElementById("successDiv");
 
-  // 🔹 Détection dynamique de l'URL (Local vs Production)
+  // ðŸ”¹ DÃ©tection dynamique de l'URL (Local vs Production)
   const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:4000" 
     : "https://plateforme-scolaire-1.onrender.com";
@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (successDiv) {
-        successDiv.textContent = "✅ Inscription réussie ! Redirection...";
+        successDiv.textContent = "âœ… Inscription rÃ©ussie ! Redirection...";
         successDiv.style.display = "block";
         successDiv.classList.add("show");
       }
@@ -58,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 1500);
 
     } catch (err) {
-      console.error("❌ REGISTER ERROR:", err);
+      console.error("âŒ REGISTER ERROR:", err);
       const msg = err.message === "Failed to fetch" 
         ? "Le serveur est inaccessible." 
         : err.message;
@@ -68,9 +68,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showError(msg) {
     if (errorDiv) {
-      errorDiv.textContent = "❌ " + msg;
+      errorDiv.textContent = "âŒ " + msg;
       errorDiv.style.display = "block";
       errorDiv.classList.add("show");
     }
   }
 });
+

@@ -1,8 +1,8 @@
 /**
  * =====================================================
- * LOGIN.JS – Plateforme Scolaire (Frontend)
- * Version senior, sécurisée et compatible backend
- * Rôles : eleve | etudiant | prof
+ * LOGIN.JS â€“ Plateforme Scolaire (Frontend)
+ * Version senior, sÃ©curisÃ©e et compatible backend
+ * RÃ´les : eleve | etudiant | prof
  * =====================================================
  */
 
@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const sujetFormContainer = document.getElementById("sujetFormContainer");
 
   /* =====================================================
-     UI – Affichage conditionnel du champ Sujet
+     UI â€“ Affichage conditionnel du champ Sujet
   ===================================================== */
   function updateSujetVisibility(role) {
     if (["eleve", "etudiant"].includes(role)) {
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // On ne montre le champ Sujet que après le login
+  // On ne montre le champ Sujet que aprÃ¨s le login
   sujetFormContainer.style.display = "none";
 
   /* =====================================================
@@ -66,12 +66,12 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.href = "/dashboard.html";
         break;
       default:
-        showError("Rôle utilisateur non reconnu.");
+        showError("RÃ´le utilisateur non reconnu.");
     }
   }
 
   /* =====================================================
-     LOGIN – Fonction principale
+     LOGIN â€“ Fonction principale
   ===================================================== */
   async function login(username, password) {
     const res = await fetch(`${API_BASE}/login`, {
@@ -101,21 +101,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // 🔐 Appel backend
+      // ðŸ” Appel backend
       const data = await login(username, password);
-      // 🔍 DEBUG : ce que le backend renvoie réellement 
-      console.log("🔍 DATA REÇUE DU BACKEND :", data); 
-      console.log("🔍 ROLE EXACT REÇU :", data.role);
+      // ðŸ” DEBUG : ce que le backend renvoie rÃ©ellement 
+      console.log("ðŸ” DATA REÃ‡UE DU BACKEND :", data); 
+      console.log("ðŸ” ROLE EXACT REÃ‡U :", data.role);
 
       const backendRole = (data.user?.role || "").toLowerCase();
 
-      // ⚠️ Vérification du rôle côté backend
+      // âš ï¸ VÃ©rification du rÃ´le cÃ´tÃ© backend
       if (!["prof", "eleve", "etudiant"].includes(backendRole)) {
-        showError("Rôle utilisateur non reconnu côté serveur.");
+        showError("RÃ´le utilisateur non reconnu cÃ´tÃ© serveur.");
         return;
       }
 
-      // 👤 Création objet utilisateur
+      // ðŸ‘¤ CrÃ©ation objet utilisateur
       const user = {
         id: data.id,
         role: backendRole,
@@ -132,19 +132,20 @@ document.addEventListener("DOMContentLoaded", () => {
         loggedAt: new Date().toISOString()
       };
 
-      // 💾 Stockage local
+      // ðŸ’¾ Stockage local
       saveUserToStorage(user);
 
-      // 🚀 Affiche le champ Sujet si nécessaire (optionnel)
+      // ðŸš€ Affiche le champ Sujet si nÃ©cessaire (optionnel)
       updateSujetVisibility(backendRole);
 
-      // 🚀 Redirection intelligente
+      // ðŸš€ Redirection intelligente
       redirectByRole(backendRole);
 
     } catch (err) {
-      console.error("❌ LOGIN ERROR:", err);
+      console.error("âŒ LOGIN ERROR:", err);
       showError("Nom d'utilisateur ou mot de passe incorrect.");
     }
   });
 
 });
+

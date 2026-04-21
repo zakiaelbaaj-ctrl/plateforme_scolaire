@@ -1,17 +1,19 @@
 // ======================================================
-// DASHBOARD PROFESSEUR — UI PURE / DOMAIN-DRIVEN
+// DASHBOARD PROFESSEUR _ UI PURE / DOMAIN-DRIVEN
 // ======================================================
 
 import { AppState }          from "/js/core/state.js";
-import { SocketService }     from "/js/core/socket.service.js";
+import { socketService }     from "/js/core/socket.service.js";
 import { SessionService }    from "/js/domains/session/session.service.js";
 import { CallService }       from "/js/domains/call/call.service.js";
+import { VideoService }      from "/js/domains/call/video.service.js";
 import { ChatService }       from "/js/domains/chat/chat.service.js";
-import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
+import { WhiteboardService } from "../../domains/whiteboard/whiteboard.service.js";
 import { DocumentService }   from "/js/domains/document/document.service.js";
 import { addDocument }    from "/js/ui/components/document.view.js";
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
-import { getUserProfile } from "../../services/user.service.js"; // service fictif qui récupère le user connecté
+import { socketHandlerProf } from "/js/core/socket.handler.js";
+import { getUserProfile } from "../../services/user.service.js"; // service fictif qui rÃ©cupÃ¨re le user connectÃ©
 import { handleAllStripeReturns, openSetupSession } from '/js/services/stripe.service.js';
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:4000" 
@@ -21,7 +23,7 @@ const API_BASE = `${API_URL}/api/v1`;
 // ================= STRIPE ONBOARDING =================
 async function initStripeOnboarding() {
   try {
-    // On utilise API_BASE qui est définie en haut du fichier
+    // On utilise API_BASE qui est dÃ©finie en haut du fichier
     const resp = await fetch(`${API_BASE}/stripeConnect/onboarding`, {
       method: "POST",
       headers: { 
@@ -35,12 +37,12 @@ async function initStripeOnboarding() {
     if (data.stripeLink) {
       window.location.href = data.stripeLink;
     } else {
-      // Ajout d'une alerte si le lien est absent (très utile pour le débug)
-      alert("Erreur : " + (data.message || "Impossible de générer le lien Stripe."));
+      // Ajout d'une alerte si le lien est absent (trÃ¨s utile pour le dÃ©bug)
+      alert("Erreur : " + (data.message || "Impossible de gÃ©nÃ©rer le lien Stripe."));
     }
   } catch (err) {
     console.error("Erreur Stripe onboarding:", err);
-    alert("Une erreur réseau est survenue.");
+    alert("Une erreur rÃ©seau est survenue.");
   }
 }
 
@@ -50,26 +52,26 @@ async function initStripeOnboarding() {
 document.addEventListener("DOMContentLoaded", async () => {
   // 1. Gérer immédiatement le retour de Stripe (Succès/Annulation)
     handleAllStripeReturns();
-  // Débloquer l'audio dès la première interaction
+  // Débloquer l'audio dÃ¨s la premiÃ¨re interaction
   document.addEventListener("click", () => {
     const audio = document.getElementById("incomingCallSound");
     if (audio) { audio.muted = false; audio.play().catch(() => {}); }
   }, { once: true });
 
-  // 🔹 récupérer user via service
+  // 🔴 récupérer user via service
   const userData = await getUserProfile();
   if (!userData) {
-    window.location.replace("/pages/professeur/login.html"); // redirection si pas connecté
+    window.location.replace("/pages/professeur/login.html"); // redirection si pas connectÃ©
     return;
   }
 
-  AppState.currentUser = userData;
-  AppState.token       = localStorage.getItem("token"); // si tu stockes le token
-  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
+ AppState.setCurrentUser(userData);
+AppState.token = localStorage.getItem("token"); // OK pour token (mais idéalement setter)
+  AppState.setCallState(null);
 
   renderCurrentUserInfo(userData);
 
-  // 🔹 si c'est un professeur, init Stripe onboarding
+  // 🔴 si c'est un professeur, init Stripe onboarding
 if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboarding_complete) {
   const stripeBtn = document.getElementById("stripe-onboarding-btn");
   if (stripeBtn) {
@@ -77,60 +79,60 @@ if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboa
     stripeBtn.addEventListener("click", initStripeOnboarding);
   }
 }
-  // 🔵 Connexion WebSocket
-  SocketService.connect();
-
-  // 🔵 Routing WS → SessionService (un seul point d'entrée)
-  SocketService.onMessage((data) => {
-    console.log("📨 WS reçu:", data.type, data); 
-    SessionService._handleWs(data);
+  // ðŸ”µ Connexion WebSocket
+  const _wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const _wsToken = localStorage.getItem("token") ?? AppState.token ?? "";
+  socketService.connect(`${_wsProtocol}//${window.location.host}?token=${_wsToken}`);
     
-  });
 
   bindUI();
   subscribeToDomains();
 
   // 🔵 Broadcast initial des profs connectés vers les élèves
-  updateOnlineProfessors();
+updateOnlineProfessors();
 });
 // ======================================================
-// DOMAIN SUBSCRIPTIONS — UI écoute uniquement
+// DOMAIN SUBSCRIPTIONS _ UI écoute uniquement
 // ======================================================
 
 function subscribeToDomains() {
-
   // ================= SESSION =================
-  SessionService.init((event) => {
-    if (event.type === "sessionStarted") {
-      onSessionStarted(event);
-    } else if (event.type === "profConnected" || event.type === "profDisconnected") {
-      // 🔵 à chaque changement de prof, on renvoie la liste aux élèves
-      updateOnlineProfessors();
+  AppState.on('session:start', (session) => onSessionStarted({ roomId: session?.roomId, type: 'startSession' }));
+  
+  // ================= CALL =================
+  AppState.on('callState:change', (state) => {
+    switch (state) {
+      case 'calling':  updateCallStatus('Appel en cours...'); break;
+      case 'ringing':
+      case 'incoming': showIncomingCall(AppState.currentIncomingCallEleveId); break;
+      case 'inCall':   hideIncomingAlert(); updateCallStatus('En communication'); setSessionActive(true); break;
+      case null:
+      default:         hideIncomingAlert(); cleanupSession('Session terminee'); break;
     }
   });
-
-  // ================= CALL =================
-  CallService.onIncomingCall((data) => showIncomingCall(data));
-  CallService.onCallAccepted(() => { hideIncomingAlert(); updateCallStatus("En communication"); setSessionActive(true); });
-  CallService.onCallRejected(() => { hideIncomingAlert(); updateCallStatus("Appel refusé"); });
-  CallService.onCallEnded(() => cleanupSession("Session terminée"));
-  CallService.onLocalTrack((track) => attachLocalVideo(track));
-  CallService.onRemoteTracks((tracks) => attachRemoteTracks(tracks));
-  CallService.onDisconnected(() => cleanupSession("Déconnexion vidéo"));
+  AppState.on('video:localTrack',   (track)  => attachLocalVideo(track));
+  AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
+  AppState.on('call:incoming',      (data)   => showIncomingCall(data));
 
   // ================= CHAT =================
-  ChatService.onMessage((msg) => renderChat(msg));
+  AppState.on('chat:new', (msg) => renderChat(msg));
 
   // ================= DOCUMENT =================
-  DocumentService.onDocument((doc) => {
-    addDocument({
-        id:       doc.id ?? doc.fileName,
-  name:     doc.fileName ?? doc.name,
-  fileData: doc.fileData,
-  url:      doc.url ?? doc.fileUrl ?? null
-    });
-});
+  // ✅ écouter AppState (source officielle)
+  if (!window.__DOC_SUBSCRIBED__) {
+  window.__DOC_SUBSCRIBED__ = true;
 
+AppState.on("documents:new", (doc) => {
+  console.log("📄 UI PROF reçoit doc:", doc);
+
+  addDocument({
+    id:       doc.id ?? doc.fileName,
+    name:     doc.fileName ?? doc.name,
+    fileData: doc.fileData,
+    url:      doc.url ?? doc.fileUrl ?? null
+  });
+});
+}
   // ================= WHITEBOARD =================
   WhiteboardService.onStroke((stroke) => drawStroke(stroke));
   WhiteboardService.onClear(() => clearCanvas());
@@ -138,7 +140,12 @@ function subscribeToDomains() {
   clearCanvas();
   for (const s of strokes) drawStroke(s);
   });
-  }
+  // 👇 ICI EXACTEMENT (juste après les autres whiteboard handlers)
+  AppState.on("whiteboard:clear", () => {
+    WhiteboardService.applyRemoteClear(false);
+  });
+}
+  
 
 // ======================================================
 // ONLINE PROFESSORS
@@ -147,7 +154,6 @@ function subscribeToDomains() {
 function updateOnlineProfessors() {
   // récupère la liste actuelle des profs connectés
   const profs = SessionService.getOnlineProfessors?.() || [];
-  SocketService.send({ type: "onlineProfessors", profs });
 }
 
 // ======================================================
@@ -168,9 +174,9 @@ function bindUI() {
   acceptBtn?.addEventListener("click", () => {
     if (acceptInProgress) return;
     const eleveId = AppState.currentIncomingCallEleveId;
-    if (!eleveId) { console.warn("⚠️ Aucun appel à accepter"); return; }
+    if (!eleveId) { console.warn("âš ï¸ Aucun appel Ã  accepter"); return; }
     acceptInProgress = true;
-    SocketService.send({ type: "acceptCall", eleveId });
+    socketService.send({ type: "acceptCall", eleveId });
     AppState.currentIncomingCallEleveId = null;
     hideIncomingAlert();
     setTimeout(() => { acceptInProgress = false; }, 5000);
@@ -180,10 +186,10 @@ function bindUI() {
   cancelBtn?.addEventListener("click", () => {
     const eleveId = AppState.currentIncomingCallEleveId;
     if (!eleveId) return;
-    SocketService.send({ type: "rejectCall", eleveId });
+    socketService.send({ type: "rejectCall", eleveId });
     AppState.currentIncomingCallEleveId = null;
     hideIncomingAlert();
-    updateCallStatus("Appel refusé");
+    updateCallStatus("Appel refusÃ©");
   });
 
   // ================= WHITEBOARD =================
@@ -249,8 +255,8 @@ function setSessionActive(active) {
 }
 
 function cleanupSession(message) {
-  CallService.disconnectTwilio();
-  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
+  VideoService.disconnect();
+  AppState.setCallState(null);
   AppState.sessionInProgress = false;
   SessionService.stopTimer?.();
   setSessionActive(false);
@@ -263,7 +269,7 @@ function cleanupSession(message) {
   });
 
   const remoteInfo = document.getElementById("remote-eleve-info");
-  if (remoteInfo) { remoteInfo.textContent = "En attente d'un élève…"; remoteInfo.style.display = ""; }
+  if (remoteInfo) { remoteInfo.textContent = "En attente d'un Ã©lÃ¨veâ€¦"; remoteInfo.style.display = ""; }
 
   const timerEl = document.getElementById("call-time");
   if (timerEl) timerEl.textContent = "00:00";
@@ -293,18 +299,18 @@ function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays }) {
   }
   if (noCall) noCall.style.display = "none";
   if (text) {
-    const location = eleveVille && elevePays ? ` — ${eleveVille}, ${elevePays}` : "";
-    text.textContent = `${eleveName || "Élève"}${location}`;
+    const location = eleveVille && elevePays ? ` â€” ${eleveVille}, ${elevePays}` : "";
+    text.textContent = `${eleveName || "Ã‰lÃ¨ve"}${location}`;
   }
 
-  console.log("box après:", box?.className, getComputedStyle(box).display, box?.offsetHeight);
+  console.log("box aprÃ¨s:", box?.className, getComputedStyle(box).display, box?.offsetHeight);
 }
 
 function hideIncomingAlert() {
   const box    = document.getElementById("incoming-call-box");
   const noCall = document.getElementById("no-call");
   if (box) {
-    box.classList.remove("visible"); // retire .visible → CSS repasse à display: none
+    box.classList.remove("visible"); // retire .visible â†’ CSS repasse Ã  display: none
   }
   if (noCall) noCall.style.display = "flex";
 }
@@ -372,19 +378,27 @@ function sendChat() {
 }
 
 function renderChat({ sender, text }) {
-  appendMessage(sender, text, false); // ✅
+  appendMessage(sender, text, false); // âœ…
 }
 
 // ======================================================
 // DOCUMENT UI
 // ======================================================
 
+let isSendingDocument = false;
+
 function sendDocument() {
   const input = document.getElementById("file-input");
   if (!input?.files?.[0]) return;
-  SessionService.sendDocument(input.files[0]);
-}
 
+  if (isSendingDocument) return;
+  isSendingDocument = true;
+
+  SessionService.sendDocument(input.files[0]);
+  input.value = "";
+
+  setTimeout(() => isSendingDocument = false, 1000);
+}
 // ======================================================
 // WHITEBOARD UI
 // ======================================================
@@ -450,27 +464,27 @@ function renderCurrentUserInfo(user) {
         <div class="card">
             <h3>Mon compte</h3>
             <p>Utilisateur : ${prenom ?? ""} ${nom ?? ""}</p>
-            <p>Statut : ${is_subscriber ? '✅ Abonné' : '❌ Non abonné'}</p>
+            <p>Statut : ${is_subscriber ? 'âœ… AbonnÃ©' : 'âŒ Non abonnÃ©'}</p>
             
             <button id="stripe-setup-btn" class="btn-primary">
-                ${role === 'prof' ? '⚙️ Configurer mon compte Stripe' : '💳 Enregistrer ma carte bancaire'}
+                ${role === 'prof' ? 'âš™ï¸ Configurer mon compte Stripe' : 'ðŸ’³ Enregistrer ma carte bancaire'}
             </button>
             
             <div id="stripe-status" style="margin-top: 10px;"></div>
         </div>
     `;
 
-    // 4. Écouteur d'événement pour Stripe
+    // 4. écouteur d' événement pour Stripe
     const stripeBtn = document.getElementById("stripe-setup-btn");
     if (stripeBtn) {
         stripeBtn.addEventListener("click", async (e) => {
             e.preventDefault();
             stripeBtn.disabled = true;
             const originalText = stripeBtn.textContent;
-            stripeBtn.textContent = "⏳ Chargement...";
+            stripeBtn.textContent = "â³ Chargement...";
 
             try {
-                await openSetupSession(); // La fonction importée
+                await openSetupSession(); // La fonction importÃ©e
             } catch (error) {
                 console.error("Erreur Stripe:", error);
                 alert("Impossible d'ouvrir la session Stripe.");
@@ -481,3 +495,4 @@ function renderCurrentUserInfo(user) {
     }
   }
 }
+

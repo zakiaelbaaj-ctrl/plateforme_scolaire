@@ -1,5 +1,5 @@
 // ======================================================
-// WHITEBOARD CORE — MOTEUR CANVAS + ZOOM/PAN
+// WHITEBOARD CORE â€” MOTEUR CANVAS + ZOOM/PAN
 // ======================================================
 
 import { WhiteboardState } from "/js/modules/whiteboard/whiteboard.state.js";
@@ -33,7 +33,7 @@ export const WhiteboardCore = {
   init(canvasId) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
-      console.warn("WhiteboardCore.init → canvas introuvable:", canvasId);
+      console.warn("WhiteboardCore.init â†’ canvas introuvable:", canvasId);
       return;
     }
 
@@ -44,19 +44,19 @@ export const WhiteboardCore = {
     WhiteboardState.ctx = canvas.getContext("2d");
 
     if (!WhiteboardState.ctx) {
-      console.error("WhiteboardCore.init → impossible d'obtenir le contexte 2D");
+      console.error("WhiteboardCore.init â†’ impossible d'obtenir le contexte 2D");
       return;
     }
 
     WhiteboardState.ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-// 🛡 Empêche le double binding des événements
+// ðŸ›¡ EmpÃªche le double binding des Ã©vÃ©nements
 if (!this._eventsBound) {
   this.bindEvents();
   this._eventsBound = true;
 }
 
-console.log("📝 WhiteboardCore initialisé sur", canvasId);
+console.log("ðŸ“ WhiteboardCore initialisÃ© sur", canvasId);
 
   },
 
@@ -67,13 +67,13 @@ console.log("📝 WhiteboardCore initialisé sur", canvasId);
     const canvas = WhiteboardState.canvas;
     if (!canvas) return;
 
-    // SOURIS — dessin
+    // SOURIS â€” dessin
     canvas.addEventListener("mousedown", (e) => {
-      // bouton gauche → dessin
+      // bouton gauche â†’ dessin
       if (e.button === 0) {
         this.startDraw(e);
       }
-      // bouton milieu ou droit → pan
+      // bouton milieu ou droit â†’ pan
       if (e.button === 1 || e.button === 2) {
         this.startPan(e);
       }
@@ -94,7 +94,7 @@ console.log("📝 WhiteboardCore initialisé sur", canvasId);
       this.stopPan();
     });
 
-    // TACTILE — dessin simple
+    // TACTILE â€” dessin simple
     canvas.addEventListener(
       "touchstart",
       (e) => {
@@ -476,3 +476,4 @@ console.log("📝 WhiteboardCore initialisé sur", canvasId);
     this.applyTransform();
   }
 };
+

@@ -206,7 +206,7 @@ export default class Paginator {
    */
   _defaultRenderPage(page, isActive, ariaLabel) {
     if (page === "...") {
-      return createEl("span", { class: "paginator-ellipsis", "aria-hidden": "true", text: "…" });
+      return createEl("span", { class: "paginator-ellipsis", "aria-hidden": "true", text: "â€¦" });
     }
     const attrs = {
       class: isActive ? "paginator-btn paginator-btn--active" : "paginator-btn",
@@ -483,3 +483,4 @@ export default class Paginator {
     this.root = null;
   }
 }
+

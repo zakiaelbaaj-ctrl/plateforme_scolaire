@@ -1,9 +1,9 @@
 // ======================================================
-// DASHBOARD ÉTUDIANT — UI PURE / DOMAIN-DRIVEN
+// DASHBOARD Ã‰TUDIANT â€” UI PURE / DOMAIN-DRIVEN
 // ======================================================
 
 import { AppState } from "/js/core/state.js";
-import { SocketService } from "/js/core/socket.service.js";
+import { socketService } from "/js/core/socket.service.js";
 import { SessionService } from "/js/domains/session/session.service.js";
 import { CallService } from "/js/domains/call/call.service.js";
 import { ChatService } from "/js/domains/chat/chat.service.js";
@@ -17,7 +17,7 @@ import { getUserProfile } from "../../services/user.service.js"; // service fict
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
-  // 🔹 Récupérer le user via service
+  // ðŸ”¹ RÃ©cupÃ©rer le user via service
   const userData = await getUserProfile();
   if (!userData) {
     window.location.replace("/pages/etudiant/login.html");
@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   AppState.currentUser = userData;
   AppState.token = localStorage.getItem("token") || null;
-  CallStateMachine.setState(CallStateMachine.STATES.IDLE);
+  AppState.setCallState(null);
   AppState.sessionInProgress = false;
   AppState.currentRoomId = null;
   AppState.currentSessionType = null; // "eleve" ou "prof"
@@ -34,9 +34,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderStudentInfo();
 
-  // 🔹 Connect WebSocket
-  SocketService.connect();
-  SocketService.onMessage((data) => SessionService._handleWs(data));
+  // ðŸ”¹ Connect WebSocket
+  socketService.connect();
+  socketService.onMessage((data) => SessionService._handleWs(data));
 
   bindUI();
   subscribeToDomains();
@@ -93,40 +93,40 @@ function subscribeToDomains() {
   });
 
   // ================= CALL =================
-  CallService.onCallSent(() => updateStatus("Appel en cours…"));
-  CallService.onCallAccepted(() => updateStatus("Connexion en cours…"));
+  CallService.onCallSent(() => updateStatus("Appel en coursâ€¦"));
+  CallService.onCallAccepted(() => updateStatus("Connexion en coursâ€¦"));
   CallService.onConnected(() => updateStatus("En communication"));
-  CallService.onCallRejected(() => updateStatus("Appel refusé"));
-  CallService.onCallEnded(() => cleanupSession("Session terminée"));
+  CallService.onCallRejected(() => updateStatus("Appel refusÃ©"));
+  CallService.onCallEnded(() => cleanupSession("Session terminÃ©e"));
   CallService.onLocalTrack(attachLocalVideo);
   CallService.onRemoteTracks(attachRemoteTracks);
-  CallService.onDisconnected(() => cleanupSession("Déconnexion vidéo"));
+  CallService.onDisconnected(() => cleanupSession("DÃ©connexion vidÃ©o"));
 }
 
 // ======================================================
 // UI BINDING
 // ======================================================
 function bindUI() {
-  // 🔹 Start matching P2P par matière
+  // ðŸ”¹ Start matching P2P par matiÃ¨re
   document.getElementById("start-session-btn")?.addEventListener("click", () => {
     const subjectId = document.getElementById("subject-select")?.value;
     startMatching(subjectId);
   });
 
-  // 🔹 Chat
+  // ðŸ”¹ Chat
   document.getElementById("send-msg")?.addEventListener("click", sendChat);
   document.getElementById("chat-input")?.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
 
-  // 🔹 Documents
+  // ðŸ”¹ Documents
   document.getElementById("send-file")?.addEventListener("click", sendDocument);
 
-  // 🔹 Whiteboard tools
+  // ðŸ”¹ Whiteboard tools
   bindWhiteboardTools();
 
-  // 🔹 Logout
+  // ðŸ”¹ Logout
   document.getElementById("logout-btn")?.addEventListener("click", logout);
 
-  // 🔹 End session
+  // ðŸ”¹ End session
   document.getElementById("end-session-btn")?.addEventListener("click", () => {
     CallService.endCall();
     SessionService.endSession();
@@ -139,12 +139,12 @@ function bindUI() {
 async function startMatching(subjectId) {
   if (!subjectId) return;
   AppState.currentSessionType = "eleve";
-  updateStatus("Recherche d'étudiant disponible...");
+  updateStatus("Recherche d'Ã©tudiant disponible...");
   try {
     await SessionService.requestStudentMatch(subjectId);
   } catch (err) {
     console.error(err);
-    updateStatus("Impossible de trouver un étudiant pour le moment");
+    updateStatus("Impossible de trouver un Ã©tudiant pour le moment");
   }
 }
 
@@ -275,7 +275,7 @@ function renderStudentInfo() {
   const { prenom, nom, ville, pays, abonnement } = AppState.currentUser || {};
   document.getElementById("eleve-name").textContent = `${prenom} ${nom}`;
   document.getElementById("eleve-location").textContent = ville && pays ? `${ville}, ${pays}` : "";
-  document.getElementById("eleve-abonnement").textContent = abonnement || "Non défini";
+  document.getElementById("eleve-abonnement").textContent = abonnement || "Non dÃ©fini";
 }
 
 // ======================================================
@@ -318,7 +318,7 @@ function removeUserFromList(userId, userName) {
     const el = list.querySelector(`[data-user-id="${userId}"]`);
     if (el) el.remove();
   });
-  updateStatus(`${userName || "Utilisateur"} a quitté la session`);
+  updateStatus(`${userName || "Utilisateur"} a quittÃ© la session`);
 }
 
 // ======================================================
@@ -329,3 +329,4 @@ function logout() {
   localStorage.clear();
   window.location.href = "/pages/etudiant/login.html";
 }
+

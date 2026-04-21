@@ -3,7 +3,7 @@ const errorDiv = document.getElementById("errorDiv");
 const successDiv = document.getElementById("successDiv");
 const submitBtn = document.getElementById("submitBtn");
 
-// 🔹 Détection dynamique de l'URL de base (Local vs Production)
+// ðŸ”¹ DÃ©tection dynamique de l'URL de base (Local vs Production)
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:4000" 
   : "https://plateforme-scolaire-1.onrender.com";
@@ -41,7 +41,7 @@ if (form) {
     }
 
     submitBtn.disabled = true;
-    submitBtn.textContent = "⏳ Envoi...";
+    submitBtn.textContent = "â³ Envoi...";
 
     try {
       const res = await fetch(`${API_URL}/api/v1/auth/signup-eleve`, {
@@ -57,9 +57,9 @@ if (form) {
       }
 
       successDiv.innerHTML = `
-        ✅ <strong>Inscription réussie !</strong><br>
-        🔐 Vous pouvez maintenant vous connecter.<br>
-        ⏩ Redirection vers la page de connexion...
+        âœ… <strong>Inscription rÃ©ussie !</strong><br>
+        ðŸ” Vous pouvez maintenant vous connecter.<br>
+        â© Redirection vers la page de connexion...
       `;
       successDiv.style.display = "block";
       successDiv.classList.add("show");
@@ -71,7 +71,7 @@ if (form) {
       }, 2500);
 
     } catch (err) {
-      console.error("❌ SIGNUP ERROR:", err);
+      console.error("âŒ SIGNUP ERROR:", err);
       const msg = err.message === "Failed to fetch" 
         ? "Impossible de contacter le serveur." 
         : err.message;
@@ -88,8 +88,9 @@ if (form) {
  */
 function showError(msg) {
   if (errorDiv) {
-    errorDiv.textContent = "❌ " + msg;
+    errorDiv.textContent = "âŒ " + msg;
     errorDiv.style.display = "block";
     errorDiv.classList.add("show");
   }
 }
+

@@ -37,8 +37,8 @@ function showError(message) {
    ========================================================================== */
 function validateCredentials({ email, password }) {
   const errors = [];
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Adresse e‑mail invalide.");
-  if (!password || String(password).length < CONFIG.minPasswordLength) errors.push(`Le mot de passe doit contenir au moins ${CONFIG.minPasswordLength} caractères.`);
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Adresse eâ€‘mail invalide.");
+  if (!password || String(password).length < CONFIG.minPasswordLength) errors.push(`Le mot de passe doit contenir au moins ${CONFIG.minPasswordLength} caractÃ¨res.`);
   return errors;
 }
 
@@ -92,7 +92,7 @@ async function performLogin({ email, password, remember }, els) {
     location.href = redirect;
   } catch (err) {
     log("login error", err);
-    const message = (err && err.message) ? err.message : "Échec de la connexion.";
+    const message = (err && err.message) ? err.message : "Ã‰chec de la connexion.";
     // show friendly message
     if (els && els.errorBox) {
       els.errorBox.textContent = message;
@@ -172,7 +172,7 @@ function attachFormHandler(root = document) {
         if (text && text.startsWith("admin:")) {
           const token = text.replace(/^admin:/, "").trim();
           auth.saveToken(token);
-          dom.showToast("Admin token appliqué. Redirection…", { duration: 2000 });
+          dom.showToast("Admin token appliquÃ©. Redirectionâ€¦", { duration: 2000 });
           setTimeout(() => location.reload(), 600);
         }
       } catch (e) {
@@ -222,7 +222,7 @@ function init() {
   try {
     if (auth.isAuthenticated()) {
       // small delay to allow page to show a message if desired
-      dom.showToast("Vous êtes déjà connecté. Redirection…", { duration: 1200 });
+      dom.showToast("Vous Ãªtes dÃ©jÃ  connectÃ©. Redirectionâ€¦", { duration: 1200 });
       setTimeout(() => {
         const redirect = new URLSearchParams(location.search).get("next") || CONFIG.redirectAfterLogin;
         location.href = redirect;
@@ -247,3 +247,4 @@ export default {
   performLogin,
   validateCredentials,
 };
+

@@ -15,14 +15,16 @@ export function safeSend(ws, data) {
       wsExists: !!ws,
       readyState: ws?.readyState
     });
-    return;
+    return false; // ✅ important
   }
 
   try {
     ws.send(JSON.stringify(data));
     console.log("📤 safeSend SUCCESS:", data.type, "to user:", ws.userId);
+    return true; // ✅ important
   } catch (err) {
     console.error("❌ safeSend ERROR:", err.message);
+    return false;
   }
 }
 // =======================================================

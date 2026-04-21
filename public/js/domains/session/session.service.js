@@ -1,9 +1,9 @@
 // ======================================================
-// SESSION DOMAIN SERVICE — ROUTEUR MÉTIER CENTRAL
+// SESSION DOMAIN SERVICE â€” ROUTEUR MÃ‰TIER CENTRAL
 // ======================================================
 
 import { AppState } from "/js/core/state.js";
-import { SocketService } from "/js/core/socket.service.js";
+import { socketService } from "/js/core/socket.service.js";
 import { ChatService } from "/js/domains/chat/chat.service.js";
 import { CallService } from "/js/domains/call/call.service.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
@@ -12,7 +12,7 @@ import { DocumentService } from "/js/domains/document/document.service.js";
 export const SessionService = {
 
   // --------------------------------------------------
-  // SYSTÈME D'ABONNEMENT INTERNE
+  // SYSTÃˆME D'ABONNEMENT INTERNE
   // --------------------------------------------------
 
   _listeners: [],
@@ -38,7 +38,7 @@ export const SessionService = {
     switch (data.type) {
       case "grantWhiteboardAccess": {
       AppState.canUseTools = !!data.tools; // true ou false
-       updateToolButtons(); // ⚡ active / désactive les boutons
+       updateToolButtons(); // âš¡ active / dÃ©sactive les boutons
        break;
      }
 
@@ -49,18 +49,18 @@ export const SessionService = {
         AppState.roomReady = false;
         AppState.currentRoomId = roomId;
 
-        SocketService.send({ type: "joinRoom", roomId });
-        // ✅ Notifie le dashboard prof
+        socketService.send({ type: "joinRoom", roomId });
+        // âœ… Notifie le dashboard prof
         this._notify({ type: "sessionStarted", roomId });
         break;
       }
 
       case "joinedRoom": {
-        // ⚡ État technique interne au domaine
+        // âš¡ Ã‰tat technique interne au domaine
         AppState.roomReady = true;
         break;
       }
-      // ✅ Ajouter après case "joinedRoom"
+      // âœ… Ajouter aprÃ¨s case "joinedRoom"
        case "userJoined": {
   // L'autre participant a rejoint la room
   // On notifie le dashboard et on attend le twilioToken
@@ -96,7 +96,7 @@ export const SessionService = {
       }
 
       case "twilioToken": {
-  CallService.handleEvent(data); // délègue à CallService, pas de double appel
+  CallService.handleEvent(data); // dÃ©lÃ¨gue Ã  CallService, pas de double appel
   break;
 }
 
@@ -129,54 +129,54 @@ case "twilioDisconnected": {
        }
 
        case "error": {
-  // 🔹 Ignorer certaines erreurs côté élève
+  // ðŸ”¹ Ignorer certaines erreurs cÃ´tÃ© Ã©lÃ¨ve
       if (data.message === "Stroke invalide" || 
       data.message === "stroke requis" || 
-      data.message === "Vous n'êtes pas dans cette room") break;
+      data.message === "Vous n'Ãªtes pas dans cette room") break;
       console.error("WS Error:", data.message);
       break;
     }
 
       default:
-        console.log("⚠️ Event non géré (SessionDomain):", data.type);
+        console.log("âš ï¸ Event non gÃ©rÃ© (SessionDomain):", data.type);
     }
   },
 
 
   // --------------------------------------------------
-  // ACTIONS SORTANTES
+  // ACTIONS SORTANTES (CORRIGÉES)
   // --------------------------------------------------
   sendDocument(file) {
-  console.log("SessionService.sendDocument appelé avec fichier :", file);
-  if (!file || !AppState.currentRoomId) return;
-  DocumentService.send(file);
-},
+    if (!file || !AppState.currentRoomId) return;
+    DocumentService.send(file);
+  },
+
   callProfessor(profId) { 
-  CallService.callProfessor(profId); 
+    CallService.callProfessor(profId); 
   },
 
   stopVideoCall() {
-  CallService.disconnectTwilio();
-  CallService.leaveRoom();
-  this.endSession(); // Termine la session côté serveur et local
-   },
-   // --------------------------------------------------
-// FIN DE SESSION
-// --------------------------------------------------
-endSession() {
-  // ⚡ Envoi au serveur pour finir la session
-  SocketService.send({ type: "endSession", roomId: AppState.currentRoomId });
+    // 1. Déconnexion Twilio
+    CallService.disconnectTwilio?.();
+    
+    // 2. On appelle endCall qui gère la logique métier et le setState
+    CallService.endCall(); 
+    
+    // 3. On ferme la room sur le serveur
+    this.endSession(); 
+  },
 
-  // ⚡ Local : stoppe timer et appelle CallService
-  this.stopTimer();
-  CallService.handleSessionEnded?.();
-},
+  endSession() {
+    if (AppState.currentRoomId) {
+       socketService.send({ type: "endSession", roomId: AppState.currentRoomId });
+    }
+    
+    // Nettoyage local via le service spécialisé
+    CallService.handleSessionEnded?.();
+  },
 
-// --------------------------------------------------
-// TIMER
-// --------------------------------------------------
-
-startTimer(callback) {
+  // Utilise de préférence le timer central de l'AppState
+  startTimer(callback) {
   
   this.stopTimer();
 
@@ -197,3 +197,4 @@ startTimer(callback) {
   }
 
 };
+

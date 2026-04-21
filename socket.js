@@ -414,6 +414,7 @@ if (type === "requestStudentMatch") {
   if (type === "updateStatus") {
     return updateVisioStatus(ws, data, onlineProfessors);
   }
+  if (type === "ping") return safeSend(ws, { type: "pong" });
 
   console.log("ℹ️ Message inconnu:", type);
 }

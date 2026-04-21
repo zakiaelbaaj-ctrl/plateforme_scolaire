@@ -25,3 +25,4 @@ export function clear(event) {
   if (!listeners.has(event)) return;
   listeners.delete(event);
 }
+

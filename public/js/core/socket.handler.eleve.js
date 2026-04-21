@@ -1,228 +1,117 @@
-// public/js/core/socket.handler.eleve.js
-
 import { socketService } from "./socket.service.js";
 import { AppState } from "./state.js";
 import { SessionService } from "../services/session.service.js";
-import { WhiteboardService } from "../services/whiteboard.service.js";
 import { WSLogger } from "./ws.logger.js";
+import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
+import { CallStateMachine } from "../domains/call/call.state.machine.js";
+import { CallService } from "../domains/call/call.service.js";
 
-/**
- * SOCKET HANDLER (ELEVE)
- * Transforme WS → AppState (source de vérité)
- */
 class SocketHandlerEleve {
   constructor() {
-    this._unsubscribeSocket =
-      socketService.onMessage((data) => this.handle(data));
+    this._unsubscribeSocket = socketService.onMessage((data) => this.handle(data));
+    this._unsubscribeCall = AppState.on("ui:requestCall", (prof) => this.handleOutgoingCall(prof));
   }
 
   handle(data) {
-    if (!data || typeof data !== "object" || typeof data.type !== "string") {
-      WSLogger.warn("WS invalide (élève) :", data);
-      return;
-    }
-
+    if (!data || !data.type) return;
+    WSLogger.debug("FULL DATA:", data);
     WSLogger.debug("HANDLER ELEVE RECEIVE:", data.type);
 
     switch (data.type) {
-
-      /* ======================================================
-         TRANSPORT
-      ====================================================== */
-      case "TRANSPORT_OPEN":
-        this.onTransportOpen();
-        break;
-
-      case "TRANSPORT_CLOSED":
-        AppState.setWsConnected(false);
-        break;
-
-      /* ======================================================
-         PRESENCE
-      ====================================================== */
+      case "TRANSPORT_OPEN": this.onTransportOpen(); break;
       case "onlineProfessors":
       case "professorsList":
         AppState.setOnlineProfessors(data.profs ?? data.professors ?? []);
         break;
+       case "document":
+       case "documentReceived":
+       case "newDocument": {
+      console.log("📥 document reçu socket:", data);
 
-      /* ======================================================
-         CALL FLOW (NORMALISÉ)
-      ====================================================== */
+      const raw = data.document ?? data;
+
+      const normalizedDoc = {
+      fileName: raw.fileName ?? raw.name,
+      fileData: raw.fileData ?? raw.data,
+      sender: raw.userName ?? raw.sender   // ✅ FIX ICI
+      };
+
+      console.log("📦 doc normalisé:", normalizedDoc);
+
+      AppState.addDocument(normalizedDoc);
+      break;
+    }
       case "callSent":
-        AppState.setCallState("calling");
-        break;
-
-      case "incomingCall": {
-        const eleveId = data?.eleveId ?? null;
-
-        AppState.setIncomingCallEleveId?.(eleveId);
-        AppState.setCallState("incoming");
-
-        AppState._notify("call:incoming", {
-          eleveId,
-          eleveName: data?.eleveName ?? "Professeur",
-          eleveVille: data?.eleveVille ?? "",
-          elevePays: data?.elevePays ?? "",
-          timestamp: data?.timestamp ?? null,
-        });
-
-        break;
-      }
-
+      case "incomingCall":
       case "callAccepted":
-        AppState.setCallState("inCall");
-        AppState.startSession({
-          roomId: AppState.currentRoomId,
-        });
-        AppState.startTimer?.();
-        break;
-
       case "callRejected":
-        AppState.setCallState(null);
-        AppState.setIncomingCallEleveId?.(null);
-        break;
-
+      case "twilioToken":
       case "callEnded":
       case "session:stop":
-        this.endSessionClean();
+      case "twilioLocalTrack":
+      case "twilioRemoteTracks":
+        CallService.handleEvent(data);
         break;
 
-      /* ======================================================
-         SESSION
-      ====================================================== */
-      case "startSession":
-        this.handleStartSession(data);
-        break;
-
+      case "startSession": this.handleStartSession(data); break;
       case "joinedRoom":
-        WSLogger.info("Room jointe (élève) :", data.roomId);
+        console.log("✅ [Élève] Room rejointe, démarrage de la session et du timer !");
+        
+        // On informe l'état global (sécurisé par ta vérification anti-boucle)
+        AppState.startSession({ roomId: data.roomId ?? data.room });
+        
+        // ⏱️ ON LANCE LE CHRONO ICI
+        AppState.startTimer();
         break;
-
-      /* ======================================================
-         CHAT
-      ====================================================== */
       case "chatMessage":
-        AppState.addChatMessage({
-          sender: data.sender ?? "Professeur",
-          text: data.text ?? "",
-          messageId: data.messageId ?? null,
-        });
+        AppState.addChatMessage({ sender: data.sender, text: data.text });
         break;
 
-      /* ======================================================
-         DOCUMENTS
-      ====================================================== */
-      case "document":
-        AppState.addDocument({
-          fileName: data.fileName,
-          fileData: data.fileData,
-          sender: data.sender ?? "Professeur",
-        });
-        break;
-
-      /* ======================================================
-         WHITEBOARD / WEBRTC
-      ====================================================== */
       case "tableauStroke":
       case "tableauSync":
-        SessionService._emit(data);
-        break;
-
-      case "tableauClear":
-        WhiteboardService.applyRemoteClear(false);
-        break;
-
-      case "webrtcSignal":
-        SessionService._emit(data);
-        break;
-
-      /* ======================================================
-         FACTURATION
-      ====================================================== */
-      case "invoice":
-        AppState.showInvoice({
-          amount: data.amount,
-          duration: data.duration,
-          sessionId: data.sessionId,
-        });
-        break;
-
-      /* ======================================================
-         DIVERS
-      ====================================================== */
-      case "userJoined":
-        WSLogger.info("Utilisateur rejoint :", data.userId);
-        break;
-
-      case "error":
-        WSLogger.warn("Erreur serveur :", data.message);
-        SessionService._emit(data);
+        WhiteboardService.handleEvent(data);
         break;
 
       default:
-        WSLogger.warn("Type WS non géré (élève) :", data.type);
+        WSLogger.warn("Type non géré:", data.type);
     }
   }
 
-  /* ======================================================
-     TRANSPORT OPEN
-  ====================================================== */
   onTransportOpen() {
     AppState.setWsConnected(true);
-
     if (AppState.currentUser?.id) {
-      socketService.send({
-        type: "identify",
-        ...AppState.currentUser,
-        tabId: sessionStorage.getItem("tabId"),
-      });
+      socketService.send({ type: "identify", ...AppState.currentUser });
     }
   }
 
-  /* ======================================================
-     SESSION START
-  ====================================================== */
   handleStartSession(data) {
-    const roomId = data.roomId ?? data.room ?? null;
+    const roomId = data.roomId ?? data.room;
     if (!roomId) return;
-
     AppState.startSession({ roomId });
-
-    window.userNameGlobal =
-      `${data.prenom ?? ""} ${data.nom ?? ""}`.trim();
-
     socketService.send({ type: "joinRoom", roomId });
-
-    SessionService.startVideoCall({
-      roomId,
-      role: "eleve",
-    }).catch((err) =>
-      WSLogger.error("startVideoCall (élève) :", err)
-    );
   }
 
-  /* ======================================================
-     FIN SESSION
-  ====================================================== */
-  endSessionClean() {
-    WhiteboardService.stopAutoSnapshot?.();
-    SessionService.stopVideoCall();
-    WhiteboardService.reset?.();
-
-    AppState.stopTimer?.();
-    AppState.endSession?.();
-    AppState.setCallState(null);
-    AppState.setIncomingCallEleveId?.(null);
-
-    WSLogger.info("Session élève nettoyée");
+  handleOutgoingCall(prof) {
+    if (!prof?.id) return;
+    CallService.callProfessor(prof.id);
   }
 
-  /* ======================================================
-     CLEANUP
-  ====================================================== */
   destroy() {
     this._unsubscribeSocket();
+    if (this._unsubscribeCall) this._unsubscribeCall();
   }
 }
 
-export const socketHandlerEleve = new SocketHandlerEleve();
+let instance = null;
+
+export const socketHandlerEleve = {
+  init() {
+    if (!instance) {
+      instance = new SocketHandlerEleve();
+    }
+  },
+  destroy() {
+    instance?.destroy();
+    instance = null;
+  }
+};

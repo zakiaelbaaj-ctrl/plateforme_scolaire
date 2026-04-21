@@ -3,8 +3,8 @@
 // ============================================================
 
 import { AppState } from "/js/core/state.js";
-import { SocketService } from "../../core/socket.service.js";
-// ✅ Callback enregistré depuis le dashboard
+import { socketService } from "../../core/socket.service.js";
+// âœ… Callback enregistrÃ© depuis le dashboard
 let _onMessageCallback = null;
 
 export const ChatService = {
@@ -13,7 +13,7 @@ export const ChatService = {
   // ABONNEMENT UI
   // ============================
 
-  // ✅ Ajouté — appelé depuis dashboard.js
+  // âœ… AjoutÃ© â€” appelÃ© depuis dashboard.js
   onMessage(cb) {
     _onMessageCallback = cb;
   },
@@ -30,7 +30,7 @@ export const ChatService = {
     const cleanText = text.trim().substring(0, 2000);
     if (!cleanText) return;
 
-    SocketService.send({
+    socketService.send({
       type: "chatMessage",
       roomId,
       text: cleanText
@@ -39,11 +39,11 @@ export const ChatService = {
 
 
   // ============================
-  // RÉCEPTION (appelé par SessionService)
+  // RÃ‰CEPTION (appelÃ© par SessionService)
   // ============================
 
-  // ✅ Renommé receive() → handleEvent() pour correspondre
-  // à l'appel dans SessionService
+  // âœ… RenommÃ© receive() â†’ handleEvent() pour correspondre
+  // Ã  l'appel dans SessionService
   handleEvent(event) {
     if (!event?.text) return;
 
@@ -52,8 +52,9 @@ export const ChatService = {
       text:   event.text
     };
 
-    // ✅ Émet vers le dashboard via le callback
+    // âœ… Ã‰met vers le dashboard via le callback
     if (_onMessageCallback) _onMessageCallback(msg);
   }
 
 };
+

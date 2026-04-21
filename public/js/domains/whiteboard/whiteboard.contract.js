@@ -1,10 +1,10 @@
 // ======================================================
-// WHITEBOARD CONTRACT — TYPES WS + PAYLOAD FACTORY
+// WHITEBOARD CONTRACT â€” TYPES WS + PAYLOAD FACTORY
 // /js/domains/whiteboard/whiteboard.contract.js
 // ======================================================
-// ✅ Aucune dépendance — importe rien
-// ✅ Source unique des types WS whiteboard
-// ✅ Utilisé par WhiteboardService uniquement
+// âœ… Aucune dÃ©pendance â€” importe rien
+// âœ… Source unique des types WS whiteboard
+// âœ… UtilisÃ© par WhiteboardService uniquement
 // ======================================================
 
 export const WhiteboardEvents = {
@@ -52,3 +52,4 @@ createStroke(path, roomId) {
   }
 
 };
+

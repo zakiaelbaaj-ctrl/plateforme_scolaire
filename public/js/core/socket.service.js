@@ -1,9 +1,6 @@
-// public/js/core/socket.service.js
+﻿// public/js/core/socket.service.js
 import { WSLogger } from "./ws.logger.js";
 
-/* ======================================================
-   CONFIG (INFRA ONLY)
-====================================================== */
 const CONFIG = {
   RECONNECT_BASE_MS: 1000,
   RECONNECT_MAX_MS: 30000,
@@ -12,17 +9,14 @@ const CONFIG = {
   HEARTBEAT_TIMEOUT_MS: 60000,
 };
 
-/* ======================================================
-   SOCKET SERVICE (TRANSPORT PUR)
-====================================================== */
 class SocketService {
   constructor() {
     this.ws = null;
 
-    // listeners globaux uniquement (pas de typage métier)
     this.listeners = new Set();
-
     this.queue = [];
+
+    this.currentUrl = null;
 
     this.reconnectAttempts = 0;
     this.manualClose = false;
@@ -30,11 +24,11 @@ class SocketService {
     this.heartbeatInterval = null;
     this.lastPong = null;
 
-    this.currentUrl = null; // pour reconnect
+    this.reconnectTimeout = null;
   }
 
   /* ======================================================
-     CONNECT (URL FOURNIE PAR L’EXTÉRIEUR)
+     CONNECT
   ====================================================== */
   connect(url) {
     if (!url) {
@@ -42,8 +36,8 @@ class SocketService {
       return;
     }
 
-    if (this.ws?.readyState === WebSocket.OPEN) return;
-    if (this.ws?.readyState === WebSocket.CONNECTING) return;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) return;
 
     this.currentUrl = url;
 
@@ -51,11 +45,8 @@ class SocketService {
 
     this.ws = new WebSocket(url);
 
-    /* ======================
-       OPEN
-    ====================== */
     this.ws.onopen = () => {
-      WSLogger.info("WS connecté");
+      WSLogger.info("WS connectÃ©");
 
       this.reconnectAttempts = 0;
       this.manualClose = false;
@@ -63,38 +54,29 @@ class SocketService {
       this.startHeartbeat();
       this.flushQueue();
 
-      // 🔥 On notifie sans logique métier
       this.emit({ type: "TRANSPORT_OPEN" });
     };
 
-    /* ======================
-       MESSAGE
-    ====================== */
     this.ws.onmessage = (evt) => {
       let data;
 
       try {
         data = JSON.parse(evt.data);
-      } catch {
-        WSLogger.warn("WS non JSON", evt.data);
+      } catch (e) {
+        WSLogger.warn("WS message non JSON", evt.data);
         return;
       }
 
-      // heartbeat interne uniquement
       if (data.type === "pong") {
         this.lastPong = Date.now();
         return;
       }
 
-      // 🔥 FORWARD PUR
       this.emit(data);
     };
 
-    /* ======================
-       CLOSE
-    ====================== */
     this.ws.onclose = (evt) => {
-      WSLogger.warn("WS fermé", evt.code);
+      WSLogger.warn("WS fermÃ©", evt.code);
 
       this.stopHeartbeat();
 
@@ -108,21 +90,18 @@ class SocketService {
       }
     };
 
-    /* ======================
-       ERROR
-    ====================== */
     this.ws.onerror = (err) => {
       WSLogger.error("WS erreur", err);
     };
   }
 
   /* ======================================================
-     SEND (QUEUE SAFE)
+     SEND SAFE
   ====================================================== */
   send(payload) {
     if (!payload) return;
 
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(payload));
     } else {
       if (this.queue.length >= CONFIG.MAX_QUEUE_SIZE) {
@@ -140,11 +119,11 @@ class SocketService {
   }
 
   /* ======================================================
-     EVENT SYSTEM (TRANSPORT ONLY)
+     EVENTS
   ====================================================== */
   onMessage(cb) {
     this.listeners.add(cb);
-    return () => this.listeners.delete(cb); // unsubscribe
+    return () => this.listeners.delete(cb);
   }
 
   emit(data) {
@@ -158,7 +137,7 @@ class SocketService {
   }
 
   /* ======================================================
-     HEARTBEAT (INTERNE)
+     HEARTBEAT
   ====================================================== */
   startHeartbeat() {
     this.stopHeartbeat();
@@ -166,12 +145,14 @@ class SocketService {
     this.lastPong = Date.now();
 
     this.heartbeatInterval = setInterval(() => {
-      if (this.ws?.readyState !== WebSocket.OPEN) return;
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-      this.ws.send(JSON.stringify({ type: "ping" }));
+      this.send({ type: "ping" });
 
-      if (Date.now() - this.lastPong > CONFIG.HEARTBEAT_TIMEOUT_MS) {
-        WSLogger.warn("WS timeout");
+      const diff = Date.now() - this.lastPong;
+
+      if (diff > CONFIG.HEARTBEAT_TIMEOUT_MS) {
+        WSLogger.warn("WS timeout â†’ reconnect forced");
         this.ws.close();
       }
     }, CONFIG.HEARTBEAT_INTERVAL_MS);
@@ -180,24 +161,26 @@ class SocketService {
   stopHeartbeat() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
-    this.heartbeatInterval = null;
   }
 
   /* ======================================================
-     RECONNECT (INFRA)
+     RECONNECT
   ====================================================== */
   scheduleReconnect() {
     this.reconnectAttempts++;
 
     const delay = Math.min(
-      CONFIG.RECONNECT_BASE_MS * this.reconnectAttempts,
+      CONFIG.RECONNECT_BASE_MS * Math.pow(2, this.reconnectAttempts),
       CONFIG.RECONNECT_MAX_MS
     );
 
     WSLogger.info(`Reconnect dans ${delay}ms`);
 
-    setTimeout(() => {
+    clearTimeout(this.reconnectTimeout);
+
+    this.reconnectTimeout = setTimeout(() => {
       if (this.currentUrl) {
         this.connect(this.currentUrl);
       }
@@ -205,27 +188,26 @@ class SocketService {
   }
 
   /* ======================================================
-     CLOSE CLEAN
+     CLOSE MANUAL
   ====================================================== */
   close() {
     this.manualClose = true;
 
     this.stopHeartbeat();
 
+    clearTimeout(this.reconnectTimeout);
+
     if (this.ws) {
       this.ws.close(1000, "manual");
     }
 
     this.ws = null;
-
-    // 🔥 IMPORTANT : garder la même référence si exposée ailleurs
-    this.queue.length = 0;
-
-    this.listeners.clear();
   }
 }
 
-/* ======================================================
-   EXPORT SINGLETON
-====================================================== */
 export const socketService = new SocketService();
+window.socketService = socketService;
+
+export const registerWsHandler = (cb) => socketService.onMessage(cb);
+export const sendWs = (data) => socketService.send(data);
+

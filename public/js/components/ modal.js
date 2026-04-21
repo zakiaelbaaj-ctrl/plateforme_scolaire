@@ -43,3 +43,4 @@ export default function Modal({ modalId = "confirmModal" } = {}) {
 
   return { open, close };
 }
+

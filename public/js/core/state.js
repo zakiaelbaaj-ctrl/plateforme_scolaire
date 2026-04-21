@@ -1,7 +1,11 @@
 // ======================================================
-// APP STATE — SINGLE SOURCE OF TRUTH (CLEAN VERSION)
+// IMPORTS (✅ CORRIGÉ)
 // ======================================================
+import { CallStateMachine } from "../domains/call/call.state.machine.js";
 
+// ======================================================
+// APP STATE — SINGLE SOURCE OF TRUTH (IMPROVED)
+// ======================================================
 export const AppState = {
 
   // ==================================================
@@ -21,6 +25,8 @@ export const AppState = {
   },
 
   setCurrentUser(user = {}) {
+    if (!user || typeof user !== "object") return;
+
     this.currentUser = { ...this.currentUser, ...user };
     this._notify("user:update", this.currentUser);
   },
@@ -32,13 +38,13 @@ export const AppState = {
   wsReady: false,
 
   setWsConnected(value) {
-    this.wsConnected = value;
-    this._notify("ws:connected", value);
+    this.wsConnected = !!value;
+    this._notify("ws:connected", this.wsConnected);
   },
 
   setWsReady(value) {
-    this.wsReady = value;
-    this._notify("ws:ready", value);
+    this.wsReady = !!value;
+    this._notify("ws:ready", this.wsReady);
   },
 
   // ==================================================
@@ -47,35 +53,46 @@ export const AppState = {
   onlineProfessors: [],
 
   get hasOnlineProfessors() {
-  return this.onlineProfessors.length > 0;
-},
-
-  setOnlineProfessors(profs = []) {
-    this.onlineProfessors = profs;
-    this._notify("professors:update", profs);
+    return this.onlineProfessors.length > 0;
   },
 
- // ======================================================
-// CALL STATE
-// ======================================================
-_callState: null,
+  setOnlineProfessors(profs = []) {
+    if (!Array.isArray(profs)) return;
 
-setCallState(state) {
-  this._callState = state;
-  this._notify("callState:change", state);
-},
+    this.onlineProfessors = [...profs]; // ✅ immutabilité
+    this._notify("professors:update", this.onlineProfessors);
+  },
 
-getCallState() {
-  return this._callState;
-},
- requestCall(prof) {
-  this._notify("ui:requestCall", prof);
-},
+  // ==================================================
+  // CALL STATE
+  // ==================================================
+  _callState: null,
+
+  get callState() {
+    return this._callState;
+  },
+
+  getCallState() {
+    return this._callState;
+  },
+
+  setCallState(state) {
+    if (this._callState === state) return; // ✅ évite spam
+
+    this._callState = state;
+    this._notify("callState:change", state);
+  },
+
+  requestCall(prof) {
+    if (!prof) return;
+    this._notify("ui:requestCall", prof);
+  },
+
   currentIncomingCallEleveId: null,
 
   setIncomingCallEleveId(id) {
-    this.currentIncomingCallEleveId = id;
-    this._notify("call:incomingId", id);
+    this.currentIncomingCallEleveId = id ?? null;
+    this._notify("call:incomingId", this.currentIncomingCallEleveId);
   },
 
   // ==================================================
@@ -85,14 +102,20 @@ getCallState() {
   currentRoomId: null,
   selectedStudentId: null,
 
-  startSession({ roomId, studentId = null }) {
+  startSession({ roomId, studentId = null } = {}) {
+    if (!roomId) return;
+   // ✅ PROTECTION CONTRE LES BOUCLES INFINIES
+    if (this.sessionInProgress && this.currentRoomId === roomId) {
+      console.warn("⚠️ Session déjà en cours pour cette room, ignore le startSession");
+      return; 
+    }
     this.sessionInProgress = true;
-    this.currentRoomId = roomId ?? null;
+    this.currentRoomId = roomId;
     this.selectedStudentId = studentId;
 
     this._notify("session:start", {
-      roomId: this.currentRoomId,
-      studentId: this.selectedStudentId
+      roomId,
+      studentId
     });
   },
 
@@ -143,7 +166,9 @@ getCallState() {
   chatMessages: [],
   _seenMessageIds: new Set(),
 
-  addChatMessage({ messageId, sender, text }) {
+  addChatMessage({ messageId, sender, text } = {}) {
+    if (!text) return;
+
     if (messageId && this._seenMessageIds.has(messageId)) return;
 
     if (messageId) {
@@ -152,7 +177,7 @@ getCallState() {
 
     const msg = { messageId, sender, text };
 
-    this.chatMessages.push(msg);
+    this.chatMessages = [...this.chatMessages, msg]; // ✅ immutabilité
     this._notify("chat:new", msg);
   },
 
@@ -167,14 +192,21 @@ getCallState() {
   // ==================================================
   documents: [],
 
-  addDocument({ fileName, fileData, sender }) {
+  addDocument({ fileName, fileData, sender } = {}) {
+    if (!fileName || !fileData) {
+      console.warn("⚠️ Document invalide ignoré", { fileName, fileData });
+      return;
+    }
+
     const doc = {
       fileName,
       fileData,
       sender: sender || "Inconnu"
     };
 
-    this.documents.push(doc);
+    console.log("🔥 AppState.addDocument EXECUTÉ:", doc);
+
+    this.documents = [...this.documents, doc]; // ✅ immutabilité
     this._notify("documents:new", doc);
   },
 
@@ -189,6 +221,8 @@ getCallState() {
   invoice: null,
 
   showInvoice(data) {
+    if (!data) return;
+
     this.invoice = data;
     this._notify("invoice:show", data);
   },
@@ -212,7 +246,6 @@ getCallState() {
 
     this.setWsConnected(false);
     this.setWsReady(false);
-
     this.setOnlineProfessors([]);
 
     this.setCallState(null);
@@ -227,6 +260,8 @@ getCallState() {
     this.invoice = null;
     this._notify("invoice:clear");
 
+    // ✅ reset listeners (important)
+    this._listeners = {};
 
     this._notify("app:reset");
 
@@ -234,42 +269,55 @@ getCallState() {
   },
 
   // ==================================================
-  // EVENT SYSTEM (REACTIF)
+  // EVENT SYSTEM (ROBUSTE)
   // ==================================================
   _listeners: {},
 
   on(event, callback) {
+    if (!event || typeof callback !== "function") return () => {};
+
     if (!this._listeners[event]) {
       this._listeners[event] = [];
     }
 
     this._listeners[event].push(callback);
 
-    // ✅ unsubscribe propre
     return () => {
-      this._listeners[event] =
-        this._listeners[event].filter(cb => cb !== callback);
+      const arr = this._listeners[event];
+      if (!arr) return;
+
+      this._listeners[event] = arr.filter(cb => cb !== callback);
     };
   },
 
   _notify(event, payload = null) {
     const list = this._listeners[event];
-    if (!list) return;
+    if (!list || list.length === 0) return;
 
-    list.forEach(cb => {
+    const listenersCopy = [...list]; // ✅ safe dispatch
+
+    console.log("📡 _notify:", event, payload);
+
+    for (const cb of listenersCopy) {
       try {
         cb(payload);
       } catch (e) {
         console.error(`Listener error (${event})`, e);
       }
-    });
+    }
   }
 };
-// ======================================================
-// 🔥 BRIDGE CALL STATE MACHINE → APPSTATE
-// ======================================================
-import { CallStateMachine } from "../domains/call/call.state.machine.js";
 
+// ======================================================
+// BRIDGE CALL STATE MACHINE → APPSTATE
+// ======================================================
 CallStateMachine.onChange((state) => {
   AppState.setCallState(state);
 });
+
+// ======================================================
+// DEBUG SAFE (PAS GLOBAL SALE)
+// ======================================================
+if (typeof window !== "undefined") {
+  window.__APP_STATE__ = AppState; // debug uniquement
+}

@@ -1,4 +1,4 @@
-// 1. Détection dynamique de l'URL de base
+// 1. DÃ©tection dynamique de l'URL de base
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:4000" 
   : "https://plateforme-scolaire-1.onrender.com";
@@ -14,19 +14,22 @@ if (storedUser && token) {
   try {
     const user = JSON.parse(storedUser);
     if (user.role === "prof") {
+      // ✅ C'est un prof déjà connecté, on l'envoie sur son dashboard
       window.location.replace("../../pages/professeur/dashboard.html");
-      // On s'arrête ici pour ne pas exécuter la suite du script
-    } else if (user.role === "eleve") {
-      window.location.replace("../../pages/eleve/dashboard.html");
+    } else {
+      // ⚠️ Un élève (ou autre) arrive sur le login prof !
+      // On détruit sa session pour éviter les conflits et le laisser se connecter.
+      console.warn("Session non-professeur détectée. Déconnexion automatique.");
+      localStorage.clear();
     }
   } catch (e) {
+    console.error("Erreur lecture session", e);
     localStorage.clear();
   }
 } else {
-    // On ne nettoie QUE si on n'est pas connecté, pour éviter les résidus
+    // Si pas de token, on nettoie pour éviter les résidus
     localStorage.clear(); 
 }
-
 
 const loginForm = document.getElementById("loginProfForm");
 const errorDiv = document.getElementById("errorDiv");
@@ -55,7 +58,7 @@ async function loginProfesseur(event) {
     hideError();
     hideSuccess();
 
-    console.log("📤 Connexion en cours pour:", username);
+    console.log("ðŸ“¤ Connexion en cours pour:", username);
 
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
@@ -64,14 +67,14 @@ async function loginProfesseur(event) {
     });
 
     const json = await res.json();
-    console.log("📥 Réponse serveur:", json);
+    console.log("ðŸ“¥ RÃ©ponse serveur:", json);
 
-    if (!res.ok) throw new Error(json.message || "Connexion échouée");
+    if (!res.ok) throw new Error(json.message || "Connexion Ã©chouÃ©e");
 
     const accessToken = json.accessToken;
     const currentUser = json.user;
 
-    if (!accessToken) throw new Error("Token absent dans la réponse serveur");
+    if (!accessToken) throw new Error("Token absent dans la rÃ©ponse serveur");
     if (!currentUser || currentUser.role !== "prof")
       throw new Error("Cet utilisateur n'est pas professeur");
 
@@ -83,17 +86,17 @@ async function loginProfesseur(event) {
     localStorage.setItem("token", accessToken);
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
 
-    console.log("✅ Données stockées:", { token: "***", user: currentUser });
+    console.log("âœ… DonnÃ©es stockÃ©es:", { token: "***", user: currentUser });
 
-    showSuccess("Connexion réussie! Redirection...");
+    showSuccess("Connexion rÃ©ussie! Redirection...");
 
-    // 🚀 Redirection vers dashboard professeur
+    // ðŸš€ Redirection vers dashboard professeur
     setTimeout(() => {
       window.location.replace("../../pages/professeur/dashboard.html");
     }, 1000);
 
   } catch (err) {
-    console.error("❌ Erreur:", err);
+    console.error("âŒ Erreur:", err);
     showError(err.message || "Erreur de connexion");
     showLoading(false);
   }
@@ -103,20 +106,20 @@ async function loginProfesseur(event) {
  * Affichage / masquage messages
  */
 function showError(msg) {
-  errorDiv.textContent = "❌ " + msg;
+  errorDiv.textContent = "âŒ " + msg;
   errorDiv.classList.add("show");
 }
 function hideError() { errorDiv.classList.remove("show"); }
 
 function showSuccess(msg) {
-  successDiv.textContent = "✅ " + msg;
+  successDiv.textContent = "âœ… " + msg;
   successDiv.classList.add("show");
 }
 function hideSuccess() { successDiv.classList.remove("show"); }
 
 function showLoading(isLoading) {
   if (isLoading) {
-    loadingDiv.textContent = "⏳ Connexion en cours...";
+    loadingDiv.textContent = "â³ Connexion en cours...";
     loadingDiv.classList.add("show");
     submitBtn.disabled = true;
   } else {
@@ -131,3 +134,4 @@ loginForm.addEventListener("submit", loginProfesseur);
 // Nettoyer messages au focus
 document.getElementById("username").addEventListener("focus", hideError);
 document.getElementById("password").addEventListener("focus", hideError);
+

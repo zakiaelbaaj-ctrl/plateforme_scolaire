@@ -149,7 +149,7 @@ async function boot() {
       const root = document.querySelector(CONFIG.dashboardRootSelector) || document.body;
       const msg = document.createElement("div");
       msg.className = "boot-error";
-      msg.textContent = "Une erreur est survenue lors du démarrage du tableau de bord. Réessayez plus tard.";
+      msg.textContent = "Une erreur est survenue lors du dÃ©marrage du tableau de bord. RÃ©essayez plus tard.";
       root.innerHTML = "";
       root.appendChild(msg);
     } catch (e) { /* ignore */ }
@@ -176,3 +176,4 @@ if (document.readyState === "loading") {
 export default {
   boot,
 };
+

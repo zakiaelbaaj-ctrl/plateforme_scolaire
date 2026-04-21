@@ -13,7 +13,7 @@ import {
 
 
 // ======================================================
-// UI BINDINGS — Connecte AppState ↔ UI
+// UI BINDINGS â€” Connecte AppState â†” UI
 // ======================================================
 
 // ---------- PROFESSORS ----------
@@ -52,3 +52,4 @@ AppState.on("timer:reset", () => {
 AppState.on("invoice:show", (data) => {
   renderInvoice(data);
 });
+
