@@ -229,21 +229,20 @@ function startSession(
 // 🔒 NE PAS APPELER DEPUIS LE CLIENT
 // =======================================================
 export function endSessionForDisconnect(profId, eleveId, onlineProfessors, clients) {
-  // ⚠️ Appel INTERNE lors d'une déconnexion
-  
   onlineProfessorsModule.endSession(profId);
 
-  // Notifier l'autre utilisateur
-  const otherUserId = eleveId || profId;
-  const otherWs = clients.get(otherUserId);
+  // ✅ Notifier LES DEUX participants
+  const profWs  = clients.get(profId);
+  const eleveWs = clients.get(eleveId);
 
-  if (otherWs?.readyState === 1) {
-    safeSend(otherWs, {
-      type: "callEnded",
-      reason: "other_user_disconnected",
-      timestamp: new Date().toISOString()
-    });
-  }
+  const payload = {
+    type: "session:stop",
+    reason: "session_ended",
+    timestamp: new Date().toISOString()
+  };
+
+  if (profWs?.readyState === 1)  safeSend(profWs,  payload);
+  if (eleveWs?.readyState === 1) safeSend(eleveWs, payload);
 
   console.log(`📴 Session terminée: prof ${profId} ↔ élève ${eleveId}`);
 }

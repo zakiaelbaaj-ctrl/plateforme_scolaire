@@ -312,13 +312,15 @@ if (type === "screenShareStart" || type === "screenShareStop") {
 // 🔚 FIN DE SESSION (ACTION VOLONTAIRE : CLIC "TERMINER")
 // ======================================================
 if (type === "endSession") {
+  console.log(`🔍 endSession reçu de ${ws.userId} (${ws.role})`);
   let profId = null;
   let eleveId = null;
 
-  // 1️⃣ Identifier les acteurs de la session
   if (ws.role === "prof") {
+    
     const prof = onlineProfessors.get(ws.userId);
-    if (prof && prof.eleveId) {
+    console.log(`🔍 prof trouvé:`, prof ? `eleveId=${prof.eleveId}` : "NON TROUVÉ");
+    if (prof?.eleveId) {
       profId = ws.userId;
       eleveId = prof.eleveId;
     }
@@ -332,18 +334,17 @@ if (type === "endSession") {
     }
   }
 
-  // 2️⃣ Si on a un binôme valide, on ferme la session
   if (profId && eleveId) {
     console.log(`🎯 Bouton "Terminer" reçu pour : room_${profId}_${eleveId}`);
-    
-    // NOTE : On ne déclenche PLUS processSessionPayment ici.
-    // C'est le message "visioDuration" envoyé par l'élève juste après 
-    // qui déclenchera le paiement unique dans ws/visio.js.
-
-    // ✅ Nettoyage technique (Twilio, Statuts, Rooms)
     endSessionForDisconnect(profId, eleveId, onlineProfessors, clients);
   } else {
-    console.log(`⚠️ Fin de session demandée mais aucun binôme actif trouvé pour ${ws.userId}`);
+    console.log(`⚠️ Aucun binôme actif pour ${ws.userId}`);
+    // ✅ Notifier quand même l'appelant
+    safeSend(ws, {
+      type: "session:stop",
+      reason: "session_ended",
+      timestamp: new Date().toISOString()
+    });
     leaveRoom(ws);
   }
 

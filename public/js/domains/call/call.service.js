@@ -2,51 +2,40 @@ import { AppState } from "../../core/state.js";
 import { socketService } from "../../core/socket.service.js";
 import { VideoService } from "./video.service.js";
 import { CallStateMachine } from "./call.state.machine.js";
-import { WhiteboardService } from "../whiteboard/whiteboard.service.js";
 
 export const CallService = {
+
   handleEvent(data) {
-    if (!data || !data.type) return;
+    if (!data?.type) return;
 
     switch (data.type) {
-                  case "startSession":
-        const roomId = data.roomId || data.room;
-        if (roomId) {
-          console.log("?? D�marrage de la session clinique pour la room:", roomId);
-          
-          // Mise � jour de l'�tat global
-          if (typeof AppState !== 'undefined') AppState.startSession({ roomId });
-          
-          // On change l'�tat de la machine d'appel
-          if (typeof CallStateMachine !== 'undefined') CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
-
-          // Initialisation du tableau blanc apr�s un court d�lai pour le rendu DOM
-          setTimeout(() => {
-            const wb = window.WhiteboardService;
-            if (wb && typeof wb.initCanvas === 'function') {
-              console.log("?? Initialisation du tableau blanc...");
-              wb.initCanvas("whiteboard-canvas", roomId);
-              const wrapper = document.getElementById("whiteboard-wrapper");
-              if (wrapper) wrapper.style.display = "block";
-            }
-          }, 500);
-        }
+      case "startSession": {
+        const roomId = data.roomId ?? data.room ?? null;
+        if (!roomId) return;
+        AppState.startSession({ roomId });
+        CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
+        setTimeout(() => {
+          const wb = window.WhiteboardService;
+          if (wb?.initCanvas) {
+            wb.initCanvas("whiteboard-canvas", roomId);
+            const wrapper = document.getElementById("whiteboard-wrapper");
+            if (wrapper) wrapper.style.display = "block";
+          }
+        }, 500);
         break;
+      }
 
       case "twilioToken":
-        if (data.token) {
-          console.log("?? [TWILIO] Connexion avec Token String");
-          VideoService.connect(data.token);
-        }
+        if (data.token) VideoService.connect(data.token);
         break;
 
       case "incomingCall":
-        AppState.setIncomingCallEleveId?.(data.eleveId);
+        AppState.setIncomingCallEleveId(data.eleveId);
         AppState._notify("call:incoming", data);
         break;
 
       case "callAccepted":
-        CallStateMachine.setState?.(CallStateMachine.STATES.IN_CALL);
+        CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
         break;
 
       case "callEnded":
@@ -57,20 +46,39 @@ export const CallService = {
   },
 
   callProfessor(profId) {
-    const pId = parseInt(profId);
-    socketService.send({ 
-      type: "callProfessor", 
-      profId: pId 
-    });
+    socketService.send({ type: "callProfessor", profId: parseInt(profId) });
   },
 
+  // ✅ Guard anti-double-appel
+  _terminating: false,
+
   terminateCall() {
-    if (!VideoService.room) return; // Ignorer si pas de session Twilio active
-    AppState.endSession?.();
-    VideoService.disconnect?.();
-    AppState._notify("ui:closeCallOverlay");
+    if (this._terminating) return; // ✅ bloque les appels récursifs
+    this._terminating = true;
+
+    console.log("🛑 terminateCall()");
+
+    // 1. Déconnexion Twilio (sans déclencher setState via l'event "disconnected")
+    VideoService.disconnectSilent(); // ✅ nouveau : ne setState pas
+
+    // 2. Machine d'état → ended (une seule fois)
     CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+
+    // 3. Nettoyage AppState (endSession appelle reset() qui remet idle)
+    AppState.stopTimer();
+    AppState.endSession(); // → reset() → idle → onChange → setCallState(idle) → cleanupSession
+
+    // 4. Notif UI
+    AppState._notify("ui:closeCallOverlay");
+
+    this._terminating = false;
+  },
+
+  handleSessionEnded() {
+    this.terminateCall();
+  },
+
+  disconnectTwilio() {
+    VideoService.disconnectSilent();
   }
 };
-
-

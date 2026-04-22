@@ -4,13 +4,12 @@ export const VideoService = {
   room: null,
 
   async connect(token) {
-    console.log("?? Tentative de connexion vid�o...");
     try {
       this.room = await Twilio.Video.connect(token, { audio: true, video: { width: 640 } });
-      console.log("? Connect� � Twilio Room:", this.room.name);
+      console.log("✅ Connecté à Twilio Room:", this.room.name);
 
-      this.room.localParticipant.tracks.forEach(publication => {
-        if (publication.track) this.attachTrack(publication.track, "local");
+      this.room.localParticipant.tracks.forEach(pub => {
+        if (pub.track) this.attachTrack(pub.track, "local");
       });
 
       this.room.participants.forEach(participant => {
@@ -24,11 +23,43 @@ export const VideoService = {
         p.on("trackSubscribed", track => this.attachTrack(track, "remote"));
       });
 
+      // ✅ Twilio déclenche "disconnected" → on setState ended UNE SEULE FOIS
+      // mais seulement si ce n'est pas nous qui avons initié la déconnexion
       this.room.on("disconnected", () => {
-        CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+        if (!this._silentDisconnect) {
+          CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+        }
+        this._silentDisconnect = false;
       });
 
-    } catch (e) { console.error("? Erreur VideoService:", e); }
+    } catch (e) {
+      console.error("❌ Erreur VideoService:", e);
+    }
+  },
+
+  // ✅ Déconnexion normale (déclenche l'event "disconnected" → setState ended)
+  disconnect() {
+    if (!this.room) return;
+    this._stopLocalTracks();
+    this.room.disconnect(); // → déclenche "disconnected" → CallStateMachine.setState(ENDED)
+    this.room = null;
+    CallStateMachine.setState(CallStateMachine.STATES.ENDED); // ← SUPPRIMÉ (doublon)
+  },
+
+  // ✅ Déconnexion silencieuse : n'appelle PAS setState (appelée par terminateCall)
+  disconnectSilent() {
+    if (!this.room) return;
+    this._silentDisconnect = true; // flag pour bloquer le handler "disconnected"
+    this._stopLocalTracks();
+    this.room.disconnect();
+    this.room = null;
+  },
+
+  _stopLocalTracks() {
+    this.room?.localParticipant?.tracks?.forEach(pub => {
+      pub.track?.stop();
+      pub.unpublish?.();
+    });
   },
 
   attachTrack(track, side, attempts = 0) {
@@ -45,42 +76,27 @@ export const VideoService = {
       return;
     }
 
-    console.log("?? Flux attach� �:", containerId);
-
     if (track.kind === "audio") {
       const el = track.attach();
       el.autoplay = true;
       document.body.appendChild(el);
       return;
     }
+
     if (container.tagName === "VIDEO") {
-      const newEl = track.attach();
-      newEl.autoplay = true;
-      newEl.playsInline = true;
-      newEl.muted = (side === "local");
-      newEl.style.cssText = "width:100%;height:100%;object-fit:cover;";
-      container.replaceWith(newEl);
-      newEl.id = containerId;
-    } else {
-      const existing = container.querySelector("video");
-      if (existing) existing.remove();
       const el = track.attach();
-      el.autoplay = true;
-      el.playsInline = true;
+      el.autoplay = true; el.playsInline = true;
+      el.muted = (side === "local");
+      el.style.cssText = "width:100%;height:100%;object-fit:cover;";
+      container.replaceWith(el);
+      el.id = containerId;
+    } else {
+      container.querySelector("video")?.remove();
+      const el = track.attach();
+      el.autoplay = true; el.playsInline = true;
       el.muted = (side === "local");
       el.style.cssText = "width:100%;height:100%;object-fit:cover;";
       container.appendChild(el);
     }
-  },
-
-  disconnect() {
-    if (this.room) {
-      this.room.localParticipant.tracks.forEach(pub => {
-        if (pub.track) { pub.track.stop(); pub.unpublish(); }
-      });
-      this.room.disconnect();
-      this.room = null;
-    }
-    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
   }
 };

@@ -161,8 +161,10 @@ function bindUI() {
   });
 
   document.getElementById("end-session-btn")?.addEventListener("click", () => {
-  CallService.endCall(); // informe le serveur
+  CallService.terminateCall(); // informe le serveur
+  if (typeof SessionService !== 'undefined') {
   SessionService.endSession();
+  }
 });
 
 // ================= WHITEBOARD =================

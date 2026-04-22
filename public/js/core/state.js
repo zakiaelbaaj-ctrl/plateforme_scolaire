@@ -109,6 +109,11 @@ export const AppState = {
       console.warn("⚠️ Session déjà en cours pour cette room, ignore le startSession");
       return; 
     }
+    // ✅ Si on change de room, on reset proprement l'ancienne session
+  if (this.sessionInProgress && this.currentRoomId !== roomId) {
+    console.warn("⚠️ Nouvelle room détectée, reset de l'ancienne session");
+    this.endSession();
+  }
     this.sessionInProgress = true;
     this.currentRoomId = roomId;
     this.selectedStudentId = studentId;
@@ -120,12 +125,14 @@ export const AppState = {
   },
 
   endSession() {
-    this.sessionInProgress = false;
-    this.currentRoomId = null;
-    this.selectedStudentId = null;
+  this.sessionInProgress = false;
+  this.currentRoomId = null;
+  this.selectedStudentId = null;
 
-    this._notify("session:end");
-  },
+  CallStateMachine.reset(); // ✅ remet la machine à idle proprement
+
+  this._notify("session:end");
+},
 
   // ==================================================
   // TIMER

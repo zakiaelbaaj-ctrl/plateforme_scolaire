@@ -129,7 +129,7 @@ case "twilioDisconnected": {
        }
 
        case "error": {
-  // ðŸ”¹ Ignorer certaines erreurs cÃ´tÃ© Ã©lÃ¨ve
+  //  Ignorer certaines erreurs cÃ´tÃ© Ã©lÃ¨ve
       if (data.message === "Stroke invalide" || 
       data.message === "stroke requis" || 
       data.message === "Vous n'Ãªtes pas dans cette room") break;
@@ -155,46 +155,50 @@ case "twilioDisconnected": {
     CallService.callProfessor(profId); 
   },
 
-  stopVideoCall() {
+ stopVideoCall() {
+    console.log("🛑 Arrêt de la session vidéo...");
+    
     // 1. Déconnexion Twilio
-    CallService.disconnectTwilio?.();
-    
-    // 2. On appelle endCall qui gère la logique métier et le setState
-    CallService.endCall(); 
-    
-    // 3. On ferme la room sur le serveur
-    this.endSession(); 
-  },
-
-  endSession() {
-    if (AppState.currentRoomId) {
-       socketService.send({ type: "endSession", roomId: AppState.currentRoomId });
+    if (typeof CallService !== 'undefined' && CallService.disconnectTwilio) {
+      CallService.disconnectTwilio();
     }
-    
-    // Nettoyage local via le service spécialisé
-    CallService.handleSessionEnded?.();
+    // 2. 📡 ON PRÉVIENT LE SERVEUR EN PREMIER ! (Avant de perdre la mémoire)
+    this.endSession();
+    // 3. 🧹 ON NETTOIE LE LOCAL EN DERNIER (Chrono, UI, State)
+    if (typeof CallService !== 'undefined') {
+      CallService.terminateCall(); 
+    }
   },
 
-  // Utilise de préférence le timer central de l'AppState
-  startTimer(callback) {
-  
-  this.stopTimer();
+ endSession() {
+  console.log("📤 endSession envoyé, roomId:", AppState.currentRoomId);
 
-  let seconds = 0;
-
-  AppState._timerInterval = setInterval(() => {
-    seconds++;
-    const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
-    const ss = String(seconds % 60).padStart(2, "0");
-    callback?.(`${mm}:${ss}`);
-  }, 1000);
+  if (AppState.currentRoomId) {
+    socketService.send({ type: "endSession", roomId: AppState.currentRoomId });
+  } else {
+    console.warn("⚠️ endSession appelé mais currentRoomId est null !");
+  }
+  // ✅ NE PAS appeler handleSessionEnded ici — c'est terminateCall qui s'en charge
 },
+
+  // ==============================================================
+  // ⏱️ GESTION DU TIMER (Déléguée proprement à l'AppState)
+  // ==============================================================
+  
+  startTimer() {
+    if (typeof AppState !== 'undefined' && AppState.startTimer) {
+      console.log("⏱️ SessionService demande le démarrage du timer...");
+      AppState.startTimer();
+    } else {
+      console.warn("⚠️ Impossible de démarrer le timer : AppState.startTimer est introuvable.");
+    }
+  },
+  
   stopTimer() {
-    if (AppState._timerInterval) {
-      clearInterval(AppState._timerInterval);
-      AppState._timerInterval = null;
+    if (typeof AppState !== 'undefined' && AppState.stopTimer) {
+      console.log("🛑 SessionService demande l'arrêt du timer...");
+      AppState.stopTimer();
     }
   }
 
 };
-

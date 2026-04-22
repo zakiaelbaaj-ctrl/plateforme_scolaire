@@ -50,8 +50,22 @@ const normalizedDoc = {
         break;
 
       case "startSession": 
-        this.handleStartSession(data); 
-        break;
+  this.handleStartSession(data); 
+  break;
+
+// ✅ joinedRoom : ne reappelle PAS startSession, démarre juste le timer
+case "joinedRoom": {
+  console.log("✅ joinedRoom reçu côté prof", data);
+  const roomId = data.roomId ?? data.room;
+  if (!roomId) { console.warn("⚠️ joinedRoom sans roomId", data); break; }
+
+  // ✅ PAS de startSession ici (déjà fait dans handleStartSession)
+  // ✅ PAS de setCallState ici (CallService.handleEvent("startSession") le fait)
+
+  // ✅ Timer démarré ici, une seule fois
+  AppState.startTimer();
+  break;
+}
 
       case "chatMessage":
         AppState.addChatMessage({
@@ -66,33 +80,25 @@ const normalizedDoc = {
         break;
 
       case "tableauClear":
-  AppState.emit("whiteboard:clear");
-  break;
-case "joinedRoom":
-  console.log("✅ joinedRoom reçu côté prof", data);
+        AppState.emit("whiteboard:clear");
+        break;
 
-  const roomId = data.roomId ?? data.room;
+      case "joinedRoom": {
+        console.log("✅ joinedRoom reçu côté prof", data);
+        const roomId = data.roomId ?? data.room;
+        if (!roomId) { console.warn("⚠️ joinedRoom sans roomId", data); break; }
+        AppState.startTimer();
+        break;
+      }
 
-  if (!roomId) {
-    console.warn("⚠️ joinedRoom sans roomId", data);
-    break;
-  }
+      case "userJoined":
+      case "userLeft":
+        break;
 
-  // sauvegarde de la room
-  AppState.currentRoomId = roomId;
-
-  AppState.startSession({ roomId });
-
-  // passage en appel
-  AppState.setCallState("inCall");
-
-  break;
-
-  default:
-  WSLogger.warn("Type WS non géré (prof) :", data.type);
+      default:
+        WSLogger.warn("Type WS non géré (prof) :", data.type);
     }
   }
-
   onTransportOpen() {
     AppState.setWsConnected(true);
     if (AppState.currentUser?.id) {
@@ -104,12 +110,13 @@ case "joinedRoom":
     }
   }
 
-  handleStartSession(data) {
-    const roomId = data.roomId ?? data.room;
-    if (!roomId) return;
-    AppState.startSession({ roomId });
-    socketService.send({ type: "joinRoom", roomId });
-  }
+ handleStartSession(data) {
+  const roomId = data.roomId ?? data.room;
+  if (!roomId) return;
+  AppState.startSession({ roomId }); // ← une seule fois
+  socketService.send({ type: "joinRoom", roomId });
+  // ✅ Timer démarré dans joinedRoom, pas ici
+}
 
   handleOutgoingCall(prof) {
     if (!prof?.id) return;

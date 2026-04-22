@@ -41,28 +41,35 @@ class SocketHandlerEleve {
       AppState.addDocument(normalizedDoc);
       break;
     }
-      case "callSent":
-      case "incomingCall":
-      case "callAccepted":
-      case "callRejected":
-      case "twilioToken":
+     case "callSent":
+  case "incomingCall":
+  case "callAccepted":
+  case "callRejected":
+  case "twilioToken":
+  case "twilioLocalTrack":
+  case "twilioRemoteTracks":
+    CallService.handleEvent(data);
+    break;
+       // ✅ Ces events terminent la session ET stoppent le timer
       case "callEnded":
       case "session:stop":
-      case "twilioLocalTrack":
-      case "twilioRemoteTracks":
-        CallService.handleEvent(data);
-        break;
+      case "endSession":
+        console.log("🛑 [Élève] Session terminée par le prof");
+       AppState.stopTimer();
+       AppState.endSession();
+       CallService.handleEvent(data);
+       break;
+       
+       case "startSession":
+       this.handleStartSession(data);
+       break;
 
-      case "startSession": this.handleStartSession(data); break;
-      case "joinedRoom":
-        console.log("✅ [Élève] Room rejointe, démarrage de la session et du timer !");
-        
-        // On informe l'état global (sécurisé par ta vérification anti-boucle)
-        AppState.startSession({ roomId: data.roomId ?? data.room });
-        
-        // ⏱️ ON LANCE LE CHRONO ICI
-        AppState.startTimer();
-        break;
+        case "joinedRoom": {
+       console.log("✅ [Élève] Room rejointe !");
+       const roomId = data.roomId ?? data.room;
+       if (roomId) AppState.startTimer();
+       break;
+         }
       case "chatMessage":
         AppState.addChatMessage({ sender: data.sender, text: data.text });
         break;
@@ -71,6 +78,10 @@ class SocketHandlerEleve {
       case "tableauSync":
         WhiteboardService.handleEvent(data);
         break;
+        case "userJoined":
+      case "userLeft":
+     // ✅ ignoré silencieusement (pas d'action requise)
+      break;
 
       default:
         WSLogger.warn("Type non géré:", data.type);

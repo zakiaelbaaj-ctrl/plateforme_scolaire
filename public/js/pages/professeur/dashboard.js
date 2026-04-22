@@ -79,7 +79,7 @@ if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboa
     stripeBtn.addEventListener("click", initStripeOnboarding);
   }
 }
-  // ðŸ”µ Connexion WebSocket
+  // 🔴 Connexion WebSocket
   const _wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const _wsToken = localStorage.getItem("token") ?? AppState.token ?? "";
   socketService.connect(`${_wsProtocol}//${window.location.host}?token=${_wsToken}`);
@@ -89,8 +89,8 @@ if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboa
   subscribeToDomains();
 
   // 🔵 Broadcast initial des profs connectés vers les élèves
-updateOnlineProfessors();
-});
+  updateOnlineProfessors();
+  });
 // ======================================================
 // DOMAIN SUBSCRIPTIONS _ UI écoute uniquement
 // ======================================================
@@ -163,11 +163,12 @@ function updateOnlineProfessors() {
 function bindUI() {
 
   // ================= BOUTON TERMINER =================
-  const endBtn = document.getElementById("end-session-btn");
-  endBtn?.addEventListener("click", () => {
-    CallService.endCall(); 
-    SessionService.endSession();
-  });
+  // ================= BOUTON TERMINER =================
+const endBtn = document.getElementById("end-session-btn");
+endBtn?.addEventListener("click", () => {
+  console.log("🖱️ Clic Terminer — roomId:", AppState.currentRoomId);
+  SessionService.stopVideoCall(); // ← appelle déjà terminateCall en interne
+});
   // ================= BOUTONS D'APPEL =================
   let acceptInProgress = false;
   const acceptBtn = document.getElementById("accept-call-btn");
@@ -189,7 +190,7 @@ function bindUI() {
     socketService.send({ type: "rejectCall", eleveId });
     AppState.currentIncomingCallEleveId = null;
     hideIncomingAlert();
-    updateCallStatus("Appel refusÃ©");
+    updateCallStatus("Appel refusé");
   });
 
   // ================= WHITEBOARD =================
@@ -232,29 +233,38 @@ function onSessionStarted(event) {
   AppState.currentRoomId     = event.roomId;
 
   updateCallStatus("En communication");
-  setSessionActive(true);
+  setSessionActive(true); // ✅ affiche le timer ET le bouton terminer
+
   WhiteboardService.initCanvas("whiteboard-canvas", event.roomId);
 
   const remoteInfo = document.getElementById("remote-eleve-info");
   if (remoteInfo) remoteInfo.style.display = "none";
 
-  SessionService.startTimer?.(updateTimerUI);
-}
+  // ✅ NE PAS appeler SessionService.startTimer ici
+  // Le timer est démarré dans joinedRoom du socket handler prof
+  // SessionService.startTimer?.(updateTimerUI); ← SUPPRIMER cette ligne
 
+  // ✅ Abonner updateTimerUI au tick du timer
+  AppState.on("timer:update", (seconds) => {
+    const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const s = String(seconds % 60).padStart(2, "0");
+    updateTimerUI(`${m}:${s}`);
+  });
+}
 function setSessionActive(active) {
   const endBtn = document.getElementById("end-session-btn");
   const badge  = document.getElementById("session-badge");
+  const timer  = document.getElementById("call-time");
 
-  if (endBtn) {
-    endBtn.style.display = active ? "" : "none";
-  }
-  
-  if (badge) {
-    badge.classList.toggle("active", active);
-  }
+  if (endBtn) endBtn.style.display = active ? "" : "none";
+  if (badge)  badge.classList.toggle("active", active);
+  if (timer)  timer.style.display = active ? "" : "none";
 }
 
 function cleanupSession(message) {
+  if (cleanupSession._running) return; // ✅ guard anti-boucle
+  cleanupSession._running = true;
+
   VideoService.disconnect();
   AppState.setCallState(null);
   AppState.sessionInProgress = false;
@@ -275,6 +285,7 @@ function cleanupSession(message) {
   if (timerEl) timerEl.textContent = "00:00";
   resetChat();
   clearCanvas();
+  cleanupSession._running = false; // ✅ libère le guard
 }
 
 // ======================================================
