@@ -119,13 +119,19 @@ WhiteboardService.onText((textStroke) => {
   updateToolButtons();
 });
   AppState.on('callState:change', (state) => {
-    switch (state) {
-      case 'calling':  updateCallStatus('Appel en cours...'); break;
-      case 'ringing':  updateCallStatus('Appel entrant...'); break;
-      case 'inCall':   updateCallStatus('En communication'); break;
-      case null:
-      default:         cleanupSession('Session terminee'); break;
-    }
+  switch (state) {
+    case 'calling':  updateCallStatus('Appel en cours...'); break;
+    case 'ringing':  updateCallStatus('Appel entrant...'); break;
+    case 'inCall':   updateCallStatus('En communication'); break;
+    case 'ended':    cleanupSession('Session terminée'); break; // ✅ explicite
+    case null:       cleanupSession('Session terminée'); break; // ✅ explicite
+    // default vide — ignore les états inconnus
+  }
+});
+   AppState.on("timer:update", (seconds) => {
+  const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const s = String(seconds % 60).padStart(2, "0");
+  updateTimerUI(`${m}:${s}`);
   });
   AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
   AppState.on('video:connected',    ()       => updateCallStatus('En communication'));
@@ -161,10 +167,8 @@ function bindUI() {
   });
 
   document.getElementById("end-session-btn")?.addEventListener("click", () => {
-  CallService.terminateCall(); // informe le serveur
-  if (typeof SessionService !== 'undefined') {
-  SessionService.endSession();
-  }
+  console.log("🖱️ Clic Terminer élève — roomId:", AppState.currentRoomId);
+  SessionService.stopVideoCall();
 });
 
 // ================= WHITEBOARD =================
@@ -210,7 +214,24 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
 
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", toggleWhiteboardFullscreen);
 
-}
+// ================= STRIPE =================
+document.getElementById("stripe-setup-btn")?.addEventListener("click", async () => {
+  console.log("🖱️ Clic carte bancaire");
+  const btn = document.getElementById("stripe-setup-btn");
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = "⏳ Connexion sécurisée...";
+  try {
+    await openSetupSession();
+  } catch (err) {
+    console.error("Erreur Stripe:", err);
+    btn.innerHTML = "❌ Erreur, réessayer";
+    setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+  }
+});
+
+} 
+
 // ======================================================
 // CHAT
 // ======================================================
@@ -387,23 +408,27 @@ function updateCallStatus(text) {
 // ======================================================
 
 function cleanupSession(message) {
+  if (cleanupSession._running) return; // ✅ guard anti-boucle
+  cleanupSession._running = true;
+
   VideoService.disconnect();
+  AppState.setCallState(null);
+  AppState.sessionInProgress = false;
   SessionService.stopTimer?.();
-
   updateCallStatus(message);
-  
-  // On vide les conteneurs vidéo
-  const remote = document.getElementById("remoteVideoContainer");
-  const local = document.getElementById("localVideoContainer");
 
+  const remote = document.getElementById("remoteVideoContainer");
+  const local  = document.getElementById("localVideoContainer");
   if (remote) remote.innerHTML = "En attente du professeur...";
-  if (local) local.innerHTML = "";
+  if (local)  local.innerHTML  = "";
 
   const timerEl = document.getElementById("call-time");
   if (timerEl) timerEl.textContent = "00:00";
-  
+
   WhiteboardService.reset?.();
   resetChat();
+
+  cleanupSession._running = false; // ✅ libère le guard
 }
 // ✔ Ajouter avant la derniÃƒÂ¨re fonction renderCurrentUserInfo
 function updateTimerUI(time) {
@@ -444,61 +469,61 @@ function renderCurrentUserInfo(user) {
   if (!user) return;
   const { prenom, nom, ville, pays, role, has_payment_method, stripe_onboarding_complete } = user;
 
-  // --- MISE Ãƒâ‚¬ JOUR DES Ãƒâ€°LÃƒâ€°MENTS FIXES (TEXTE) ---
-  const nameEl = document.getElementById("eleve-name") || document.getElementById("user-full-name");
-  const cityEl = document.getElementById("eleve-location") || document.getElementById("user-city");
-  
-  if (nameEl) nameEl.textContent = `${prenom || ""} ${nom || ""}`.trim();
-  if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || "Lieu non précisé");
+ // --- MISE À JOUR DES ÉLÉMENTS FIXES (TEXTE) ---
+const nameEl = document.getElementById("eleve-name") || document.getElementById("user-full-name");
+const cityEl = document.getElementById("eleve-location") || document.getElementById("user-city");
 
-  // --- GESTION DU CONTENEUR STRIPE ---
+if (nameEl) nameEl.textContent = `${prenom || ""} ${nom || ""}`.trim();
+if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || "Lieu non précisé");
+
+// --- GESTION DU CONTENEUR STRIPE ---
   const infoContainer = document.getElementById("user-info");
   if (!infoContainer) return;
 
   let stripeHTML = "";
 
-  // Cas Ãƒâ€°LÃƒË†VE : Inscription d'une carte bancaire
-  if (role === "eleve") {
-    if (has_payment_method) {
-      stripeHTML = `
-        <div class="stripe-box success">
-          <p>Ã¢Å“â€¦ <strong>Carte bancaire enregistrée</strong></p>
-          <p class="small">Votre moyen de paiement est prÃƒÂªt pour vos prochains cours.</p>
-          <button id="stripe-setup-btn" class="btn-link">Mettre ÃƒÂ  jour ma carte</button>
-        </div>`;
-    } else {
-      stripeHTML = `
-        <div class="stripe-box warning">
-          <p>Ã¢Å¡Â Ã¯Â¸Â <strong>Paiement requis</strong></p>
-          <p class="small">Veuillez enregistrer une carte pour pouvoir appeler un professeur.</p>
-          <button id="stripe-setup-btn" class="btn-primary">Ã°Å¸â€™Â³ Ajouter une carte bancaire</button>
-        </div>`;
-    }
-  } 
-  // Cas PROFESSEUR : Onboarding Stripe Connect
-  else if (role === "prof") {
-    if (stripe_onboarding_complete) {
-      stripeHTML = `
-        <div class="stripe-box success">
-          <p>Ã¢Å“â€¦ <strong>Compte Stripe configuré</strong></p>
-          <p class="small">Vous pouvez recevoir des paiements de vos élÃƒÂ¨ves.</p>
-        </div>`;
-    } else {
-      stripeHTML = `
-        <div class="stripe-box warning">
-          <p>Ã°Å¸â€™Â° <strong>Revenus en attente</strong></p>
-          <p class="small">Configurez votre compte pour recevoir vos virements.</p>
-          <button id="stripe-onboarding-btn" class="btn-primary">Ã¢Å¡â„¢Ã¯Â¸Â Activer Stripe Connect</button>
-        </div>`;
-    }
+  // Cas ÉLÈVE : Inscription d'une carte bancaire
+if (role === "eleve") {
+  if (has_payment_method) {
+    stripeHTML = `
+      <div class="stripe-box success">
+        <p>✅ <strong>Carte bancaire enregistrée</strong></p>
+        <p class="small">Votre moyen de paiement est prêt pour vos prochains cours.</p>
+        <button id="stripe-setup-btn" class="btn-link">Mettre à jour ma carte</button>
+      </div>`;
+  } else {
+    stripeHTML = `
+      <div class="stripe-box warning">
+        <p>⚠️ <strong>Paiement requis</strong></p>
+        <p class="small">Veuillez enregistrer une carte pour pouvoir appeler un professeur.</p>
+        <button id="stripe-setup-btn" class="btn-primary">💳 Ajouter une carte bancaire</button>
+      </div>`;
   }
+}
+  // Cas PROFESSEUR : Onboarding Stripe Connect
+else if (role === "prof") {
+  if (stripe_onboarding_complete) {
+    stripeHTML = `
+      <div class="stripe-box success">
+        <p>✅ <strong>Compte Stripe configuré</strong></p>
+        <p class="small">Vous pouvez recevoir des paiements de vos élèves.</p>
+      </div>`;
+  } else {
+    stripeHTML = `
+      <div class="stripe-box warning">
+        <p>💰 <strong>Revenus en attente</strong></p>
+        <p class="small">Configurez votre compte pour recevoir vos virements.</p>
+        <button id="stripe-onboarding-btn" class="btn-primary">⚡ Activer Stripe Connect</button>
+      </div>`;
+  }
+}
 
   // Injection du HTML dans la carte dédiée
   infoContainer.innerHTML = `
     <div class="user-card">
       <div class="user-card__header">
-        <h3 class="card-title">Ã°Å¸â€™Â³ ParamÃƒÂ¨tres de paiement</h3>
-      </div>
+        <h3 class="card-title">💳 Paramètres de paiement</h3>
+        </div>
       <div class="user-card__body">
         <div class="user-card__stripe-content">
           ${stripeHTML}
@@ -508,7 +533,7 @@ function renderCurrentUserInfo(user) {
     </div>
   `;
 // --- ATTACHEMENT SÉCURISÉ DES ÉVÉNEMENTS ---
-const setupBtn = document.getElementById("stripe-setup-btn");
+  const setupBtn = document.getElementById("stripe-setup-btn");
 console.log("🔍 setupBtn =", setupBtn);
 
 if (setupBtn) {

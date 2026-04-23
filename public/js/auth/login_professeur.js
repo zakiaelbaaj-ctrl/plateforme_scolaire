@@ -1,4 +1,4 @@
-// 1. DÃ©tection dynamique de l'URL de base
+// 1. Détection dynamique de l'URL de base
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:4000" 
   : "https://plateforme-scolaire-1.onrender.com";
@@ -15,7 +15,7 @@ if (storedUser && token) {
     const user = JSON.parse(storedUser);
     if (user.role === "prof") {
       // ✅ C'est un prof déjà connecté, on l'envoie sur son dashboard
-      window.location.replace("../../pages/professeur/dashboard.html");
+      window.location.replace("/pages/professeur/dashboard.html");
     } else {
       // ⚠️ Un élève (ou autre) arrive sur le login prof !
       // On détruit sa session pour éviter les conflits et le laisser se connecter.
@@ -90,9 +90,9 @@ async function loginProfesseur(event) {
 
     showSuccess("Connexion rÃ©ussie! Redirection...");
 
-    // ðŸš€ Redirection vers dashboard professeur
+    //  Redirection vers dashboard professeur
     setTimeout(() => {
-      window.location.replace("../../pages/professeur/dashboard.html");
+      window.location.replace("/pages/professeur/dashboard.html");
     }, 1000);
 
   } catch (err) {

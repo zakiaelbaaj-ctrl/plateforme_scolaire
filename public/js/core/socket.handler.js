@@ -1,9 +1,7 @@
 import { socketService } from "./socket.service.js";
 import { AppState } from "./state.js";
-import { SessionService } from "../services/session.service.js";
 import { WSLogger } from "./ws.logger.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
-import { CallStateMachine } from "../domains/call/call.state.machine.js";
 import { CallService } from "../domains/call/call.service.js";
 
 class SocketHandlerProf {
@@ -80,16 +78,8 @@ case "joinedRoom": {
         break;
 
       case "tableauClear":
-        AppState.emit("whiteboard:clear");
+        AppState._notify("whiteboard:clear"); // ✅ corrigé : _notify au lieu de emit
         break;
-
-      case "joinedRoom": {
-        console.log("✅ joinedRoom reçu côté prof", data);
-        const roomId = data.roomId ?? data.room;
-        if (!roomId) { console.warn("⚠️ joinedRoom sans roomId", data); break; }
-        AppState.startTimer();
-        break;
-      }
 
       case "userJoined":
       case "userLeft":

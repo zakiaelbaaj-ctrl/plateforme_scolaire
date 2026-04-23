@@ -102,7 +102,17 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 const publicPath = path.join(__dirname, "public");
-app.use(express.static(publicPath));
+
+// ✅ Retour Stripe — redirige selon le rôle
+app.get("/stripe/success", (req, res) => {
+  res.sendFile(path.join(publicPath, "stripe/success.html"));
+});
+
+app.get("/stripe/refresh", (req, res) => {
+  res.sendFile(path.join(publicPath, "stripe/success.html"));
+});
+
+app.use(express.static(publicPath)); // ← doit rester APRÈS
 
 // Favicon
 app.get('/favicon.ico', (req, res) => {

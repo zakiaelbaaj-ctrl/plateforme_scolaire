@@ -1,0 +1,23 @@
+@"
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Redirection...</title>
+</head>
+<body>
+  <p>Redirection en cours...</p>
+  <script>
+    const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const role = user?.role;
+    if (role === "prof") {
+      window.location.replace("/pages/professeur/dashboard.html?stripe=success");
+    } else if (role === "eleve" || role === "etudiant") {
+      window.location.replace("/pages/eleve/dashboard.html?stripe=success");
+    } else {
+      window.location.replace("/");
+    }
+  </script>
+</body>
+</html>
+"@ | Out-File -FilePath "C:\Users\zakia\Home\plateforme_scolaire\public\stripe\success.html" -Encoding UTF8
