@@ -155,3 +155,41 @@ export function handleProfStripeReturn() {
   window.history.replaceState({}, "", window.location.pathname);
 }
 
+// ✅ Création de l'empreinte bancaire AVANT de rejoindre la salle (Élève)
+export async function holdFundsForSession(prixMaxEnCentimes) {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Session expirée.");
+
+  const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? "http://localhost:4000" 
+    : "https://plateforme-scolaire-1.onrender.com";
+
+  try {
+    console.log("💳 Demande d'empreinte bancaire en cours...");
+
+    const res = await fetch(`${API_URL}/api/v1/stripeConnect/pre-auth`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ amount: prixMaxEnCentimes }) // Ex: 3000 pour 30€
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Fonds insuffisants ou carte refusée.");
+    }
+
+    console.log("✅ Empreinte validée. PaymentIntent ID:", data.paymentIntentId);
+    
+    // On retourne l'ID pour pouvoir le lier à la session WebSocket
+    return data.paymentIntentId; 
+
+  } catch (err) {
+    console.error("❌ Erreur Empreinte Stripe :", err);
+    alert(`Impossible de démarrer le cours : ${err.message}`);
+    return null; // Bloque l'accès au cours
+  }
+}

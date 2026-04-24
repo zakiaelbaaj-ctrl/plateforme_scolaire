@@ -113,7 +113,7 @@ app.get("/stripe/refresh", (req, res) => {
 });
 
 app.use(express.static(publicPath)); // ← doit rester APRÈS
-
+app.use("/invoices", express.static(path.join(process.cwd(), "invoices")));
 // Favicon
 app.get('/favicon.ico', (req, res) => {
     const p = path.join(publicPath, 'favicon.ico');

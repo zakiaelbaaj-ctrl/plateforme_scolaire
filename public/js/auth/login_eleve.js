@@ -79,8 +79,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!response.ok) {
         throw new Error(data.message || "Ã‰chec de la connexion");
       }
-// âœ… Stockage sÃ©curisÃ©
+// ✅ Stockage sécurisé
 if (data.accessToken) {
+  // 🚨 L'AJOUT EST ICI : On fait table rase de l'ancien cache
+    // pour éviter tout conflit (ex: données Stripe ou WebSocket de l'ancien prof)
+    localStorage.clear();
     // 1. On stocke les jetons
     localStorage.setItem("token", data.accessToken);
     localStorage.setItem("refreshToken", data.refreshToken || "");
@@ -88,13 +91,13 @@ if (data.accessToken) {
     // 2. On stocke l'objet utilisateur complet (contient id, nom, rÃ´le, etc.)
     localStorage.setItem("currentUser", JSON.stringify(data.user));
     
-    // 3. On stocke le niveau (spÃ©cifique Ã  l'Ã©lÃ¨ve)
+    // 3. On stocke le niveau (spécifique à l'élève)
     if (niveau) {
         localStorage.setItem("userLevel", niveau);
     }
 
-    // ðŸš€ REDIRECTION DYNAMIQUE SELON LE RÃ”LE
-    // On rÃ©cupÃ¨re le rÃ´le directement depuis l'objet user renvoyÃ© par le backend
+    //🚀 REDIRECTION DYNAMIQUE SELON LE RÔLE
+    // On récupère le rôle directement depuis l'objet user renvoyé par le backend
     const userRole = data.user.role; 
 
     if (userRole === "eleve") {
@@ -102,12 +105,12 @@ if (data.accessToken) {
     } else if (userRole === "prof") {
         window.location.replace("../../pages/professeur/dashboard.html");
     } else {
-        console.error("RÃ´le inconnu :", userRole);
+        console.error("Rôle inconnu :", userRole);
         alert("Erreur de configuration de compte.");
     }
 
 } else {
-    throw new Error("Erreur : Token non reÃ§u du serveur.");
+    throw new Error("Erreur : Token non reçu du serveur.");
 }
     } catch (error) {
       console.error("âŒ LOGIN ERROR:", error);

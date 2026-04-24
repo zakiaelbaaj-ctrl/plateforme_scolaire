@@ -6,6 +6,7 @@ import { safeSend, broadcastOnlineProfs } from "./utils.js";
 import { handleStartSession } from "./visio.js";
 import { pool } from "../config/db.js";
 import * as onlineProfessorsModule from "./state/onlineProfessors.js";
+import Stripe from "stripe";
 // État des appels en attente (SERVEUR UNIQUEMENT)
 const pendingCalls = new Map();  // profId -> {eleveId, timestamp}
 
@@ -228,22 +229,91 @@ function startSession(
 // TERMINER SESSION (INTERNE SERVEUR UNIQUEMENT)
 // 🔒 NE PAS APPELER DEPUIS LE CLIENT
 // =======================================================
-export function endSessionForDisconnect(profId, eleveId, onlineProfessors, clients) {
+export async function endSessionForDisconnect(profId, eleveId, onlineProfessors, clients) {
   onlineProfessorsModule.endSession(profId);
 
-  // ✅ Notifier LES DEUX participants
   const profWs  = clients.get(profId);
   const eleveWs = clients.get(eleveId);
 
+  // 💰 Capture paiement + facture
+  try {
+    const paymentIntentId = eleveWs?.paymentIntentId ?? null;
+    const startTime = eleveWs?.sessionStartTime ?? null;
+
+    if (paymentIntentId && startTime) {
+      const { db } = await import("../config/index.js");
+      const { generateInvoicePdf } = await import("../services/invoicePdf.js");
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+      // 1. Récupérer le niveau du prof
+      const [prof] = await db.query(
+        `SELECT niveau FROM users WHERE id = :profId`,
+        { replacements: { profId }, type: db.QueryTypes.SELECT }
+      );
+
+      const niveau = prof?.niveau || "secondaire";
+      const tarifParMinute = niveau === "universitaire" ? 83 : 33; // centimes
+
+      // 2. Calcul durée et montant
+      const dureeMinutes = Math.ceil((Date.now() - startTime) / 60000);
+      const montantFinal = Math.max(dureeMinutes * tarifParMinute, tarifParMinute);
+
+      console.log(`💰 Durée: ${dureeMinutes}min | Niveau: ${niveau} | Montant: ${montantFinal/100}€`);
+
+      // 3. Capture Stripe
+      if (dureeMinutes === 0) {
+        await stripe.paymentIntents.cancel(paymentIntentId);
+        console.log("⏳ Session 0 min — empreinte annulée");
+      } else {
+        await stripe.paymentIntents.update(paymentIntentId, {
+          metadata: {
+            roomId: `room_${profId}_${eleveId}`,
+            eleveId: String(eleveId),
+            profId: String(profId),
+            duree: String(dureeMinutes)
+          }
+        });
+        await stripe.paymentIntents.capture(paymentIntentId, {
+          amount_to_capture: montantFinal
+        });
+        console.log(`✅ Paiement capturé: ${montantFinal/100}€`);
+      }
+
+      // 4. Génération facture PDF
+      const invoiceNumber = `VID-${profId}-${eleveId}-${Date.now()}`;
+      const { fileName } = await generateInvoicePdf({
+        userId: eleveId,
+        planType: `Cours vidéo ${niveau} (${dureeMinutes} min)`,
+        amount: montantFinal,
+        invoiceNumber,
+        date: new Date()
+      });
+
+      // 5. Envoyer lien facture aux deux
+      const invoicePayload = {
+        type: "invoice:ready",
+        url: `/invoices/${fileName}`,
+        dureeMinutes,
+        montant: (montantFinal / 100).toFixed(2)
+      };
+      if (eleveWs?.readyState === 1) safeSend(eleveWs, invoicePayload);
+      if (profWs?.readyState === 1)  safeSend(profWs,  invoicePayload);
+
+      console.log(`🧾 Facture générée: ${fileName}`);
+    }
+  } catch (err) {
+    console.error("❌ Erreur capture/facture:", err.message);
+  }
+
+  // ✅ Notifier fin de session
   const payload = {
     type: "session:stop",
     reason: "session_ended",
     timestamp: new Date().toISOString()
   };
-
   if (profWs?.readyState === 1)  safeSend(profWs,  payload);
   if (eleveWs?.readyState === 1) safeSend(eleveWs, payload);
-
   console.log(`📴 Session terminée: prof ${profId} ↔ élève ${eleveId}`);
 }
 

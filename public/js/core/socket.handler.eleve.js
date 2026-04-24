@@ -41,16 +41,43 @@ class SocketHandlerEleve {
       AppState.addDocument(normalizedDoc);
       break;
     }
-     case "callSent":
-  case "incomingCall":
-  case "callAccepted":
-  case "callRejected":
-  case "twilioToken":
-  case "twilioLocalTrack":
-  case "twilioRemoteTracks":
-    CallService.handleEvent(data);
-    break;
-       // ✅ Ces events terminent la session ET stoppent le timer
+    case "callSent":
+  CallService.handleEvent(data);
+  break;
+
+case "twilioToken":
+  AppState.startTimer(); // ✅ Timer démarre uniquement quand Twilio confirme
+  CallService.handleEvent(data);
+  break;
+
+case "incomingCall":
+case "callAccepted":
+case "callRejected":
+case "twilioLocalTrack":
+case "twilioRemoteTracks":
+  CallService.handleEvent(data);
+  break;
+      case "invoice:ready": {
+  console.log("🧾 Facture disponible:", data.url);
+  
+  // Afficher notification avec lien de téléchargement
+  const container = document.getElementById("invoice-container") 
+                 ?? document.getElementById("stripe-status-message");
+  
+  if (container) {
+    container.innerHTML = `
+      <div class="invoice-box">
+        <p>🧾 <strong>Cours terminé</strong></p>
+        <p>Durée : ${data.dureeMinutes} min | Montant : ${data.montant}€</p>
+        <a href="${data.url}" target="_blank" class="btn-primary">
+          📥 Télécharger ma facture
+        </a>
+      </div>
+    `;
+  }
+  break;
+}
+  // ✅ Ces events terminent la session ET stoppent le timer
       case "callEnded":
       case "session:stop":
       case "endSession":
@@ -64,12 +91,12 @@ class SocketHandlerEleve {
        this.handleStartSession(data);
        break;
 
-        case "joinedRoom": {
-       console.log("✅ [Élève] Room rejointe !");
-       const roomId = data.roomId ?? data.room;
-       if (roomId) AppState.startTimer();
-       break;
-         }
+       case "joinedRoom": {
+  console.log("✅ [Élève] Room rejointe !");
+  const roomId = data.roomId ?? data.room;
+  if (roomId) AppState.currentRoomId = roomId;
+  break;
+}
       case "chatMessage":
         AppState.addChatMessage({ sender: data.sender, text: data.text });
         break;

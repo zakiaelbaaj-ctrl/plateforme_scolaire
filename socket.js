@@ -207,7 +207,14 @@ async function handleMessage(ws, data) {
   });
 }
   // Rooms
-  if (type === "joinRoom") return joinRoom(ws, data, onlineProfessors, clients);
+  if (type === "joinRoom") {
+  // Stocker paymentIntentId et startTime sur le WebSocket de l'élève
+  if (ws.role === "eleve" && data.paymentIntentId) {
+    ws.paymentIntentId = data.paymentIntentId;
+    ws.sessionStartTime = Date.now();
+  }
+  return joinRoom(ws, data, onlineProfessors, clients);
+}
   if (type === "chatMessage") return chatMessage(ws, data);
   if (type === "document") return documentShare(ws, data);
 

@@ -8,7 +8,7 @@ import { ChatService } from "/js/domains/chat/chat.service.js";
 import { CallService } from "/js/domains/call/call.service.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
 import { DocumentService } from "/js/domains/document/document.service.js";
-
+import { updateToolButtons } from "/js/domains/whiteboard/whiteboard.events.js";
 export const SessionService = {
 
   // --------------------------------------------------
@@ -37,9 +37,12 @@ export const SessionService = {
 
     switch (data.type) {
       case "grantWhiteboardAccess": {
-      AppState.canUseTools = !!data.tools; // true ou false
-       updateToolButtons(); // âš¡ active / dÃ©sactive les boutons
-       break;
+  AppState.canUseTools = !!data.tools;
+  this._notify({
+  type: "whiteboardAccess",
+  canUse: AppState.canUseTools
+});
+  break;
      }
 
       case "startSession": {
@@ -55,10 +58,10 @@ export const SessionService = {
         break;
       }
 
-      case "joinedRoom": {
-        // âš¡ Ã‰tat technique interne au domaine
-        AppState.roomReady = true;
-        break;
+       case "joinedRoom": {
+       AppState.roomReady = true;
+
+       break;
       }
       // âœ… Ajouter aprÃ¨s case "joinedRoom"
        case "userJoined": {
@@ -75,6 +78,7 @@ export const SessionService = {
       case "endSession": {
         AppState.currentRoomId = null;
         AppState.roomReady = false;
+        this.stopHeartbeat();
         CallService.handleSessionEnded?.();
         break;
       }
@@ -96,26 +100,27 @@ export const SessionService = {
       }
 
       case "twilioToken": {
-  CallService.handleEvent(data); // dÃ©lÃ¨gue Ã  CallService, pas de double appel
-  break;
-}
+        this.startHeartbeat(); // ✅ Timer commence quand le prof accepte
+       CallService.handleEvent(data); // dÃ©lÃ¨gue Ã  CallService, pas de double appel
+       break;
+      }
 
-case "callSent": {
+   case "callSent": {
   CallService.handleEvent(data);
   break;
 }
 
-case "incomingCall": {
+    case "incomingCall": {
   CallService.handleEvent(data);
   break;
 }
 
-case "callAccepted":
-case "callRejected":
-case "callEnded":
-case "twilioLocalTrack":
-case "twilioRemoteTracks":
-case "twilioDisconnected": {
+  case "callAccepted":
+  case "callRejected":
+  case "callEnded":
+  case "twilioLocalTrack":
+  case "twilioRemoteTracks":
+  case "twilioDisconnected": {
   CallService.handleEvent(data);
   break;
      }
@@ -194,11 +199,31 @@ case "twilioDisconnected": {
     }
   },
   
-  stopTimer() {
+    stopTimer() {
     if (typeof AppState !== 'undefined' && AppState.stopTimer) {
       console.log("🛑 SessionService demande l'arrêt du timer...");
       AppState.stopTimer();
     }
+  },
+
+  startHeartbeat() {
+    if (this.heartbeat) return; // évite double interval
+
+    this.heartbeat = setInterval(() => {
+      if (!AppState.currentRoomId) return;
+
+      socketService.send({
+        type: "heartbeat",
+        roomId: AppState.currentRoomId,
+        paymentIntentId: AppState.currentPaymentIntentId
+      });
+    }, 10000);
+  },
+
+  stopHeartbeat() {
+    clearInterval(this.heartbeat);
+    this.heartbeat = null;
   }
 
-};
+}; 
+

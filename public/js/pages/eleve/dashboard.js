@@ -15,22 +15,26 @@ import { addDocument } from "/js/ui/components/document.view.js";
 import { initUIRenderers } from "/js/modules/ui/uiRenderers.js";
 import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
 import { getUserProfile } from "../../services/user.service.js";
-import { handleAllStripeReturns, openSetupSession, initStripeOnboarding } from '/js/services/stripe.service.js';
-
-/// ======================================================
+import { handleAllStripeReturns, holdFundsForSession } 
+from "/js/services/stripe.service.js";
+import { initStripeOnboarding } from "/js/services/stripe.service.js";
+import { openSetupSession } from "/js/services/stripe.service.js";
+// ======================================================
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("🚀 Initialisation du Dashboard...");
 
-  // Lire AVANT nettoyage
+  // ✅ Stripe return
+  handleAllStripeReturns();
+
+  // ✅ Vérification carte
+  
+
+  // Lire URL
   const urlParams = new URLSearchParams(window.location.search);
   const stripeStatus = urlParams.get("stripe");
 
-  // Puis traiter Stripe UNE seule fois
-  handleAllStripeReturns();
-
-  // Si succÃƒÂ¨s Ã¢â€ â€™ refresh après webhook
   if (stripeStatus === "success") {
     setTimeout(refreshUI, 2500);
   }
@@ -59,6 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initialisation de l'UI
   renderCurrentUserInfo(userData);
+await refreshUI(); // ou rien du tout
 
   // WebSocket
   const _wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -166,11 +171,63 @@ function bindUI() {
     window.location.href = "/pages/eleve/login.html";
   });
 
-  document.getElementById("end-session-btn")?.addEventListener("click", () => {
-  console.log("🖱️ Clic Terminer élève — roomId:", AppState.currentRoomId);
-  SessionService.stopVideoCall();
-});
+  document.getElementById("end-session-btn")?.addEventListener("click", async () => {
+  const btn = document.getElementById("end-session-btn");
+  if (!btn || btn.disabled) return;
 
+  btn.disabled = true;
+
+  console.log("🖱️ Fin de session — room:", AppState.currentRoomId);
+
+  try {
+    await SessionService.endSession();
+  } finally {
+    btn.disabled = false;
+  }
+});
+// ================= REJOINDRE SESSION =================
+document.getElementById("btn-rejoindre-cours")?.addEventListener("click", async () => {
+  const btn = document.getElementById("btn-rejoindre-cours");
+  if (!btn) return;
+
+  const originalText = btn.innerText;
+
+  btn.disabled = true;
+  btn.innerText = "Vérification carte...";
+
+  try {
+    // 💳 1. PRE-AUTH STRIPE
+    const intentId = await holdFundsForSession(3000);
+
+    if (!intentId) {
+      btn.disabled = false;
+      btn.innerText = originalText;
+      return;
+    }
+
+    // 🔥 2. STOCKAGE GLOBAL
+    window.currentPaymentIntentId = intentId;
+    window.sessionStartTime = Date.now();
+
+    btn.innerText = "Connexion...";
+
+    // 🎥 3. LANCEMENT SESSION
+    AppState.currentPaymentIntentId = intentId;
+AppState.currentRoomId = AppState.currentRoomId || "room_18_32";
+
+socketService.send({
+  type: "joinRoom",
+  roomId: AppState.currentRoomId,
+  paymentIntentId: intentId
+});
+    btn.style.display = "none";
+
+  } catch (err) {
+    console.error("Erreur join session:", err);
+    btn.disabled = false;
+    btn.innerText = originalText;
+  }
+});
 // ================= WHITEBOARD =================
 document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
@@ -439,6 +496,25 @@ function updateToolButtons() {
   document.querySelectorAll(".wb-tool").forEach(btn => {
     btn.disabled = !AppState.canUseTools;
   });
+}
+// =============================
+// STRIPE - CHECK CARTE
+// =============================
+function updateJoinButton(user) {
+  const btn = document.getElementById("btn-rejoindre-cours");
+  if (!btn) return;
+
+  const hasPaymentMethod = !!user?.has_payment_method;
+
+  if (!hasPaymentMethod) {
+    btn.disabled = true;
+    btn.innerText = "Ajoutez une carte pour rejoindre";
+    btn.classList.add("is-disabled");
+  } else {
+    btn.disabled = false;
+    btn.innerText = "Rejoindre le cours";
+    btn.classList.remove("is-disabled");
+  }
 }
 // ======================================================
 // USER INFO

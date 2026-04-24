@@ -7,3 +7,8 @@ export const WhiteboardEvents = {
   SYNCED: "whiteboard.synced"
 };
 
+export function updateToolButtons(canUse) {
+  document.querySelectorAll(".wb-tool").forEach(btn => {
+    btn.disabled = !canUse;
+  });
+}

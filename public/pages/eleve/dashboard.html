@@ -60,9 +60,15 @@
       <section class="card card--video">
         <div class="card__header">
           <h3 class="card__title">🎥 Vidéo</h3>
-          <button id="end-session-btn" class="btn btn--danger btn--sm">
-            ✕ Terminer
-          </button>
+          <div style="display:flex; gap:10px;">
+         <button id="btn-rejoindre-cours" class="btn btn--primary btn--sm">
+         ▶ Rejoindre
+        </button>
+
+        <button id="end-session-btn" class="btn btn--danger btn--sm">
+         ✕ Terminer
+             </button>
+        </div>
         </div>
 
         <div class="videos">
@@ -159,6 +165,7 @@
         <ul id="doc-list" class="doc-list"></ul>
       </div>
        <!-- STRIPE payement -->
+        <div id="user-info"></div> <!-- ✅ ICI -->
       <div class="card card--stripe-payment">
       <div class="card__header">
       <h3 class="card__title">💳 Mode de paiement</h3>

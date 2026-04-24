@@ -25,7 +25,7 @@ import logger from "../../config/logger.js";
 
     // ✅ SÉCURITÉ : Valeur par défaut si FRONTEND_URL est absent sur Render
     // Cela évite l'erreur 500 que tu avais précédemment.
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5500";
+    const frontendUrl = process.env.FRONTEND_URL || "https://plateforme-scolaire-1.onrender.com";
 
     // ✅ Récupération utilisateur depuis DB via Sequelize
     const userRecords = await db.query(
@@ -177,6 +177,75 @@ router.post("/create-setup-session", auth, async (req, res) => {
   } catch (err) {
     logger.error("❌ Erreur Setup Session", { message: err.message });
     res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+// =======================================================
+// PRE-AUTH (EMPREINTE BANCAIRE)
+// =======================================================
+router.post("/pre-auth", auth, async (req, res) => {
+  console.log("🔥 PRE-AUTH ROUTE HIT");
+
+  try {
+    const eleveId = req.user.userId ?? req.user.id;
+    console.log("🔍 eleveId extrait:", eleveId);
+    const { amount } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Montant invalide." });
+    }
+
+    const [eleve] = await db.query(
+      `SELECT stripe_customer_id, has_payment_method
+       FROM users
+       WHERE id = :eleveId`,
+      {
+        replacements: { eleveId },
+        type: db.QueryTypes.SELECT
+      }
+    );
+    console.log("🔍 ELEVE DATA:", eleve);
+
+    if (!eleve || !eleve.stripe_customer_id || !eleve.has_payment_method) {
+      return res.status(400).json({ message: "Aucune carte enregistrée." });
+    }
+
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: eleve.stripe_customer_id,
+      type: "card"
+    });
+
+    if (paymentMethods.data.length === 0) {
+      return res.status(400).json({ message: "Carte introuvable." });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: "eur",
+      customer: eleve.stripe_customer_id,
+      payment_method: paymentMethods.data[0].id,
+      off_session: true,
+      confirm: true,
+      capture_method: "manual",
+      metadata: {
+        eleveId: String(eleveId)
+      }
+    });
+
+    logger.info("💳 PRE-AUTH OK", {
+      eleveId,
+      intentId: paymentIntent.id
+    });
+
+    res.json({
+      paymentIntentId: paymentIntent.id
+    });
+
+  } catch (err) {
+    console.error("❌ PRE-AUTH ERROR:", err.message);
+
+    res.status(500).json({
+      message: "Erreur Stripe pre-auth"
+    });
   }
 });
 export default router;
