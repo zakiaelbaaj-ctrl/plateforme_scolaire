@@ -17,7 +17,9 @@ router.post(
 
     let event;
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig, secret);
+      event = stripe.webhooks.constructEvent(req.body, sig, secret, undefined, {
+  clockSkewInSeconds: 300
+});
     } catch (err) {
       logger.error("❌ Webhook signature invalide", { message: err.message });
       return res.status(400).send(`Webhook Error: ${err.message}`);
