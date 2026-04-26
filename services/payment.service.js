@@ -185,9 +185,25 @@ export async function processSessionPayment(roomId) {
       description: `Session visio ${duration} min avec ${prof.is_university_prof ? 'Prof Universitaire' : 'Prof Standard'}`,
       metadata: { roomId, profId, eleveId, studentCurrency }
     });
-
+    
     console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR/100}€`);
-    return paymentIntent;
+
+    // 👉 La génération du PDF
+    const { generateInvoicePdf } = await import("./invoicePdf.js"); // Adaptez le chemin
+    const invoiceNumber = `VID-${profId}-${eleveId}-${Date.now()}`;
+    const { fileName } = await generateInvoicePdf({
+        userId: eleveId,
+        planType: `Cours vidéo (${duration} min)`,
+        amount: totalAmountEUR,
+        invoiceNumber,
+        date: new Date()
+    });
+    return { 
+        status: 'succeeded', 
+        amount: totalAmountEUR, 
+        duration: duration, 
+        url: `/invoices/${fileName}` 
+    };
 
   } catch (err) {
     // Gestion du cas SCA (Authentification requise)

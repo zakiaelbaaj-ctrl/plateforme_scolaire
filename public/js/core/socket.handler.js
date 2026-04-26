@@ -84,8 +84,21 @@ case "joinedRoom": {
       case "userJoined":
       case "userLeft":
         break;
+         case "invoice:ready":
+        // 1. Log d'information discret (utile pour le monitoring)
+        console.info(`[PAIE] Session payée : ${data.montant}€`);
+        
+        // 2. Déclencher une notification non-bloquante dans l'UI
+        AppState._notify("ui:notification", {
+            type: "success",
+            title: "Paiement reçu",
+            message: `Gain de la session : ${data.montant}€ (${data.dureeMinutes} min)`
+        });
 
-      default:
+        // 3. Mettre à jour le solde du prof s'il est affiché sur son tableau de bord
+        AppState._notify("wallet:update", data.montant); 
+        break;
+        default:
         WSLogger.warn("Type WS non géré (prof) :", data.type);
     }
   }

@@ -106,10 +106,51 @@ case "twilioRemoteTracks":
         WhiteboardService.handleEvent(data);
         break;
         case "userJoined":
-      case "userLeft":
+        case "userLeft":
      // ✅ ignoré silencieusement (pas d'action requise)
-      break;
-
+        break;
+         
+      // 👉 Gestion de la facture pour l'élève
+     case "invoice:ready":
+        console.info(`[FACTURE] Document disponible : ${data.url}`);
+        
+        // 1. Création de la carte de notification
+        const toast = document.createElement("div");
+        toast.innerHTML = `
+          <div style="margin-bottom: 12px; font-size: 14px;">
+            ✅ <strong>Paiement réussi (${data.montant}€)</strong><br>
+            <span style="font-size: 12px; opacity: 0.9;">Merci pour cette session de ${data.dureeMinutes} min.</span>
+          </div>
+          <button id="download-invoice-btn" style="width: 100%; background: white; color: #4CAF50; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            📥 Télécharger ma facture
+          </button>
+        `;
+        
+        // 2. Style (Flottant, non-bloquant)
+        toast.style.cssText = `
+          position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+          background: #4CAF50; color: white; padding: 16px;
+          border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          font-family: system-ui, sans-serif; transition: opacity 0.3s ease;
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // 3. Action : Ouverture du PDF au clic
+        document.getElementById("download-invoice-btn").onclick = () => {
+            window.open(data.url, '_blank');
+            toast.remove();
+        };
+        
+        // 4. Nettoyage automatique (disparaît si ignoré pendant 20s)
+        setTimeout(() => {
+            if (document.body.contains(toast)) {
+                toast.style.opacity = "0";
+                setTimeout(() => toast.remove(), 300); // Laisse l'animation se terminer
+            }
+        }, 20000);
+        
+        break;
       default:
         WSLogger.warn("Type non géré:", data.type);
     }

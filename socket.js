@@ -343,7 +343,7 @@ if (type === "endSession") {
 
   if (profId && eleveId) {
     console.log(`🎯 Bouton "Terminer" reçu pour : room_${profId}_${eleveId}`);
-    endSessionForDisconnect(profId, eleveId, onlineProfessors, clients);
+    await endSessionForDisconnect(profId, eleveId, onlineProfessors, clients);
   } else {
     console.log(`⚠️ Aucun binôme actif pour ${ws.userId}`);
     // ✅ Notifier quand même l'appelant
