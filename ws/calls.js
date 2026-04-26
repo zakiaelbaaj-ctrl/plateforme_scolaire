@@ -291,16 +291,31 @@ export async function endSessionForDisconnect(profId, eleveId, onlineProfessors,
       });
 
       // 5. Envoyer lien facture aux deux
-      const invoicePayload = {
-        type: "invoice:ready",
-        url: `/invoices/${fileName}`,
-        dureeMinutes,
-        montant: (montantFinal / 100).toFixed(2)
-      };
-      if (eleveWs?.readyState === 1) safeSend(eleveWs, invoicePayload);
-      if (profWs?.readyState === 1)  safeSend(profWs,  invoicePayload);
+const invoicePayload = {
+  type: "invoice:ready",
+  url: `/invoices/${fileName}`,
+  dureeMinutes,
+  montant: (montantFinal / 100).toFixed(2)
+};
+if (eleveWs?.readyState === 1) safeSend(eleveWs, invoicePayload);
+if (profWs?.readyState === 1)  safeSend(profWs,  invoicePayload);
 
-      console.log(`🧾 Facture générée: ${fileName}`);
+// 6. Sauvegarder la notification pour le prof (si déconnecté)
+try {
+  const { db } = await import("../config/index.js");
+  await db.query(
+    `INSERT INTO notifications (user_id, type, data, created_at) 
+     VALUES (:profId, 'invoice', :data, NOW())`,
+    { replacements: { 
+      profId, 
+      data: JSON.stringify(invoicePayload) 
+    }}
+  );
+} catch (notifErr) {
+  console.error("❌ Erreur sauvegarde notification prof:", notifErr.message);
+}
+
+console.log(`🧾 Facture générée: ${fileName}`);
     }
   } catch (err) {
     console.error("❌ Erreur capture/facture:", err.message);
