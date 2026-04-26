@@ -430,7 +430,7 @@ if (type === "requestStudentMatch") {
 // =======================================================
 // IDENTIFY
 // =======================================================
-function handleIdentify(ws, data) {
+async function handleIdentify(ws, data) {
   console.log("📋 Identify reçu pour:", ws.userId);
 
   const { prenom, nom, ville, pays, niveau } = data;
@@ -460,9 +460,27 @@ function handleIdentify(ws, data) {
     });
 
     console.log(`🎓 Prof enregistré: ${ws.userId} ${ws.prenom} ${ws.nom}`);
-    broadcastOnlineProfs(onlineProfessors, clients);
-    return;
+broadcastOnlineProfs(onlineProfessors, clients);
+
+// 🔔 Envoyer les notifications en attente
+try {
+  const { db } = await import("./config/index.js");
+  const notifications = await db.query(
+    `SELECT * FROM notifications WHERE user_id = :profId AND is_read = false ORDER BY created_at DESC`,
+    { replacements: { profId: ws.userId }, type: db.QueryTypes.SELECT }
+  );
+  for (const notif of notifications) {
+    safeSend(ws, notif.data);
+    await db.query(
+      `UPDATE notifications SET is_read = true WHERE id = :id`,
+      { replacements: { id: notif.id } }
+    );
   }
+} catch (err) {
+  console.error("❌ Erreur notifications prof:", err.message);
+}
+return;
+}
 
   if (ws.role === "eleve" || ws.role === "etudiant") {
     const profs = getOnlineProfessors();
