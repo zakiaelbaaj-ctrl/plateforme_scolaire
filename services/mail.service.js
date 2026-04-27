@@ -241,4 +241,36 @@ export async function sendInvoiceEmail(email, { invoiceNumber, amount, duration,
     logger.warn("sendInvoiceEmail failed", { to: email, message: err.message });
   }
 }
+export async function sendProfPaymentEmail(email, { invoiceNumber, amount, duration, displayName }) {
+  if (!transporter || process.env.MAILER_DISABLED === "true") {
+    logger.info("Mailer disabled — prof payment email skipped", { to: email });
+    return;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: defaultFrom,
+      to: email,
+      subject: `💰 Paiement reçu pour votre session — ${invoiceNumber}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; line-height: 1.6;">
+          <h2>Paiement reçu ✅</h2>
+          <p>Bonjour <strong>${displayName}</strong>,</p>
+          <p>Vous avez reçu un paiement pour votre dernière session :</p>
+          <ul>
+            <li><strong>Durée :</strong> ${duration} minutes</li>
+            <li><strong>Montant perçu :</strong> ${amount.toFixed(2)} €</li>
+            <li><strong>N° :</strong> ${invoiceNumber}</li>
+          </ul>
+          <p style="font-size: 0.8em; color: #666;">
+            Le montant sera versé sur votre compte Stripe sous 2-3 jours ouvrés.
+          </p>
+        </div>
+      `,
+    });
+    logger.info("✅ Prof payment email sent", { to: email, invoiceNumber });
+  } catch (err) {
+    logger.warn("sendProfPaymentEmail failed", { to: email, message: err.message });
+  }
+}
 export default transporter;

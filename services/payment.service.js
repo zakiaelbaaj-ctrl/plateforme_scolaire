@@ -200,6 +200,7 @@ export async function processSessionPayment(roomId) {
     });
 
 // ✅ AJOUT : Envoi de la facture par email
+// ✅ Email à l'élève
 await mailService.sendInvoiceEmail(eleve.email, {
     invoiceNumber,
     amount: totalAmountEUR / 100,
@@ -207,6 +208,13 @@ await mailService.sendInvoiceEmail(eleve.email, {
     fileName,
     displayName: eleve.username || eleve.email
 });
+// ✅ AJOUT : Email au prof
+await mailService.sendProfPaymentEmail(prof.email, {
+  invoiceNumber,
+  amount: (totalAmountEUR - feeAmountEUR) / 100, // montant après commission
+  duration,
+  displayName: prof.username || prof.email
+})
 
 return { 
     status: 'succeeded', 
