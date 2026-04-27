@@ -15,16 +15,6 @@ import { verifyMailer } from "./services/mail.service.js";
 // Initialisation DB
 // =======================================================
 await initDb({ syncModels: false })
-// TEMPORAIRE — migration payments
-try {
-  await pool.query(`
-    ALTER TABLE payments 
-    ADD CONSTRAINT payments_stripe_session_id_unique UNIQUE (stripe_session_id)
-  `);
-  console.log("✅ Migration payments: contrainte UNIQUE ajoutée");
-} catch (err) {
-  console.log("ℹ️ Migration payments déjà faite:", err.message);
-}
 
 // =======================================================
 // PostgreSQL Pool
