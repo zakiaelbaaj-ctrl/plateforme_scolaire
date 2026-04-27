@@ -34,162 +34,165 @@ export async function handleWebhook(req, res) {
     // -----------------------------
     // STRIPE WEBHOOK
     // -----------------------------
-    if (isStripe) {
-      const rawBody = req.body;
-      const sigHeader = req.headers["stripe-signature"];
+     if (isStripe) {
+  const rawBody = req.body;
+  const sigHeader = req.headers["stripe-signature"];
 
-      if (!sigHeader) {
-        logger.warn("Stripe webhook received without signature header");
-        return res.status(400).json({ ok: false, message: "Missing stripe signature" });
+  if (!sigHeader) {
+    logger.warn("Stripe webhook received without signature header");
+    return res.status(400).json({ ok: false, message: "Missing stripe signature" });
+  }
+
+  let event;
+  try {
+    event = constructEventFromRaw(rawBody, sigHeader);
+  } catch (err) {
+    logger.warn("Stripe signature verification failed", { message: err?.message });
+    return res.status(400).json({ ok: false, message: "Invalid stripe signature" });
+  }
+
+  // ✅ Répondre IMMÉDIATEMENT à Stripe pour éviter le timeout
+  res.status(200).json({ ok: true });
+
+  // ✅ Traiter APRÈS la réponse
+  setImmediate(async () => {
+    try {
+      const eventId = event?.id;
+      if (!eventId) {
+        logger.warn("Stripe event sans id", { event });
+        return;
       }
 
-      let event;
-      try {
-        event = constructEventFromRaw(rawBody, sigHeader);
-      } catch (err) {
-        logger.warn("Stripe signature verification failed", { message: err?.message });
-        return res.status(400).json({ ok: false, message: "Invalid stripe signature" });
-      }
-
-      // ================================
-// Fichier: controllers/webhook.controller.js
-// Emplacement: handleWebhook -> juste après constructEventFromRaw
-// ================================
-
-const eventId = event?.id;
-if (!eventId) {
-  logger.warn("Stripe event sans id", { event });
-  return res.status(400).json({
-    ok: false,
-    message: "Payload Stripe invalide",
-    debug: {
-      rawBodyLength: rawBody?.length,
-      sigHeader: sigHeader,
-      eventKeys: Object.keys(event || {}),
-      eventType: event?.type || null,
-    },
-  });
-}
-      // Idempotence atomique
       const processed = await webhookService.markIfNotProcessed("stripe", eventId);
       if (!processed) {
         logger.info("Stripe webhook already processed, skipping", {
           eventId,
           type: event.type,
-          userId: event.data?.object?.metadata?.userId,
-          planType: event.data?.object?.metadata?.planType,
-          bookingId: event.data?.object?.metadata?.bookingId,
         });
-        return res.status(200).json({ ok: true, message: "Already processed" });
+        return;
       }
 
-      // Traitement selon type d'événement
       const obj = event.data.object;
-      try {
-        switch (event.type) {
-          case "checkout.session.completed": {
-       const metadata = obj?.metadata || {};
-       // 1. CAS ENREGISTREMENT DE CARTE (Mode setup pour Élève)
-  // On vérifie si la session est en mode 'setup'
-  if (obj.mode === 'setup') {
-    const customerId = obj.customer;
-    try {
-      await db.query(
-        "UPDATE users SET has_payment_method = true WHERE stripe_customer_id = $1",
-        [customerId]
-      );
-      logger.info("💳 Carte enregistrée avec succès (Webhook)", { customerId });
-      return res.status(200).json({ ok: true }); // On termine ici pour ce cas
-    } catch (dbErr) {
-      logger.error("❌ Erreur DB Webhook (Setup)", { message: dbErr.message, customerId });
-      return res.status(500).json({ ok: false, message: "Erreur DB lors du setup" });
-    }
-  }
 
-  // 2. CAS ABONNEMENT (Ton code actuel, légèrement ajusté)
-  // On ne fait cette validation que si ce n'est pas un setup
-  if (!metadata.userId || !metadata.planType) {
-    logger.warn("Stripe checkout.session.completed missing metadata", {
-      metadata,
-      eventId: eventId,
-      objKeys: Object.keys(obj || {}),
-    });
-    return res.status(400).json({
-      ok: false,
-      message: "Metadata Stripe manquante",
-      debug: { metadata, obj }
-    });
-  }
+      switch (event.type) {
+        case "checkout.session.completed": {
+          const metadata = obj?.metadata || {};
 
-const userId = metadata.userId;
-const planType = metadata.planType;
-            if (userId && planType) {
-              await activateSubscription({ userId, planType });
-              try {
-                await generateInvoicePdf({
-                  userId,
-                  planType,
-                  amount: obj.amount_total,
-                  invoiceNumber: `INV-${userId}-${obj.id}`,
-                  date: new Date(),
-                });
-                logger.info("🧾 Facture PDF générée (abonnement)", { userId, planType });
-              } catch (pdfErr) {
-                logger.error("❌ Erreur génération facture PDF (abonnement)", { userId, message: pdfErr.message });
-              }
-            }
-            break;
-          }
-          case "payment_intent.succeeded": {
-            const profId = obj.metadata?.profId;
-            const bookingId = obj.metadata?.bookingId;
-            if (profId && bookingId) {
+          if (obj.mode === 'setup') {
+            const customerId = obj.customer;
+            try {
               await db.query(
-                `UPDATE bookings SET status='paid', stripe_payment_intent=$1 WHERE id=$2`,
-                [obj.id, bookingId]
+                "UPDATE users SET has_payment_method = true WHERE stripe_customer_id = $1",
+                [customerId]
               );
-              logger.info("💰 Paiement cours payé", { profId, bookingId, paymentIntent: obj.id });
+              logger.info("💳 Carte enregistrée avec succès (Webhook)", { customerId });
+            } catch (dbErr) {
+              logger.error("❌ Erreur DB Webhook (Setup)", { message: dbErr.message, customerId });
             }
             break;
           }
-          case "payment_intent.payment_failed": {
-            const bookingId = obj.metadata?.bookingId;
-            if (bookingId) {
-              await db.query(
-                `UPDATE bookings SET status='failed' WHERE id=$1`,
-                [bookingId]
-              );
-              logger.warn("❌ Paiement échoué", { bookingId, reason: obj.last_payment_error?.message });
-            }
+
+          if (!metadata.userId || !metadata.planType) {
+            logger.warn("Stripe checkout.session.completed missing metadata", { metadata, eventId });
             break;
           }
-          case "payment_intent.canceled": {
-            const bookingId = obj.metadata?.bookingId;
-            if (bookingId) {
-              await db.query(
-                `UPDATE bookings SET status='canceled' WHERE id=$1`,
-                [bookingId]
-              );
-              logger.info("🚫 Paiement annulé", { bookingId });
+
+          const userId = metadata.userId;
+          const planType = metadata.planType;
+          if (userId && planType) {
+            await activateSubscription({ userId, planType });
+            try {
+              await generateInvoicePdf({
+                userId,
+                planType,
+                amount: obj.amount_total,
+                invoiceNumber: `INV-${userId}-${obj.id}`,
+                date: new Date(),
+              });
+              logger.info("🧾 Facture PDF générée (abonnement)", { userId, planType });
+            } catch (pdfErr) {
+              logger.error("❌ Erreur génération facture PDF (abonnement)", { userId, message: pdfErr.message });
             }
-            break;
           }
-          default:
-            logger.info("⏭️ Stripe event non traité", { type: event.type });
+          break;
         }
 
-        // Enqueue traitement asynchrone si nécessaire
-        await queueService.enqueue("stripe:webhook", { event });
+        case "setup_intent.succeeded": {
+          const customerId = obj.customer;
+          const paymentMethodId = obj.payment_method;
 
-      } catch (err) {
-        logger.error("❌ Stripe webhook processing failed", { message: err.message, eventId: event.id });
-        await webhookService.markFailed("stripe", eventId, err.message);
-        return res.status(500).json({ ok: false, message: "Webhook processing error" });
+          if (!customerId || !paymentMethodId) {
+            logger.warn("setup_intent.succeeded: données manquantes", { customerId, paymentMethodId });
+            break;
+          }
+
+          try {
+            await stripe.customers.update(customerId, {
+              invoice_settings: {
+                default_payment_method: paymentMethodId,
+              },
+            });
+            await db.query(
+              `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = $1`,
+              [customerId]
+            );
+            logger.info("✅ Carte défaut enregistrée", { customerId, paymentMethodId });
+          } catch (err) {
+            logger.error("❌ Erreur setup_intent.succeeded", { message: err.message, customerId });
+          }
+          break;
+        }
+
+        case "payment_intent.succeeded": {
+          const profId = obj.metadata?.profId;
+          const bookingId = obj.metadata?.bookingId;
+          if (profId && bookingId) {
+            await db.query(
+              `UPDATE bookings SET status='paid', stripe_payment_intent=$1 WHERE id=$2`,
+              [obj.id, bookingId]
+            );
+            logger.info("💰 Paiement cours payé", { profId, bookingId, paymentIntent: obj.id });
+          }
+          break;
+        }
+
+        case "payment_intent.payment_failed": {
+          const bookingId = obj.metadata?.bookingId;
+          if (bookingId) {
+            await db.query(
+              `UPDATE bookings SET status='failed' WHERE id=$1`,
+              [bookingId]
+            );
+            logger.warn("❌ Paiement échoué", { bookingId, reason: obj.last_payment_error?.message });
+          }
+          break;
+        }
+
+        case "payment_intent.canceled": {
+          const bookingId = obj.metadata?.bookingId;
+          if (bookingId) {
+            await db.query(
+              `UPDATE bookings SET status='canceled' WHERE id=$1`,
+              [bookingId]
+            );
+            logger.info("🚫 Paiement annulé", { bookingId });
+          }
+          break;
+        }
+
+        default:
+          logger.info("⏭️ Stripe event non traité", { type: event.type });
       }
 
-      return res.status(200).json({ ok: true });
-    }
+      await queueService.enqueue("stripe:webhook", { event });
 
+    } catch (err) {
+      logger.error("❌ Stripe webhook processing failed async", { message: err.message });
+    }
+  });
+
+  return;
+}
     // -----------------------------
     // WEBHOOKS GÉNÉRIQUES
     // -----------------------------
