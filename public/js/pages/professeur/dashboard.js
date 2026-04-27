@@ -144,6 +144,36 @@ AppState.on("documents:new", (doc) => {
   AppState.on("whiteboard:clear", () => {
     WhiteboardService.applyRemoteClear(false);
   });
+  // ================= NOTIFICATION PAIEMENT =================
+  AppState.on("ui:notification", (notif) => {
+    const toast = document.createElement("div");
+    toast.style.cssText = `
+      position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+      background: #4CAF50; color: white; padding: 16px;
+      border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      font-family: system-ui, sans-serif; min-width: 280px;
+    `;
+    toast.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 6px;">
+        💰 ${notif.title || "Paiement reçu"}
+      </div>
+      <div style="font-size: 14px;">${notif.message || ""}</div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transition = "opacity 0.3s";
+      setTimeout(() => toast.remove(), 300);
+    }, 8000);
+  });
+
+  // ================= WALLET UPDATE =================
+  AppState.on("wallet:update", (montant) => {
+    const walletEl = document.getElementById("wallet-balance");
+    if (walletEl) {
+      walletEl.textContent = `+${montant}€`;
+    }
+  });
 }
   
 
