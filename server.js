@@ -14,18 +14,7 @@ import { verifyMailer } from "./services/mail.service.js";
 // =======================================================
 // Initialisation DB
 // =======================================================
-await initDb({ syncModels: false });
-
-// ✅ TEMPORAIRE — migration unique
-try {
-  await pool.query(`
-    ALTER TABLE stripe_events 
-    ADD CONSTRAINT stripe_events_event_id_unique UNIQUE (event_id)
-  `);
-  console.log("✅ Migration stripe_events: contrainte UNIQUE ajoutée");
-} catch (err) {
-  console.log("ℹ️ Migration déjà faite:", err.message);
-}
+await initDb({ syncModels: false })
 
 // =======================================================
 // PostgreSQL Pool
