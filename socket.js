@@ -6,7 +6,6 @@
 // =======================================================
 import { MatchService } from "./ws/match.service.js";
 import { WebSocketServer } from "ws";
-import { processSessionPayment } from "./services/payment.service.js";
 import jwt from "jsonwebtoken";
 import {
   onlineProfessors,
@@ -506,9 +505,12 @@ function handleDisconnect(ws) {
 
     const prof = onlineProfessors.get(ws.userId);
 
-    if (prof && prof.eleveId) {
-      console.log(`🔄 Prof ${ws.userId} déconnecté → libère élève ${prof.eleveId}`);
-      endSessionForDisconnect(ws.userId, prof.eleveId, onlineProfessors, clients);
+    // ✅ Sauvegarder eleveId AVANT tout nettoyage
+    const eleveIdSnapshot = prof?.eleveId ?? null;
+
+    if (prof && eleveIdSnapshot) {
+      console.log(`🔄 Prof ${ws.userId} déconnecté → libère élève ${eleveIdSnapshot}`);
+      endSessionForDisconnect(ws.userId, eleveIdSnapshot, onlineProfessors, clients);
     }
 
     removeProfessor(ws.userId);

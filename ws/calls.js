@@ -233,56 +233,81 @@ function startSession(
 // import { processSessionPayment } from "../services/payment.service.js";
 
 export async function endSessionForDisconnect(profId, eleveId, onlineProfessors, clients) {
+
+  // ✅ GARDE ANTI-DOUBLE
+  const prof = onlineProfessors.get(profId);
+  if (!prof || !prof.eleveId) {
+    console.log(`⚠️ endSessionForDisconnect ignoré : session déjà terminée pour prof ${profId}`);
+    return;
+  }
+
   onlineProfessorsModule.endSession(profId);
 
   const profWs  = clients.get(profId);
   const eleveWs = clients.get(eleveId);
-  const roomId = `room_${profId}_${eleveId}`;
+  const roomId  = `room_${profId}_${eleveId}`;
 
-  // 💰 Délégation de la capture du paiement au vrai service métier
+  // ✅ CALCUL DURÉE depuis sessionStartedAt du prof
+  const sessionStartedAt = prof.sessionStartedAt 
+    ? new Date(prof.sessionStartedAt) 
+    : new Date();
+  const durationSeconds = Math.floor((Date.now() - sessionStartedAt) / 1000);
+
+  console.log(`⏱️ Durée calculée: ${durationSeconds}s pour ${roomId}`);
+
+  // ✅ INSERTION EN DB si durée suffisante
+  if (durationSeconds >= 5) {
+    try {
+      const { pool } = await import("../config/db.js");
+      await pool.query(
+        `INSERT INTO visio_sessions
+         (user_id, professor_id, room_id, start_time, end_time, duration_seconds, payment_status)
+         VALUES ($1, $2, $3, $4, NOW(), $5, 'pending')
+         ON CONFLICT DO NOTHING`,
+        [eleveId, profId, roomId, sessionStartedAt, durationSeconds]
+      );
+      console.log(`✅ visio_session insérée: ${durationSeconds}s`);
+    } catch (err) {
+      console.error(`❌ Erreur insertion visio_session:`, err.message);
+    }
+  }
+
+  // 💰 PAIEMENT
   try {
     const paymentResult = await processSessionPayment(roomId);
 
-    // Si le paiement a réussi et ne nécessite pas d'action manuelle de l'élève (SCA)
     if (paymentResult && paymentResult.status !== 'requires_action' && paymentResult.status !== 'skipped') {
-       
-       // ATTENTION: Vous devez vous assurer que processSessionPayment retourne
-       // bien un objet contenant amount (en centimes), duration (en min),
-       // et l'URL du PDF si vous la générez là-bas.
-       
-       // Pour l'exemple, supposons que processSessionPayment renvoie :
-       // { status: 'succeeded', amount: 3300, duration: 10, url: '/invoices/xxx.pdf' }
-       const invoicePayload = {
-         type: "invoice:ready",
-         url: paymentResult.url || `/dashboard/invoices`, // Adaptez selon votre retour
-         dureeMinutes: paymentResult.duration || "N/A", 
-         montant: paymentResult.amount ? (paymentResult.amount / 100).toFixed(2) : "N/A"
-       };
+      const invoicePayload = {
+        type: "invoice:ready",
+        url: paymentResult.url || `/dashboard/invoices`,
+        dureeMinutes: paymentResult.duration || Math.ceil(durationSeconds / 60),
+        montant: paymentResult.amount ? (paymentResult.amount / 100).toFixed(2) : "N/A"
+      };
 
-       if (eleveWs?.readyState === 1) safeSend(eleveWs, invoicePayload);
-       if (profWs?.readyState === 1)  safeSend(profWs, invoicePayload);
+      if (eleveWs?.readyState === 1) safeSend(eleveWs, invoicePayload);
+      if (profWs?.readyState === 1)  safeSend(profWs,  invoicePayload);
 
-       // Sauvegarder la notification pour le prof s'il s'est déconnecté
-       const { db } = await import("../config/index.js");
-       await db.query(
-         `INSERT INTO notifications (user_id, type, data, created_at) 
-          VALUES (:profId, 'invoice', :data, NOW())`,
-         { replacements: { profId, data: JSON.stringify(invoicePayload) } }
-       );
+      const { db } = await import("../config/index.js");
+      await db.query(
+        `INSERT INTO notifications (user_id, type, data, created_at) 
+         VALUES (:profId, 'invoice', :data, NOW())`,
+        { replacements: { profId, data: JSON.stringify(invoicePayload) } }
+      );
     }
   } catch (err) {
-    console.error(`❌ Erreur service de paiement pour ${roomId}:`, err.message);
+    console.error(`❌ Erreur paiement pour ${roomId}:`, err.message);
   }
 
-  // ✅ Notifier fin de session (Fermeture de l'interface vidéo)
+  // ✅ Notifier fin de session
   const payload = {
     type: "session:stop",
     reason: "session_ended",
     timestamp: new Date().toISOString()
   };
-  
+
   if (profWs?.readyState === 1)  safeSend(profWs,  payload);
   if (eleveWs?.readyState === 1) safeSend(eleveWs, payload);
+
   console.log(`📴 Session terminée: prof ${profId} ↔ élève ${eleveId}`);
 }
 // =======================================================
