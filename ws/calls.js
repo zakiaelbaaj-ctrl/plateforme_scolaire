@@ -240,7 +240,10 @@ export async function endSessionForDisconnect(profId, eleveId, onlineProfessors,
     console.log(`⚠️ endSessionForDisconnect ignoré : session déjà terminée pour prof ${profId}`);
     return;
   }
-
+// ✅ SNAPSHOT AVANT endSession() qui remet tout à null
+  const sessionStartedAt = prof.sessionStartedAt 
+    ? new Date(prof.sessionStartedAt) 
+    : new Date(Date.now() - 60000); // fallback 1 min minimum
   onlineProfessorsModule.endSession(profId);
 
   const profWs  = clients.get(profId);
@@ -248,9 +251,7 @@ export async function endSessionForDisconnect(profId, eleveId, onlineProfessors,
   const roomId  = `room_${profId}_${eleveId}`;
 
   // ✅ CALCUL DURÉE depuis sessionStartedAt du prof
-  const sessionStartedAt = prof.sessionStartedAt 
-    ? new Date(prof.sessionStartedAt) 
-    : new Date();
+  
   const durationSeconds = Math.floor((Date.now() - sessionStartedAt) / 1000);
 
   console.log(`⏱️ Durée calculée: ${durationSeconds}s pour ${roomId}`);
