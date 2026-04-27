@@ -299,14 +299,21 @@ router.post("/create-setup-session", requireAuth, async (req, res) => {
     }
 
     // 2. Récupérer la méthode de paiement par défaut du client
-    const paymentMethods = await stripe.paymentMethods.list({
-      customer: eleve.stripe_customer_id,
-      type: 'card',
-    });
+const paymentMethods = await stripe.paymentMethods.list({
+  customer: eleve.stripe_customer_id,
+  type: 'card',
+});
 
-    if (paymentMethods.data.length === 0) {
-      return res.status(400).json({ message: "Carte bancaire introuvable sur Stripe." });
-    }
+if (paymentMethods.data.length === 0) {
+  return res.status(400).json({ message: "Carte bancaire introuvable sur Stripe." });
+}
+
+// ✅ Définir la carte comme défaut pour les paiements off_session
+await stripe.customers.update(eleve.stripe_customer_id, {
+  invoice_settings: {
+    default_payment_method: paymentMethods.data[0].id,
+  },
+});
 
     // 3. Créer le PaymentIntent avec capture_method: 'manual'
     const paymentIntent = await stripe.paymentIntents.create({
