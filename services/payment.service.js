@@ -198,12 +198,22 @@ export async function processSessionPayment(roomId) {
         invoiceNumber,
         date: new Date()
     });
-    return { 
-        status: 'succeeded', 
-        amount: totalAmountEUR, 
-        duration: duration, 
-        url: `/invoices/${fileName}` 
-    };
+
+// ✅ AJOUT : Envoi de la facture par email
+await mailService.sendInvoiceEmail(eleve.email, {
+    invoiceNumber,
+    amount: totalAmountEUR / 100,
+    duration,
+    fileName,
+    displayName: eleve.username || eleve.email
+});
+
+return { 
+    status: 'succeeded', 
+    amount: totalAmountEUR, 
+    duration: duration, 
+    url: `/invoices/${fileName}` 
+};
 
   } catch (err) {
     // Gestion du cas SCA (Authentification requise)

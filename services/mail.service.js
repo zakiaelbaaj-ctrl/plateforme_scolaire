@@ -103,10 +103,6 @@ export async function sendWelcomeEmail(user) {
     throw err;
   }
 }
-
-// ------------------------------------------------------
-// 5. Envoi email de reset password
-// ------------------------------------------------------
 // ------------------------------------------------------
 // 5. Envoi email de reset password
 // ------------------------------------------------------
@@ -204,5 +200,45 @@ export async function sendPaymentActionRequiredEmail(email, { amount, paymentUrl
     // On ne throw pas forcément ici pour ne pas bloquer le flux paymentService
   }
 }
+export async function sendInvoiceEmail(email, { invoiceNumber, amount, duration, fileName, displayName }) {
+  if (!transporter || process.env.MAILER_DISABLED === "true") {
+    logger.info("Mailer disabled — invoice email skipped", { to: email });
+    return;
+  }
 
+  const invoiceUrl = `${process.env.FRONTEND_URL}/invoices/${fileName}`;
+
+  try {
+    await transporter.sendMail({
+      from: defaultFrom,
+      to: email,
+      subject: `🧾 Votre facture de cours — ${invoiceNumber}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; line-height: 1.6;">
+          <h2>Votre facture de cours</h2>
+          <p>Bonjour <strong>${displayName}</strong>,</p>
+          <p>Merci pour votre session ! Voici le récapitulatif :</p>
+          <ul>
+            <li><strong>Durée :</strong> ${duration} minutes</li>
+            <li><strong>Montant :</strong> ${amount.toFixed(2)} €</li>
+            <li><strong>N° Facture :</strong> ${invoiceNumber}</li>
+          </ul>
+          <div style="margin: 25px 0;">
+            <a href="${invoiceUrl}"
+               style="background-color: #2563eb; color: white; padding: 10px 20px;
+                      text-decoration: none; border-radius: 5px; font-weight: bold;">
+              📄 Télécharger ma facture
+            </a>
+          </div>
+          <p style="font-size: 0.8em; color: #666;">
+            Si le bouton ne fonctionne pas : ${invoiceUrl}
+          </p>
+        </div>
+      `,
+    });
+    logger.info("✅ Invoice email sent", { to: email, invoiceNumber });
+  } catch (err) {
+    logger.warn("sendInvoiceEmail failed", { to: email, message: err.message });
+  }
+}
 export default transporter;
