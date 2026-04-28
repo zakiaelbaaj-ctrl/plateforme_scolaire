@@ -104,9 +104,10 @@ export async function openSetupSession() {
   const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://localhost:4000" 
     : "https://plateforme-scolaire-1.onrender.com";
-    console.log("ðŸŒ URL =", `${API_URL}/api/v1/stripeConnect/create-setup-session`);
+    
+ console.log("🌐 URL =", `${API_URL}/api/v1/stripeConnect/create-setup-session`);
   try {
-    console.log("ðŸ’³ Tentative d'ouverture de session Stripe...");
+    console.log("💳 Tentative d'ouverture de session Stripe...");
 
     const res = await fetch(`${API_URL}/api/v1/stripeConnect/create-setup-session`, {
       method: "POST",
