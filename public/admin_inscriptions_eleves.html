@@ -87,6 +87,9 @@
      SCRIPT (inchangé)
 ============================= -->
 <script>
+const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "http://localhost:4000"
+  : "https://plateforme-scolaire-1.onrender.com";
 let eleves = [];
 let filteredEleves = [];
 let pendingAction = null;
@@ -108,7 +111,8 @@ async function loadEleves() {
       return;
     }
 
-    const res = await fetch("http://localhost:4000/api/v1/admin/users?role=eleve", {
+    // ✅ APRÈS
+const res = await fetch(`${API_URL}/api/v1/admin/users?role=eleve`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
@@ -261,7 +265,7 @@ async function confirmAction() {
   }
 
   try {
-    const baseUrl = "http://localhost:4000";
+    const baseUrl = API_URL;
     
     let res;
     if (type === "validate") {
