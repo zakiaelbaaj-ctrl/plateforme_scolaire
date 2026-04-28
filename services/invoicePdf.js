@@ -101,15 +101,15 @@ export async function generateInvoicePdf({
       // =========================
       // ENTREPRISE
       // =========================
-      doc
-        .fontSize(12)
-        .text("Émetteur :", 50, 150, { underline: true })
-        .fontSize(10)
-        .text("Plateforme Scolaire")
-        .text("Adresse : 123 Rue Exemple, Paris, France")
-        .text("Email : contact@plateforme-scolaire.fr")
-        .moveDown(2);
-
+      // ✅ APRÈS
+doc
+  .fontSize(12)
+  .text("Émetteur :", 50, 150, { underline: true })
+  .fontSize(10)
+  .text("Urgence Scolaire")
+  .text("Adresse : 15 Rue Andrée Grunig, 95200 Sarcelles, France")
+  .text("Email : contact@urgencescolaire.com")
+  .moveDown(2);
       // =========================
       // CLIENT
       // =========================
