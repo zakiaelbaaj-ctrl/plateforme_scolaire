@@ -132,32 +132,34 @@ export async function generateInvoicePdf({
       // =========================
       // TABLEAU
       // =========================
-      const tableTop = 300;
+     // ✅ APRÈS — colonnes élargies
+const tableTop = 300;
 
-      doc
-        .fontSize(12)
-        .text("Description", 200, tableTop)
-        .text("Montant HT", 350, tableTop)
-        .text("TVA (20%)", 450, tableTop)
-        .text("Total TTC", 530, tableTop);
+doc
+  .fontSize(11)
+  .text("Description",  50, tableTop)
+  .text("Montant HT",  280, tableTop)
+  .text("TVA (20%)",   380, tableTop)
+  .text("Total TTC",   480, tableTop);
 
-      doc.moveTo(200, tableTop + 15).lineTo(570, tableTop + 15).stroke();
+doc.moveTo(50, tableTop + 15).lineTo(560, tableTop + 15).stroke();
 
-      doc
-        .fontSize(10)
-        .text(`Abonnement ${planType}`, 200, tableTop + 25)
-        .text(`${(amountHT / 100).toFixed(2)} €`, 350, tableTop + 25)
-        .text(`${(tvaAmount / 100).toFixed(2)} €`, 450, tableTop + 25)
-        .text(`${(amount / 100).toFixed(2)} €`, 530, tableTop + 25);
+doc
+  .fontSize(10)
+  .text(`${planType}`,                          50, tableTop + 25, { width: 220 })
+  .text(`${(amountHT / 100).toFixed(2)} €`,   280, tableTop + 25, { width: 90 })
+  .text(`${(tvaAmount / 100).toFixed(2)} €`,  380, tableTop + 25, { width: 90 })
+  .text(`${(amount / 100).toFixed(2)} €`,     480, tableTop + 25, { width: 80 });
 
-      // =========================
-      // TOTAL
-      // =========================
-      doc
-        .fontSize(14)
-        .text("TOTAL TTC :", 450, tableTop + 80)
-        .text(`${(amount / 100).toFixed(2)} €`, 530, tableTop + 80);
+doc.moveTo(50, tableTop + 45).lineTo(560, tableTop + 45).stroke();
 
+// =========================
+// TOTAL
+// =========================
+doc
+  .fontSize(13)
+  .text("TOTAL TTC :", 380, tableTop + 65)
+  .text(`${(amount / 100).toFixed(2)} €`, 480, tableTop + 65, { width: 80 });
       // =========================
       // FOOTER
       // =========================

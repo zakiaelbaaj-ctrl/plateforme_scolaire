@@ -2,7 +2,6 @@ import express from "express";
 import { sequelize } from "#config/db.js";
 import stripe from "#config/stripe.js";
 import logger from "#config/logger.js";
-import { generateInvoicePdf } from "../../../services/invoicePdf.js";
 import { requireAuth } from "#middlewares/auth.middleware.js";
 const router = express.Router();
 
@@ -180,31 +179,9 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
       }
     );
 
-    // 3. Facture PDF pour l'appel
-    try {
-      const [student] = await sequelize.query(
-        `SELECT id, email, username FROM users WHERE id = :eleveId`,
-        { replacements: { eleveId }, type: sequelize.QueryTypes.SELECT, transaction: t }
-      );
-
-      if (student) {
-        await generateInvoicePdf({
-          paymentId: payment[0].id,
-          student,
-          amountCents: paymentIntent.amount,
-          currency: paymentIntent.currency,
-          invoiceNumber: `VID-${roomId}`,
-          createdAt: new Date()
-        });
-      }
-    } catch (pdfErr) {
-      logger.error("❌ Erreur PDF Visio", { roomId, message: pdfErr.message });
-    }
-
     logger.info("✅ Paiement visio confirmé et session marquée payée", { roomId });
   });
 }
-
 /**
  * ❌ Gère l'échec du paiement
  */
