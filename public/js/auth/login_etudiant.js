@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!accessToken) throw new Error("Token absent dans la réponse serveur");
       
-      if (!currentUser || (currentUser.role !== "etudiant" && currentUser.role !== "eleve")) {
+      if (!currentUser || (currentUser.role !== "etudiant" && currentUser.role !== "etudiant")) {
          throw new Error("Cet utilisateur n'est pas enregistré comme étudiant");
       }
 
