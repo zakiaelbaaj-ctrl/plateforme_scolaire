@@ -1,0 +1,193 @@
+/* ----------------------------
+   Page Inscription Professeur – Thème Bleu (#2196f3)
+   ---------------------------- */
+
+/* Corps de page */
+body.auth-body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px; /* Un peu plus de padding pour le scroll si l'écran est petit */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Container du formulaire */
+.auth-container {
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 500px; /* Légèrement plus large pour les infos professeur */
+  padding: 40px 30px;
+  box-sizing: border-box;
+  transition: transform 0.3s ease;
+}
+
+.auth-container:hover {
+  transform: translateY(-3px);
+}
+
+/* Titres et Textes */
+.auth-container h1 {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 10px;
+  font-family: 'Pacifico', cursive;
+  color: #333;
+}
+
+.subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* Encadré d'information professeur */
+.info {
+  background-color: #e3f2fd; /* Bleu très clair */
+  border-left: 4px solid #2196f3; /* Ligne bleue sur le côté */
+  padding: 15px;
+  border-radius: 4px 8px 8px 4px;
+  font-size: 13px;
+  color: #1565c0;
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
+
+.info ul {
+  margin: 5px 0 10px 0;
+  padding-left: 20px;
+}
+
+.info li {
+  margin-bottom: 4px;
+}
+
+/* Groupes de champs */
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #555;
+  font-size: 14px;
+}
+
+/* Inputs & Selects */
+input, select {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 15px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  background-color: #fff;
+}
+
+/* Focus : Lueur Bleue Professeur */
+input:focus, select:focus {
+  outline: none;
+  border-color: #2196f3; 
+  box-shadow: 0 0 5px rgba(33, 150, 243, 0.3); 
+}
+
+/* Champs de type Fichier */
+input[type="file"] {
+  padding: 9px 15px;
+  font-size: 14px;
+  background-color: #fcfcfc;
+  cursor: pointer;
+}
+
+/* Bouton Professeur */
+button#submitBtn {
+  width: 100%;
+  padding: 14px;
+  background-color: #2196f3; /* Bleu Professeur */
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+button#submitBtn:hover:not(:disabled) {
+  filter: brightness(0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Messages d’erreur / succès */
+.error, .success {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  display: none;
+}
+
+.error {
+  background-color: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+
+.success {
+  background-color: #efe;
+  color: #3c3;
+  border: 1px solid #cfc;
+}
+
+.error.show, .success.show {
+  display: block;
+}
+
+/* Liens bas de formulaire */
+.link-section {
+  text-align: center;
+  margin-top: 25px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+  font-size: 14px;
+  color: #555;
+}
+
+.link-section a {
+  color: #2196f3; /* Bleu Professeur */
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 5px;
+}
+
+.link-section a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .auth-container {
+    padding: 30px 20px;
+  }
+
+  .auth-container h1 {
+    font-size: 24px;
+  }
+}

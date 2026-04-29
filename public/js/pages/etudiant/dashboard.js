@@ -1,18 +1,24 @@
 // ======================================================
-// DASHBOARD Ã‰TUDIANT â€” UI PURE / DOMAIN-DRIVEN
+// DASHBOARD ETUDIANT _ UI PURE / DOMAIN-DRIVEN
 // ======================================================
 
-import { AppState } from "/js/core/state.js";
-import { socketService } from "/js/core/socket.service.js";
-import { SessionService } from "/js/domains/session/session.service.js";
-import { CallService } from "/js/domains/call/call.service.js";
-import { ChatService } from "/js/domains/chat/chat.service.js";
+import { AppState }          from "/js/core/state.js";
+import { socketService }     from "/js/core/socket.service.js";
+import { SessionService }    from "/js/domains/session/session.service.js";
+import { ChatService }       from "/js/domains/chat/chat.service.js";
+import { CallService }       from "/js/domains/call/call.service.js";
+import { VideoService }      from "/js/domains/call/video.service.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
-import { DocumentService } from "/js/domains/document/document.service.js";
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
+import { DocumentService } from "/js/domains/document/document.service.js";
 import { addDocument } from "/js/ui/components/document.view.js";
-import { getUserProfile } from "../../services/user.service.js"; // service fictif // service fictif Stripe
-
+import { initUIRenderers } from "/js/modules/ui/uiRenderers.js";
+import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
+import { getUserProfile } from "../../services/user.service.js";
+import { handleAllStripeReturns, holdFundsForSession } 
+from "/js/services/stripe.service.js";
+import { initStripeOnboarding } from "/js/services/stripe.service.js";
+import { openSetupSession } from "/js/services/stripe.service.js";
 // ======================================================
 // INIT
 // ======================================================
@@ -107,29 +113,32 @@ function subscribeToDomains() {
 // UI BINDING
 // ======================================================
 function bindUI() {
-  // ðŸ”¹ Start matching P2P par matiÃ¨re
-  document.getElementById("start-session-btn")?.addEventListener("click", () => {
-    const subjectId = document.getElementById("subject-select")?.value;
-    startMatching(subjectId);
-  });
-
-  // ðŸ”¹ Chat
+  //  Start matching P2P par matiÃ¨re
+ document.getElementById("start-session-btn")?.addEventListener("click", () => {
+  const subjectId = document.getElementById("matiere")?.value; // Utilise l'ID 'matiere'
+  startMatching(subjectId);
+});
+  //  Chat
   document.getElementById("send-msg")?.addEventListener("click", sendChat);
   document.getElementById("chat-input")?.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
 
-  // ðŸ”¹ Documents
+  // Documents
   document.getElementById("send-file")?.addEventListener("click", sendDocument);
 
-  // ðŸ”¹ Whiteboard tools
+  // Whiteboard tools
   bindWhiteboardTools();
 
-  // ðŸ”¹ Logout
+  //  Logout
   document.getElementById("logout-btn")?.addEventListener("click", logout);
 
-  // ðŸ”¹ End session
+  // End session
   document.getElementById("end-session-btn")?.addEventListener("click", () => {
     CallService.endCall();
     SessionService.endSession();
+  });
+  // Gestion du bouton Rejoindre
+  document.getElementById("btn-rejoindre-cours")?.addEventListener("click", () => {
+    handleJoinCall();
   });
 }
 
@@ -220,10 +229,12 @@ function bindWhiteboardTools() {
 // VIDEO / CALL
 // ======================================================
 function attachLocalVideo(track) {
-  const container = document.getElementById("localVideo");
+  const container = document.getElementById("localVideoContainer");
   if (!container || track.kind !== "video") return;
-  const el = track.attach(); el.autoplay = true; el.playsInline = true; el.muted = true;
-  container.replaceWith(el); el.id = "localVideo";
+  const el = track.attach(); 
+  el.style.width = "100%"; // Optionnel pour le responsive
+  container.innerHTML = ""; // Vide le "CAM" par défaut
+  container.appendChild(el);
 }
 
 function attachRemoteTracks(tracks) {
@@ -239,10 +250,60 @@ function attachRemoteTracks(tracks) {
     }
   });
 }
+// ======================================================
+// GESTION DE L'APPEL (Version adaptée à ton CallService)
+// ======================================================
+ function joinTwilioSession() {
+  const roomId = AppState.currentRoomId;
+  
+  if (!roomId) {
+    updateStatus("Aucune session active à rejoindre.");
+    return;
+  }
 
+  // Mise à jour de l'UI
+    const btn = document.getElementById("btn-rejoindre-cours");
+
+if (btn) {
+    // 1. Désactive le bouton pour éviter les clics multiples (spam)
+    btn.disabled = true; 
+    
+    // 2. Ajoute une classe CSS pour le style "chargement" (optionnel)
+    btn.classList.add("btn--loading"); 
+    
+    // 3. Change le texte de manière propre
+    btn.innerHTML = `<span>⌛ Connexion...</span>`;
+    
+    // 4. Accessibilité : on indique aux lecteurs d'écran que c'est en cours
+    btn.setAttribute("aria-busy", "true");
+}
+
+  updateStatus("Demande d'accès au flux vidéo...");
+
+  // On demande le token au serveur. 
+  // La réponse sera traitée par CallService.handleEvent (case "twilioToken")
+  socketService.send({
+    type: "requestTwilioToken",
+    roomId: roomId
+  });
+}
 // ======================================================
 // SESSION / UI HELPERS
 // ======================================================
+
+// À placer dans la section UI HELPERS de dashboard.js
+function resetJoinButton() {
+    const btn = document.getElementById("btn-rejoindre-cours");
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = "▶ Rejoindre"; // On remet le texte d'origine
+        btn.classList.remove("btn--loading");
+        btn.removeAttribute("aria-busy"); // Plus propre que "false"
+    }
+}
+
+// ✅ INDISPENSABLE : On la rend disponible pour VideoService.js
+window.resetJoinButton = resetJoinButton;
 function cleanupSession(message) {
   CallService.disconnectTwilio();
   SessionService.stopTimer?.();
@@ -271,41 +332,24 @@ function updateTimerUI(time) {
 // ======================================================
 // USER INFO
 // ======================================================
-function renderStudentInfo() {
-  const { prenom, nom, ville, pays, abonnement } = AppState.currentUser || {};
-  document.getElementById("eleve-name").textContent = `${prenom} ${nom}`;
-  document.getElementById("eleve-location").textContent = ville && pays ? `${ville}, ${pays}` : "";
-  document.getElementById("eleve-abonnement").textContent = abonnement || "Non dÃ©fini";
+ function renderStudentInfo() {
+  const { prenom, nom, ville, pays } = AppState.currentUser || {};
+  document.getElementById("student-info").textContent = `${prenom} ${nom}`;
+  document.getElementById("etudiant-location").textContent = ville && pays ? `${ville}, ${pays}` : "";
 }
-
 // ======================================================
 // PROF / STUDENT LIST UI
 // ======================================================
-function renderProfList(profs = []) {
-  const list = document.getElementById("prof-list");
+function renderStudentList(etudiants = []) {
+  const list = document.getElementById("etudiant-list");
   if (!list) return;
   list.innerHTML = "";
-  profs.forEach(prof => {
+  etudiants.forEach(etudiant => {
     const li = document.createElement("li");
-    li.textContent = `${prof.prenom} ${prof.nom}`;
+    li.textContent = `${etudiant.prenom} ${etudiant.nom}`;
     const btn = document.createElement("button");
     btn.textContent = "Appeler";
-    btn.addEventListener("click", () => callProfessor(prof.id));
-    li.appendChild(btn);
-    list.appendChild(li);
-  });
-}
-
-function renderStudentList(students = []) {
-  const list = document.getElementById("student-list");
-  if (!list) return;
-  list.innerHTML = "";
-  students.forEach(stu => {
-    const li = document.createElement("li");
-    li.textContent = `${stu.prenom} ${stu.nom} (${stu.matiere})`;
-    const btn = document.createElement("button");
-    btn.textContent = "Appeler";
-    btn.addEventListener("click", () => SessionService.callStudent(stu.id));
+    btn.addEventListener("click", () => callProfessor(etudiant.id));
     li.appendChild(btn);
     list.appendChild(li);
   });

@@ -23,10 +23,12 @@
   --text-secondary:#a8997e;
   --text-muted:    #5a5040;
 
-  --accent:        #e8a020;
-  --accent-dim:    rgba(232, 160, 32, 0.15);
-  --accent-glow:   rgba(232, 160, 32, 0.25);
-  --accent-hover:  #f0b030;
+  /* ✅ APRÈS */
+--accent:        #2196f3;
+--accent-dim:    rgba(33, 150, 243, 0.15);
+--accent-glow:   rgba(33, 150, 243, 0.25);
+--accent-hover:  #42a5f5;
+--call-active:   #2196f3;
 
   --danger:        #d94f3a;
   --danger-soft:   rgba(217, 79, 58, 0.12);

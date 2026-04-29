@@ -5,18 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inscription Élève</title>
 
-  <!-- Base CSS commun -->
-  <link rel="stylesheet" href="../../vendor/base.css">
-
-  <!-- CSS spécifique à l'inscription -->
-  <link rel="stylesheet" href="../../css/dashboard_eleve/register.css">
-
-  <!-- Polices manuscrites Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&family=Pacifico&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/base.css">
 </head>
-<body>
 
-<div class="container">
+<body class="auth-body">
+
+<div class="auth-container role-eleve">
+  
+  <div class="logo-global"></div>
+
   <h1>📝 Inscription Élève</h1>
 
   <form id="registerForm">
@@ -44,11 +41,11 @@
       <label for="telephone">Téléphone</label>
       <input type="tel" id="telephone" name="telephone" placeholder="0601020304">
     </div>
+    
     <div class="form-group">
-    <label for="ville">Ville</label>
-    <input type="text" id="ville" name="ville" placeholder="Paris">
+      <label for="ville">Ville</label>
+      <input type="text" id="ville" name="ville" placeholder="Paris">
     </div>
-
 
     <div class="form-group">
       <label for="pays">Pays</label>
@@ -66,16 +63,15 @@
     <div id="successDiv" class="success"></div>
   </form>
 
-  <div class="demo-info">
+  <div class="info demo-info" style="margin-top: 15px;">
     💡 <strong>Test:</strong> username: test_eleve | password: 1234
   </div>
 
   <div class="link-section">
-    <p>Déjà inscrit ? <a id="loginLink">🔑 Se connecter</a></p>
+    <p>Déjà inscrit ? <a id="loginLink" href="login.html">🔑 Se connecter</a></p>
   </div>
 </div>
 
-<!-- JS -->
 <script type="module" src="../../js/auth/register_eleve.js"></script>
 
 </body>

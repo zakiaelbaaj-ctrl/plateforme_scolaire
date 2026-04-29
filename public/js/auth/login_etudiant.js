@@ -1,22 +1,20 @@
 // ============================================
-// ðŸ” LOGIN Ã‰TUDIANT
+// 🔐 LOGIN ÉTUDIANT
 // ============================================
 
-// ðŸ”¹ DÃ©tection dynamique de l'URL de base (Local vs Production)
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:4000" 
   : "https://plateforme-scolaire-1.onrender.com";
 
 const API_BASE = `${API_URL}/api/v1`;
 
-// ðŸ”¹ VÃ©rifier si l'Ã©tudiant est dÃ©jÃ  connectÃ©
+// 🔹 Vérifier si l'étudiant est déjà connecté
 const existingToken = localStorage.getItem("token");
 if (existingToken) {
-  // âœ… DÃ©jÃ  connectÃ© â†’ aller directement au dashboard
-  window.location.replace("/pages/etudiant/dashboard.html");
+  // ✅ Redirection relative pour le mode "double-clic" (même dossier)
+  window.location.replace("dashboard.html");
 }
 
-// ðŸ”¹ Nettoyer les anciens tokens (sÃ©curitÃ©)
 localStorage.removeItem("token");
 localStorage.removeItem("refreshToken");
 
@@ -30,16 +28,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!loginForm) return;
 
-  // ðŸ”— Bouton "S'inscrire" corrigÃ© (vers la page de crÃ©ation de compte)
   if (registerLink) {
-    registerLink.addEventListener("click", () => {
-      window.location.href = "/pages/etudiant/register.html";
+    registerLink.addEventListener("click", (e) => {
+      e.preventDefault(); 
+      // ✅ Redirection relative
+      window.location.href = "register.html";
     });
   }
 
-  /**
-   * Fonction de connexion Ã©tudiant
-   */
   async function loginEtudiant(event) {
     event.preventDefault();
 
@@ -58,8 +54,6 @@ document.addEventListener("DOMContentLoaded", () => {
       hideError();
       hideSuccess();
 
-      console.log("ðŸ“¤ Connexion Ã©tudiant via:", `${API_BASE}/auth/login`);
-
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,52 +61,45 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const json = await res.json();
-      console.log("ðŸ“¥ RÃ©ponse serveur:", json);
 
-      if (!res.ok) throw new Error(json.message || "Connexion Ã©chouÃ©e");
+      if (!res.ok) throw new Error(json.message || "Connexion échouée");
 
-      // VÃ©rification du chemin du token (certains serveurs renvoient json.accessToken ou json.tokens.accessToken)
       const accessToken = json.accessToken || json.tokens?.accessToken;
       const currentUser = json.user;
 
-      if (!accessToken) throw new Error("Token absent dans la rÃ©ponse serveur");
+      if (!accessToken) throw new Error("Token absent dans la réponse serveur");
       
-      // SÃ©curitÃ© sur le rÃ´le
       if (!currentUser || (currentUser.role !== "etudiant" && currentUser.role !== "eleve")) {
-         throw new Error("Cet utilisateur n'est pas enregistrÃ© comme Ã©tudiant");
+         throw new Error("Cet utilisateur n'est pas enregistré comme étudiant");
       }
 
-      // Enrichir utilisateur
       currentUser.matiere = matiere;
       currentUser.niveau = niveau;
 
-      // Stockage local
       localStorage.setItem("token", accessToken);
       localStorage.setItem("refreshToken", json.refreshToken || "");
       localStorage.setItem("currentUser", JSON.stringify(currentUser));
 
-      showSuccess("Connexion rÃ©ussie ! Redirection...");
+      showSuccess("Connexion réussie ! Redirection...");
 
       setTimeout(() => {
-        window.location.replace("/pages/etudiant/dashboard.html");
+        // ✅ Redirection relative vers le dashboard (même dossier)
+        window.location.replace("dashboard.html");
       }, 1000);
 
     } catch (err) {
-      console.error("âŒ Erreur:", err);
+      console.error("❌ Erreur:", err);
       const msg = err.message === "Failed to fetch" 
-        ? "Le serveur est injoignable. RÃ©veillez-le en rafraÃ®chissant la page." 
+        ? "Le serveur est injoignable. Réveillez-le en rafraîchissant la page." 
         : err.message;
       showError(msg);
       showLoading(false);
     }
   }
 
-  /**
-   * Utilitaires d'affichage
-   */
   function showError(msg) {
     if (errorDiv) {
-      errorDiv.textContent = "âŒ " + msg;
+      errorDiv.textContent = "❌ " + msg;
       errorDiv.style.display = "block";
     }
   }
@@ -123,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showSuccess(msg) {
     if (successDiv) {
-      successDiv.textContent = "âœ… " + msg;
+      successDiv.textContent = "✅ " + msg;
       successDiv.style.display = "block";
     }
   }
@@ -134,19 +121,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showLoading(isLoading) {
     if (loadingDiv) {
-      loadingDiv.textContent = isLoading ? "â³ Connexion en cours..." : "";
+      loadingDiv.textContent = isLoading ? "⏳ Connexion en cours..." : "";
       loadingDiv.style.display = isLoading ? "block" : "none";
     }
     if (submitBtn) submitBtn.disabled = isLoading;
   }
 
-  // Bind formulaire
   loginForm.addEventListener("submit", loginEtudiant);
 
-  // Nettoyage au focus
   ["username", "password", "matiere", "niveau"].forEach(id => {
     document.getElementById(id)?.addEventListener("focus", hideError);
     document.getElementById(id)?.addEventListener("change", hideError);
   });
 });
-

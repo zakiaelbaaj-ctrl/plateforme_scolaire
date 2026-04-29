@@ -1,0 +1,160 @@
+/* ----------------------------
+   Page Inscription étudiant – Design aligné (Vert #4caf50)
+   ---------------------------- */
+
+/* Corps de page */
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* Container du formulaire */
+.container {
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 450px;
+  padding: 40px 30px;
+  box-sizing: border-box;
+  transition: transform 0.3s ease;
+}
+
+.container:hover {
+  transform: translateY(-3px);
+}
+
+/* Titre */
+h1 {
+  text-align: center;
+  font-size: 30px;
+  margin-bottom: 30px;
+  font-family: 'Pacifico', cursive;
+  color: #333;
+}
+
+/* Groupes de champs */
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #555;
+}
+
+/* Inputs */
+input {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+input:focus {
+  outline: none;
+  border-color: #4caf50; /* Vert Étudiant */
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.3); /* Lueur Vert Étudiant */
+}
+
+/* Bouton élève */
+button#submitBtn {
+  width: 100%;
+  padding: 14px;
+  background-color: #4caf50; /* Vert Étudiant */
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button#submitBtn:hover:not(:disabled) {
+  filter: brightness(0.9);
+  transform: translateY(-2px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Messages d’erreur / succès */
+.error, .success {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  display: none;
+}
+
+.error {
+  background-color: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+
+.success {
+  background-color: #efe;
+  color: #3c3;
+  border: 1px solid #cfc;
+}
+
+.error.show, .success.show {
+  display: block;
+}
+
+/* Liens bas de formulaire */
+.link-section {
+  text-align: center;
+  margin-top: 20px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+}
+
+.link-section a {
+  color: #4caf50; /* Vert Étudiant */
+  text-decoration: none;
+  font-weight: 500;
+  margin: 0 8px;
+  cursor: pointer;
+}
+
+.link-section a:hover {
+  text-decoration: underline;
+}
+
+/* Informations de test/demo */
+.demo-info {
+  background: #f0f8ff;
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  margin-top: 15px;
+  color: #333;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .container {
+    padding: 30px 20px;
+  }
+
+  h1 {
+    font-size: 26px;
+  }
+}

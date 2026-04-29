@@ -4,16 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Connexion Étudiant</title>
-  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="../../css/base.css">
 </head>
 
 <body class="auth-body">
-
-  <div class="container role-etudiant">
-
+  <div class="auth-container role-etudiant"> 
+    
+    <div class="logo-global"></div> 
+    
     <h1>🎓 Connexion Étudiant</h1>
     <p class="subtitle">Accédez à votre espace de travail collaboratif</p>
-
+    
     <form id="loginEtudiantForm">
 
       <div class="form-group">
@@ -34,7 +35,6 @@
         <label for="matiere">Matière</label>
         <select id="matiere" name="matiere" required>
           <option value="">-- Choisir une matière --</option>
-
           <optgroup label="Lycée">
             <option value="Mathématiques">Mathématiques</option>
             <option value="Français">Français</option>
@@ -46,7 +46,6 @@
             <option value="Économie">Économie</option>
             <option value="Informatique">Informatique</option>
           </optgroup>
-
           <optgroup label="Supérieur">
             <option value="Droit">Droit</option>
             <option value="Médecine">Médecine</option>
@@ -66,13 +65,11 @@
         <label for="niveau">Niveau</label>
         <select id="niveau" name="niveau" required>
           <option value="">-- Choisir un niveau --</option>
-
           <optgroup label="Post-bac">
             <option value="BTS">BTS</option>
             <option value="BUT">BUT</option>
             <option value="Prépa CPGE">Prépa CPGE</option>
           </optgroup>
-
           <optgroup label="Université">
             <option value="Licence 1">Licence 1</option>
             <option value="Licence 2">Licence 2</option>
@@ -84,7 +81,7 @@
         </select>
       </div>
 
-      <button type="submit" class="etudiant-btn" id="submitBtn">Se connecter</button>
+      <button type="submit" id="submitBtn">Se connecter</button>
 
       <div id="loadingDiv" class="loading"></div>
       <div id="errorDiv"   class="error"></div>
@@ -102,7 +99,6 @@
 
   </div>
 
-  <script type="module" src="/js/auth/login_etudiant.js"></script>
-
+  <script type="module" src="../../js/auth/login_etudiant.js"></script>
 </body>
 </html>

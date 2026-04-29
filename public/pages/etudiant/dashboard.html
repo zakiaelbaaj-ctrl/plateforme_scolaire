@@ -4,150 +4,220 @@
   <meta charset="UTF-8" />
   <title>Espace Étudiant</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="/css/base.css" />
-  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="../../css/base.css" />
+  <link rel="stylesheet" href="../../css/dashboard_etudiant.css" />
+  
+  <script src="https://sdk.twilio.com/js/video/releases/2.30.0/twilio-video.min.js"></script>
 </head>
 
 <body>
 
 <!-- ================= HEADER ================= -->
 <header class="top-bar">
+
+  <div class="top-bar__brand">
+  <img src="../../images/logo.png" alt="Urgence Scolaire" style="width:40px; height:40px; object-fit:contain;" />
   <div class="user-info">
     <h1 id="student-info">Chargement…</h1>
-    <span id="call-status">Aucune session</span>
+    <span id="etudiant-location">Ville, Pays</span>
   </div>
+  <span id="call-status">Aucune session</span>
+</div>
 
   <div class="actions">
     <span id="call-time">00:00</span>
     <button id="logout-btn" class="primary" aria-label="Se déconnecter">Déconnexion</button>
   </div>
 </header>
+<!-- ================= Etudiants LIST BAR ================= -->
+  <div class="etudiant-bar">
+    <span class="etudiant-bar__label">👨‍🎓 Disponibles</span>
+    <ul id="etudiant-list" class="etudiant-list">
+      <li class="empty">Aucun étudiant connecté</li>
+    </ul>
+  </div>
 
 <!-- ================= DASHBOARD ================= -->
 <main class="dashboard-layout">
 
-  <!-- ================= VIDEO AREA ================= -->
-  <section class="video-area">
+  <!-- ================= LEFT COLUMN ================= -->
+    <div class="col-main">
 
-    <div class="card">
-      <h3>🎥 Vidéo</h3>
-      <div class="videos">
+      <!-- VIDEO AREA -->
+      <section class="card card--video">
+        <div class="card__header">
+          <h3 class="card__title">🎥 Vidéo</h3>
+          <div style="display:flex; gap:10px;">
+         <button id="btn-rejoindre-cours" class="btn btn--primary btn--sm">
+         ▶ Rejoindre
+        </button>
 
-        <div class="video-block">
-          <div class="video-label">Vous</div>
-          <div class="video-box">
-            <div id="local-video"></div>
-          </div>
+        <button id="end-session-btn" class="btn btn--danger btn--sm">
+         ✕ Terminer
+             </button>
+        </div>
         </div>
 
-        <div class="video-block">
-          <div class="video-label">Professeur / Étudiant</div>
-          <div class="video-box">
-            <div id="remote-video"></div>
-          </div>
-        </div>
+        <div class="videos">
+  <div class="video-block">
+    <div class="video-label">Vous</div>
+    <div id="localVideoContainer" class="video-box">
+      <div class="video-overlay">CAM</div>
+    </div>
+  </div>
+
+  <div class="video-block video-block--remote">
+    <div class="video-label">etudiant</div>
+    <div id="remoteVideoContainer" class="video-box">
+      <div class="video-overlay">LIVE</div>
+    </div>
 
       </div>
     </div>
+     </section>
+    <!-- WHITEBOARD -->
+      <section class="card card--whiteboard">
+        <div class="card__header">
+          <h3 class="card__title">🖊 Tableau blanc</h3>
+          <div class="wb-header-actions">
+            <button id="wb-fullscreen-btn" class="btn btn--icon" title="Plein écran">⛶</button>
+          </div>
+        </div>
 
-    <!-- ================= WHITEBOARD ================= -->
-    <div class="card">
-      <h3>🖊 Tableau blanc</h3>
+        <div class="whiteboard-canvas-wrapper" id="whiteboard-wrapper">
+          <canvas id="whiteboard-canvas"></canvas>
+        </div>
 
-      <div class="whiteboard-canvas-wrapper">
-        <canvas id="whiteboard-canvas"></canvas>
-      </div>
+        <div class="whiteboard-tools">
+          <div class="wb-tools-group">
+            <button id="penToolBtn"    class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
+            <button id="eraserToolBtn" class="btn btn--icon wb-tool" title="Gomme">🧽</button>
+            <button id="lineToolBtn"   class="btn btn--icon wb-tool" title="Ligne">📏</button>
+            <button id="rectToolBtn"   class="btn btn--icon wb-tool" title="Rectangle">▭</button>
+            <button id="textToolBtn"   class="btn btn--icon wb-tool" title="Texte">🔤</button>
+          </div>
 
-      <div class="whiteboard-tools">
-        <button data-tool="pen" aria-label="Stylo">✏</button>
-        <button data-tool="eraser" aria-label="Gomme">🧽</button>
-        <button id="clearWhiteboardBtn" aria-label="Effacer le tableau">🗑</button>
-      </div>
+          <div class="wb-tools-group">
+            <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
+            <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
+          </div>
+
+          <div class="wb-tools-group wb-tools-group--right">
+            <button id="undoWhiteboardBtn"     class="btn btn--icon" title="Annuler">↩</button>
+            <button id="clearWhiteboardBtn"    class="btn btn--icon btn--danger-ghost" title="Effacer tout">🗑️</button>
+            <button id="downloadWhiteboardBtn" class="btn btn--icon" title="Télécharger">⬇️</button>
+          </div>
+        </div>
+      </section>
+
     </div>
-
-  </section>
 
   <!-- ================= SIDE PANEL ================= -->
   <aside class="side-panel">
+    <!-- SESSION INFO -->
+      <div class="card card--session">
+        <div class="card__header">
+          <h3 class="card__title">📞 Session</h3>
+        </div>
+        <p class="session-etudiant-info">
+          <span class="label">Étudiant</span>
+          <span id="remote-etudiant-info" class="value">—</span>
+        </p>
+      </div>
 
     <!-- MATCHING -->
     <div class="card">
       <h3>🔎 Recherche</h3>
       <input id="matiere" placeholder="Matière" aria-label="Matière" />
       <input id="sujet" placeholder="Sujet" aria-label="Sujet" />
-      <button id="start-session-btn" class="full-width" aria-label="Commencer une session">Trouver un professeur</button>
+      <button id="start-session-btn" class="full-width" aria-label="Commencer une session">Trouver un etudiant</button>
     </div>
 
     <!-- CHAT -->
-    <div class="card">
-      <h3>💬 Chat</h3>
-      <div class="chat-box" id="chat-box" aria-live="polite"></div>
-      <div class="chat-input-row">
-        <input id="chat-input" placeholder="Message…" aria-label="Message" />
-        <button id="send-msg" aria-label="Envoyer le message">Envoyer</button>
+      <div class="card card--chat">
+        <div class="card__header">
+          <h3 class="card__title">💬 Chat</h3>
+        </div>
+        <div id="chat-box" class="chat-box"></div>
+        <div class="chat-input-row">
+          <input id="chat-input" class="chat-input" placeholder="Message…" autocomplete="off" />
+          <button id="send-msg" class="btn btn--primary btn--sm">→</button>
+        </div>
       </div>
-    </div>
 
     <!-- DOCUMENTS -->
-    <div class="card">
-      <h3>📁 Documents</h3>
-      <input type="file" id="file-input" aria-label="Sélectionner un fichier" />
-      <button id="send-file" class="full-width" aria-label="Envoyer le fichier">Envoyer</button>
-      <ul class="files-list" id="doc-list" aria-label="Liste des documents"></ul>
-    </div>
+      <div class="card card--docs">
+        <div class="card__header">
+          <h3 class="card__title">📁 Documents</h3>
+        </div>
+        <label class="file-drop-zone" for="file-input">
+          <span>Glisser un fichier ici</span>
+          <span class="file-drop-zone__sub">ou cliquer pour parcourir</span>
+        </label>
+        <input type="file" id="file-input" class="file-input-hidden" />
+        <button id="send-file" class="btn btn--primary full-width">Envoyer le document</button>
+        <ul id="doc-list" class="doc-list"></ul>
+      </div>
 
-    <!-- STRIPE CONNECT -->
-    <div class="card card--stripe-connect">
+     <!-- STRIPE payement -->
+        <div id="user-info"></div> <!-- ✅ ICI -->
+      <div class="card card--stripe-payment">
       <div class="card__header">
-        <h3 class="card__title">💳 Stripe Connect</h3>
+      <h3 class="card__title">💳 Mode de paiement</h3>
       </div>
-      <div class="card__body">
-        <button id="stripe-onboarding-btn" class="btn btn--primary full-width" aria-label="Connecter votre compte Stripe">
-          Connecter mon compte Stripe
-        </button>
-      </div>
-    </div>
+       <div class="card__body">
+      <div id="stripe-status" style="margin-bottom: 15px; font-weight: bold;"></div>
 
-  </aside>
+     <button id="stripe-setup-btn" class="btn btn--primary full-width">
+      Ajouter une carte bancaire
+      </button>
+         </div>
+         </div>
+       </aside>
 
-</main>
+     </main>
+
 
 <!-- ================= JS ================= -->
-<script type="module" src="/js/core/state.js"></script>
-<script type="module" src="/js/modules/ui/uiRenderers.js"></script>
-<script type="module" src="/js/modules/ui/uiBindings.js"></script>
-<script type="module" src="/js/pages/eleve/dashboard.js"></script>
-<script type="module" src="/js/services/session.service.js"></script>
-<script type="module" src="/js/services/whiteboard.service.js"></script>
+<script type="module" src="../../js/core/state.js"></script>
+<script type="module" src="../../js/modules/ui/uiRenderers.js"></script>
+<script type="module" src="../../js/modules/ui/uiBindings.js"></script>
+<script type="module" src="../../js/pages/etudiant/dashboard.js"></script>
+<script type="module" src="../../js/services/session.service.js"></script>
+<script type="module" src="../../js/services/whiteboard.service.js"></script>
 
 <script type="module">
   // ================= STRIPE =================
   const stripeBtn = document.getElementById("stripe-onboarding-btn");
+   if (stripeBtn) {
+    stripeBtn.addEventListener("click", async () => {
+      try {
+        const token = localStorage.getItem("token");
+        // Détection de l'URL
+        const API_URL = window.location.hostname === "localhost" 
+          ? "http://localhost:4000" 
+          : "https://plateforme-scolaire-1.onrender.com";
 
-  stripeBtn.addEventListener("click", async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:4000/api/v1/stripeConnect/onboarding", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`
-  }
-});
+        const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        });
 
-      const data = await res.json();
-
-      if (data.stripeLink) {
-        window.location.href = data.stripeLink;
-      } else {
-        alert("Votre compte Stripe est déjà connecté ou une erreur est survenue.");
+        const data = await res.json();
+        if (data.stripeLink) {
+          window.location.href = data.stripeLink;
+        } else {
+          alert("Erreur : " + (data.message || "Lien Stripe non reçu."));
+        }
+      } catch (err) {
+        console.error("Erreur Stripe onboarding:", err);
+        alert("Le serveur est injoignable.");
       }
-    } catch (err) {
-      console.error("Erreur Stripe onboarding:", err);
-      alert("Impossible de démarrer l'onboarding Stripe.");
-    }
-  });
+    });
+  }
 </script>
-
 </body>
 </html>

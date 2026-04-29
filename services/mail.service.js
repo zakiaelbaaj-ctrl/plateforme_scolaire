@@ -2,8 +2,9 @@
 import nodemailer from "nodemailer";
 import logger from "../config/logger.js";
 
+// ✅ 
 const defaultFrom =
-  process.env.SMTP_FROM || '"Plateforme Scolaire" <no-reply@example.com>';
+  process.env.SMTP_FROM || '"Urgence Scolaire" <contact@urgencescolaire.com>';
 
 // ------------------------------------------------------
 // 1. Vérification configuration SMTP

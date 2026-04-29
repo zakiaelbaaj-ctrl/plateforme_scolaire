@@ -29,11 +29,12 @@ export const VideoService = {
         if (!this._silentDisconnect) {
           CallStateMachine.setState(CallStateMachine.STATES.ENDED);
         }
-        this._silentDisconnect = false;
+        this._silentDisconnect = false; 
+        
       });
-
-    } catch (e) {
-      console.error("❌ Erreur VideoService:", e);
+      
+} catch (e) {
+    console.error("❌ Erreur VideoService:", e);
     }
   },
 

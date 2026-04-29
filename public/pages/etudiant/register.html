@@ -5,34 +5,74 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inscription Étudiant</title>
 
-  <!-- ✔ Chemin CSS corrigé -->
-  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="../../css/base.css">
 </head>
 
-<body>
+<body class="auth-body">
 
-<div class="container">
+<div class="auth-container role-etudiant">
+  
+  <div class="logo-global"></div>
+
   <h1>📝 Inscription Étudiant</h1>
 
   <form id="registerForm">
-    <input type="text" id="username" placeholder="Nom d'utilisateur" required autocomplete="username">
-    <input type="text" id="prenom" placeholder="Prénom" required autocomplete="given-name">
-    <input type="text" id="nom" placeholder="Nom" required autocomplete="family-name">
-    <input type="email" id="email" placeholder="Email" required autocomplete="email">
+    <div class="form-group">
+      <label for="username">Nom d'utilisateur *</label>
+      <input type="text" id="username" name="username" required placeholder="jean_martin">
+    </div>
 
-    <!-- ✔ Correction Chrome : autocomplete -->
-    <input type="password" id="password" placeholder="Mot de passe" required autocomplete="new-password">
+    <div class="form-group">
+      <label for="prenom">Prénom *</label>
+      <input type="text" id="prenom" name="prenom" required placeholder="Jean">
+    </div>
 
-    <button type="submit">S'inscrire</button>
+    <div class="form-group">
+      <label for="nom">Nom *</label>
+      <input type="text" id="nom" name="nom" required placeholder="Martin">
+    </div>
+
+    <div class="form-group">
+      <label for="email">Email *</label>
+      <input type="email" id="email" name="email" required placeholder="jean@test.com">
+    </div>
+
+    <div class="form-group">
+      <label for="telephone">Téléphone</label>
+      <input type="tel" id="telephone" name="telephone" placeholder="0601020304">
+    </div>
+    
+    <div class="form-group">
+      <label for="ville">Ville</label>
+      <input type="text" id="ville" name="ville" placeholder="Paris">
+    </div>
+
+    <div class="form-group">
+      <label for="pays">Pays</label>
+      <input type="text" id="pays" name="pays" placeholder="France">
+    </div>
+
+    <div class="form-group">
+      <label for="password">Mot de passe *</label>
+      <input type="password" id="password" name="password" required placeholder="••••••">
+    </div>
+
+    <button type="submit" id="submitBtn">S'inscrire</button>
 
     <div id="errorDiv" class="error"></div>
     <div id="successDiv" class="success"></div>
   </form>
 
-  <p>Déjà inscrit ? <a href="login.html">Se connecter</a></p>
+  <div class="info demo-info" style="margin-top: 15px;">
+    💡 <strong>Test:</strong> username: test_eleve | password: 1234
+  </div>
+
+  <div class="link-section">
+    <p>Déjà inscrit ? <a href="login.html">Se connecter</a></p>
+  </div>
 </div>
-<!-- ✔ Chemin JS corrigé -->
-<script type="module" src="/js/auth/register_etudiant.js"></script>
+
+<script type="module" src="../../js/auth/register_etudiant.js"></script>
 
 </body>
 </html>

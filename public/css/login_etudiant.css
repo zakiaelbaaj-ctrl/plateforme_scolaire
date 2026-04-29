@@ -1,0 +1,132 @@
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  /* Dégradé aligné sur le thème Étudiant (Vert) */
+  background: linear-gradient(135deg, #81c784 0%, #2e7d32 100%);
+  font-family: "Inter", sans-serif;
+  margin: 0;
+}
+
+.container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 450px;
+  padding: 40px;
+}
+
+h1 {
+  text-align: center;
+  color: #4caf50; /* Vert Étudiant */
+  margin-bottom: 10px;
+  font-size: 28px;
+  font-family: "Pacifico", cursive;
+}
+
+.subtitle {
+  text-align: center;
+  color: #777;
+  font-size: 14px;
+  margin-bottom: 30px;
+  font-family: "Indie Flower", cursive;
+}
+
+.form-group { margin-bottom: 20px; }
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: #4caf50; /* Vert Étudiant */
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15); /* Lueur Verte */
+}
+
+button.etudiant-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #4caf50; /* Vert Étudiant */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+  margin-top: 10px;
+}
+
+button.etudiant-btn:hover:not(:disabled) {
+  filter: brightness(0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+}
+
+button.etudiant-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error, .success, .loading {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 14px;
+  display: none;
+}
+
+.error {
+  background-color: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+
+.success {
+  background-color: #efe;
+  color: #3c3;
+  border: 1px solid #cfc;
+}
+
+.loading {
+  color: #4caf50;
+}
+
+.show { display: block; }
+
+.link-section {
+  text-align: center;
+  margin-top: 20px;
+  color: #999;
+  font-size: 13px;
+}
+
+.link-section a {
+  color: #4caf50; /* Vert Étudiant */
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.link-section a:hover {
+  text-decoration: underline;
+}

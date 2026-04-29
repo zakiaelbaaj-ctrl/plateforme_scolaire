@@ -9,20 +9,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="/css/base.css" />
-  <link rel="stylesheet" href="/css/dashboard_prof.css" />
-
+  <link rel="stylesheet" href="../../css/base.css" />
+  <link rel="stylesheet" href="../../css/dashboard_prof.css" />
+  
   <script src="https://sdk.twilio.com/js/video/releases/2.30.0/twilio-video.min.js"></script>
 </head>
 
-<body>
-
-  <!-- ================= HEADER ================= -->
+<body class="role-professeur">
+  
   <header class="top-bar">
 
-    <div class="top-bar__brand">
-      <span class="top-bar__logo">◈</span>
-      <div class="user-info">
+    <!-- ✅ APRÈS -->
+<div class="top-bar__brand">
+  <img src="../../images/logo.png" alt="Urgence Scolaire" style="width:40px; height:40px; object-fit:contain;" />
+  <div class="user-info">
         <h1 id="prof-name">Professeur</h1>
         <span id="prof-location">Ville, Pays</span>
       </div>
@@ -74,7 +74,6 @@
               <div class="video-overlay">CAM</div>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -182,8 +181,6 @@
     </button>
   </div>
 </div>
-  </div>
-</div>
 
     </aside>
 
@@ -193,7 +190,7 @@
   <audio id="incomingCallSound" src="/assets/sounds/call.mp3" preload="auto"></audio>
 
   <!-- JS — dashboard uniquement, il orchestre tout -->
-  <script type="module" src="/js/pages/professeur/dashboard.js"></script>
+  <script type="module" src="../../js/pages/professeur/dashboard.js"></script>
 <script type="module">
   const stripeBtn = document.getElementById("stripe-onboarding-btn");
 

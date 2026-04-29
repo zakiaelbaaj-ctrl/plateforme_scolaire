@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="/css/base.css" />
-  <link rel="stylesheet" href="/css/dashboard_eleve.css" />
+  <link rel="stylesheet" href="../../css/base.css" />
+  <link rel="stylesheet" href="../../css/dashboard_eleve.css" />
 
   <script src="https://sdk.twilio.com/js/video/releases/2.30.0/twilio-video.min.js"></script>
 </head>
@@ -21,13 +21,12 @@
   <header class="top-bar">
 
     <div class="top-bar__brand">
-      <span class="top-bar__logo">◈</span>
-      <div class="user-info">
-        <h1 id="eleve-name">Élève</h1>
-        <span id="eleve-location">Ville, Pays</span>
-      </div>
-    </div>
-
+      <img src="../../images/logo.png" alt="Urgence Scolaire" style="width:40px; height:40px; object-fit:contain;" />
+  <div class="user-info">
+    <h1 id="eleve-name">Élève</h1>
+    <span id="eleve-location">Ville, Pays</span>
+  </div>
+</div>
     <div class="top-bar__status">
       <div class="status-badge" id="call-status-badge">
         <span class="status-dot"></span>
@@ -184,10 +183,10 @@
 
   <!-- ================= JS ================= -->
   
-  <script type="module" src="/js/pages/eleve/dashboard.js"></script>
+  <script type="module" src="../../js/pages/eleve/dashboard.js"></script>
   <script type="module">
-  const stripeBtn = document.getElementById("stripe-onboarding-btn");
-  if (stripeBtn) {
+   const stripeBtn = document.getElementById("stripe-onboarding-btn");
+   if (stripeBtn) {
     stripeBtn.addEventListener("click", async () => {
       try {
         const token = localStorage.getItem("token");

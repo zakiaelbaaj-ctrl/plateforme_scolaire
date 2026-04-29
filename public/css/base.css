@@ -1,11 +1,13 @@
 /* ---------------------------------------------------------
-   BASE CSS — Reset & tokens globaux uniquement
+   BASE CSS — Reset & tokens globaux
    --------------------------------------------------------- */
 
 @import url('https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 /* ======================================================
-   TOKENS PARTAGÉS (non redéfinis dans les pages)
+   TOKENS PARTAGÉS
    ====================================================== */
 :root {
   --eleve-color:      #ff6f61;
@@ -14,7 +16,7 @@
 }
 
 /* ======================================================
-   RESET MINIMAL — global, inoffensif
+   RESET MINIMAL
    ====================================================== */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -22,16 +24,12 @@
   padding: 0;
 }
 
-/* ======================================================
-   BODY — neutre, chaque page surcharge selon son besoin
-   ====================================================== */
 body {
   min-height: 100vh;
 }
 
 /* ======================================================
-   TOUT CE QUI SUIT EST SCOPÉ À .auth-body
-   → N'affecte PAS les dashboards
+   SYSTÈME AUTHENTIFICATION (.auth-body)
    ====================================================== */
 
 .auth-body {
@@ -39,10 +37,10 @@ body {
   justify-content: center;
   align-items: center;
   background: linear-gradient(135deg, #ffffff 0%, #f9f8f6 100%);
-  font-family: 'Indie Flower', cursive;
+  font-family: 'Inter', sans-serif; /* L'Indie Flower est un peu dur à lire pour un long formulaire, Inter est plus pro */
+  padding: 20px;
 }
 
-/* Formulaires */
 .auth-body .auth-container {
   background: #ffffff;
   border-radius: 12px;
@@ -52,12 +50,38 @@ body {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
+/* THEME DYNAMIQUE : Le secret pour ne pas répéter le CSS */
+.role-etudiant { --theme-color: var(--etudiant-color); }
+.role-professeur { --theme-color: var(--professeur-color); }
+.role-eleve { --theme-color: var(--eleve-color); }
+
+/* Titres & Sous-titres */
+.auth-body h1 {
+  text-align: center;
+  color: var(--theme-color, #333); /* Utilise la couleur du thème, sinon gris par défaut */
+  margin-bottom: 10px;
+  font-size: 28px;
+  font-family: 'Pacifico', cursive;
+}
+
+.auth-body .subtitle {
+  text-align: center;
+  margin-top: -10px;
+  margin-bottom: 20px;
+  font-family: 'Indie Flower', cursive;
+  font-size: 16px;
+  color: #666;
+}
+
+/* Formulaires */
 .auth-body .form-group { margin-bottom: 20px; }
 
 .auth-body label {
   display: block;
   margin-bottom: 6px;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
 }
 
 .auth-body input,
@@ -68,68 +92,15 @@ body {
   border-radius: 6px;
   font-size: 16px;
   transition: border-color 0.3s, box-shadow 0.3s;
+  font-family: inherit;
 }
 
 .auth-body input:focus,
 .auth-body select:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  border-color: var(--theme-color, #667eea);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05); /* Ombre neutre légère */
   outline: none;
 }
-
-/* Messages */
-.auth-body .error,
-.auth-body .success,
-.auth-body .loading {
-  margin-top: 15px;
-  padding: 12px;
-  border-radius: 6px;
-  text-align: center;
-  font-size: 15px;
-  display: none;
-}
-
-.auth-body .error   { background: #fee; color: #c33; border: 1px solid #fbb; }
-.auth-body .success { background: #efe; color: #393; border: 1px solid #bfb; }
-.auth-body .loading { color: #667eea; }
-.auth-body .show    { display: block; }
-
-/* Infos & sous-titres */
-.auth-body .info {
-  background: #f0f7ff;
-  border-left: 4px solid var(--professeur-color);
-  padding: 15px;
-  margin-bottom: 25px;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #333;
-}
-
-.auth-body .info ul {
-  margin: 10px 0 10px 20px;
-}
-
-.auth-body .subtitle {
-  text-align: center;
-  margin-top: -10px;
-  margin-bottom: 20px;
-  font-style: italic;
-  color: #666;
-}
-
-/* Liens */
-.auth-body .link-section {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 14px;
-}
-
-.auth-body .link-section a { color: #667eea; text-decoration: none; }
-.auth-body .link-section a:hover { text-decoration: underline; }
-
-/* Logo */
-.auth-body .logo { display: block; width: 120px; margin: 0 auto 20px; }
-.auth-body .logo img { width: 100%; height: auto; }
 
 /* Boutons */
 .auth-body button {
@@ -142,23 +113,88 @@ body {
   cursor: pointer;
   transition: all 0.3s ease;
   color: white;
-  background-color: var(--professeur-color);
+  background-color: var(--theme-color, #333); /* S'adapte au rôle ! */
   margin-top: 10px;
 }
 
-.auth-body button:hover {
-  filter: brightness(1.1);
+.auth-body button:hover:not(:disabled) {
+  filter: brightness(0.9);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-}
-
-.auth-body button:active {
-  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .auth-body button:disabled {
   background-color: #bdc3c7;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+  opacity: 0.7;
+}
+
+/* Messages & Alertes */
+.auth-body .error,
+.auth-body .success,
+.auth-body .loading {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+  display: none;
+}
+
+.auth-body .error   { background: #fee; color: #c33; border: 1px solid #fbb; }
+.auth-body .success { background: #efe; color: #393; border: 1px solid #bfb; }
+.auth-body .loading { color: var(--theme-color, #333); }
+.auth-body .show    { display: block; }
+
+/* Encadré d'infos */
+.auth-body .info {
+  background: #f8f9fa;
+  border-left: 4px solid var(--theme-color, #333);
+  padding: 15px;
+  margin-bottom: 25px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #444;
+}
+.auth-body .info ul { margin: 10px 0 10px 20px; }
+
+/* Liens */
+.auth-body .link-section {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #777;
+}
+.auth-body .link-section a { 
+  color: var(--theme-color, #667eea); 
+  text-decoration: none; 
+  font-weight: 600;
+}
+.auth-body .link-section a:hover { text-decoration: underline; }
+
+/* ======================================================
+   LOGO CENTRALISÉ
+   ====================================================== */
+.auth-body .logo-global { 
+  display: block; 
+  width: 120px; 
+  height: 120px; /* ⚠️ Indispensable : donnez une hauteur pour que l'image s'affiche */
+  margin: 0 auto 20px; 
+  
+  /* L'image est chargée d'ici ! */
+  background-image: url('../images/logo.png'); 
+  background-size: contain;     /* Empêche le logo d'être rogné */
+  background-repeat: no-repeat;
+  background-position: center;
+}
+/* ======================================================
+   RESPONSIVE (Mobile)
+   ====================================================== */
+@media (max-width: 480px) {
+  .auth-body .auth-container {
+    padding: 30px 20px; /* Moins de marges sur téléphone */
+  }
+  .auth-body h1 {
+    font-size: 24px;
+  }
 }
