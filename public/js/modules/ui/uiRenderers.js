@@ -36,11 +36,11 @@ export function initUIRenderers() {
 /* ======================================================
    PROFESSORS
 ====================================================== */
-function renderProfessorsList(profs = []) {
-  const container = document.getElementById("prof-list");
-  if (!container) return;
+    export function renderProfessorsList(profs = []) {
+    const container = document.getElementById("prof-list");
+     if (!container) return;
 
-  container.innerHTML = "";
+     container.innerHTML = "";
 
   if (!profs.length) {
     container.innerHTML = "<li class='empty'>Aucun professeur connectÃ©</li>";
@@ -75,7 +75,7 @@ function renderProfessorsList(profs = []) {
 /* ======================================================
    CHAT
 ====================================================== */
-function renderChatMessage({ sender, text }) {
+ export function renderChatMessage({ sender, text }) {
     const box = document.getElementById("chat-box");
     if (!box) return;
 
@@ -86,15 +86,14 @@ function renderChatMessage({ sender, text }) {
     box.scrollTop = box.scrollHeight;
 }
 
-function clearChatUI() {
+export function clearChatUI() {
     const box = document.getElementById("chat-box");
     if (box) box.innerHTML = "";
 }
-
 /* ======================================================
    DOCUMENTS
 ====================================================== */
-function renderDocumentItem({ fileName, fileData, sender }) {
+export function renderDocumentItem({ fileName, fileData, sender }) {
     const list = document.getElementById("doc-list");
     if (!list) return;
 
@@ -107,7 +106,7 @@ function renderDocumentItem({ fileName, fileData, sender }) {
     list.appendChild(a);
 }
 
-function clearDocumentsUI() {
+export function clearDocumentsUI() {
     const list = document.getElementById("doc-list");
     if (list) list.innerHTML = "";
 }
@@ -115,7 +114,7 @@ function clearDocumentsUI() {
 /* ======================================================
    FACTURATION
 ====================================================== */
-function renderInvoice({ amount, duration, sessionId }) {
+     export function renderInvoice({ amount, duration, sessionId }) {
     const box = document.getElementById("invoice-box");
     if (!box) return;
 
@@ -132,7 +131,7 @@ function renderInvoice({ amount, duration, sessionId }) {
 /* ======================================================
    TIMER
 ====================================================== */
-function updateTimerUI(seconds) {
+      export function updateTimerUI(seconds) {
     const el = document.getElementById("call-time");
     if (!el) return;
 
@@ -141,7 +140,7 @@ function updateTimerUI(seconds) {
     el.textContent = `${m}:${s}`;
 }
 
-function resetTimerUI() {
+export function resetTimerUI() {
     const el = document.getElementById("call-time");
     if (el) el.textContent = "00:00";
 }

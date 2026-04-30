@@ -4,6 +4,24 @@ import { VideoService } from "./video.service.js";
 import { CallStateMachine } from "./call.state.machine.js";
 
 export const CallService = {
+  _callbacks: {},
+
+  _on(event, cb) {
+    this._callbacks[event] = cb;
+  },
+
+  _emit(event, data) {
+    if (this._callbacks[event]) this._callbacks[event](data);
+  },
+
+  onCallSent(cb)      { this._on("callSent", cb); },
+  onCallAccepted(cb)  { this._on("callAccepted", cb); },
+  onConnected(cb)     { this._on("connected", cb); },
+  onCallRejected(cb)  { this._on("callRejected", cb); },
+  onCallEnded(cb)     { this._on("callEnded", cb); },
+  onLocalTrack(cb)    { this._on("localTrack", cb); },
+  onRemoteTracks(cb)  { this._on("remoteTracks", cb); },
+  onDisconnected(cb)  { this._on("disconnected", cb); },
 
   handleEvent(data) {
     if (!data?.type) return;

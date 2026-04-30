@@ -40,8 +40,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderStudentInfo();
 
-  // ðŸ”¹ Connect WebSocket
-  socketService.connect();
+  // 🔹 Connect WebSocket
+  const token = localStorage.getItem("token");
+  const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? `ws://localhost:4000?token=${token}`
+  : `wss://plateforme-scolaire-1.onrender.com?token=${token}`;
+
+  socketService.connect(WS_URL);
   socketService.onMessage((data) => SessionService._handleWs(data));
 
   bindUI();
