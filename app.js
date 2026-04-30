@@ -206,7 +206,7 @@ app.use("/api/v1/eleves", elevesRoutes);
 app.use("/api/v1/professeurs", professeursRoutes);
 app.use("/api/v1/appels", appelsRoutes);
 app.use("/api/v1/admin", adminRoutes);
-//app.use("/api/v1/admin/users", adminUsersRoutes);
+app.use("/api/v1/admin/users", adminUsersRoutes);
 // (Car tes routes /users sont déjà gérées à l'intérieur de adminRoutes.js)
 app.use("/api/v1/twilio", twilioRoutes);
 app.use("/api/v1/twilio", twilioStudentRoute);

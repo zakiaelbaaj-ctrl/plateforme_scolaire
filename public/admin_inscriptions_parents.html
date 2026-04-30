@@ -95,7 +95,7 @@ async function chargerParents() {
     const token = localStorage.getItem("token");
     if (!token) throw new Error("Token manquant — reconnecte-toi");
 
-    const res = await fetch("http://localhost:4000/api/v1/admin/users?role=parent", {
+    const res = await fetch(`${API_URL}/api/v1/admin/users?role=parent`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
@@ -187,7 +187,7 @@ async function changerStatut(index, statut) {
   const token = localStorage.getItem("token");
 
   try {
-    await fetch(`http://localhost:4000/api/v1/admin/users/${parent.id}`, {
+    await fetch(`${API_URL}/api/v1/admin/users/${parent.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -220,7 +220,7 @@ async function confirmAction() {
   const token = localStorage.getItem("token");
 
   try {
-    await fetch(`http://localhost:4000/api/v1/admin/users/${parent.id}`, {
+    await fetch(`${API_URL}/api/v1/admin/users/${parent.id}`, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` }
     });

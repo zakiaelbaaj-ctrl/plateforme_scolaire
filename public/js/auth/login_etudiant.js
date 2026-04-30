@@ -15,9 +15,6 @@ if (existingToken) {
   window.location.replace("dashboard.html");
 }
 
-localStorage.removeItem("token");
-localStorage.removeItem("refreshToken");
-
 document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("loginEtudiantForm");
   const errorDiv = document.getElementById("errorDiv");
@@ -37,65 +34,84 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loginEtudiant(event) {
-    event.preventDefault();
+  event.preventDefault();
 
-    const username = document.getElementById("username")?.value.trim();
-    const password = document.getElementById("password")?.value.trim();
-    const matiere = document.getElementById("matiere")?.value.trim();
-    const niveau = document.getElementById("niveau")?.value.trim();
+  const username = document.getElementById("username")?.value.trim();
+  const password = document.getElementById("password")?.value.trim();
+  const matiere = document.getElementById("matiere")?.value.trim();
+  const niveau = document.getElementById("niveau")?.value.trim();
 
-    if (!username || !password || !matiere || !niveau) {
-      showError("Tous les champs sont requis");
-      return;
-    }
-
-    try {
-      showLoading(true);
-      hideError();
-      hideSuccess();
-
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) throw new Error(json.message || "Connexion échouée");
-
-      const accessToken = json.accessToken || json.tokens?.accessToken;
-      const currentUser = json.user;
-
-      if (!accessToken) throw new Error("Token absent dans la réponse serveur");
-      
-      if (!currentUser || (currentUser.role !== "etudiant" && currentUser.role !== "etudiant")) {
-         throw new Error("Cet utilisateur n'est pas enregistré comme étudiant");
-      }
-
-      currentUser.matiere = matiere;
-      currentUser.niveau = niveau;
-
-      localStorage.setItem("token", accessToken);
-      localStorage.setItem("refreshToken", json.refreshToken || "");
-      localStorage.setItem("currentUser", JSON.stringify(currentUser));
-
-      showSuccess("Connexion réussie ! Redirection...");
-
-      setTimeout(() => {
-        // ✅ Redirection relative vers le dashboard (même dossier)
-        window.location.replace("dashboard.html");
-      }, 1000);
-
-    } catch (err) {
-      console.error("❌ Erreur:", err);
-      const msg = err.message === "Failed to fetch" 
-        ? "Le serveur est injoignable. Réveillez-le en rafraîchissant la page." 
-        : err.message;
-      showError(msg);
-      showLoading(false);
-    }
+  if (!username || !password || !matiere || !niveau) {
+    showError("Tous les champs sont requis");
+    return;
   }
+
+  try {
+    showLoading(true);
+    hideError();
+    hideSuccess();
+
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: username, // l'utilisateur saisit son email dans le champ username
+        password: password,
+        matiere: matiere,  
+        niveau: niveau     
+
+      })
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json.message || "Connexion échouée");
+    }
+
+    const accessToken = json.accessToken || json.tokens?.accessToken;
+    const currentUser = json.user;
+
+    if (!accessToken) {
+      throw new Error("Token absent dans la réponse serveur");
+    }
+
+    if (
+      !currentUser ||
+      currentUser.role !== "etudiant"
+    ) {
+      throw new Error("Cet utilisateur n'est pas enregistré comme étudiant");
+    }
+
+    // ajout des infos complémentaires
+    currentUser.matiere = matiere;
+    currentUser.niveau = niveau;
+
+    localStorage.setItem("token", accessToken);
+    localStorage.setItem("refreshToken", json.refreshToken || "");
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
+
+    showSuccess("Connexion réussie ! Redirection...");
+
+    setTimeout(() => {
+      window.location.replace("dashboard.html");
+    }, 1000);
+
+  } catch (err) {
+    console.error("❌ Erreur:", err);
+
+    const msg =
+      err.message === "Failed to fetch"
+        ? "Le serveur est injoignable. Réveillez-le en rafraîchissant la page."
+        : err.message;
+
+    showError(msg);
+  } finally {
+    showLoading(false);
+  }
+}
 
   function showError(msg) {
     if (errorDiv) {

@@ -1,5 +1,5 @@
 // ============================================
-// ðŸ” LOGIN ELEVE
+// 🔐 LOGIN ELEVE
 // ============================================
 
 // 1️⃣ Vérifier si quelqu'un est déjà connecté
@@ -41,8 +41,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const matiere = document.getElementById("matiere")?.value;
     const niveau = document.getElementById("niveau")?.value;
      
-    // VÃ©rification optionnelle : si l'Ã©lÃ¨ve choisit "Universitaire", 
-// tu peux ajouter un log pour dÃ©boguer
+    // Vérification optionnelle : si l'élève choisit "Universitaire", 
+// tu peux ajouter un log pour déboguer
     if (niveau === "universitaire") {
     console.log("ðŸŽ“ Mode Universitaire dÃ©tectÃ© pour l'utilisateur");
    }
@@ -72,12 +72,12 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       });
 
-      // ðŸ”¹ Gestion sÃ©curisÃ©e du JSON
+      // 🔒 Gestion sécurisée du JSON
       const data = await response.json();
-      console.log("RÃ©ponse serveur complÃ¨te:", data);
+      console.log("Réponse serveur complète:", data);
 
       if (!response.ok) {
-        throw new Error(data.message || "Ã‰chec de la connexion");
+        throw new Error(data.message || "Échec de la connexion");
       }
 // ✅ Stockage sécurisé
 if (data.accessToken) {
