@@ -36,13 +36,12 @@ document.addEventListener("DOMContentLoaded", () => {
  async function loginEtudiant(event) {
   event.preventDefault();
 
-  // "username" ici correspond à l'identifiant tapé par l'utilisateur (ça peut être un email ou un pseudo)
-  const username = document.getElementById("username")?.value.trim();
+  const valeurSaisie = document.getElementById("username")?.value.trim();
   const password = document.getElementById("password")?.value.trim();
   const matiere = document.getElementById("matiere")?.value.trim();
   const niveau = document.getElementById("niveau")?.value.trim();
 
-  if (!username || !password || !matiere || !niveau) {
+  if (!valeurSaisie || !password || !matiere || !niveau) {
     showError("Tous les champs sont requis");
     return;
   }
@@ -52,35 +51,24 @@ document.addEventListener("DOMContentLoaded", () => {
     hideError();
     hideSuccess();
 
-    // 💡 CORRECTION : Détection automatique Email vs Pseudo
-    const isEmail = username.includes("@");
-    const requestBody = {
-      password: password
-    };
-    
-    if (isEmail) {
-      requestBody.email = username;    // Si ça contient un '@', on envoie la clé "email"
-    } else {
-      requestBody.username = username; // Sinon, on envoie la clé "username"
-    }
-
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(requestBody) // On utilise notre objet dynamique
+      body: JSON.stringify({
+        username: valeurSaisie, // 🔑 Toujours envoyer "username", même si c'est un email
+        password: password
+      })
     });
 
     const json = await res.json();
 
     if (!res.ok) {
-      // 💡 GESTION DES ERREURS : On lit le tableau d'erreurs d'express-validator
       if (json.errors && Array.isArray(json.errors)) {
         const messages = json.errors.map(err => err.msg).join(" | ");
         throw new Error(messages);
       }
-      // Sinon, on cherche le message classique
       throw new Error(json.message || "Connexion échouée");
     }
 
@@ -91,14 +79,10 @@ document.addEventListener("DOMContentLoaded", () => {
       throw new Error("Token absent dans la réponse serveur");
     }
 
-    if (
-      !currentUser ||
-      currentUser.role !== "etudiant"
-    ) {
+    if (!currentUser || currentUser.role !== "etudiant") {
       throw new Error("Cet utilisateur n'est pas enregistré comme étudiant");
     }
 
-    // ajout des infos complémentaires
     currentUser.matiere = matiere;
     currentUser.niveau = niveau;
 
@@ -115,8 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
   } catch (err) {
     console.error("❌ Erreur:", err);
 
-    const msg =
-      err.message === "Failed to fetch"
+    const msg = err.message === "Failed to fetch"
         ? "Le serveur est injoignable. Réveillez-le en rafraîchissant la page."
         : err.message;
 
