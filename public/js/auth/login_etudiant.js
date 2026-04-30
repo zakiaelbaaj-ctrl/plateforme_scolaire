@@ -58,10 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       body: JSON.stringify({
         email: username, // l'utilisateur saisit son email dans le champ username
-        password: password,
-        matiere: matiere,  
-        niveau: niveau     
-
+        password: password
       })
     });
 
