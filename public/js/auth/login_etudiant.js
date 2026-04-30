@@ -51,15 +51,22 @@ document.addEventListener("DOMContentLoaded", () => {
     hideError();
     hideSuccess();
 
+    // 💡 LA MAGIE EST ICI : Détection automatique Email vs Pseudo
+    const isEmail = valeurSaisie.includes("@");
+    const requestBody = { password: password };
+    
+    if (isEmail) {
+      requestBody.email = valeurSaisie;    // Si '@', le backend recevra 'email'
+    } else {
+      requestBody.username = valeurSaisie; // Sinon, le backend recevra 'username'
+    }
+
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        username: valeurSaisie, // 🔑 Toujours envoyer "username", même si c'est un email
-        password: password
-      })
+      body: JSON.stringify(requestBody) // On envoie l'objet dynamique parfait
     });
 
     const json = await res.json();
@@ -75,10 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const accessToken = json.accessToken || json.tokens?.accessToken;
     const currentUser = json.user;
 
-    if (!accessToken) {
-      throw new Error("Token absent dans la réponse serveur");
-    }
-
+    if (!accessToken) throw new Error("Token absent dans la réponse serveur");
     if (!currentUser || currentUser.role !== "etudiant") {
       throw new Error("Cet utilisateur n'est pas enregistré comme étudiant");
     }
@@ -98,11 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   } catch (err) {
     console.error("❌ Erreur:", err);
-
     const msg = err.message === "Failed to fetch"
         ? "Le serveur est injoignable. Réveillez-le en rafraîchissant la page."
         : err.message;
-
     showError(msg);
   } finally {
     showLoading(false);
