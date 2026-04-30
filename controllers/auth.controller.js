@@ -48,8 +48,6 @@ export async function registerController(req, res) {
       return res.status(409).json({ success: false, message: "Un compte existe déjà avec cet email" });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
-
     // 3. --- LOGIQUE STRIPE (Élève vs Prof) ---
     let stripe_customer_id = null;
     let stripe_account_id = null;
@@ -89,7 +87,7 @@ export async function registerController(req, res) {
       telephone,
       pays,
       ville,
-      password: hashed,
+      password: password,
       role: role || "eleve",
       stripe_customer_id,
       stripe_account_id,
