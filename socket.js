@@ -488,7 +488,11 @@ return;
       profs,
       timestamp: new Date().toISOString()
     });
-
+      safeSend(ws, {
+      type: "onlineStudents",
+      students: MatchService.getOnlineStudents(),
+      timestamp: new Date().toISOString()
+    });
     console.log(`👨‍🎓 ${ws.role === "eleve" ? "Élève" : "Étudiant"} enregistré: ${ws.userId}`);
     return;
   }

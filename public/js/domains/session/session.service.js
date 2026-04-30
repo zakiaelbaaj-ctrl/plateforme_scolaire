@@ -141,9 +141,11 @@ export const SessionService = {
       console.error("WS Error:", data.message);
       break;
     }
-
+      case "TRANSPORT_OPEN":
+      case "TRANSPORT_CLOSED":
+      break;
       default:
-        console.log("âš ï¸ Event non gÃ©rÃ© (SessionDomain):", data.type);
+        console.log("⚠️ Event non géré (SessionDomain):", data.type);
     }
   },
 
