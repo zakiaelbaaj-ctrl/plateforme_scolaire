@@ -33,9 +33,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  async function loginEtudiant(event) {
+ async function loginEtudiant(event) {
   event.preventDefault();
 
+  // "username" ici correspond à l'identifiant tapé par l'utilisateur (ça peut être un email ou un pseudo)
   const username = document.getElementById("username")?.value.trim();
   const password = document.getElementById("password")?.value.trim();
   const matiere = document.getElementById("matiere")?.value.trim();
@@ -51,20 +52,35 @@ document.addEventListener("DOMContentLoaded", () => {
     hideError();
     hideSuccess();
 
+    // 💡 CORRECTION : Détection automatique Email vs Pseudo
+    const isEmail = username.includes("@");
+    const requestBody = {
+      password: password
+    };
+    
+    if (isEmail) {
+      requestBody.email = username;    // Si ça contient un '@', on envoie la clé "email"
+    } else {
+      requestBody.username = username; // Sinon, on envoie la clé "username"
+    }
+
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        email: username, // l'utilisateur saisit son email dans le champ username
-        password: password
-      })
+      body: JSON.stringify(requestBody) // On utilise notre objet dynamique
     });
 
     const json = await res.json();
 
     if (!res.ok) {
+      // 💡 GESTION DES ERREURS : On lit le tableau d'erreurs d'express-validator
+      if (json.errors && Array.isArray(json.errors)) {
+        const messages = json.errors.map(err => err.msg).join(" | ");
+        throw new Error(messages);
+      }
+      // Sinon, on cherche le message classique
       throw new Error(json.message || "Connexion échouée");
     }
 
