@@ -132,6 +132,21 @@ export const SessionService = {
        });
         break;
        }
+       
+       case "onlineStudents": {
+      this._notify({ type: "onlineStudents", students: data.students ?? [] });
+       break;
+      }
+      case "matchFound": {
+     AppState.currentRoomId = data.roomId;
+     this._notify({
+     type: "sessionStarted",
+     roomId: data.roomId,
+     partnerName: data.partnerName
+     });
+      socketService.send({ type: "joinRoom", roomId: data.roomId });
+     break;
+      }
 
        case "error": {
   //  Ignorer certaines erreurs cÃ´tÃ© Ã©lÃ¨ve
@@ -158,11 +173,19 @@ export const SessionService = {
     DocumentService.send(file);
   },
 
-  callProfessor(profId) { 
-    CallService.callProfessor(profId); 
-  },
+ callProfessor(profId) { 
+  CallService.callProfessor(profId); 
+},
+requestStudentMatch(matiere) {
+  if (!matiere) return;
+  socketService.send({
+    type: "requestStudentMatch",
+    matiere,
+    niveau: AppState.currentUser?.niveau || ""
+  });
+},
 
- stopVideoCall() {
+stopVideoCall() {
     console.log("🛑 Arrêt de la session vidéo...");
     
     // 1. Déconnexion Twilio

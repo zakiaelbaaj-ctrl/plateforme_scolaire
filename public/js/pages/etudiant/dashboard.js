@@ -12,13 +12,7 @@ import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js"
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
 import { DocumentService } from "/js/domains/document/document.service.js";
 import { addDocument } from "/js/ui/components/document.view.js";
-import { initUIRenderers } from "/js/modules/ui/uiRenderers.js";
-import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
 import { getUserProfile } from "../../services/user.service.js";
-import { handleAllStripeReturns, holdFundsForSession } 
-from "/js/services/stripe.service.js";
-import { initStripeOnboarding } from "/js/services/stripe.service.js";
-import { openSetupSession } from "/js/services/stripe.service.js";
 // ======================================================
 // INIT
 // ======================================================
@@ -29,7 +23,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location.replace("/pages/etudiant/login.html");
     return;
   }
-
+   const stored = JSON.parse(localStorage.getItem("currentUser") || "{}");
+   userData.matiere = stored.matiere || "";
+   userData.niveau = stored.niveau || "";
   AppState.currentUser = userData;
   AppState.token = localStorage.getItem("token") || null;
   AppState.setCallState(null);
@@ -47,7 +43,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   : `wss://plateforme-scolaire-1.onrender.com?token=${token}`;
 
   socketService.connect(WS_URL);
-  socketService.onMessage((data) => SessionService._handleWs(data));
+  socketService.onMessage((data) => {
+  if (data.type === "TRANSPORT_OPEN") {
+    const user = AppState.currentUser;
+    socketService.send({
+      type: "identify",
+      prenom: user.prenom || "",
+      nom: user.nom || "",
+      ville: user.ville || "",
+      pays: user.pays || "",
+      // ✅ simple et correct
+      matiere: user.matiere || "",
+      niveau: user.niveau || ""
+      
+    });
+  }
+});
+
+socketService.onMessage((data) => SessionService._handleWs(data));
 
   bindUI();
   subscribeToDomains();
