@@ -97,6 +97,7 @@ export function getOnlineProfessors() {
       role: "prof",
       ville: prof.ville,
       pays: prof.pays,
+      matiere: prof.matiere || null,
       status: prof.status,
       disponibilite: disponibiliteReelle,
       connectedAt: prof.connectedAt,

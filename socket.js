@@ -432,8 +432,8 @@ if (type === "requestStudentMatch") {
 async function handleIdentify(ws, data) {
   console.log("📋 Identify reçu pour:", ws.userId);
 
-  const { prenom, nom, ville, pays, niveau } = data;
-
+  const { prenom, nom, ville, pays, niveau, matiere } = data;
+  ws.matiere = matiere || null;
   ws.prenom = prenom || "";
   ws.nom = nom || "";
   ws.userName =
@@ -451,6 +451,7 @@ async function handleIdentify(ws, data) {
       nom: ws.nom,
       ville: ws.ville,
       pays: ws.pays,
+      matiere: ws.matiere || null,
       connectedAt: new Date().toISOString(),
       sessionStartedAt: null,
       eleveId: null,

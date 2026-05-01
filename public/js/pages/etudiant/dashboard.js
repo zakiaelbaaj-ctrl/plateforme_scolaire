@@ -349,17 +349,62 @@ function renderStudentList(etudiants = []) {
   const list = document.getElementById("etudiant-list");
   if (!list) return;
   list.innerHTML = "";
-  etudiants.forEach(etudiant => {
+
+  // ✅ Récupérer la matière de l'étudiant connecté
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  const matiereEtudiant = currentUser.matiere || localStorage.getItem("matiere") || "";
+
+  // ✅ Filtrer les étudiants par même matière
+  const etudiantsFiltres = matiereEtudiant
+    ? etudiants.filter(e => e.matiere === matiereEtudiant)
+    : etudiants;
+
+  if (!etudiantsFiltres.length) {
+    list.innerHTML = `<li class='empty'>Aucun étudiant disponible en ${matiereEtudiant || "cette matière"}</li>`;
+    return;
+  }
+
+  etudiantsFiltres.forEach(etudiant => {
     const li = document.createElement("li");
-    li.textContent = `${etudiant.prenom} ${etudiant.nom}`;
+    li.textContent = `${etudiant.prenom} ${etudiant.nom} — ${etudiant.matiere}`;
+    li.dataset.userId = etudiant.id;
     const btn = document.createElement("button");
-    btn.textContent = "Appeler";
-    btn.addEventListener("click", () => callProfessor(etudiant.id));
+    btn.textContent = "Travailler ensemble";
+    btn.addEventListener("click", () => startMatching(etudiant.matiere));
     li.appendChild(btn);
     list.appendChild(li);
   });
 }
+function renderProfList(profs = []) {
+  const list = document.getElementById("prof-list");
+  if (!list) return;
+  list.innerHTML = "";
 
+  // ✅ Récupérer la matière de l'étudiant connecté
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  const matiereEtudiant = currentUser.matiere || localStorage.getItem("matiere") || "";
+
+  // ✅ Filtrer les profs par matière
+  const profsFiltres = matiereEtudiant
+    ? profs.filter(prof => prof.matiere === matiereEtudiant)
+    : profs;
+
+  if (!profsFiltres.length) {
+    list.innerHTML = `<li class='empty'>Aucun professeur disponible en ${matiereEtudiant || "cette matière"}</li>`;
+    return;
+  }
+
+  profsFiltres.forEach(prof => {
+    const li = document.createElement("li");
+    li.textContent = `${prof.prenom} ${prof.nom} — ${prof.matiere}`;
+    li.dataset.userId = prof.id;
+    const btn = document.createElement("button");
+    btn.textContent = "Appeler";
+    btn.addEventListener("click", () => callProfessor(prof.id));
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
 function removeUserFromList(userId, userName) {
   ["prof-list", "student-list"].forEach(listId => {
     const list = document.getElementById(listId);
