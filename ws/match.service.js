@@ -134,6 +134,20 @@ class MatchServiceClass {
   removeFromQueue(userId) {
     this.queue = this.queue.filter(e => e.userId !== userId);
   }
+  // ✅ AJOUT — après removeFromQueue()
+getOnlineStudents() {
+  return this.queue.map(e => ({
+    id: e.userId,
+    prenom: e.ws.prenom || "",
+    nom: e.ws.nom || "",
+    matiere: e.matiere,
+    niveau: e.niveau
+  }));
+}
+
+removeStudent(userId) {
+  this.removeFromQueue(userId);
+}
   // -------------------------------------------------- 
   // 🔍 UTILITAIRE : similarité entre deux sujets 
   // --------------------------------------------------

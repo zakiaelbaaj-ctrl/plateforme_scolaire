@@ -31,7 +31,7 @@ import turnRoutes from "./routes/v1/turn/turn.routes.js";
 import profileRoutes from "./routes/v1/users/profile.routes.js";
 import stripeConnectRoutes from "./routes/v1/stripeConnect.routes.js";
 import whiteboardRoutes from "./routes/whiteboard.routes.js"; 
-
+import stripeStudentRoutes from "./routes/v1/stripe/stripe.student.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -91,6 +91,7 @@ app.options("*", cors());
 // MIDDLEWARES STANDARDS
 // =======================================================
 app.use("/api/v1/webhooks", webhookRoutes); 
+app.use("/api/v1/stripe-student", stripeStudentRoutes);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -181,7 +182,7 @@ app.get("/admin_*.html", requireAuth, (req, res) => {
 app.get("/paiement", requireAuth, (req, res) => {
   res.sendFile(path.join(publicPath, "paiement.html"));
 });
-// ✅ Retour après onboarding Stripe professeu
+// ✅ Retour après onboarding Stripe professeur
 // ✅ Après — redirection selon le rôle
 app.get("/stripe/success", (req, res) => {
   const token = req.query.token || req.cookies?.token;

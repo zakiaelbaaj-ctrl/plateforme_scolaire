@@ -374,3 +374,52 @@ export function validateWebSocket(ws) {
          ws.userId &&
          ws.role;
 }
+// =======================================================
+// GESTION DES ÉTUDIANTS EN LIGNE
+// =======================================================
+
+export function getRealOnlineStudents(clientsMap) {
+  const students = [];
+  for (const client of clientsMap.values()) {
+    // On prend les élèves/étudiants qui ne sont pas dans une room (roomId === null)
+    if ((client.role === "etudiant" || client.role === "eleve") && !client.roomId) {
+      students.push({
+        id: client.userId,
+        prenom: client.prenom,
+        nom: client.nom,
+        matiere: client.matiere,
+        niveau: client.niveau
+      });
+    }
+  }
+  return students;
+}
+// ✅ POUR LES ÉTUDIANTS (Voient uniquement les étudiants)
+export function broadcastOnlineStudents(clients) {
+  const studentsData = Array.from(clients.values())
+    .filter(ws => ws.role === "etudiant")
+    .map(ws => ({ id: ws.userId, prenom: ws.prenom, nom: ws.nom, matiere: ws.matiere }));
+
+  const payload = JSON.stringify({ type: "onlineStudents", students: studentsData });
+
+  clients.forEach(ws => {
+    if (ws.readyState === 1 && ws.role === "etudiant") {
+      ws.send(payload);
+    }
+  });
+}
+
+// ✅ POUR LES ÉLÈVES (Voient uniquement les professeurs)
+export function broadcastOnlineProfs(onlineProfessors, clients) {
+  const profsList = Array.from(onlineProfessors.values()).map(p => ({
+    id: p.id, prenom: p.prenom, nom: p.nom, matiere: p.matiere
+  }));
+
+  const payload = JSON.stringify({ type: "onlineProfessors", profs: profsList });
+
+  clients.forEach(ws => {
+    if (ws.readyState === 1 && ws.role === "eleve") {
+      ws.send(payload);
+    }
+  });
+}

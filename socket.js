@@ -3,10 +3,12 @@
 // ✅ updateStatus appelé seulement pour les profs (explicite)
 // ✅ Debug logs supprimés
 // ✅ Validations ajoutées
+// ✅ Système étudiant-étudiant branché
 // =======================================================
 import { MatchService } from "./ws/match.service.js";
 import { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
+import { db } from "./config/index.js"; // ✅ AJOUT 1 : pour charger subscriptionStatus
 import {
   onlineProfessors,
   getOnlineProfessors,
@@ -52,10 +54,25 @@ import {
 import {
   safeSend,
   broadcastOnlineProfs,
+  broadcastOnlineStudents,
   cleanupOnDisconnect,
   validateMessage,
   RateLimiter
 } from "./ws/utils.js";
+
+// ✅ AJOUT 2 : Système étudiant-étudiant
+import { handleStudentMessage, handleStudentDisconnect } from "./ws/etudiant/index.js";
+
+// ✅ AJOUT 2 (suite) : préfixes réservés aux messages étudiant
+const STUDENT_TYPES = new Set([
+  "student:enqueue",
+  "student:dequeue",
+  "student:joinRoom",
+  "student:leaveRoom",
+  "student:signal",
+  "student:chatMessage",
+  "student:documentShare"
+]);
 
 // =======================================================
 // ÉTAT GLOBAL
@@ -69,7 +86,7 @@ const rateLimiter = new RateLimiter(30, 1000);
 export function initWebSocketServer(server) {
   const wss = new WebSocketServer({ server });
 
-  wss.on("connection", (ws, req) => {
+  wss.on("connection", async (ws, req) => { // ✅ async ajouté pour subscriptionStatus
     console.log("🔌 Nouvelle connexion WebSocket");
 
     // -------------------------
@@ -94,6 +111,27 @@ export function initWebSocketServer(server) {
     }
 
     console.log(`✅ Authentification réussie: ${ws.userId} (${ws.role})`);
+
+    // ✅ AJOUT 1 : Charger subscriptionStatus depuis la DB (élèves/étudiants uniquement)
+    // Non bloquant : si la DB échoue, la connexion continue avec null
+    ws.subscriptionStatus = null;
+    if (ws.role === "etudiant" || ws.role === "eleve") {
+      try {
+        const [user] = await db.query(
+          `SELECT subscription_status, subscription_end_date FROM users WHERE id = :userId`,
+          { replacements: { userId: ws.userId }, type: db.QueryTypes.SELECT }
+        );
+        if (user) {
+          const isExpired =
+            user.subscription_end_date &&
+            new Date(user.subscription_end_date) < new Date();
+          ws.subscriptionStatus = isExpired ? "expired" : (user.subscription_status || null);
+        }
+      } catch (err) {
+        console.error("❌ Erreur chargement subscriptionStatus:", err.message);
+      }
+    }
+
    // 🔒 Empêcher double connexion pour le même user
 if (clients.has(ws.userId)) {
   console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
@@ -107,6 +145,7 @@ if (clients.has(ws.userId)) {
     // 2️⃣ INIT WS STATE
     // -------------------------
     ws.roomId = null;
+    ws.studentRoomId = null; // ✅ AJOUT 2 : room peer étudiant séparée
     ws.status = "idle";
     ws.prenom = null;
     ws.nom = null;
@@ -170,6 +209,15 @@ async function onMessage(ws, raw) {
     return safeSend(ws, { type: "error", message: error });
   }
 
+  // ✅ AJOUT 2 : Router les messages étudiant vers le système dédié
+  if (STUDENT_TYPES.has(data.type)) {
+    if (ws.role === "prof" || ws.role === "admin") {
+      return safeSend(ws, { type: "error", message: "Action non autorisée." });
+    }
+    return handleStudentMessage(ws, data);
+  }
+
+  // Émettre l'événement pour les domaines
   try {
     await handleMessage(ws, data);
   } catch (err) {
@@ -225,13 +273,12 @@ if (
   type === "tableauExport" ||
   type === "tableauSync"
 ) {
-  if (!ws.roomId) {
-    console.log(
-      `⛔ ${type} ignoré: user ${ws.userId} pas encore dans une room`
-    );
-    return; // ignore silencieusement
+  const activeRoomId = ws.roomId || ws.studentRoomId;
+  if (!activeRoomId) {
+    console.log(`⛔ ${type} ignoré: user ${ws.userId} n'est dans aucune room (prof ou peer)`);
+    return; 
   }
-
+  data.roomId = activeRoomId;
   if (type === "tableauStroke") return tableauStroke(ws, data);
   if (type === "tableauClear") return tableauClear(ws, data);
   if (type === "tableauUndo") return tableauUndo(ws, data);
@@ -240,13 +287,12 @@ if (
 }
   // 📺 PARTAGE D'ÉCRAN (sécurisé : joinRoom obligatoire)
 if (type === "screenShareStart" || type === "screenShareStop") {
-  if (!ws.roomId) {
-    console.log(
-      `⛔ ${type} ignoré: user ${ws.userId} pas encore dans une room`
-    );
+  const activeRoomId = ws.roomId || ws.studentRoomId;
+  if (!activeRoomId) {
+    console.log(`⛔ ${type} ignoré: pas de room active`);
     return;
   }
-
+  data.roomId = activeRoomId;
   if (type === "screenShareStart") return screenShareStart(ws, data);
   if (type === "screenShareStop") return screenShareStop(ws, data);
 }
@@ -319,17 +365,18 @@ if (type === "screenShareStart" || type === "screenShareStop") {
 // ======================================================
 if (type === "endSession") {
   console.log(`🔍 endSession reçu de ${ws.userId} (${ws.role})`);
+
   let profId = null;
   let eleveId = null;
 
   if (ws.role === "prof") {
-    
     const prof = onlineProfessors.get(ws.userId);
-    console.log(`🔍 prof trouvé:`, prof ? `eleveId=${prof.eleveId}` : "NON TROUVÉ");
+
     if (prof?.eleveId) {
       profId = ws.userId;
       eleveId = prof.eleveId;
     }
+
   } else if (ws.role === "eleve" || ws.role === "etudiant") {
     for (const prof of onlineProfessors.values()) {
       if (prof.eleveId === ws.userId) {
@@ -341,20 +388,31 @@ if (type === "endSession") {
   }
 
   if (profId && eleveId) {
-    console.log(`🎯 Bouton "Terminer" reçu pour : room_${profId}_${eleveId}`);
-    await endSessionForDisconnect(profId, eleveId, onlineProfessors, clients);
+    console.log(`🎯 Fin session: room_${profId}_${eleveId}`);
+
+    await endSessionForDisconnect(
+      profId,
+      eleveId,
+      onlineProfessors,
+      clients
+    );
+
   } else {
     console.log(`⚠️ Aucun binôme actif pour ${ws.userId}`);
-    // ✅ Notifier quand même l'appelant
+
     safeSend(ws, {
       type: "session:stop",
       reason: "session_ended",
       timestamp: new Date().toISOString()
     });
+
     leaveRoom(ws);
   }
 
+  // 🔁 refresh UI propre
   broadcastOnlineProfs(onlineProfessors, clients);
+  broadcastOnlineStudents(clients);
+
   return;
 }
 // ------------------------------------------------------
@@ -436,14 +494,14 @@ async function handleIdentify(ws, data) {
   ws.matiere = matiere || null;
   ws.prenom = prenom || "";
   ws.nom = nom || "";
-  ws.userName =
-  `${ws.prenom || ""} ${ws.nom || ""}`.trim() || ws.userId;
+  ws.userName = `${ws.prenom || ""} ${ws.nom || ""}`.trim() || ws.userId;
   ws.ville = ville || "";
   ws.pays = pays || "";
   ws.niveau = niveau || null;
 
   console.log(`🆔 Identify: ${ws.userId} (${ws.role}) → ${ws.prenom} ${ws.nom}`);
 
+  // 1️⃣ CAS PROFESSEUR
   if (ws.role === "prof") {
     addProfessor({
       id: ws.userId,
@@ -459,42 +517,46 @@ async function handleIdentify(ws, data) {
       ws
     });
 
-    console.log(`🎓 Prof enregistré: ${ws.userId} ${ws.prenom} ${ws.nom}`);
-broadcastOnlineProfs(onlineProfessors, clients);
+    console.log(`🎓 Prof enregistré: ${ws.userId}`);
+    
+    // On notifie UNIQUEMENT les élèves qu'un nouveau prof est là
+    broadcastOnlineProfs(onlineProfessors, clients);
 
-// 🔔 Envoyer les notifications en attente
-try {
-  const { db } = await import("./config/index.js");
-  const notifications = await db.query(
-    `SELECT * FROM notifications WHERE user_id = :profId AND is_read = false ORDER BY created_at DESC`,
-    { replacements: { profId: ws.userId }, type: db.QueryTypes.SELECT }
-  );
-  for (const notif of notifications) {
-    safeSend(ws, notif.data);
-    await db.query(
-      `UPDATE notifications SET is_read = true WHERE id = :id`,
-      { replacements: { id: notif.id } }
-    );
+    // 🔔 Notifications en attente
+    try {
+      const { db } = await import("./config/index.js");
+      const notifications = await db.query(
+        `SELECT * FROM notifications WHERE user_id = :profId AND is_read = false ORDER BY created_at DESC`,
+        { replacements: { profId: ws.userId }, type: db.QueryTypes.SELECT }
+      );
+      for (const notif of notifications) {
+        safeSend(ws, notif.data);
+        await db.query(`UPDATE notifications SET is_read = true WHERE id = :id`, { replacements: { id: notif.id } });
+      }
+    } catch (err) {
+      console.error("❌ Erreur notifications prof:", err.message);
+    }
+    return;
   }
-} catch (err) {
-  console.error("❌ Erreur notifications prof:", err.message);
-}
-return;
-}
 
-  if (ws.role === "eleve" || ws.role === "etudiant") {
+  // 2️⃣ CAS ÉTUDIANT (Segmentation stricte)
+  if (ws.role === "etudiant") {
+    console.log(`🎓 Étudiant enregistré: ${ws.userId}`);
+    // L'étudiant ne reçoit QUE la liste des autres étudiants
+    broadcastOnlineStudents(clients); 
+    return;
+  }
+
+  // 3️⃣ CAS ÉLÈVE (Segmentation stricte)
+  if (ws.role === "eleve") {
+    console.log(`👨‍🎓 Élève enregistré: ${ws.userId}`);
+    // L'élève ne reçoit QUE la liste des professeurs
     const profs = getOnlineProfessors();
     safeSend(ws, {
       type: "onlineProfessors",
       profs,
       timestamp: new Date().toISOString()
     });
-      safeSend(ws, {
-      type: "onlineStudents",
-      students: MatchService.getOnlineStudents(),
-      timestamp: new Date().toISOString()
-    });
-    console.log(`👨‍🎓 ${ws.role === "eleve" ? "Élève" : "Étudiant"} enregistré: ${ws.userId}`);
     return;
   }
 }
@@ -502,28 +564,26 @@ return;
 // =======================================================
 // DISCONNECT — ✅ CORRECTION 1 : nommée handleDisconnect
 // =======================================================
-function handleDisconnect(ws) {
+async function handleDisconnect(ws) {
   console.log(`❌ Déconnexion: ${ws.userId} (${ws.role})`);
 
+  // 1️⃣ LOGIQUE POUR LES PROFESSEURS
   if (ws.role === "prof") {
     updateStatus(ws.userId, "offline");
-
     const prof = onlineProfessors.get(ws.userId);
-
-    // ✅ Sauvegarder eleveId AVANT tout nettoyage
     const eleveIdSnapshot = prof?.eleveId ?? null;
 
     if (prof && eleveIdSnapshot) {
       console.log(`🔄 Prof ${ws.userId} déconnecté → libère élève ${eleveIdSnapshot}`);
       endSessionForDisconnect(ws.userId, eleveIdSnapshot, onlineProfessors, clients);
     }
-
     removeProfessor(ws.userId);
     clearPendingCall(ws.userId);
   }
 
+  // 2️⃣ LOGIQUE POUR LES ÉLÈVES ET ÉTUDIANTS
   if (ws.role === "eleve" || ws.role === "etudiant") {
-    // 1. On cherche si cet utilisateur (peu importe son rôle) était en cours avec un prof
+    // Libérer le prof si l'utilisateur était en session avec lui
     for (const prof of onlineProfessors.values()) {
       if (prof.eleveId === ws.userId) {
         console.log(`🔄 Utilisateur ${ws.userId} déconnecté → libère prof ${prof.id}`);
@@ -531,12 +591,14 @@ function handleDisconnect(ws) {
       }
     }
 
-    // 2. Si c'est un étudiant, on le retire aussi de la file d'attente du matching
+    // Retrait du matching et nettoyage Peer-to-Peer
     if (ws.role === "etudiant" && MatchService?.removeStudent) {
       MatchService.removeStudent(ws.userId);
     }
+    await handleStudentDisconnect(ws);
   }
 
+  // 3️⃣ NETTOYAGE SYSTÈME (Rooms & State)
   leaveRoom(ws);
   cleanupOnDisconnect(ws, {
     clients,
@@ -544,12 +606,20 @@ function handleDisconnect(ws) {
     rooms: getRooms()
   });
 
-  broadcastOnlineProfs(onlineProfessors, clients);
+  // 4️⃣ SUPPRESSION DE LA MAP (Indispensable avant le broadcast)
   clients.delete(ws.userId);
 
-  console.log(`✅ Nettoyage complet: ${ws.userId}`);
-}
+  // 5️⃣ BROADCAST CIBLÉ (Selon tes règles strictes)
+  if (ws.role === "etudiant") {
+    // Seuls les étudiants sont notifiés du départ d'un étudiant
+    broadcastOnlineStudents(clients);
+  } else {
+    // Si c'est un prof ou un élève, on rafraîchit la liste des profs (vue par les élèves)
+    broadcastOnlineProfs(onlineProfessors, clients);
+  }
 
+  console.log(`✅ Nettoyage complet effectué pour: ${ws.userId}`);
+}
 // =======================================================
 // EXPORTS
 // =======================================================

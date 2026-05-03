@@ -1,340 +1,430 @@
 // ======================================================
-// DASHBOARD ETUDIANT _ UI PURE / DOMAIN-DRIVEN
+// DASHBOARD ÉTUDIANT — COLLABORATION PEER-TO-PEER
+// ✅ VERSION FINALE PRODUCTION
 // ======================================================
 
-import { AppState }          from "/js/core/state.js";
-import { socketService }     from "/js/core/socket.service.js";
-import { SessionService }    from "/js/domains/session/session.service.js";
-import { ChatService }       from "/js/domains/chat/chat.service.js";
-import { CallService }       from "/js/domains/call/call.service.js";
-import { VideoService }      from "/js/domains/call/video.service.js";
-import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
+import { AppState }               from "/js/core/state.js";
+import { socketService }          from "/js/core/socket.service.js";
+import { SessionServiceEtudiant } from "/js/domains/session/session.service.etudiant.js";
+import { ChatService }            from "/js/domains/chat/chat.service.js";
+import { WhiteboardService }      from "/js/domains/whiteboard/whiteboard.service.js";
+import { DocumentService }        from "/js/domains/document/document.service.js";
+import { VideoService }           from "/js/domains/call/video.service.js";
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
-import { DocumentService } from "/js/domains/document/document.service.js";
-import { addDocument } from "/js/ui/components/document.view.js";
-import { getUserProfile } from "../../services/user.service.js";
+import { addDocument }            from "/js/ui/components/document.view.js";
+import { getUserProfile }         from "../../services/user.service.js";
+import { updateToolButtons }      from "/js/domains/whiteboard/whiteboard.events.js";
+
 // ======================================================
-// INIT
+// ÉTAT LOCAL WebRTC
+// ======================================================
+let peerConnection  = null;
+let iceCandidateQueue = []; // ✅ CORRECTION 3 : file d'attente ICE
+
+const RTC_CONFIG = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
+  ]
+};
+
+// ======================================================
+// INITIALISATION
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
-  // ðŸ”¹ RÃ©cupÃ©rer le user via service
+
+  // Vérifier le token AVANT tout le reste
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.replace("/pages/etudiant/login.html");
+    return;
+  }
+
   const userData = await getUserProfile();
   if (!userData) {
     window.location.replace("/pages/etudiant/login.html");
     return;
   }
-   const stored = JSON.parse(localStorage.getItem("currentUser") || "{}");
-   userData.matiere = stored.matiere || "";
-   userData.niveau = stored.niveau || "";
-  AppState.currentUser = userData;
-  AppState.token = localStorage.getItem("token") || null;
+
+  const stored = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  userData.matiere = stored.matiere || "";
+  userData.niveau  = stored.niveau  || "";
+  userData.ville   = stored.ville   || "";
+  userData.pays    = stored.pays    || "";
+
+  AppState.currentUser          = userData;
+  AppState.token                = token;
+  AppState.currentStudentRoomId = null;
   AppState.setCallState(null);
-  AppState.sessionInProgress = false;
-  AppState.currentRoomId = null;
-  AppState.currentSessionType = null; // "eleve" ou "prof"
-  AppState.canUseTools = false;
+  AppState.sessionInProgress    = false;
+  AppState.currentRoomId        = null;
+  AppState.currentSessionType   = null;
+  AppState.canUseTools          = false;
 
   renderStudentInfo();
 
-  // 🔹 Connect WebSocket
-  const token = localStorage.getItem("token");
+  // ✅ CORRECTION 1 : Initialiser VideoService avant la connexion WS
+  // Prépare les autorisations média en amont pour éviter le délai au moment de l'appel
+  if (VideoService?.init) {
+    try {
+      await VideoService.init();
+    } catch (err) {
+      console.warn("⚠️ VideoService.init() échoué (pas de caméra ?) :", err.message);
+      // Non bloquant — l'utilisateur peut quand même utiliser le chat et le whiteboard
+    }
+  }
+
   const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-  ? `ws://localhost:4000?token=${token}`
-  : `wss://plateforme-scolaire-1.onrender.com?token=${token}`;
+    ? `ws://localhost:4000?token=${token}`
+    : `wss://plateforme-scolaire-1.onrender.com?token=${token}`;
 
   socketService.connect(WS_URL);
+
   socketService.onMessage((data) => {
-  if (data.type === "TRANSPORT_OPEN") {
-    const user = AppState.currentUser;
-    socketService.send({
-      type: "identify",
-      prenom: user.prenom || "",
-      nom: user.nom || "",
-      ville: user.ville || "",
-      pays: user.pays || "",
-      // ✅ simple et correct
-      matiere: user.matiere || "",
-      niveau: user.niveau || ""
-      
-    });
-  }
-});
+    if (data.type === "TRANSPORT_OPEN") {
+      const user = AppState.currentUser;
+      socketService.send({
+        type:    "identify",
+        prenom:  user.prenom  || "",
+        nom:     user.nom     || "",
+        ville:   user.ville   || "",
+        pays:    user.pays    || "",
+        matiere: user.matiere || "",
+        niveau:  user.niveau  || ""
+      });
+    }
+    SessionServiceEtudiant._handleWs(data);
+  });
 
-socketService.onMessage((data) => SessionService._handleWs(data));
-
+  await checkSubscription();
   bindUI();
   subscribeToDomains();
+  initCanvasResize();
 });
+
+// ======================================================
+// CANVAS RESIZE
+// ✅ CORRECTION 4 : demande une sync au WhiteboardService
+// après resize plutôt que putImageData (qui décale les traits)
+// ======================================================
+function initCanvasResize() {
+  const canvas = document.getElementById("whiteboard-canvas");
+  if (!canvas) return;
+
+  function resizeCanvas() {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    // ✅ Demander une re-synchronisation des traits au service
+    // plutôt que putImageData qui fige le contenu dans le coin
+    if (AppState.currentStudentRoomId) {
+      WhiteboardService.requestSync?.();
+    }
+  }
+
+  resizeCanvas();
+
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resizeCanvas, 150);
+  });
+}
 
 // ======================================================
 // DOMAIN SUBSCRIPTIONS
 // ======================================================
 function subscribeToDomains() {
-
-  // ================= SESSION =================
-  SessionService.init(event => {
+  SessionServiceEtudiant.init(event => {
     switch (event.type) {
-      case "onlineProfessors":
-        renderProfList(event.profs);
-        break;
+
       case "onlineStudents":
+        AppState.setOnlineStudents(event.students);
         renderStudentList(event.students);
         break;
-      case "sessionStarted":
-        AppState.sessionInProgress = true;
-        AppState.currentRoomId = event.roomId;
-        AppState.currentSessionType = event.sessionType; // "eleve" ou "prof"
-        WhiteboardService.initCanvas("whiteboard-canvas", event.roomId);
-        updateStatus("Session active");
-        SessionService.startTimer?.(updateTimerUI);
+
+      case "studentQueued":
+        updateStatus(`⏳ Recherche en ${event.matiere}...`);
+        showElement("cancel-match-btn", true);
         break;
-      case "userLeft":
-        removeUserFromList(event.userId, event.userName);
+
+      case "studentMatchFound":
+        updateStatus(`✅ Partenaire trouvé : ${event.partnerName}`);
+        AppState.currentStudentRoomId = event.roomId;
+        AppState.sessionInProgress    = true;
+        WhiteboardService.initCanvas("whiteboard-canvas", event.roomId);
+        initCanvasResize(); // Resize après init canvas
+        break;
+
+      case "studentJoinedRoom":
+        updateStatus("🎬 Room rejointe — en attente de l'autre étudiant...");
+        break;
+
+      case "studentUserJoined":
+        updateStatus(`👤 ${event.userName} a rejoint la session`);
+        break;
+
+      case "studentSessionReady":
+        updateStatus("📡 Connexion vidéo...");
+        startPeerConnection(event.initiator);
+        break;
+
+      case "studentSignal":
+        handleIncomingSignal(event.signal);
+        break;
+
+      case "studentUserLeft":
+        cleanupPeerSession("Partenaire déconnecté.");
+        break;
+
+      case "studentChatMessage":
+        appendMessage(event.sender, event.text);
+        break;
+
+      case "studentDocument":
+        addDocument({
+          id:       event.fileName,
+          name:     event.fileName,
+          fileData: event.fileData
+        });
+        break;
+
+      case "noSubscription":
+        showElement("subscription-banner", true);
+        showElement("subscribe-btn", true);
+        updateStatus("🔒 Abonnement requis pour le matching étudiant.");
         break;
     }
   });
 
-  // ================= CHAT =================
   ChatService.onMessage(msg => appendMessage(msg.sender, msg.text));
 
-  // ================= DOCUMENT =================
-  DocumentService.onDocument(doc => {
-    addDocument({
-      id: doc.id ?? doc.fileName,
-      name: doc.fileName ?? doc.name,
-      fileData: doc.fileData,
-      url: doc.url ?? doc.fileUrl ?? null
-    });
-  });
+  DocumentService.onDocument(doc => addDocument({
+    id:       doc.id       || doc.fileName,
+    name:     doc.fileName || doc.name,
+    fileData: doc.fileData
+  }));
 
-  // ================= WHITEBOARD =================
   WhiteboardService.onStroke(drawStroke);
   WhiteboardService.onText(drawText);
   WhiteboardService.onClear(clearCanvas);
   WhiteboardService.onSync(strokes => {
     clearCanvas();
-    strokes.forEach(drawStroke);
+    strokes.forEach(s => s.text ? drawText(s) : drawStroke(s));
   });
-
-  // ================= CALL =================
-  CallService.onCallSent(() => updateStatus("Appel en coursâ€¦"));
-  CallService.onCallAccepted(() => updateStatus("Connexion en coursâ€¦"));
-  CallService.onConnected(() => updateStatus("En communication"));
-  CallService.onCallRejected(() => updateStatus("Appel refusÃ©"));
-  CallService.onCallEnded(() => cleanupSession("Session terminÃ©e"));
-  CallService.onLocalTrack(attachLocalVideo);
-  CallService.onRemoteTracks(attachRemoteTracks);
-  CallService.onDisconnected(() => cleanupSession("DÃ©connexion vidÃ©o"));
 }
 
 // ======================================================
-// UI BINDING
+// UI BINDINGS
 // ======================================================
 function bindUI() {
-  //  Start matching P2P par matiÃ¨re
- document.getElementById("start-session-btn")?.addEventListener("click", () => {
-  const subjectId = document.getElementById("matiere")?.value; // Utilise l'ID 'matiere'
-  startMatching(subjectId);
-});
-  //  Chat
-  document.getElementById("send-msg")?.addEventListener("click", sendChat);
-  document.getElementById("chat-input")?.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
 
-  // Documents
+  document.getElementById("start-session-btn")?.addEventListener("click", () => {
+    const m = document.getElementById("matiere")?.value;
+    const s = document.getElementById("sujet")?.value || "";
+    if (m) SessionServiceEtudiant.enqueue(m, s);
+  });
+
+  document.getElementById("cancel-match-btn")?.addEventListener("click", () => {
+    SessionServiceEtudiant.dequeue();
+    showElement("cancel-match-btn", false);
+  });
+
+  document.getElementById("subscribe-btn")?.addEventListener("click", () => {
+    SessionServiceEtudiant.subscribe(AppState.token, "monthly");
+  });
+
+  document.getElementById("end-session-btn")?.addEventListener("click", () => {
+    SessionServiceEtudiant.leaveRoom();
+    cleanupPeerSession("Session terminée.");
+  });
+
+  document.getElementById("send-msg")?.addEventListener("click", sendChat);
+  document.getElementById("chat-input")?.addEventListener("keydown", e => {
+    if (e.key === "Enter") sendChat();
+  });
+
   document.getElementById("send-file")?.addEventListener("click", sendDocument);
 
-  // Whiteboard tools
-  bindWhiteboardTools();
-
-  //  Logout
-  document.getElementById("logout-btn")?.addEventListener("click", logout);
-
-  // End session
-  document.getElementById("end-session-btn")?.addEventListener("click", () => {
-    CallService.endCall();
-    SessionService.endSession();
-  });
-  // Gestion du bouton Rejoindre
-  document.getElementById("btn-rejoindre-cours")?.addEventListener("click", () => {
-    handleJoinCall();
-  });
-}
-
-// ======================================================
-// MATCHING & CALL
-// ======================================================
-async function startMatching(subjectId) {
-  if (!subjectId) return;
-  AppState.currentSessionType = "eleve";
-  updateStatus("Recherche d'Ã©tudiant disponible...");
-  try {
-    await SessionService.requestStudentMatch(subjectId);
-  } catch (err) {
-    console.error(err);
-    updateStatus("Impossible de trouver un Ã©tudiant pour le moment");
-  }
-}
-
-function callProfessor(profId) {
-  if (!profId) return;
-  AppState.currentSessionType = "prof";
-  SessionService.callProfessor(profId);
-  updateStatus("Appel en cours avec le professeur...");
-}
-
-// ======================================================
-// CHAT
-// ======================================================
-function sendChat() {
-  const input = document.getElementById("chat-input");
-  if (!input?.value.trim()) return;
-  ChatService.send(input.value.trim());
-  input.value = "";
-}
-
-// ======================================================
-// DOCUMENT
-// ======================================================
-function sendDocument() {
-  const input = document.getElementById("file-input");
-  if (!input?.files?.[0]) return;
-  SessionService.sendDocument(input.files[0]);
-}
-
-// ======================================================
-// WHITEBOARD
-// ======================================================
-function drawStroke(stroke) {
-  const canvas = document.getElementById("whiteboard-canvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  ctx.strokeStyle = stroke.color;
-  ctx.lineWidth = stroke.size;
-  ctx.lineCap = "round";
-  if (stroke.type === "start") ctx.beginPath(), ctx.moveTo(stroke.x, stroke.y);
-  else if (stroke.type === "move") ctx.lineTo(stroke.x, stroke.y), ctx.stroke();
-}
-
-function drawText(textStroke) {
-  const canvas = document.getElementById("whiteboard-canvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = textStroke.color;
-  ctx.font = `${textStroke.size * 5}px sans-serif`;
-  ctx.fillText(textStroke.text, textStroke.x, textStroke.y);
-}
-
-function clearCanvas() {
-  const canvas = document.getElementById("whiteboard-canvas");
-  if (!canvas) return;
-  canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function bindWhiteboardTools() {
   const tools = ["pen", "eraser", "line", "rect", "text"];
   tools.forEach(tool => {
     document.getElementById(`${tool}ToolBtn`)?.addEventListener("click", () => {
-      if (!AppState.canUseTools) return;
       WhiteboardService.setTool?.(tool);
+      updateToolButtons(tool);
     });
   });
-  document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => AppState.canUseTools && WhiteboardService.undo());
-  document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => AppState.canUseTools && WhiteboardService.clearBoard());
-  document.getElementById("downloadWhiteboardBtn")?.addEventListener("click", () => AppState.canUseTools && WhiteboardService.download?.());
-}
 
-// ======================================================
-// VIDEO / CALL
-// ======================================================
-function attachLocalVideo(track) {
-  const container = document.getElementById("localVideoContainer");
-  if (!container || track.kind !== "video") return;
-  const el = track.attach(); 
-  el.style.width = "100%"; // Optionnel pour le responsive
-  container.innerHTML = ""; // Vide le "CAM" par défaut
-  container.appendChild(el);
-}
-
-function attachRemoteTracks(tracks) {
-  tracks?.forEach(track => {
-    if (track.kind === "video") {
-      const container = document.getElementById("remoteVideo");
-      if (!container) return;
-      const el = track.attach(); el.autoplay = true; el.playsInline = true;
-      container.replaceWith(el); el.id = "remoteVideo";
-    }
-    if (track.kind === "audio") {
-      const audio = track.attach(); audio.autoplay = true; document.body.appendChild(audio);
-    }
+  document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
+    WhiteboardService.clearBoard?.();
   });
+
+  document.getElementById("logout-btn")?.addEventListener("click", logout);
+
+  // ✅ CORRECTION 2 : Exposer les fonctions critiques au scope global
+  // pour les attributs HTML onclick= (puisque ce fichier est un module)
+  window.logout    = logout;
+  window.sendChat  = sendChat;
 }
+
 // ======================================================
-// GESTION DE L'APPEL (Version adaptée à ton CallService)
+// WebRTC LOGIC
 // ======================================================
- function joinTwilioSession() {
-  const roomId = AppState.currentRoomId;
-  
-  if (!roomId) {
-    updateStatus("Aucune session active à rejoindre.");
-    return;
+async function startPeerConnection(initiator) {
+  if (peerConnection) peerConnection.close();
+  iceCandidateQueue = []; // ✅ Vider la file ICE à chaque nouvelle connexion
+  peerConnection    = new RTCPeerConnection(RTC_CONFIG);
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+    attachVideo("localVideoContainer", stream, true);
+  } catch (err) {
+    updateStatus("❌ Média inaccessible.");
   }
 
-  // Mise à jour de l'UI
-    const btn = document.getElementById("btn-rejoindre-cours");
+  peerConnection.ontrack = (e) => attachVideo("remoteVideo", e.streams[0], false);
 
-if (btn) {
-    // 1. Désactive le bouton pour éviter les clics multiples (spam)
-    btn.disabled = true; 
-    
-    // 2. Ajoute une classe CSS pour le style "chargement" (optionnel)
-    btn.classList.add("btn--loading"); 
-    
-    // 3. Change le texte de manière propre
-    btn.innerHTML = `<span>⌛ Connexion...</span>`;
-    
-    // 4. Accessibilité : on indique aux lecteurs d'écran que c'est en cours
-    btn.setAttribute("aria-busy", "true");
-}
-
-  updateStatus("Demande d'accès au flux vidéo...");
-
-  // On demande le token au serveur. 
-  // La réponse sera traitée par CallService.handleEvent (case "twilioToken")
-  socketService.send({
-    type: "requestTwilioToken",
-    roomId: roomId
-  });
-}
-// ======================================================
-// SESSION / UI HELPERS
-// ======================================================
-
-// À placer dans la section UI HELPERS de dashboard.js
-function resetJoinButton() {
-    const btn = document.getElementById("btn-rejoindre-cours");
-    if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = "▶ Rejoindre"; // On remet le texte d'origine
-        btn.classList.remove("btn--loading");
-        btn.removeAttribute("aria-busy"); // Plus propre que "false"
+  peerConnection.onicecandidate = (e) => {
+    if (e.candidate) {
+      SessionServiceEtudiant.sendSignal({ type: "ice-candidate", candidate: e.candidate });
     }
+  };
+
+  peerConnection.onconnectionstatechange = () => {
+    const state = peerConnection?.connectionState;
+    if (state === "connected")    updateStatus("🟢 Connexion vidéo établie");
+    if (state === "disconnected") cleanupPeerSession("Connexion perdue.");
+    if (state === "failed")       cleanupPeerSession("Échec de connexion vidéo.");
+  };
+
+  if (initiator) {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    SessionServiceEtudiant.sendSignal({ type: "offer", sdp: offer.sdp });
+  }
 }
 
-// ✅ INDISPENSABLE : On la rend disponible pour VideoService.js
-window.resetJoinButton = resetJoinButton;
-function cleanupSession(message) {
-  CallService.disconnectTwilio();
-  SessionService.stopTimer?.();
-  AppState.sessionInProgress = false;
-  AppState.currentRoomId = null;
-  AppState.currentSessionType = null;
-  updateStatus(message);
-  WhiteboardService.reset?.();
-  resetChat();
+// ✅ CORRECTION 3 : File d'attente ICE
+// Les candidats ICE peuvent arriver avant que setRemoteDescription soit terminé.
+// On les met en file et on les applique une fois la remote description prête.
+async function handleIncomingSignal(signal) {
+  if (!peerConnection) return;
+
+  try {
+    if (signal.type === "offer") {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+
+      // Appliquer les candidats ICE mis en attente
+      for (const candidate of iceCandidateQueue) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+      iceCandidateQueue = [];
+
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      SessionServiceEtudiant.sendSignal({ type: "answer", sdp: answer.sdp });
+
+    } else if (signal.type === "answer") {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+
+      // Appliquer les candidats ICE mis en attente
+      for (const candidate of iceCandidateQueue) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+      iceCandidateQueue = [];
+
+    } else if (signal.type === "ice-candidate") {
+      // Si la remote description n'est pas encore définie → mettre en file
+      if (!peerConnection.remoteDescription) {
+        iceCandidateQueue.push(signal.candidate);
+      } else {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+      }
+    }
+  } catch (err) {
+    console.error("❌ Erreur signal WebRTC:", err);
+  }
+}
+
+// ======================================================
+// LOGOUT
+// ======================================================
+function logout() {
+  SessionServiceEtudiant.leaveRoom();
+  if (peerConnection) { peerConnection.close(); peerConnection = null; }
+  AppState.currentStudentRoomId = null;
+  AppState.sessionInProgress    = false;
+  localStorage.clear();
+  window.location.href = "/pages/etudiant/login.html";
+}
+
+// ======================================================
+// HELPERS
+// ======================================================
+function cleanupPeerSession(msg) {
+  if (peerConnection) { peerConnection.close(); peerConnection = null; }
+  iceCandidateQueue             = [];
+  AppState.currentStudentRoomId = null;
+  AppState.sessionInProgress    = false;
   const remote = document.getElementById("remoteVideo");
-  const local = document.getElementById("localVideo");
+  const local  = document.getElementById("localVideoContainer");
   if (remote) remote.srcObject = null;
-  if (local) local.srcObject = null;
+  if (local)  local.innerHTML  = "";
+  showElement("cancel-match-btn", false);
+  updateStatus(msg);
+  resetChat();
+}
+
+function sendChat() {
+  const input = document.getElementById("chat-input");
+  if (input?.value.trim()) {
+    SessionServiceEtudiant.sendChat(input.value.trim());
+    input.value = "";
+  }
+}
+
+function sendDocument() {
+  const input = document.getElementById("file-input");
+  const file  = input?.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => SessionServiceEtudiant.sendDocument(file.name, e.target.result);
+  reader.readAsDataURL(file);
+}
+
+function drawStroke(s) {
+  const ctx = document.getElementById("whiteboard-canvas")?.getContext("2d");
+  if (!ctx) return;
+  ctx.strokeStyle = s.color; ctx.lineWidth = s.size; ctx.lineCap = "round";
+  if (s.type === "start") { ctx.beginPath(); ctx.moveTo(s.x, s.y); }
+  else { ctx.lineTo(s.x, s.y); ctx.stroke(); }
+}
+
+function drawText(s) {
+  const ctx = document.getElementById("whiteboard-canvas")?.getContext("2d");
+  if (!ctx) return;
+  ctx.fillStyle = s.color;
+  ctx.font      = `${s.size * 5}px sans-serif`;
+  ctx.fillText(s.text, s.x, s.y);
+}
+
+function clearCanvas() {
+  const c = document.getElementById("whiteboard-canvas");
+  c?.getContext("2d").clearRect(0, 0, c.width, c.height);
+}
+
+function attachVideo(elementId, stream, isLocal) {
+  const container = document.getElementById(elementId);
+  if (!container) return;
+  let video = container.tagName === "VIDEO" ? container : container.querySelector("video");
+  if (!video) {
+    video             = document.createElement("video");
+    video.autoplay    = true;
+    video.playsInline = true;
+    if (isLocal) video.muted = true;
+    container.appendChild(video);
+  }
+  video.srcObject = stream;
 }
 
 function updateStatus(text) {
@@ -347,93 +437,68 @@ function updateTimerUI(time) {
   if (el) el.textContent = time;
 }
 
-// ======================================================
-// USER INFO
-// ======================================================
- function renderStudentInfo() {
-  const { prenom, nom, ville, pays } = AppState.currentUser || {};
-  document.getElementById("student-info").textContent = `${prenom} ${nom}`;
-  document.getElementById("etudiant-location").textContent = ville && pays ? `${ville}, ${pays}` : "";
+function showElement(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = show ? "inline-block" : "none";
 }
-// ======================================================
-// PROF / STUDENT LIST UI
-// ======================================================
-function renderStudentList(etudiants = []) {
+
+function renderStudentInfo() {
+  const el = document.getElementById("student-info");
+  if (el) el.textContent = `${AppState.currentUser.prenom} ${AppState.currentUser.nom}`;
+}
+
+function renderStudentList(students = []) {
   const list = document.getElementById("etudiant-list");
   if (!list) return;
+
   list.innerHTML = "";
 
-  // ✅ Récupérer la matière de l'étudiant connecté
-  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-  const matiereEtudiant = currentUser.matiere || localStorage.getItem("matiere") || "";
+  // 1. Filtrer pour exclure l'utilisateur actuel
+  const filtered = students.filter(s => s.id !== AppState.currentUser.id);
 
-  // ✅ Filtrer les étudiants par même matière
-  const etudiantsFiltres = matiereEtudiant
-    ? etudiants.filter(e => e.matiere === matiereEtudiant)
-    : etudiants;
-
-  if (!etudiantsFiltres.length) {
-    list.innerHTML = `<li class='empty'>Aucun étudiant disponible en ${matiereEtudiant || "cette matière"}</li>`;
+  // 2. Afficher un message si personne n'est en ligne
+  if (filtered.length === 0) {
+    list.innerHTML = `<li class="empty-list">Aucun autre étudiant en ligne</li>`;
     return;
   }
 
-  etudiantsFiltres.forEach(etudiant => {
+  // 3. Générer la liste
+  filtered.forEach(s => {
     const li = document.createElement("li");
-    li.textContent = `${etudiant.prenom} ${etudiant.nom} — ${etudiant.matiere}`;
-    li.dataset.userId = etudiant.id;
-    const btn = document.createElement("button");
-    btn.textContent = "Travailler ensemble";
-    btn.addEventListener("click", () => startMatching(etudiant.matiere));
-    li.appendChild(btn);
+    
+    // On affiche aussi la matière pour que l'étudiant sache qui peut l'aider
+   li.innerHTML = `
+    <span class="status-indicator"></span>
+    <span>${s.prenom} <small class="badge-matiere">${s.matiere || 'Général'}</small></span>
+    <button class="btn-match-invite">Inviter</button>
+`;
+
+    // Au clic, on lance le matching pour la matière cible
+    li.querySelector("button").onclick = () => {
+        // On affiche un petit feedback visuel
+        const btn = li.querySelector("button");
+        btn.innerText = "Attente...";
+        btn.disabled = true;
+        
+        // On lance la demande de match
+        SessionServiceEtudiant.enqueue(s.matiere || "Général");
+    };
+
     list.appendChild(li);
   });
 }
-function renderProfList(profs = []) {
-  const list = document.getElementById("prof-list");
-  if (!list) return;
-  list.innerHTML = "";
 
-  // ✅ Récupérer la matière de l'étudiant connecté
-  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-  const matiereEtudiant = currentUser.matiere || localStorage.getItem("matiere") || "";
-
-  // ✅ Filtrer les profs par matière
-  const profsFiltres = matiereEtudiant
-    ? profs.filter(prof => prof.matiere === matiereEtudiant)
-    : profs;
-
-  if (!profsFiltres.length) {
-    list.innerHTML = `<li class='empty'>Aucun professeur disponible en ${matiereEtudiant || "cette matière"}</li>`;
-    return;
+async function checkSubscription() {
+  try {
+    const res  = await fetch("/api/v1/stripe-student/status", {
+      headers: { Authorization: `Bearer ${AppState.token}` }
+    });
+    const data = await res.json();
+    if (data.status !== "active") {
+      showElement("subscription-banner", true);
+      showElement("subscribe-btn", true);
+    }
+  } catch (e) {
+    console.error("Subscription check failed", e);
   }
-
-  profsFiltres.forEach(prof => {
-    const li = document.createElement("li");
-    li.textContent = `${prof.prenom} ${prof.nom} — ${prof.matiere}`;
-    li.dataset.userId = prof.id;
-    const btn = document.createElement("button");
-    btn.textContent = "Appeler";
-    btn.addEventListener("click", () => callProfessor(prof.id));
-    li.appendChild(btn);
-    list.appendChild(li);
-  });
 }
-function removeUserFromList(userId, userName) {
-  ["prof-list", "student-list"].forEach(listId => {
-    const list = document.getElementById(listId);
-    if (!list) return;
-    const el = list.querySelector(`[data-user-id="${userId}"]`);
-    if (el) el.remove();
-  });
-  updateStatus(`${userName || "Utilisateur"} a quittÃ© la session`);
-}
-
-// ======================================================
-// LOGOUT
-// ======================================================
-function logout() {
-  CallService.disconnectTwilio();
-  localStorage.clear();
-  window.location.href = "/pages/etudiant/login.html";
-}
-

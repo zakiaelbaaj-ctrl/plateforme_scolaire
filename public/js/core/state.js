@@ -30,6 +30,15 @@ export const AppState = {
     this.currentUser = { ...this.currentUser, ...user };
     this._notify("user:update", this.currentUser);
   },
+  // ==================================================
+  // ÉTUDIANTS EN LIGNE (PEER-TO-PEER)
+  // ==================================================
+  onlineStudents: [],
+
+  setOnlineStudents(students) {
+    this.onlineStudents = Array.isArray(students) ? students : [];
+    this._notify("students:update", this.onlineStudents);
+  },
 
   // ==================================================
   // WEBSOCKET

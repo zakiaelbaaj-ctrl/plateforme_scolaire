@@ -5,6 +5,7 @@
 
 import { broadcastRoom } from "./rooms.js";
 import { safeSend } from "./utils.js";
+import { pool } from "../config/db.js";
 // État du tableau (optionnel - pour persistence)
 const tableauStates = new Map(); // roomId -> {strokes: [], timestamp}
  // userId -> timestamp
@@ -182,8 +183,9 @@ if (!access.valid) {
 // TABLEAU SYNC (SYNCHRONISER NOUVEAU PARTICIPANT)
 // =======================================================
  export function tableauSync(ws, { roomId }) {
+  const activeRoomId = ws.roomId || ws.studentRoomId;
   // 🔒 Protection stricte : joinRoom doit être fait avant
-  if (!ws.roomId || ws.roomId !== roomId) {
+  if (!activeRoomId || activeRoomId !== roomId) {
     console.log(
       `⛔ tableauSync ignoré: user ${ws.userId} pas encore dans room`
     );
@@ -306,7 +308,7 @@ export function tableauText(ws, payload) {
 // =======================================================
 // SAUVEGARDE EN BDD (OPTIONNEL MAIS RECOMMANDÉ)
 // =======================================================
-import { pool } from "../config/db.js";
+
 
 export async function saveTableauToDB(roomId) {
     const state = tableauStates.get(roomId);
@@ -329,17 +331,18 @@ export async function saveTableauToDB(roomId) {
 // =======================================================
 
 function validateRoomAccess(ws, roomId) {
+  const activeRoomId = ws.roomId || ws.studentRoomId;
   // 🔒 Si pas encore assigné à une room (joinRoom pas encore fait)
-  if (!ws.roomId) {
-    return { valid: false, silent: true };
+ if (!activeRoomId) {
+    return { valid: false, message: "Vous n'êtes dans aucune room active" };
   }
 
   if (!roomId) {
     return { valid: false, message: "roomId requis" };
   }
 
-  if (ws.roomId !== roomId) {
-    return { valid: false, message: "Vous n'êtes pas dans cette room" };
+ if (activeRoomId !== roomId) {
+    return { valid: false, message: "Vous n'êtes pas autorisé dans cette room" };
   }
 
   return { valid: true };
