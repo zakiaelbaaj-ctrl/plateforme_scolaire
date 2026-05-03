@@ -15,7 +15,8 @@ import helmet from "helmet";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import { requireAuth } from "./middlewares/requireAuth.js";
 import { requireRole } from "./middlewares/requireRole.js"; // ✅ RÉAJOUTÉ
-
+// DEBUG TEMPORAIRE — SUPPRIMER APRÈS
+import { sequelize } from "./config/db.js"; // ← ajoute cet import EN HAUT du fichier avec les autres imports
 // Imports des routes
 import signupRoutes from "./routes/v1/auth/signup.routes.js";
 import webhookRoutes from "./routes/v1/webhooks/webhook.routes.js";
@@ -226,11 +227,15 @@ app.get("/api", (req, res) => {
 // DEBUG TEMPORAIRE — SUPPRIMER APRÈS
 // ======================================================
 app.get("/debug-users", async (req, res) => {
-  const users = await sequelize.query(
-    `SELECT id, role, subscription_status, is_subscriber FROM users WHERE id IN (55, 56)`,
-    { type: sequelize.QueryTypes.SELECT }
-  );
-  res.json(users);
+  try {
+    const users = await sequelize.query(
+      `SELECT id, role, subscription_status, is_subscriber FROM users WHERE id IN (55, 56)`,
+      { type: sequelize.QueryTypes.SELECT }
+    );
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 // ======================================================
 
