@@ -371,4 +371,152 @@ router.post("/capture-payment", requireAuth, async (req, res) => {
     res.status(500).json({ message: "Erreur lors de la capture du paiement." });
   }
 });
+// ============================================================
+// À AJOUTER dans ton fichier routes/stripe.js (ou payment.js)
+// Juste avant la ligne : export default router;
+// ============================================================
+
+/**
+ * ✅ Crée une Checkout Session pour l'abonnement étudiant
+ * Plans disponibles : mensuel (10€) ou annuel (96€ = 8€/mois)
+ * 
+ * Body attendu : { planType: "monthly" | "yearly" }
+ * 
+ * Le webhook handleCheckoutSessionCompleted gère déjà ces deux cas :
+ *   - type === 'student_subscription' → is_subscriber = true
+ *   - planType === "monthly"          → +1 mois
+ *   - planType === "yearly"           → +1 an
+ */
+router.post("/subscribe-student", requireAuth, async (req, res) => {
+    try {
+        const userId  = req.user.userId;
+        const { planType } = req.body;
+
+        if (!["monthly", "yearly"].includes(planType)) {
+            return res.status(400).json({ error: "planType doit être 'monthly' ou 'yearly'" });
+        }
+
+        // 1. Récupérer ou créer le customer Stripe de l'étudiant
+        const [user] = await sequelize.query(
+            `SELECT stripe_customer_id, email, prenom, nom, role, subscription_status
+             FROM users WHERE id = :userId`,
+            { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
+        );
+
+        if (!user) {
+            return res.status(404).json({ error: "Utilisateur introuvable" });
+        }
+
+        // Sécurité : seuls les élèves/étudiants peuvent s'abonner
+        if (user.role === "prof" || user.role === "admin") {
+            return res.status(403).json({ error: "Action non autorisée." });
+        }
+
+        // Déjà abonné et actif
+        if (user.subscription_status === "active") {
+            return res.status(409).json({ error: "Vous avez déjà un abonnement actif." });
+        }
+
+        let customerId = user.stripe_customer_id;
+
+        if (!customerId) {
+            const customer = await stripe.customers.create({
+                email: user.email,
+                name:  `${user.prenom} ${user.nom}`,
+                metadata: { userId: String(userId) },
+            });
+            customerId = customer.id;
+
+            await sequelize.query(
+                `UPDATE users SET stripe_customer_id = :customerId WHERE id = :userId`,
+                { replacements: { customerId, userId } }
+            );
+        }
+
+        // 2. Montant selon le plan
+        const plans = {
+            monthly: { amount: 1000, label: "Abonnement Entraide Étudiante — Mensuel" },  // 10€
+            yearly:  { amount: 9600, label: "Abonnement Entraide Étudiante — Annuel" },   // 96€
+        };
+
+        const plan = plans[planType];
+
+        // 3. Créer la Checkout Session en mode "payment" one-time
+        // (pas mode "subscription" Stripe → tu gères toi-même le renouvellement
+        //  via subscription_end_date, cohérent avec ton webhook existant)
+        const session = await stripe.checkout.sessions.create({
+            mode:                 "payment",
+            customer:             customerId,
+            payment_method_types: ["card"],
+            line_items: [{
+                price_data: {
+                    currency:     "eur",
+                    unit_amount:  plan.amount,
+                    product_data: { name: plan.label },
+                },
+                quantity: 1,
+            }],
+            success_url: `${process.env.CLIENT_URL}/pages/etudiant/dashboard.html?subscription=success`,
+            cancel_url:  `${process.env.CLIENT_URL}/pages/etudiant/dashboard.html?subscription=cancel`,
+            metadata: {
+                userId:   String(userId),
+                planType,                    // "monthly" | "yearly" → lu par le webhook
+                type:     "student_subscription", // → active is_subscriber dans le webhook
+            },
+        });
+
+        logger.info("💳 Checkout Session abonnement étudiant créée", { userId, planType });
+        res.json({ url: session.url });
+
+    } catch (err) {
+        logger.error("❌ Erreur création abonnement étudiant", { message: err.message });
+        res.status(500).json({ error: "Erreur serveur Stripe" });
+    }
+});
+
+/**
+ * ✅ Vérifie le statut d'abonnement de l'étudiant connecté
+ * Utilisé par le frontend pour afficher le bon état (abonné / expiré / aucun)
+ * ET par le middleware WS (ws.subscriptionStatus) au moment de la connexion
+ */
+router.get("/subscription-status", requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const [user] = await sequelize.query(
+            `SELECT subscription_status, plan_type, subscription_end_date, is_subscriber
+             FROM users WHERE id = :userId`,
+            { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
+        );
+
+        if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
+
+        // Vérifier si l'abonnement a expiré en DB mais pas encore mis à jour
+        const now = new Date();
+        const isExpired = user.subscription_end_date && new Date(user.subscription_end_date) < now;
+
+        if (isExpired && user.subscription_status === "active") {
+            // Expiration automatique
+            await sequelize.query(
+                `UPDATE users 
+                 SET subscription_status = 'expired', is_subscriber = false 
+                 WHERE id = :userId`,
+                { replacements: { userId } }
+            );
+            user.subscription_status = "expired";
+            user.is_subscriber = false;
+        }
+
+        res.json({
+            status:     user.subscription_status || "none",  // "active" | "expired" | "none"
+            planType:   user.plan_type,
+            endDate:    user.subscription_end_date,
+            isSubscriber: user.is_subscriber ?? false,
+        });
+
+    } catch (err) {
+        logger.error("❌ Erreur vérification abonnement", { message: err.message });
+        res.status(500).json({ error: "Erreur serveur" });
+    }
+});
 export default router;
