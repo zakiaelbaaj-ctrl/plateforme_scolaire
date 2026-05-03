@@ -143,21 +143,27 @@ export function parseToken(token, secret) {
 // =======================================================
 // CLEANUP DISCONNECT (OPTIMISÉ)
 // =======================================================
+// =======================================================
+// CLEANUP DISCONNECT — VERSION SENIOR (3 RÔLES)
+// =======================================================
 export function cleanupOnDisconnect(ws, deps) {
   const { clients, onlineProfessors, rooms } = deps;
-
   const { userId, role } = ws;
 
-  console.log(`❌ WS fermé: ${userId} (${role})`);
+  if (!userId) return; // Sécurité si déconnexion avant identification
 
-  // Supprimer du clients
+  console.log(`❌ WS fermé: ${userId} (Rôle: ${role})`);
+
+  // 1. Suppression systématique de la Map globale
   clients.delete(userId);
 
-  // PROF se déconnecte
+  // -------------------------------------------------------
+  // CAS 1 : LE PROFESSEUR SE DÉCONNECTE
+  // -------------------------------------------------------
   if (role === "prof") {
     const prof = onlineProfessors.get(userId);
 
-    // Si en session avec élève
+    // Prévenir l'élève s'ils étaient en cours d'appel
     if (prof?.eleveId) {
       const studentWs = clients.get(prof.eleveId);
       if (studentWs?.readyState === 1) {
@@ -169,47 +175,74 @@ export function cleanupOnDisconnect(ws, deps) {
       }
     }
 
-    // ✅ Vérifier que la méthode existe
-    if (typeof onlineProfessors.endSession === 'function') {
-      onlineProfessors.endSession(userId);
-    }
+    // Retirer de la Map des profs et notifier TOUS les élèves
     onlineProfessors.delete(userId);
+    broadcastOnlineProfs(onlineProfessors, clients);
   }
 
-  // ÉLÈVE se déconnecte
-  if (role === "eleve") {
-    // Chercher si élève en session avec prof
-    // ✅ Utiliser le paramètre plutôt qu'importer
+  // -------------------------------------------------------
+  // CAS 2 : L'ÉLÈVE SE DÉCONNECTE
+  // -------------------------------------------------------
+  else if (role === "eleve") {
+    // Chercher si cet élève était en session avec un prof
     for (const prof of onlineProfessors.values()) {
       if (prof.eleveId === userId) {
-        if (prof.ws?.readyState === 1) {
-          safeSend(prof.ws, {
+        // Prévenir le prof
+        const profWs = clients.get(prof.id);
+        if (profWs?.readyState === 1) {
+          safeSend(profWs, {
             type: "callEnded",
             reason: "eleve_disconnected",
             timestamp: new Date().toISOString()
           });
         }
-        // ✅ Vérifier que la méthode existe
-        if (typeof onlineProfessors.endSession === 'function') {
-          onlineProfessors.endSession(prof.id);
-        }
+        // Libérer le statut du prof
+        prof.status = "disponible";
+        prof.eleveId = null;
       }
     }
+    // Mettre à jour la liste des profs pour les autres élèves (car un prof s'est peut-être libéré)
+    broadcastOnlineProfs(onlineProfessors, clients);
   }
 
-  // Quitter room
+  // -------------------------------------------------------
+  // CAS 3 : L'ÉTUDIANT (PEER-TO-PEER) SE DÉCONNECTE
+  // -------------------------------------------------------
+  else if (role === "etudiant") {
+    // Notifier immédiatement les autres étudiants pour qu'il disparaisse de leur liste
+    broadcastOnlineStudents(clients);
+    
+    // Si l'étudiant était dans une room P2P, le partenaire sera notifié via la section Rooms ci-dessous
+  }
+
+  // -------------------------------------------------------
+  // GESTION DES ROOMS (COMMUN AUX 3 RÔLES)
+  // -------------------------------------------------------
   if (ws.roomId && rooms.has(ws.roomId)) {
     const room = rooms.get(ws.roomId);
+    
+    // Notifier les autres membres de la room que l'utilisateur est parti
+    room.forEach(client => {
+      if (client !== ws && client.readyState === 1) {
+        safeSend(client, {
+          type: "userLeftRoom", // Message générique pour chat/video/whiteboard
+          userId: userId,
+          role: role
+        });
+      }
+    });
+
     room.delete(ws);
 
+    // Supprimer la room si elle est vide
     if (room.size === 0) {
       rooms.delete(ws.roomId);
+      console.log(`🏠 Room ${ws.roomId} supprimée (vide)`);
     }
   }
 
-  console.log(`✅ Nettoyage complet pour ${userId}`);
+  console.log(`✅ Nettoyage complet effectué pour ${userId}`);
 }
-
 // =======================================================
 // LOGGER UTILS
 // =======================================================
@@ -382,17 +415,36 @@ export function getRealOnlineStudents(clientsMap) {
   }
   return students;
 }
-// ✅ POUR LES ÉTUDIANTS (Voient uniquement les étudiants)
-export function broadcastOnlineStudents(clients) {
-  const studentsData = Array.from(clients.values())
-    .filter(ws => ws.role === "etudiant")
-    .map(ws => ({ id: ws.userId, prenom: ws.prenom, nom: ws.nom, matiere: ws.matiere }));
+/**
+ * ✅ DIFFUSION PEER-TO-PEER (Étudiant à Étudiant)
+ * Seuls ceux ayant le rôle "etudiant" reçoivent et apparaissent dans cette liste.
+ */
+export function broadcastOnlineStudents(clientsMap) {
+  // 1. On filtre uniquement les "etudiants" pour la liste
+  const studentsList = [];
+  for (const client of clientsMap.values()) {
+    if (client.role === "etudiant" && client.readyState === 1) {
+      studentsList.push({
+        id: client.userId,
+        prenom: client.prenom || "Étudiant",
+        nom: client.nom || "",
+        matiere: client.matiere || "Général",
+        niveau: client.niveau || ""
+      });
+    }
+  }
 
-  const payload = JSON.stringify({ type: "onlineStudents", students: studentsData });
+  const payload = JSON.stringify({ 
+    type: "onlineStudents", 
+    students: studentsList 
+  });
 
-  clients.forEach(ws => {
+  // 2. On envoie cette liste UNIQUEMENT aux "etudiants"
+  clientsMap.forEach(ws => {
     if (ws.readyState === 1 && ws.role === "etudiant") {
       ws.send(payload);
     }
   });
+  
+  console.log(`📡 P2P Broadcast: ${studentsList.length} étudiants envoyés aux pairs.`);
 }

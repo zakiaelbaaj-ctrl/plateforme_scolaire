@@ -85,6 +85,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const user = AppState.currentUser;
       socketService.send({
         type:    "identify",
+        role:    "etudiant",
         prenom:  user.prenom  || "",
         nom:     user.nom     || "",
         ville:   user.ville   || "",
@@ -92,6 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         matiere: user.matiere || "",
         niveau:  user.niveau  || ""
       });
+      console.log("🚀 Identification envoyée avec le rôle:", user.role || "etudiant");
     }
     SessionServiceEtudiant._handleWs(data);
   });
@@ -218,6 +220,7 @@ function subscribeToDomains() {
 // UI BINDINGS
 // ======================================================
 function bindUI() {
+  const wb = WhiteboardService; // Utilise l'import déjà présent en haut du fichier
 
   document.getElementById("start-session-btn")?.addEventListener("click", () => {
     const m = document.getElementById("matiere")?.value;
@@ -246,24 +249,41 @@ function bindUI() {
 
   document.getElementById("send-file")?.addEventListener("click", sendDocument);
 
+  // --- CONFIGURATION WHITEBOARD ---
   const tools = ["pen", "eraser", "line", "rect", "text"];
   tools.forEach(tool => {
-    document.getElementById(`${tool}ToolBtn`)?.addEventListener("click", () => {
-      WhiteboardService.setTool?.(tool);
-      updateToolButtons(tool);
+    const btn = document.getElementById(`${tool}ToolBtn`);
+    btn?.addEventListener("click", () => {
+      wb.setTool?.(tool);
+      // Mise à jour visuelle des boutons (classe active)
+      document.querySelectorAll('.wb-tool').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     });
   });
 
   document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
-    WhiteboardService.clearBoard?.();
+    if(confirm("Effacer tout le tableau ?")) wb.clearBoard?.();
   });
 
+  document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => {
+    wb.undo?.();
+  });
+
+  // Personnalisation Couleur et Taille
+  document.getElementById("whiteboardColor")?.addEventListener("change", (e) => {
+    wb.setColor?.(e.target.value);
+  });
+
+  document.getElementById("whiteboardSize")?.addEventListener("input", (e) => {
+    wb.setLineWidth?.(e.target.value);
+  });
+
+  // --- LOGOUT ---
   document.getElementById("logout-btn")?.addEventListener("click", logout);
 
-  // ✅ CORRECTION 2 : Exposer les fonctions critiques au scope global
-  // pour les attributs HTML onclick= (puisque ce fichier est un module)
-  window.logout    = logout;
-  window.sendChat  = sendChat;
+  // Exposer les fonctions critiques au scope global
+  window.logout = logout;
+  window.sendChat = sendChat;
 }
 
 // ======================================================
@@ -290,7 +310,12 @@ async function startPeerConnection(initiator) {
     }
   };
 
-  peerConnection.onconnectionstatechange = () => {
+  peerConnection.onco
+  document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
+    WhiteboardService.clearBoard?.();
+  });
+
+  document.getElementnnectionstatechange = () => {
     const state = peerConnection?.connectionState;
     if (state === "connected")    updateStatus("🟢 Connexion vidéo établie");
     if (state === "disconnected") cleanupPeerSession("Connexion perdue.");
