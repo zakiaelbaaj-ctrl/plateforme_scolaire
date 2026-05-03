@@ -206,6 +206,8 @@ function subscribeToDomains() {
       case "studentSessionReady":
         updateStatus("📡 Connexion vidéo...");
         startPeerConnection(event.initiator);
+        // ✅ Démarrer le timer
+        AppState.startTimer?.();
         break;
 
       case "studentSignal":
@@ -275,6 +277,7 @@ function bindUI() {
   });
 
   document.getElementById("end-session-btn")?.addEventListener("click", () => {
+    console.log("🔴 Terminer cliqué — studentRoomId:", AppState.currentStudentRoomId);
     SessionServiceEtudiant.leaveRoom();
     cleanupPeerSession("Session terminée.");
   });
@@ -339,7 +342,7 @@ async function startPeerConnection(initiator) {
     updateStatus("❌ Média inaccessible.");
   }
 
-  peerConnection.ontrack = (e) => attachVideo("remoteVideo", e.streams[0], false);
+  peerConnection.ontrack = (e) => attachVideo("remoteVideoContainer", e.streams[0], false);
 
   peerConnection.onicecandidate = (e) => {
     if (e.candidate) {
@@ -424,11 +427,13 @@ function logout() {
 // HELPERS
 // ======================================================
 function cleanupPeerSession(msg) {
+  // ✅ Arrêter le timer
+    AppState.stopTimer?.();
   if (peerConnection) { peerConnection.close(); peerConnection = null; }
   iceCandidateQueue             = [];
   AppState.currentStudentRoomId = null;
   AppState.sessionInProgress    = false;
-  const remote = document.getElementById("remoteVideo");
+  const remote = document.getElementById("remoteVideoContainer"); // ← était "remoteVideo"
   const local  = document.getElementById("localVideoContainer");
   if (remote) remote.srcObject = null;
   if (local)  local.innerHTML  = "";

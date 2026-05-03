@@ -3,9 +3,19 @@
 // Synchronisation temps réel des dessins
 // =======================================================
 
-import { broadcastRoom } from "./rooms.js";
+import { broadcastRoom as broadcastProfRoom } from "./rooms.js";
+import { broadcastRoom as broadcastStudentRoom } from "./etudiant/rooms.js";
 import { safeSend } from "./utils.js";
 import { pool } from "../config/db.js";
+
+// ✅ Helper adaptatif — route vers la bonne Map selon le type de room
+function broadcastRoom(roomId, payload, except = null) {
+  if (roomId?.startsWith("student_")) {
+    broadcastStudentRoom(roomId, payload, except);
+  } else {
+    broadcastProfRoom(roomId, payload, except);
+  }
+}
 // État du tableau (optionnel - pour persistence)
 const tableauStates = new Map(); // roomId -> {strokes: [], timestamp}
  // userId -> timestamp
