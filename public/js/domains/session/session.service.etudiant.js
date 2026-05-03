@@ -53,7 +53,7 @@ export const SessionServiceEtudiant = {
 
       case "student:matchFound": {
     AppState.currentStudentRoomId = data.roomId;
-
+    console.log("🎯 Envoi student:joinRoom pour:", data.roomId);
     // ✅ joinRoom envoyé AVANT le notify pour éviter la déconnexion WS
     socketService.send({ 
         type: "student:joinRoom", 
