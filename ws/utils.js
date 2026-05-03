@@ -417,34 +417,46 @@ export function getRealOnlineStudents(clientsMap) {
 }
 /**
  * ✅ DIFFUSION PEER-TO-PEER (Étudiant à Étudiant)
- * Seuls ceux ayant le rôle "etudiant" reçoivent et apparaissent dans cette liste.
+ * - La liste contient : rôle "etudiant" ET rôle "eleve"
+ *   (les étudiants peuvent travailler avec des élèves avancés)
+ * - La liste est envoyée UNIQUEMENT aux "etudiant"
+ * - Les "eleve" reçoivent la liste des profs (broadcastOnlineProfs)
+ * - Les "prof" ne reçoivent personne
  */
 export function broadcastOnlineStudents(clientsMap) {
-  // 1. On filtre uniquement les "etudiants" pour la liste
+
+  // 1. Construire la liste : etudiant + eleve (pas les profs)
   const studentsList = [];
   for (const client of clientsMap.values()) {
-    if (client.role === "etudiant" && client.readyState === 1) {
+    if (
+      client.role === "etudiant" &&
+      client.readyState === 1 &&
+      client.prenom // identifié (identify reçu)
+    ) {
       studentsList.push({
-        id: client.userId,
-        prenom: client.prenom || "Étudiant",
-        nom: client.nom || "",
+        id:      client.userId,
+        prenom:  client.prenom  || "Étudiant",
+        nom:     client.nom     || "",
         matiere: client.matiere || "Général",
-        niveau: client.niveau || ""
+        niveau:  client.niveau  || "",
+        role:    client.role
       });
     }
   }
 
-  const payload = JSON.stringify({ 
-    type: "onlineStudents", 
-    students: studentsList 
+  // ✅ type préfixé "student:" pour être capté par SessionServiceEtudiant._handleWs
+  const payload = JSON.stringify({
+    type:     "student:onlineStudents",
+    students: studentsList
   });
 
   // 2. On envoie cette liste UNIQUEMENT aux "etudiants"
   clientsMap.forEach(ws => {
     if (ws.readyState === 1 && ws.role === "etudiant") {
+      console.log(`📡 Envoi student:onlineStudents à ${ws.userId} (${ws.role})`);
       ws.send(payload);
     }
   });
-  
+
   console.log(`📡 P2P Broadcast: ${studentsList.length} étudiants envoyés aux pairs.`);
 }

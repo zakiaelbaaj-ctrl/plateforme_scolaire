@@ -222,6 +222,17 @@ app.get("/api", (req, res) => {
     frontendUrl: process.env.FRONTEND_URL || "http://localhost:10000",
   });
 });
+// ======================================================
+// DEBUG TEMPORAIRE — SUPPRIMER APRÈS
+// ======================================================
+app.get("/debug-users", async (req, res) => {
+  const users = await sequelize.query(
+    `SELECT id, role, subscription_status, is_subscriber FROM users WHERE id IN (55, 56)`,
+    { type: sequelize.QueryTypes.SELECT }
+  );
+  res.json(users);
+});
+// ======================================================
 
 app.use(errorMiddleware);
 

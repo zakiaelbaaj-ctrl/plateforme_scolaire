@@ -81,6 +81,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   socketService.connect(WS_URL);
 
   socketService.onMessage((data) => {
+    console.log("📩 reçu:", data.type);
+    if (data.type?.startsWith("student:")) {
+        console.error("📩 STUDENT EVENT:", data.type, JSON.stringify(data));
+    }
     if (data.type === "TRANSPORT_OPEN") {
       const user = AppState.currentUser;
       socketService.send({

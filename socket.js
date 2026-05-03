@@ -541,12 +541,10 @@ async function handleIdentify(ws, data) {
 
   // 2️⃣ CAS ÉTUDIANT (Segmentation stricte)
   if (ws.role === "etudiant") {
-    console.log(`🎓 Étudiant enregistré: ${ws.userId}`);
-    // L'étudiant ne reçoit QUE la liste des autres étudiants
-    broadcastOnlineStudents(clients); 
+    console.log(`🎓 Étudiant identifié: ${ws.userId} — prenom: ${ws.prenom} — broadcast students`);
+    broadcastOnlineStudents(clients);
     return;
   }
-
   // 3️⃣ CAS ÉLÈVE (Segmentation stricte)
   if (ws.role === "eleve") {
     console.log(`👨‍🎓 Élève enregistré: ${ws.userId}`);
