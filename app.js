@@ -237,6 +237,18 @@ app.get("/debug-users", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ✅ AJOUTER ICI
+app.get("/debug-activate", async (req, res) => {
+  try {
+    await sequelize.query(
+      `UPDATE users SET subscription_status = 'active', is_subscriber = true WHERE id IN (55, 56)`
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // ======================================================
 
 app.use(errorMiddleware);
