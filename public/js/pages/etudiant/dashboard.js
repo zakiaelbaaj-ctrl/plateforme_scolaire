@@ -491,22 +491,31 @@ function renderStudentList(students = []) {
     return;
   }
 
-  // 3. Générer la liste
+  // --- AJOUT DU MESSAGE D'AIDE (UI/UX Senior) ---
+  // On crée un petit bandeau informatif discret
+  const infoMsg = document.createElement("li");
+  infoMsg.className = "list-helper-msg";
+  infoMsg.innerHTML = `
+    <i class="fas fa-info-circle"></i> 
+    Mets-toi en file d'attente pour la même matière, vous serez matchés automatiquement.
+  `;
+  list.appendChild(infoMsg);
+  // ----------------------------------------------
+
+  // 3. Générer la liste des étudiants
   filtered.forEach(s => {
     const li = document.createElement("li");
     
-    // On affiche aussi la matière pour que l'étudiant sache qui peut l'aider
-   li.innerHTML = `
-    <span class="status-indicator"></span>
-    <span>${s.prenom} <small class="badge-matiere">${s.matiere || 'Général'}</small></span>
-    <button class="btn-match-invite">Inviter</button>
-`;
+    li.innerHTML = `
+      <span class="status-indicator"></span>
+      <span>${s.prenom} <small class="badge-matiere">${s.matiere || 'Général'}</small></span>
+      <button class="btn-match-invite">Inviter</button>
+    `;
 
     // Au clic, on lance le matching pour la matière cible
     li.querySelector("button").onclick = () => {
-        // On affiche un petit feedback visuel
         const btn = li.querySelector("button");
-        btn.innerText = "Attente...";
+        btn.innerText = "Rejoindre...";
         btn.disabled = true;
         
         // On lance la demande de match
@@ -516,7 +525,6 @@ function renderStudentList(students = []) {
     list.appendChild(li);
   });
 }
-
 async function checkSubscription() {
   try {
     const res  = await fetch("/api/v1/stripe-student/status", {
