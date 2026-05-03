@@ -37,7 +37,8 @@ export async function joinRoom(ws, { roomId }) {
         return safeSend(ws, { type: "error", message: "Accès non autorisé à cette room." });
     }
 
-    if (ws.studentRoomId === roomId) return; // déjà dans la room
+    // Ne pas bloquer si la room n'est pas encore dans le Set
+if (ws.studentRoomId === roomId && rooms.get(roomId)?.has(ws)) return;
 
     ws.studentRoomId = roomId;
 

@@ -145,8 +145,6 @@ class _StudentMatchService {
     const roomId = `student_${bestPair.a.userId}_${bestPair.b.userId}`;
 
     // Pré-assigner la room sur les ws (rooms.js vérifiera via MatchRegistry)
-    bestPair.a.ws.studentRoomId = roomId;
-    bestPair.b.ws.studentRoomId = roomId;
 
     // Enregistrer dans le registre pour autoriser le joinRoom
     MatchRegistry.register(roomId, bestPair.a.userId, bestPair.b.userId);
