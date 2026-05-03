@@ -155,12 +155,36 @@ function subscribeToDomains() {
         break;
 
       case "studentMatchFound":
-        updateStatus(`✅ Partenaire trouvé : ${event.partnerName}`);
-        AppState.currentStudentRoomId = event.roomId;
-        AppState.sessionInProgress    = true;
-        WhiteboardService.initCanvas("whiteboard-canvas", event.roomId);
-        initCanvasResize(); // Resize après init canvas
-        break;
+    updateStatus(`✅ Partenaire trouvé : ${event.partnerName}`);
+    AppState.currentStudentRoomId = event.roomId;
+    AppState.sessionInProgress    = true;
+
+    // 1. On récupère le wrapper et on l'affiche en premier !
+    const wrapper = document.getElementById("whiteboard-wrapper");
+    if (wrapper) {
+        wrapper.style.display = "block"; // On le rend visible pour que le canvas ait une taille
+        
+        // Petit hack Senior : on attend un micro-délai pour que le navigateur calcule les dimensions
+        setTimeout(() => {
+            if (window.WhiteboardService) {
+                // 2. Initialisation technique
+                window.WhiteboardService.initCanvas("whiteboard-canvas", event.roomId);
+                
+                // 3. Redimensionnement forcé
+                if (typeof initCanvasResize === "function") initCanvasResize();
+                
+                // 4. Confort visuel
+                wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                console.log("🎨 Tableau blanc initialisé et affiché.");
+            } else {
+                console.error("❌ WhiteboardService introuvable sur window.");
+            }
+        }, 50); 
+    } else {
+        console.error("❌ Élément #whiteboard-wrapper introuvable dans le HTML.");
+    }
+    break;
 
       case "studentJoinedRoom":
         updateStatus("🎬 Room rejointe — en attente de l'autre étudiant...");
@@ -514,13 +538,19 @@ function renderStudentList(students = []) {
 
     // Au clic, on lance le matching pour la matière cible
     li.querySelector("button").onclick = () => {
-        const btn = li.querySelector("button");
-        btn.innerText = "Rejoindre...";
-        btn.disabled = true;
-        
-        // On lance la demande de match
-        SessionServiceEtudiant.enqueue(s.matiere || "Général");
-    };
+    const btn = li.querySelector("button");
+    
+    // Feedback visuel immédiat
+    btn.innerText = "⌛ En attente...";
+    btn.style.backgroundColor = "var(--text-muted)"; // Devient gris pour montrer l'attente
+    btn.disabled = true; 
+    
+    // On met à jour le statut global pour rassurer l'étudiant
+    updateStatus(`Recherche de partenaire en ${s.matiere || 'Général'}...`);
+
+    // Envoi au serveur
+    SessionServiceEtudiant.enqueue(s.matiere || "Général");
+};
 
     list.appendChild(li);
   });

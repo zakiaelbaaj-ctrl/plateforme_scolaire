@@ -52,15 +52,26 @@ export const SessionServiceEtudiant = {
       }
 
       case "student:matchFound": {
-        AppState.currentStudentRoomId = data.roomId;
-        this._notify({
-          type:        "studentMatchFound",
-          roomId:      data.roomId,
-          partnerName: data.partnerName
+    AppState.currentStudentRoomId = data.roomId;
+    
+    // 1. On prévient d'abord le Dashboard pour qu'il affiche le wrapper et le canvas
+    this._notify({
+        type:        "studentMatchFound",
+        roomId:      data.roomId,
+        partnerName: data.partnerName
+    });
+
+    // 2. On laisse un tout petit délai (100ms) pour que l'initCanvas se fasse 
+    // côté Dashboard avant d'envoyer le joinRoom
+    setTimeout(() => {
+        socketService.send({ 
+            type: "student:joinRoom", 
+            roomId: data.roomId 
         });
-        socketService.send({ type: "student:joinRoom", roomId: data.roomId });
-        break;
-      }
+    }, 100);
+    
+    break;
+}
 
       case "student:joinedRoom": {
         this._notify({ type: "studentJoinedRoom", roomId: data.roomId });
