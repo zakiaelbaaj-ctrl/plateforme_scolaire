@@ -27,7 +27,16 @@ const RTC_CONFIG = {
     { urls: "stun:stun1.l.google.com:19302" }
   ]
 };
-
+// Ajouter en haut du DOMContentLoaded — TEMPORAIRE
+const logDiv = document.createElement("div");
+logDiv.style = "position:fixed;bottom:0;left:0;right:0;height:150px;overflow:auto;background:rgba(0,0,0,0.8);color:lime;font-size:11px;z-index:9999;padding:5px;";
+document.body.appendChild(logDiv);
+const origLog = console.log;
+console.log = (...args) => {
+    origLog(...args);
+    logDiv.innerHTML += args.join(" ") + "<br>";
+    logDiv.scrollTop = logDiv.scrollHeight;
+};
 // ======================================================
 // INITIALISATION
 // ======================================================
