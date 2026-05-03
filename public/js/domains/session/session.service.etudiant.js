@@ -33,10 +33,13 @@ export const SessionServiceEtudiant = {
     if (!data.type.startsWith("student:") && data.type !== "error") return;
 
     switch (data.type) {
-      case "onlineStudents":
-      // On émet l'événement vers le dashboard
-      if (this.callback) this.callback({ type: "onlineStudents", students: data.students });
-      break;
+      case "student:onlineStudents": {
+        this._notify({
+          type:     "onlineStudents",
+          students: data.students ?? []
+        });
+        break;
+      }
 
       case "student:queued": {
         this._notify({
