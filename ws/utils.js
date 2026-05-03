@@ -31,21 +31,12 @@ export function safeSend(ws, data) {
 // BROADCAST AUX ÉLÈVES
 // =======================================================
 export function broadcastOnlineProfs(onlineProfessors, clients) {
-  console.log("📡 Broadcast vers clients:");
-  clients.forEach((client, id) => {
-    console.log("→", id, client.role, client.readyState);
-  });
   const allProfs = onlineProfessors || new Map();
 
-  // Convertir en tableau et trier: disponibles en top
+  // 1. Préparation et Tri (Disponibles en premier)
   const profs = Array.from(allProfs.values())
     .sort((a, b) => {
-      const statusOrder = { 
-        disponible: 0, 
-        en_appel: 1, 
-        occupe: 2, 
-        absent: 3 
-      };
+      const statusOrder = { disponible: 0, en_appel: 1, occupe: 2, absent: 3 };
       return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
     })
     .map(prof => ({
@@ -55,17 +46,15 @@ export function broadcastOnlineProfs(onlineProfessors, clients) {
       ville: prof.ville || "",
       pays: prof.pays || "",
       status: prof.status,
-      connectedAt: prof.connectedAt,
-      sessionStartedAt: prof.sessionStartedAt,
+      matiere: prof.matiere || "Général", // Ajouté pour l'élève
       eleveId: prof.eleveId || null
     }));
 
-  console.log(`🔍 Broadcast ${profs.length} profs aux élèves`);
+  console.log(`📡 Broadcast: ${profs.length} profs envoyés aux élèves.`);
 
-  // Envoyer à tous les élèves
+  // 2. Diffusion ciblée uniquement aux élèves
   for (const ws of clients.values()) {
     if (ws.role === "eleve" && ws.readyState === 1) {
-     console.log("📤 ENVOI ONLINE_PROFESSORS → user:", ws.userId, "readyState:", ws.readyState); 
       safeSend(ws, {
         type: "onlineProfessors",
         profs,
@@ -74,7 +63,6 @@ export function broadcastOnlineProfs(onlineProfessors, clients) {
     }
   }
 }
-
 // =======================================================
 // BROADCAST À UN RÔLE SPÉCIFIQUE
 // =======================================================
@@ -404,21 +392,6 @@ export function broadcastOnlineStudents(clients) {
 
   clients.forEach(ws => {
     if (ws.readyState === 1 && ws.role === "etudiant") {
-      ws.send(payload);
-    }
-  });
-}
-
-// ✅ POUR LES ÉLÈVES (Voient uniquement les professeurs)
-export function broadcastOnlineProfs(onlineProfessors, clients) {
-  const profsList = Array.from(onlineProfessors.values()).map(p => ({
-    id: p.id, prenom: p.prenom, nom: p.nom, matiere: p.matiere
-  }));
-
-  const payload = JSON.stringify({ type: "onlineProfessors", profs: profsList });
-
-  clients.forEach(ws => {
-    if (ws.readyState === 1 && ws.role === "eleve") {
       ws.send(payload);
     }
   });
