@@ -1,88 +1,54 @@
 import express from "express";
 import { db } from "../../config/index.js";
 import auth from "../../middlewares/auth.middleware.js";
-import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const router = express.Router();
 
 router.get("/config", auth, async (req, res) => {
   try {
-    // Correction : req.user contient souvent userId ou id selon ton middleware auth
     const userId = req.user.userId || req.user.id;
 
-    // 1. Récupérer le statut d'abonnement
-    // Utilisation de db.QueryTypes.SELECT si db est l'instance Sequelize
-    const [userRecords] = await db.query(
-  `SELECT role, is_subscriber FROM users WHERE id = :userId`,
-  {
-    replacements: { userId },
-    type: db.QueryTypes.SELECT
-  }
-);
+    // ✅ Correction : on récupère directement le premier utilisateur
+    const [user] = await db.query(
+      `SELECT role, is_subscriber FROM users WHERE id = :userId`,
+      {
+        replacements: { userId },
+        type: db.QueryTypes.SELECT
+      }
+    );
 
-const user = userRecords?.[0];
-if (!user) {
-  return res.status(404).json({ error: "Utilisateur non trouvé" });
-}
+    if (!user) {
+      return res.status(404).json({ error: "Utilisateur non trouvé" });
+    }
 
-const freeConfig = [
-  { urls: "stun:stun.l.google.com:19302" }
-];
+    const isProf = user.role === "prof";
+    const isPremium = isProf || user.is_subscriber;
 
-const premiumConfig = [
-  {
-    urls: "turn:your-turn-server.com:3478",
-    username: "user",
-    credential: "pass"
-  }
-];
+    const freeConfig = [
+      { urls: "stun:stun.l.google.com:19302" }
+    ];
 
-// ======================================================
-// LOGIQUE
-// ======================================================
+    const premiumConfig = [
+      {
+        urls: "turn:your-turn-server.com:3478",
+        username: "user",
+        credential: "pass"
+      }
+    ];
 
-const isProf = user.role === "prof";
-const [userRecords] = await db.query(
-  `SELECT role, is_subscriber FROM users WHERE id = :userId`,
-  {
-    replacements: { userId },
-    type: db.QueryTypes.SELECT
-  }
-);
-
-const user = userRecords?.[0];
-
-if (!user) {
-  return res.status(404).json({ error: "Utilisateur non trouvé" });
-}
-
-const isProf = user.role === "prof";
-const isPremium = isProf || user.is_subscriber;
-
-const freeConfig = [
-  { urls: "stun:stun.l.google.com:19302" }
-];
-
-const premiumConfig = [
-  {
-    urls: "turn:your-turn-server.com:3478",
-    username: "user",
-    credential: "pass"
-  }
-];
-
-return res.json({
-  iceServers: isPremium ? premiumConfig : freeConfig
-});
-
-    // 3. Mohamed reçoit le gratuit
-    return res.json({ iceServers: freeConfig });
+    return res.json({
+      iceServers: isPremium ? premiumConfig : freeConfig
+    });
 
   } catch (err) {
     console.error("❌ Erreur WebRTC Config:", err.message);
-    // En cas d'erreur, on renvoie au moins le STUN gratuit pour ne pas bloquer l'appel
-    res.status(200).json({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+
+    // ✅ Fallback : toujours renvoyer au moins un STUN
+    return res.status(200).json({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" }
+      ]
+    });
   }
 });
 
