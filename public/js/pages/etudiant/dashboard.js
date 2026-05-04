@@ -203,13 +203,17 @@ function subscribeToDomains() {
         updateStatus(`👤 ${event.userName} a rejoint la session`);
         break;
 
-      case "studentSessionReady":
-        updateStatus("📡 Connexion vidéo...");
-        startPeerConnection(event.initiator);
-        // ✅ Démarrer le timer
-        AppState.startTimer?.();
-        break;
-
+    case "studentSessionReady":
+    updateStatus("📡 Sécurisation de la ligne...");
+    
+    // On appelle notre nouvelle fonction de config
+    getWebRTCConfig().then(dynamicConfig => {
+        // ✅ On lance la connexion avec Twilio si Mohamed est abonné
+        startPeerConnection(event.initiator, dynamicConfig);
+    });
+    
+    if (AppState.startTimer) AppState.startTimer();
+    break;
       case "studentSignal":
         handleIncomingSignal(event.signal);
         break;
@@ -329,6 +333,10 @@ function bindUI() {
     wb.setLineWidth?.(e.target.value);
   });
 
+document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
+  WhiteboardService.clearBoard?.();
+});
+
   // --- LOGOUT ---
   document.getElementById("logout-btn")?.addEventListener("click", logout);
 
@@ -338,59 +346,120 @@ function bindUI() {
 }
 
 // ======================================================
+// ✅ NOUVEAU : RÉCUPÉRATION CONFIG DYNAMIQUE (STRIPE/TWILIO)
+// ======================================================
+async function getWebRTCConfig() {
+  try {
+    const res = await fetch("/api/v1/webrtc/config", {
+      headers: { Authorization: `Bearer ${AppState.token}` }
+    });
+    const data = await res.json();
+    console.log("🔒 Config WebRTC reçue du serveur");
+    return { iceServers: data.iceServers, iceTransportPolicy: "all" };
+  } catch (e) {
+    console.warn("⚠️ Impossible de joindre Twilio, passage en mode gratuit STUN.");
+    return RTC_CONFIG; 
+  }
+}
+// ======================================================
 // WebRTC LOGIC
 // ======================================================
-async function startPeerConnection(initiator) {
-  if (peerConnection) peerConnection.close();
-  iceCandidateQueue = []; // ✅ Vider la file ICE à chaque nouvelle connexion
-  peerConnection    = new RTCPeerConnection(RTC_CONFIG);
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-    attachVideo("localVideoContainer", stream, true);
-  } catch (err) {
-    updateStatus("❌ Média inaccessible.");
+async function startPeerConnection(initiator, configOverride = null) {
+  if (peerConnection) {
+    console.log("🔄 Fermeture de l'ancienne connexion...");
+    peerConnection.close();
   }
+  
+  iceCandidateQueue = []; 
+  
+  // ✅ On utilise la config Twilio passée en argument, sinon on prend le STUN par défaut
+  const finalConfig = configOverride || RTC_CONFIG;
+  peerConnection = new RTCPeerConnection(finalConfig);
 
-  peerConnection.ontrack = (e) => attachVideo("remoteVideoContainer", e.streams[0], false);
-
-  peerConnection.onicecandidate = (e) => {
-    if (e.candidate) {
-      SessionServiceEtudiant.sendSignal({ type: "ice-candidate", candidate: e.candidate });
+  // 1. Écouteur de flux distant (doit être défini au début)
+  peerConnection.ontrack = (e) => {
+    console.log("📡 Flux distant reçu ! Tentative d'affichage...");
+    if (e.streams && e.streams[0]) {
+      attachVideo("remoteVideoContainer", e.streams[0], false);
     }
   };
 
-  peerConnection.onco
-  document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
-    WhiteboardService.clearBoard?.();
-  });
-
-  document.getElementnnectionstatechange = () => {
-    const state = peerConnection?.connectionState;
-    if (state === "connected")    updateStatus("🟢 Connexion vidéo établie");
-    if (state === "disconnected") cleanupPeerSession("Connexion perdue.");
-    if (state === "failed")       cleanupPeerSession("Échec de connexion vidéo.");
+  // 2. Gestion des candidats ICE
+  peerConnection.onicecandidate = (e) => {
+    if (e.candidate) {
+      SessionServiceEtudiant.sendSignal({ 
+        type: "ice-candidate", 
+        candidate: e.candidate 
+      });
+    }
   };
 
+  // 3. Suivi de l'état de la connexion
+  peerConnection.onconnectionstatechange = () => {
+    const state = peerConnection?.connectionState;
+    console.log("📶 État WebRTC :", state);
+    
+    if (state === "connected") {
+      updateStatus("🟢 Connexion vidéo établie");
+    } else if (state === "failed") {
+      // ✅ Si ça échoue et que Mohamed n'est pas abonné (donc pas de Twilio)
+      const config = peerConnection.getConfiguration();
+      if (config.iceServers.length <= 2) { // 2 = uniquement les serveurs STUN de Google
+         const upgrade = confirm("⚠️ Vidéo bloquée par votre réseau (International/Pare-feu).\n\nSouhaitez-vous activer l'Abonnement Entraide pour débloquer la connexion ?");
+         if (upgrade) {
+            // Redirection vers ta route Stripe
+            window.location.href = "/pages/etudiant/dashboard.html?show_subscription=true";
+         }
+      }
+      cleanupPeerSession("Échec de connexion vidéo.");
+    }
+  };
+
+  // 4. Capture et envoi du flux local (caméra + micro)
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    
+    // On ajoute les pistes à la connexion AVANT de créer l'offre
+    stream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, stream);
+    });
+    
+    attachVideo("localVideoContainer", stream, true);
+    console.log("📸 Caméra locale activée et tracks ajoutés.");
+  } catch (err) {
+    console.error("❌ Erreur média:", err);
+    updateStatus("❌ Média inaccessible.");
+    return; // On arrête tout si la caméra ne peut pas être activée
+  }
+
+  // 5. Phase de négociation (Initiateur)
   if (initiator) {
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    SessionServiceEtudiant.sendSignal({ type: "offer", sdp: offer.sdp });
+    try {
+      console.log("🚀 Création de l'offre (Initiateur)");
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      SessionServiceEtudiant.sendSignal({ type: "offer", sdp: offer.sdp });
+    } catch (err) {
+      console.error("❌ Erreur lors de la création de l'offre:", err);
+    }
   }
 }
 
-// ✅ CORRECTION 3 : File d'attente ICE
-// Les candidats ICE peuvent arriver avant que setRemoteDescription soit terminé.
-// On les met en file et on les applique une fois la remote description prête.
+/**
+ * Gestionnaire de signalisation (SDP & ICE)
+ */
 async function handleIncomingSignal(signal) {
-  if (!peerConnection) return;
+  if (!peerConnection) {
+    console.warn("⚠️ Signal reçu mais peerConnection n'est pas initialisée.");
+    return;
+  }
 
   try {
     if (signal.type === "offer") {
+      console.log("📩 Offre reçue, configuration de la remote description...");
       await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
 
-      // Appliquer les candidats ICE mis en attente
+      // On applique les candidats ICE qui sont arrivés en avance
       for (const candidate of iceCandidateQueue) {
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       }
@@ -401,17 +470,17 @@ async function handleIncomingSignal(signal) {
       SessionServiceEtudiant.sendSignal({ type: "answer", sdp: answer.sdp });
 
     } else if (signal.type === "answer") {
+      console.log("📩 Réponse reçue !");
       await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
 
-      // Appliquer les candidats ICE mis en attente
       for (const candidate of iceCandidateQueue) {
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       }
       iceCandidateQueue = [];
 
     } else if (signal.type === "ice-candidate") {
-      // Si la remote description n'est pas encore définie → mettre en file
       if (!peerConnection.remoteDescription) {
+        // Trop tôt : on met en file d'attente
         iceCandidateQueue.push(signal.candidate);
       } else {
         await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
@@ -421,7 +490,6 @@ async function handleIncomingSignal(signal) {
     console.error("❌ Erreur signal WebRTC:", err);
   }
 }
-
 // ======================================================
 // LOGOUT
 // ======================================================

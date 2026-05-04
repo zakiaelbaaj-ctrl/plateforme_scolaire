@@ -134,6 +134,12 @@ export const AppState = {
   },
 
   endSession() {
+    if (this.currentRoomId === null) {
+      const sessionRoomId = SessionServiceEtudiant.getStudentRoomId();
+      if (sessionRoomId !== null) {
+        this.currentRoomId = sessionRoomId;
+      }
+    }
   this.sessionInProgress = false;
   this.currentRoomId = null;
   this.selectedStudentId = null;

@@ -33,6 +33,7 @@ import profileRoutes from "./routes/v1/users/profile.routes.js";
 import stripeConnectRoutes from "./routes/v1/stripeConnect.routes.js";
 import whiteboardRoutes from "./routes/whiteboard.routes.js"; 
 import stripeStudentRoutes from "./routes/v1/stripe/stripe.student.routes.js";
+import webrtcRoutes from "./routes/v1/webrtc.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -95,7 +96,7 @@ app.use("/api/v1/webhooks", webhookRoutes);
 app.use("/api/v1/stripe-student", stripeStudentRoutes);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-
+app.use("/api/v1/webrtc", webrtcRoutes);
 // =======================================================
 // VUES & STATIQUE
 // =======================================================
