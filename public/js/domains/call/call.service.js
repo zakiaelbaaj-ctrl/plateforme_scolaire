@@ -85,7 +85,16 @@ export const CallService = {
     // 3. Nettoyage AppState (endSession appelle reset() qui remet idle)
     AppState.stopTimer();
     AppState.endSession(); // → reset() → idle → onChange → setCallState(idle) → cleanupSession
-
+     
+    // ✅ AJOUT : récupération de la facture
+  fetch(`/api/payments/session/${AppState.currentRoomId}`)
+    .then(res => res.json())
+    .then(result => {
+      if (result?.status === 'succeeded') {
+        AppState.showInvoice(result);
+      }
+    })
+    .catch(err => console.error("Erreur récupération facture:", err));
     // 4. Notif UI
     AppState._notify("ui:closeCallOverlay");
 

@@ -134,21 +134,17 @@ export const AppState = {
   },
 
   endSession() {
-    if (this.currentRoomId === null) {
-      const sessionRoomId = SessionServiceEtudiant.getStudentRoomId();
-      if (sessionRoomId !== null) {
-        this.currentRoomId = sessionRoomId;
-      }
-    }
+  // ✅ Reset complet de la session
   this.sessionInProgress = false;
   this.currentRoomId = null;
   this.selectedStudentId = null;
 
-  CallStateMachine.reset(); // ✅ remet la machine à idle proprement
+  // ✅ Remet la machine d'état à idle
+  CallStateMachine.reset();
 
+  // ✅ Notifie les listeners
   this._notify("session:end");
 },
-
   // ==================================================
   // TIMER
   // ==================================================

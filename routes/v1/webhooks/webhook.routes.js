@@ -56,21 +56,9 @@ router.post(
  * ✅ Gère les abonnements (Plans classiques ET Entraide Étudiante à 20€)
  */
 async function handleCheckoutSessionCompleted(session) {
-  if (session.mode === 'setup') {
-    const customerId = session.customer;
-    try {
-      await sequelize.query(
-        `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = :customerId`,
-        { replacements: { customerId } }
-      );
-      logger.info("💳 Carte enregistrée avec succès pour l'élève", { customerId });
-      return; // On s'arrête là pour un setup
-    } catch (err) {
-      logger.error("❌ Erreur mise à jour has_payment_method", { customerId, message: err.message });
-      return;
-    }
-  }
+
   const { userId, planType, type } = session.metadata || {};
+
   const sessionId = session.id;
 
   if (!userId) {
@@ -78,110 +66,250 @@ async function handleCheckoutSessionCompleted(session) {
     return;
   }
 
-  await sequelize.transaction(async (t) => {
-    // 1. Vérifier si déjà traité
-    const existing = await sequelize.query(
-      `SELECT 1 FROM payments WHERE stripe_session_id = :sessionId LIMIT 1`,
-      { replacements: { sessionId }, type: sequelize.QueryTypes.SELECT, transaction: t }
-    );
-
-    if (existing.length > 0) return;
-
-    // 2. Calcul de la date de fin (1 mois pour l'entraide ou selon planType)
-    const end = new Date();
-    if (type === 'student_subscription' || planType === "monthly") {
-      end.setUTCMonth(end.getUTCMonth() + 1);
-    } else if (planType === "yearly") {
-      end.setUTCFullYear(end.getUTCFullYear() + 1);
-    }
-
-    // 3. Mise à jour de l'utilisateur (Gestion is_subscriber pour l'entraide)
+  // ======================================================
+  // 🎓 ABONNEMENT ÉTUDIANTS (NOUVEAU SYSTÈME)
+  // ======================================================
+  if (type === "student_subscription") {
     await sequelize.query(
       `UPDATE users 
-       SET subscription_status = 'active', 
-           is_subscriber = :isSub,
-           plan_type = :plan, 
-           subscription_end_date = :end 
+       SET is_subscriber = true,
+           subscription_status = 'active',
+           plan_type = :planType,
+           subscription_end_date = 
+             CASE 
+               WHEN :planType = 'monthly' THEN NOW() + INTERVAL '1 month'
+               WHEN :planType = 'yearly' THEN NOW() + INTERVAL '1 year'
+             END
        WHERE id = :userId`,
-      { 
-        replacements: { 
-          plan: planType || 'student_entraide', 
-          isSub: type === 'student_subscription', // Active l'entraide si c'est le type
-          end: end.toISOString(), 
-          userId 
-        }, 
-        transaction: t 
+      {
+        replacements: {
+          userId,
+          planType
+        }
       }
     );
 
-    // 4. Enregistrement du paiement
-    const [paymentResult] = await sequelize.query(
-      `INSERT INTO payments (user_id, amount, currency, status, stripe_session_id, type)
-       VALUES (:userId, :amount, :currency, 'succeeded', :sessionId, :type)
-       RETURNING id`,
-      { 
-        replacements: { 
-          userId, 
-          amount: session.amount_total, 
-          currency: session.currency, 
-          sessionId,
-          type: type || 'subscription'
-        }, 
-        transaction: t 
-      }
-    );
+    logger.info("🎓 Abonnement étudiant activé", {
+      userId,
+      planType
+    });
 
-    // 5. Génération facture PDF
+    return;
+  }
+
+  // ======================================================
+  // 💳 ENREGISTREMENT CARTE (SETUP INTENT)
+  // ======================================================
+  if (session.mode === 'setup') {
+    const customerId = session.customer;
+
     try {
-      const invoiceNumber = `INV-${userId}-${Date.now()}`;
+      await sequelize.query(
+        `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = :customerId`,
+        {
+          replacements: { customerId }
+        }
+      );
+
+      logger.info("💳 Carte enregistrée avec succès", { customerId });
+      return;
+    } catch (err) {
+      logger.error("❌ Erreur mise à jour carte", {
+        customerId,
+        message: err.message
+      });
+      return;
+    }
+  }
+  // ======================================================
+  // 💰 ANCIEN SYSTÈME (ABONNEMENTS / PAIEMENTS EXISTANTS)
+  // ======================================================
+  let invoiceNumber;
+
+  await sequelize.transaction(async (t) => {
+
+    // ── Idempotence : éviter double traitement Stripe ──────────────────────
+    const existing = await sequelize.query(
+      `SELECT 1 FROM payments WHERE stripe_session_id = :sessionId LIMIT 1`,
+      {
+        replacements: { sessionId },
+        type: sequelize.QueryTypes.SELECT,
+        transaction: t
+      }
+    );
+    if (existing.length > 0) {
+      logger.warn("⚠️ Webhook déjà traité, skip", { sessionId });
+      return;
+    }
+
+    // ── Calcul date expiration ─────────────────────────────────────────────
+    const PLAN_INTERVALS = {
+      monthly: (d) => d.setUTCMonth(d.getUTCMonth() + 1),
+      yearly:  (d) => d.setUTCFullYear(d.getUTCFullYear() + 1),
+    };
+
+    const end = new Date();
+    const resolvedPlanType = planType || "student_entraide";
+
+    if (PLAN_INTERVALS[resolvedPlanType]) {
+      PLAN_INTERVALS[resolvedPlanType](end);
+    } else {
+      logger.warn("⚠️ planType inconnu, subscription_end_date non calculée", { resolvedPlanType });
+    }
+
+    // ── Mise à jour utilisateur ────────────────────────────────────────────
+    const [, userMeta] = await sequelize.query(
+      `UPDATE users
+       SET subscription_status    = 'active',
+           is_subscriber          = true,
+           plan_type              = :planType,
+           subscription_end_date  = :end,
+           updated_at             = NOW()
+       WHERE id = :userId
+       RETURNING id`,
+      {
+        replacements: { userId, planType: resolvedPlanType, end: end.toISOString() },
+        transaction: t
+      }
+    );
+
+    if (!userMeta?.rowCount) {
+      throw new Error(`User ${userId} introuvable — UPDATE sans effet`);
+    }
+
+    // ── Insertion paiement avec invoice_number atomique ────────────────────
+    invoiceNumber = `INV-${userId}-${Date.now()}`;
+
+    await sequelize.query(
+      `INSERT INTO payments
+         (user_id, amount, currency, status, stripe_session_id, type, invoice_number, created_at)
+       VALUES
+         (:userId, :amount, :currency, 'succeeded', :sessionId, :type, :invoiceNumber, NOW())`,
+      {
+        replacements: {
+          userId,
+          amount:        session.amount_total,
+          currency:      session.currency,
+          sessionId,
+          type:          type || "subscription",
+          invoiceNumber, // ← lié atomiquement au paiement
+        },
+        transaction: t
+      }
+    );
+
+    logger.info("💰 Paiement enregistré", { userId, sessionId, invoiceNumber, planType: resolvedPlanType });
+  }); // ← commit atomique : user + payment + invoiceNumber
+
+  // ── Génération PDF hors transaction (I/O lent, non rollbackable) ─────────
+  // Le numéro de facture est déjà persisté en DB → récupérable si le PDF plante
+  if (invoiceNumber) {
+    try {
       await generateInvoicePdf({
         userId,
-        planType: planType || 'Entraide Étudiante',
-        amount: session.amount_total,
+        planType:      planType || "Entraide Étudiante",
+        amount:        session.amount_total,
         invoiceNumber,
-        date: new Date(),
+        date:          new Date(),
       });
-      logger.info("🧾 Facture PDF générée", { userId });
+      logger.info("🧾 Facture PDF générée", { userId, invoiceNumber });
     } catch (pdfErr) {
-      logger.error("❌ Erreur PDF", { userId, message: pdfErr.message });
+      // Paiement safe en DB — on log avec invoiceNumber pour régénération ultérieure
+      logger.error("❌ Échec génération PDF — régénérable via invoice_number", {
+        userId,
+        invoiceNumber,
+        message: pdfErr.message,
+      });
     }
-  });
-}
-
+  }
+} // ← ferme handleCheckoutSessionCompleted
 /**
  * ✅ Gère le succès des paiements d'appels vidéo (20€ ou 40€/h)
  */
 async function handlePaymentIntentSucceeded(paymentIntent) {
-  const { roomId, eleveId, profId } = paymentIntent.metadata;
+  const raw = paymentIntent.metadata || {};
+
+  const roomId  = typeof raw.roomId === "string" ? raw.roomId : null;
+  const eleveId = Number.isInteger(Number(raw.eleveId)) ? Number(raw.eleveId) : null;
+  const profId  = Number.isInteger(Number(raw.profId)) ? Number(raw.profId) : null;
+
   const intentId = paymentIntent.id;
 
-  await sequelize.transaction(async (t) => {
-    // 1. Mettre à jour la session visio
-    await sequelize.query(
-      `UPDATE visio_sessions SET is_paid = true WHERE room_id = :roomId`,
-      { replacements: { roomId }, transaction: t }
-    );
+  if (!roomId || !eleveId || !profId) {
+    logger.error("❌ Invalid metadata in payment intent", { raw, intentId });
+    return;
+  }
 
-    // 2. Créer ou mettre à jour le paiement
-    const [payment] = await sequelize.query(
-      `INSERT INTO payments (user_id, amount, currency, status, stripe_session_id, type)
-       VALUES (:eleveId, :amount, :currency, 'succeeded', :intentId, 'visio_call')
-       ON CONFLICT (stripe_session_id) DO UPDATE SET status = 'succeeded'
-       RETURNING id`,
-      { 
-        replacements: { 
-          eleveId, 
-          amount: paymentIntent.amount, 
-          currency: paymentIntent.currency, 
-          intentId 
-        }, 
-        transaction: t 
+  if (!paymentIntent.amount || paymentIntent.amount <= 0) {
+    logger.error("❌ Invalid amount in payment intent", { intentId });
+    return;
+  }
+
+  await sequelize.transaction(async (t) => {
+
+    // 🔒 LOCK visio session (anti race condition)
+    const lockResult = await sequelize.query(
+      `SELECT is_paid 
+       FROM visio_sessions 
+       WHERE room_id = :roomId 
+       FOR UPDATE`,
+      {
+        replacements: { roomId },
+        transaction: t
       }
     );
 
-    logger.info("✅ Paiement visio confirmé et session marquée payée", { roomId });
+    const visio = lockResult?.[0]?.[0];
+
+    if (!visio) {
+      throw new Error(`Visio session not found: ${roomId}`);
+    }
+
+    // 🚫 déjà payé → stop idempotent Stripe
+    if (visio.is_paid === true) {
+      logger.warn("Duplicate visio payment blocked", { roomId, intentId });
+      return;
+    }
+
+    // 💰 INSERT paiement (idempotent Stripe safe)
+    await sequelize.query(
+      `INSERT INTO payments 
+        (user_id, amount, currency, status, stripe_session_id, type)
+       VALUES 
+        (:eleveId, :amount, :currency, 'succeeded', :intentId, 'visio_call')
+       ON CONFLICT (stripe_session_id) 
+       DO UPDATE SET status = 'succeeded'`,
+      {
+        replacements: {
+          eleveId,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency || "eur",
+          intentId
+        },
+        transaction: t
+      }
+    );
+
+    // ✅ mark session paid (après insert pour éviter incohérence métier)
+    await sequelize.query(
+      `UPDATE visio_sessions 
+       SET is_paid = true 
+       WHERE room_id = :roomId`,
+      {
+        replacements: { roomId },
+        transaction: t
+      }
+    );
+
+    logger.info("✅ Paiement visio confirmé", {
+      roomId,
+      eleveId,
+      profId,
+      amount: paymentIntent.amount
+    });
   });
 }
+
 /**
  * ❌ Gère l'échec du paiement
  */
