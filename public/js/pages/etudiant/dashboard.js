@@ -238,6 +238,17 @@ function subscribeToDomains() {
     }
   });
 
+  // ✅ Timer étudiant
+  AppState.on("timer:update", (seconds) => {
+    const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const secs = String(seconds % 60).padStart(2, "0");
+    updateTimerUI(`${mins}:${secs}`);
+  });
+
+  AppState.on("timer:reset", () => {
+    updateTimerUI("00:00");
+  });
+
   ChatService.onMessage(msg => appendMessage(msg.sender, msg.text));
 
   DocumentService.onDocument(doc => addDocument({
