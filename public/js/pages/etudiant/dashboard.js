@@ -20,7 +20,7 @@ import { updateToolButtons }      from "/js/domains/whiteboard/whiteboard.events
 // ======================================================
 let peerConnection  = null;
 let iceCandidateQueue = []; // ✅ CORRECTION 3 : file d'attente ICE
-
+let pendingSignals = [];
 const RTC_CONFIG = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
@@ -365,101 +365,111 @@ async function getWebRTCConfig() {
 // WebRTC LOGIC
 // ======================================================
 async function startPeerConnection(initiator, configOverride = null) {
+  // ── Nettoyage de l'ancienne connexion ──────────────────────────
   if (peerConnection) {
     console.log("🔄 Fermeture de l'ancienne connexion...");
     peerConnection.close();
+    peerConnection = null;
   }
-  
-  iceCandidateQueue = []; 
-  
-  // ✅ On utilise la config Twilio passée en argument, sinon on prend le STUN par défaut
+
+  iceCandidateQueue = [];
+  pendingSignals    = []; // ✅ BUG 1 — vider aussi la queue des signaux en attente
+
+  // ── Création de la PeerConnection ─────────────────────────────
   const finalConfig = configOverride || RTC_CONFIG;
   peerConnection = new RTCPeerConnection(finalConfig);
 
-  // 1. Écouteur de flux distant (doit être défini au début)
+  // 1. Flux distant
   peerConnection.ontrack = (e) => {
-    console.log("📡 Flux distant reçu ! Tentative d'affichage...");
-    if (e.streams && e.streams[0]) {
-      attachVideo("remoteVideoContainer", e.streams[0], false);
-    }
+    console.log("📡 Flux distant reçu !");
+    if (e.streams?.[0]) attachVideo("remoteVideoContainer", e.streams[0], false);
   };
 
-  // 2. Gestion des candidats ICE
+  // 2. Candidats ICE locaux
   peerConnection.onicecandidate = (e) => {
     if (e.candidate) {
-      SessionServiceEtudiant.sendSignal({ 
-        type: "ice-candidate", 
-        candidate: e.candidate 
+      SessionServiceEtudiant.sendSignal({
+        type: "ice-candidate",
+        candidate: e.candidate
       });
     }
   };
 
-  // 3. Suivi de l'état de la connexion
+  // 3. État de la connexion
   peerConnection.onconnectionstatechange = () => {
     const state = peerConnection?.connectionState;
     console.log("📶 État WebRTC :", state);
-    
+
     if (state === "connected") {
       updateStatus("🟢 Connexion vidéo établie");
     } else if (state === "failed") {
-      // ✅ Si ça échoue et que Mohamed n'est pas abonné (donc pas de Twilio)
       const config = peerConnection.getConfiguration();
-      if (config.iceServers.length <= 2) { // 2 = uniquement les serveurs STUN de Google
-         const upgrade = confirm("⚠️ Vidéo bloquée par votre réseau (International/Pare-feu).\n\nSouhaitez-vous activer l'Abonnement Entraide pour débloquer la connexion ?");
-         if (upgrade) {
-            // Redirection vers ta route Stripe
-            window.location.href = "/pages/etudiant/dashboard.html?show_subscription=true";
-         }
+      if (config.iceServers.length <= 2) {
+        const upgrade = confirm(
+          "⚠️ Vidéo bloquée par votre réseau.\n\nActiver l'abonnement pour débloquer ?"
+        );
+        if (upgrade) {
+          window.location.href = "/pages/etudiant/dashboard.html?show_subscription=true";
+        }
       }
       cleanupPeerSession("Échec de connexion vidéo.");
     }
   };
 
-  // 4. Capture et envoi du flux local (caméra + micro)
+  // 4. Flux local (caméra + micro)
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    
-    // On ajoute les pistes à la connexion AVANT de créer l'offre
-    stream.getTracks().forEach(track => {
-      peerConnection.addTrack(track, stream);
-    });
-    
+    stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
     attachVideo("localVideoContainer", stream, true);
-    console.log("📸 Caméra locale activée et tracks ajoutés.");
+    console.log("📸 Caméra locale activée.");
   } catch (err) {
     console.error("❌ Erreur média:", err);
-    updateStatus("❌ Média inaccessible.");
-    return; // On arrête tout si la caméra ne peut pas être activée
+    updateStatus("❌ Caméra/micro inaccessible.");
+    return;
   }
 
-  // 5. Phase de négociation (Initiateur)
+  // 5. Négociation (initiateur uniquement)
   if (initiator) {
     try {
-      console.log("🚀 Création de l'offre (Initiateur)");
+      console.log("🚀 Création de l'offre...");
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
+      // ✅ BUG 2 — on envoie bien { type, sdp } pour que RTCSessionDescription soit valide
       SessionServiceEtudiant.sendSignal({ type: "offer", sdp: offer.sdp });
     } catch (err) {
-      console.error("❌ Erreur lors de la création de l'offre:", err);
+      console.error("❌ Erreur création offre:", err);
+    }
+  }
+
+  // ✅ BUG 1 — Traiter les signaux reçus pendant l'initialisation
+  if (pendingSignals.length > 0) {
+    console.log(`🔄 Traitement de ${pendingSignals.length} signal(s) en attente...`);
+    const queue = [...pendingSignals];
+    pendingSignals = [];
+    for (const signal of queue) {
+      await handleIncomingSignal(signal);
     }
   }
 }
-
 /**
  * Gestionnaire de signalisation (SDP & ICE)
  */
 async function handleIncomingSignal(signal) {
+  // ✅ BUG 1 — Queue au lieu de return
   if (!peerConnection) {
-    console.warn("⚠️ Signal reçu mais peerConnection n'est pas initialisée.");
+    console.warn("⚠️ Signal reçu avant peerConnection — mise en queue:", signal.type);
+    pendingSignals.push(signal);
     return;
   }
 
   try {
     if (signal.type === "offer") {
       console.log("📩 Offre reçue, configuration de la remote description...");
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+      // ✅ BUG 2 — { type, sdp } explicite au lieu de passer signal directement
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription({ type: signal.type, sdp: signal.sdp })
+      );
 
-      // On applique les candidats ICE qui sont arrivés en avance
       for (const candidate of iceCandidateQueue) {
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       }
@@ -471,7 +481,10 @@ async function handleIncomingSignal(signal) {
 
     } else if (signal.type === "answer") {
       console.log("📩 Réponse reçue !");
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+      // ✅ BUG 2 — idem
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription({ type: signal.type, sdp: signal.sdp })
+      );
 
       for (const candidate of iceCandidateQueue) {
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
@@ -480,7 +493,6 @@ async function handleIncomingSignal(signal) {
 
     } else if (signal.type === "ice-candidate") {
       if (!peerConnection.remoteDescription) {
-        // Trop tôt : on met en file d'attente
         iceCandidateQueue.push(signal.candidate);
       } else {
         await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
@@ -505,17 +517,84 @@ function logout() {
 // ======================================================
 // HELPERS
 // ======================================================
+// ✅ BUG 1 — Ajouter en haut du fichier avec iceCandidateQueue
+let pendingSignals = [];
+
+
+// ✅ BUG 1 — handleIncomingSignal : queue au lieu de return
+async function handleIncomingSignal(signal) {
+  if (!peerConnection) {
+    console.warn("⚠️ Signal reçu avant peerConnection — mise en queue:", signal.type);
+    pendingSignals.push(signal);
+    return;
+  }
+
+  try {
+    if (signal.type === "offer") {
+      console.log("📩 Offre reçue...");
+      // ✅ BUG 2 — forcer { type, sdp } explicitement
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription({ type: signal.type, sdp: signal.sdp })
+      );
+
+      for (const c of iceCandidateQueue) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(c));
+      }
+      iceCandidateQueue = [];
+
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      SessionServiceEtudiant.sendSignal({ type: "answer", sdp: answer.sdp });
+
+    } else if (signal.type === "answer") {
+      console.log("📩 Réponse reçue...");
+      // ✅ BUG 2 — idem
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription({ type: signal.type, sdp: signal.sdp })
+      );
+
+      for (const c of iceCandidateQueue) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(c));
+      }
+      iceCandidateQueue = [];
+
+    } else if (signal.type === "ice-candidate") {
+      if (!peerConnection.remoteDescription) {
+        iceCandidateQueue.push(signal.candidate);
+      } else {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+      }
+    }
+  } catch (err) {
+    console.error("❌ Erreur signal WebRTC:", err);
+  }
+}
+
+
+// ✅ BUG 3 — cleanupPeerSession : stopper les tracks proprement
 function cleanupPeerSession(msg) {
-  // ✅ Arrêter le timer
-    AppState.stopTimer?.();
+  AppState.stopTimer?.();
+
+  // Couper les tracks locaux (éteint la caméra)
+  const localContainer = document.getElementById("localVideoContainer");
+  const localVideo = localContainer?.querySelector?.("video") || localContainer;
+  if (localVideo?.srcObject) {
+    localVideo.srcObject.getTracks().forEach(t => t.stop());
+    localVideo.srcObject = null;
+  }
+
   if (peerConnection) { peerConnection.close(); peerConnection = null; }
-  iceCandidateQueue             = [];
+
+  iceCandidateQueue = [];
+  pendingSignals    = []; // ✅ vider aussi
+
   AppState.currentStudentRoomId = null;
   AppState.sessionInProgress    = false;
-  const remote = document.getElementById("remoteVideoContainer"); // ← était "remoteVideo"
-  const local  = document.getElementById("localVideoContainer");
+
+  const remote = document.getElementById("remoteVideoContainer");
   if (remote) remote.srcObject = null;
-  if (local)  local.innerHTML  = "";
+  if (localContainer) localContainer.innerHTML = "";
+
   showElement("cancel-match-btn", false);
   updateStatus(msg);
   resetChat();

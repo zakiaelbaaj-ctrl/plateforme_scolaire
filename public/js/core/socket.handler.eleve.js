@@ -2,7 +2,7 @@ import { socketService } from "./socket.service.js";
 import { AppState } from "./state.js";
 import { SessionService } from "../services/session.service.js";
 import { WSLogger } from "./ws.logger.js";
-import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
+import { WhiteboardService } from "../domains/whiteboard/whiteboard.service.js";
 import { CallStateMachine } from "../domains/call/call.state.machine.js";
 import { CallService } from "../domains/call/call.service.js";
 
@@ -59,7 +59,6 @@ case "twilioRemoteTracks":
   break;
       case "invoice:ready": {
   console.log("🧾 Facture disponible:", data.url);
-  
   // Afficher notification avec lien de téléchargement
   const container = document.getElementById("invoice-container") 
                  ?? document.getElementById("stripe-status-message");
@@ -76,7 +75,7 @@ case "twilioRemoteTracks":
     `;
   }
   break;
-}
+   }
   // ✅ Ces events terminent la session ET stoppent le timer
       case "callEnded":
       case "session:stop":
@@ -109,11 +108,6 @@ case "twilioRemoteTracks":
         case "userLeft":
      // ✅ ignoré silencieusement (pas d'action requise)
         break;
-         
-      // 👉 Gestion de la facture pour l'élève
-     case "invoice:ready":
-        console.info(`[FACTURE] Document disponible : ${data.url}`);
-        
         // 1. Création de la carte de notification
         const toast = document.createElement("div");
         toast.innerHTML = `
