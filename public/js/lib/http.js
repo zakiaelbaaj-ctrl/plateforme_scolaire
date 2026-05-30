@@ -149,7 +149,7 @@ export async function request(
   } else {
     // fallback to legacy adminToken in localStorage for compatibility
     try {
-      token = token || (localStorage && localStorage.getItem && localStorage.getItem("adminToken"));
+      token = token || (localStorage && localStorage.getItem && localStorage.getItem("token"));
     } catch (e) {
       token = null;
     }
@@ -292,14 +292,14 @@ export async function stream(path, { onChunk, onComplete, onError, decode = true
 }
 
 /* ===========================
-   Default export (convenience)
+   Export nommÃÂ© pour compatibilitÃÂ©
    =========================== */
-export default {
+export const http = {
   request,
   get,
   post,
   put,
-  del,
+  del: del, // On le mappe sur 'del' pour la cohÃÂ©rence
   stream,
   buildQuery,
   setAuthProvider,
@@ -307,4 +307,7 @@ export default {
   HTTPError,
   TimeoutError,
 };
+
+// On garde aussi l'export par dÃÂ©faut au cas oÃÂ¹ d'autres fichiers l'utilisent
+export default http;
 

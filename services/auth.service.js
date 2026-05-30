@@ -1,7 +1,5 @@
-// services/auth.service.js
 import bcrypt from "bcryptjs";
-import { sequelize as db } from "../config/index.js";
-import { QueryTypes } from "sequelize"; // Ajout de l'import pour les types de requêtes
+import User from "../models/user.model.js"; // Import du modèle Sequelize
 import logger from "../config/logger.js";
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS || 12);
@@ -27,64 +25,28 @@ export async function comparePassword(password, hash) {
 }
 
 // ------------------------------
-// CREATE USER
+// CREATE USER (Version Sequelize)
 // ------------------------------
-
-export async function createUser({
-  username,
-  prenom,
-  nom,
-  email,
-  telephone,
-  pays,
-  ville,
-  password,
-  role,
-  stripe_customer_id,
-  stripe_account_id,
-  is_active
-}) {
-  const normalizedEmail = normalizeEmail(email);
-  const hashed = await hashPassword(password);
-
+export async function createUser(userData) {
   try {
-    // Correction de la double déclaration et de la syntaxe du template string
-    const [result] = await db.query(
-      `
-      INSERT INTO users (
-        username, prenom, nom, email, telephone, pays, ville, 
-        password, role, stripe_customer_id, stripe_account_id, 
-        is_active, has_payment_method, date_inscription
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()) 
-      RETURNING id, username, prenom, nom, email, role, stripe_customer_id, stripe_account_id, is_active, has_payment_method
-      `,
-      {
-        replacements: [
-          username || null,               // 1
-          prenom,                         // 2
-          nom,                            // 3
-          normalizedEmail,                // 4
-          telephone || null,              // 5
-          pays || "France",               // 6
-          ville || null,                  // 7
-          hashed,                         // 8
-          role || "eleve",                // 9
-          stripe_customer_id || null,     // 10
-          stripe_account_id || null,      // 11
-          is_active ?? (role === "eleve"),// 12
-          false                           // 13: has_payment_method
-        ],
-        type: QueryTypes.INSERT
-      }
-    );
+    const normalizedEmail = normalizeEmail(userData.email);
+    
+    // On laisse le modèle gérer le hachage (via beforeCreate)
+    // Seul le statut est géré ici manuellement pour la logique métier
+    const isStudent = (userData.role === "eleve" || userData.role === "etudiant");
 
-    const user = result && result.length > 0 ? result[0] : null;
-    logger.info("Utilisateur créé avec succès", { userId: user?.id, role: user?.role });
-    return user;
+    const user = await User.create({
+      ...userData,
+      email: normalizedEmail,
+      statut: isStudent ? 'active' : 'pending',
+      is_active: isStudent
+    });
+
+    logger.info("Utilisateur créé avec succès", { userId: user.id, role: user.role });
+    return user.toJSON(); // .toJSON() retire automatiquement le password (voir modèle)
 
   } catch (err) {
-    if (err?.original?.code === "23505" || err?.code === "23505") {
+    if (err.name === 'SequelizeUniqueConstraintError') {
       throw new Error("Email ou nom d'utilisateur déjà utilisé");
     }
     logger.error("createUser error:", err);
@@ -93,55 +55,28 @@ export async function createUser({
 }
 
 // ------------------------------
-// FIND BY EMAIL
+// FIND BY EMAIL (Modifié pour fusionner les deux besoins)
 // ------------------------------
-export async function findByEmail(email) {
+export async function findByEmail(email, includePassword = false) {
   const normalizedEmail = normalizeEmail(email);
+  const options = { where: { email: normalizedEmail } };
   
-  const result = await db.query(
-    `SELECT 
-        id, username, prenom, nom, email, role, 
-        is_active, has_payment_method, stripe_customer_id, stripe_account_id 
-     FROM users 
-     WHERE email = ?`, 
-    { 
-      replacements: [normalizedEmail],
-      type: QueryTypes.SELECT 
-    }
-  );
+  if (includePassword) {
+    options.attributes = { include: ['password'] };
+    return await User.scope(null).findOne(options); // ← bypass defaultScope
+  }
 
-  return result && result.length > 0 ? result[0] : null;
+  return await User.findOne(options);
 }
-
 // ------------------------------
-// FIND BY EMAIL + PASSWORD
-// ------------------------------
-export async function findByEmailWithPassword(email) {
-  const normalizedEmail = normalizeEmail(email);
-  const result = await db.query(
-    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password, stripe_customer_id, has_payment_method, is_active FROM users WHERE email = ?`,
-    { 
-      replacements: [normalizedEmail],
-      type: QueryTypes.SELECT
-    }
-  );
-  return result && result.length > 0 ? result[0] : null;
-}
-
-// ------------------------------
-// FIND BY USERNAME + PASSWORD
+// FIND BY USERNAME (L'emplacement est ICI)
 // ------------------------------
 export async function findByUsernameWithPassword(username) {
-  const result = await db.query(
-    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, password, stripe_customer_id, has_payment_method, is_active FROM users WHERE username = ?`,
-    { 
-      replacements: [username],
-      type: QueryTypes.SELECT
-    }
-  );
-  return result && result.length > 0 ? result[0] : null;
+  return await User.scope(null).findOne({  // ← scope(null) bypass le defaultScope
+    where: { username }, 
+    attributes: { include: ['password'] } 
+  });
 }
-
 // ------------------------------
 // VERIFY CREDENTIALS
 // ------------------------------
@@ -149,13 +84,20 @@ export async function verifyCredentials({ email, username, password }) {
   let user = null;
 
   if (email) {
-    user = await findByEmailWithPassword(email);
+    // On passe 'true' pour récupérer le password nécessaire à la comparaison
+    user = await findByEmail(email, true);
   } else if (username) {
-    user = await findByUsernameWithPassword(username);
+    user = await User.findOne({ 
+      where: { username }, 
+      attributes: { include: ['password'] } 
+    });
   }
 
   if (!user) return null;
 
+  // services/auth.service.js
+
+// ... à la fin de verifyCredentials
   const valid = await comparePassword(password, user.password);
 
   if (!valid) {
@@ -163,75 +105,58 @@ export async function verifyCredentials({ email, username, password }) {
     return null;
   }
 
-  const { password: _p, ...safe } = user;
-  return safe;
+  // ✅ Utilise .get({ plain: true }) pour transformer l'instance Sequelize 
+  // en un objet simple que ton contrôleur comprendra.
+  const userSafe = user.get({ plain: true });
+  delete userSafe.password; 
+  
+  return userSafe;
 }
 
 // ------------------------------
 // FIND BY ID
 // ------------------------------
 export async function findById(id) {
-  const result = await db.query(
-    `SELECT id, username, prenom, nom, email, telephone, pays, ville, role, stripe_customer_id, has_payment_method FROM users WHERE id = ?`,
-    { 
-      replacements: [id],
-      type: QueryTypes.SELECT
-    }
-  );
-  return result && result.length > 0 ? result[0] : null;
+  const user = await User.findByPk(id);
+  return user ? user.toJSON() : null;
 }
 
 // ------------------------------
 // RESET PASSWORD FUNCTIONS
 // ------------------------------
-/**
- * Sauvegarde le token et définit l'expiration à +1 heure
- */
 export async function saveResetToken(userId, token) {
-  // Calcul interne : 3 600 000 ms = 1 heure
-  const expires = new Date(Date.now() + 3600000); 
+  const expires = new Date(Date.now() + 3600000); // +1 heure
   
-  await db.query(
-    `UPDATE users 
-     SET "resetToken" = ?, "resetTokenExpires" = ? 
-     WHERE id = ?`,
-    { 
-      replacements: [token, expires, userId],
-      type: QueryTypes.UPDATE
-    }
+  await User.update(
+    { resetToken: token, resetTokenExpires: expires },
+    { where: { id: userId } }
   );
 }
 
 export async function findByResetToken(token) {
-  const result = await db.query(
-    `SELECT id AS "userId", "resetToken", "resetTokenExpires" FROM users WHERE "resetToken" = ?`,
-    { 
-      replacements: [token],
-      type: QueryTypes.SELECT
-    }
-  );
-  const user = result && result.length > 0 ? result[0] : null;
-  if (!user || (user.resetTokenExpires && new Date(user.resetTokenExpires) < new Date())) return null;
+  const user = await User.findOne({
+    where: { resetToken: token }
+  });
+
+  if (!user || (user.resetTokenExpires && new Date(user.resetTokenExpires) < new Date())) {
+    return null;
+  }
+  
   return user;
 }
 
 export async function updatePassword(userId, newPassword) {
-  const hashed = await hashPassword(newPassword);
-  await db.query(
-    `UPDATE users SET password = ? WHERE id = ?`, 
-    { 
-      replacements: [hashed, userId],
-      type: QueryTypes.UPDATE
-    }
-  );
+  // Le hachage sera fait automatiquement par le hook 'beforeUpdate' du modèle
+  const user = await User.findByPk(userId);
+  if (user) {
+    user.password = newPassword;
+    await user.save();
+  }
 }
 
 export async function clearResetToken(userId) {
-  await db.query(
-    `UPDATE users SET "resetToken" = NULL, "resetTokenExpires" = NULL WHERE id = ?`, 
-    { 
-      replacements: [userId],
-      type: QueryTypes.UPDATE
-    }
+  await User.update(
+    { resetToken: null, resetTokenExpires: null },
+    { where: { id: userId } }
   );
 }

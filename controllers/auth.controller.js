@@ -115,27 +115,74 @@ export async function registerController(req, res) {
 // ---------------- LOGIN ----------------
 export async function loginController(req, res) {
   try {
+    // 🔍 DEBUG TEMPORAIRE
+    console.log(">>> BODY REÇU:", req.body);
+
     const { email, username, password } = req.body;
+    console.log(">>> email:", email, "| username:", username, "| password:", !!password);
 
-    const user = email 
-  ? await authService.findByEmailWithPassword(email) 
-  : await authService.findByUsernameWithPassword(username);
-    if (!user) return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
+    // 1. Recherche de l'utilisateur
+    // On passe 'true' en deuxième argument pour inclure le password via Sequelize
+    let user;
+    if (email) {
+      user = await authService.findByEmail(email, true);
+    } else if (username) {
+      user = await authService.findByUsernameWithPassword(username);
+    }
+
+    // 2. Vérifications de base
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
+    }
+
+    // 3. Vérification du statut (Spécifique aux professeurs)
+    // Note : Avec Sequelize, user est une instance, on y accède normalement
     if (!user.is_active && (user.role === "prof" || user.role === "professeur")) {
-    return res.status(403).json({ 
-    success: false, 
-    message: "Votre compte est en attente de validation par l'administrateur." 
-  });
-}
+      return res.status(403).json({ 
+        success: false, 
+        message: "Votre compte est en attente de validation par l'administrateur." 
+      });
+    }
 
+    // 4. Comparaison du mot de passe
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
+    if (!valid) {
+      return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
+    }
+      // 🔒 Vérification Stripe : élève doit avoir une carte
+    console.log(">>> LOGIN user:", user.id, user.role, user.stripe_customer_id);
+      let has_payment_method = false;
+    if (user.role === "eleve" || user.role === "etudiant") {
+      if (user.stripe_customer_id) {
+        const customer = await stripe.customers.retrieve(user.stripe_customer_id);
+        has_payment_method = !!customer.invoice_settings?.default_payment_method;
+      }
+    }
+    // 5. Génération des tokens
+    // On utilise user.id et user.email directement depuis l'instance Sequelize
+    const tokens = await tokenService.generateTokens({ 
+      userId: user.id, 
+      email: user.email, 
+      role: user.role 
+    });
 
-    const tokens = await tokenService.generateTokens({ userId: user.id, email: user.email, role: user.role });
-    return res.json({ success: true, user: sanitizeUser(user), ...tokens });
+    // 6. Réponse (On transforme l'instance en JSON pur pour sanitizeUser)
+    
+    // 1. Convertir l'instance Sequelize en JSON pur
+    const userData = user.get({ plain: true });
 
+    // 2. Forcer la valeur fraîchement calculée depuis Stripe dans l'objet
+    userData.has_payment_method = has_payment_method; 
+
+    // 3. Nettoyer (enlever password, etc.) et envoyer
+    return res.json({ 
+      success: true, 
+      user: sanitizeUser(userData), 
+      ...tokens 
+    });
+  // ==========================================
   } catch (err) {
-    logger.error("loginController error:", err);
+    console.error("Détail de l'erreur login:", err);
     return res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 }

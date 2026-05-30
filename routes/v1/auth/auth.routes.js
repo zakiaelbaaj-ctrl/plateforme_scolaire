@@ -15,7 +15,6 @@ import {
 
 // Controllers
 import { resetPasswordController } from "#controllers/resetPasswordController.js";
-
 // Middlewares
 import { requireAuth } from "#middlewares/requireAuth.js";
 import authOptional from "#middlewares/authOptional.js";

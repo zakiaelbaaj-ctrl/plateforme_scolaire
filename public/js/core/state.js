@@ -4,7 +4,7 @@
 import { CallStateMachine } from "../domains/call/call.state.machine.js";
 
 // ======================================================
-// APP STATE — SINGLE SOURCE OF TRUTH (IMPROVED)
+// APP STATE ✅ — SINGLE SOURCE OF TRUTH (IMPROVED)
 // ======================================================
 export const AppState = {
 
@@ -31,7 +31,7 @@ export const AppState = {
     this._notify("user:update", this.currentUser);
   },
   // ==================================================
-  // ÉTUDIANTS EN LIGNE (PEER-TO-PEER)
+  // ETUDIANTS EN LIGNE (PEER-TO-PEER)
   // ==================================================
   onlineStudents: [],
 
@@ -116,12 +116,13 @@ export const AppState = {
    // ✅ PROTECTION CONTRE LES BOUCLES INFINIES
     if (this.sessionInProgress && this.currentRoomId === roomId) {
       console.warn("⚠️ Session déjà en cours pour cette room, ignore le startSession");
-      return; 
-    }
-    // ✅ Si on change de room, on reset proprement l'ancienne session
-  if (this.sessionInProgress && this.currentRoomId !== roomId) {
-    console.warn("⚠️ Nouvelle room détectée, reset de l'ancienne session");
-    this.endSession();
+return;
+}
+
+// ✅ Si on change de room, on reset proprement l'ancienne session
+if (this.sessionInProgress && this.currentRoomId !== roomId) {
+  console.warn("⚠️ Nouvelle room détectée, reset de l'ancienne session");
+  this.endSession();
   }
     this.sessionInProgress = true;
     this.currentRoomId = roomId;
@@ -139,11 +140,11 @@ export const AppState = {
   this.currentRoomId = null;
   this.selectedStudentId = null;
 
-  // ✅ Remet la machine d'état à idle
-  CallStateMachine.reset();
+ // ✅ Remet la machine d'état à idle
+CallStateMachine.reset();
 
-  // ✅ Notifie les listeners
-  this._notify("session:end");
+// ✅ Notifie les listeners
+this._notify("session:end");
 },
   // ==================================================
   // TIMER
@@ -222,11 +223,11 @@ export const AppState = {
       sender: sender || "Inconnu"
     };
 
-    console.log("🔥 AppState.addDocument EXECUTÉ:", doc);
+    console.log("🔥 AppState.addDocument EXECUTÉ :", doc);
 
-    this.documents = [...this.documents, doc]; // ✅ immutabilité
-    this._notify("documents:new", doc);
-  },
+this.documents = [...this.documents, doc]; // ✅ immutabilité
+this._notify("documents:new", doc);
+},
 
   clearDocuments() {
     this.documents = [];
@@ -283,7 +284,7 @@ export const AppState = {
 
     this._notify("app:reset");
 
-    console.log("♻️ AppState réinitialisé");
+    console.log("🔥 AppState réinitialisé");
   },
 
   // ==================================================
@@ -314,7 +315,7 @@ export const AppState = {
 
     const listenersCopy = [...list]; // ✅ safe dispatch
 
-    console.log("📡 _notify:", event, payload);
+    console.log("📥 _notify:", event, payload);
 
     for (const cb of listenersCopy) {
       try {

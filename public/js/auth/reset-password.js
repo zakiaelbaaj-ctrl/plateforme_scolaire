@@ -47,7 +47,7 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
         
         if(!profActuel || !profActuel.salleAttente || profActuel.salleAttente.length === 0) {
             const li = document.createElement("li");
-            li.textContent = "Aucun Ã©lÃ¨ve en attente.";
+            li.textContent = "Aucun élève en attente.";
             salleUL.appendChild(li);
             return;
         }
@@ -66,11 +66,11 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
     }
     setInterval(afficherSalleAttente, 1000);
 
-    // --- Accepter la visio d'un Ã©lÃ¨ve ---
+    // --- Accepter la visio d'un élève ---
     async function accepterVisio(eleveNom, index, profActuel, profs) {
         try {
             eleveConnecte = eleveNom;
-            document.getElementById("eleveConnecte").innerHTML = `<span style="color: #28a745;">Ã‰lÃ¨ve: ${eleveNom}</span>`;
+            document.getElementById("eleveConnecte").innerHTML = `<span style="color: #28a745;">Élève: ${eleveNom}</span>`;
             document.getElementById("visioStatus").textContent = "Initialisation WebRTC...";
             
             pc = new RTCPeerConnection({
@@ -96,7 +96,7 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
                 }
             };
             
-            // CrÃ©er l'offre
+            // Créer l'offre
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             ws.send(JSON.stringify({
@@ -112,7 +112,7 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
             localStorage.setItem("professeurs", JSON.stringify(profs));
             
             visioActive = true;
-            document.getElementById("visioStatus").textContent = "Visio initiÃ©e...";
+            document.getElementById("visioStatus").textContent = "Visio initiée...";
             document.getElementById("btnToggleVisio").disabled = false;
             document.getElementById("btnTerminerVisio").disabled = false;
             document.getElementById("chatInput").disabled = false;
@@ -133,7 +133,7 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
         if(data.type === 'offer') {
             try {
                 eleveConnecte = data.sender;
-                document.getElementById("eleveConnecte").innerHTML = `<span style="color: #28a745;">Ã‰lÃ¨ve: ${data.sender}</span>`;
+                document.getElementById("eleveConnecte").innerHTML = `<span style="color: #28a745;">Élève: ${data.sender}</span>`;
                 
                 pc = new RTCPeerConnection({
                     iceServers: [{urls: ['stun:stun.l.google.com:19302']}]
@@ -207,7 +207,7 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
         }
     };
 
-    // --- Toggle visio (dÃ©sactiver/rÃ©activer) ---
+    // --- Toggle visio (désactiver/réactiver) ---
     window.toggleVisio = function() {
         if(!pc || !localVideo.srcObject) return;
         visioActif = !visioActif;
@@ -215,7 +215,7 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
         if(remoteVideo.srcObject) {
             remoteVideo.srcObject.getTracks().forEach(track => track.enabled = visioActif);
         }
-        document.getElementById("btnToggleVisio").textContent = visioActif ? "ðŸŽ¥ DÃ©sactiver la visio" : "ðŸŽ¥ RÃ©activer la visio";
+        document.getElementById("btnToggleVisio").textContent = visioActif ? "🔧 Désactiver la visio" : "🔧 Réactiver la visio";
     };
 
     // --- Terminer la visio ---
@@ -234,11 +234,11 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
         visioActive = false;
         
         document.getElementById("videoContainer").style.display = "none";
-        document.getElementById("eleveConnecte").innerHTML = "Aucun Ã©lÃ¨ve en conversation";
-        document.getElementById("visioStatus").textContent = "Visio terminÃ©e";
+        document.getElementById("eleveConnecte").innerHTML = "Aucun élève en conversation";
+        document.getElementById("visioStatus").textContent = "Visio terminée";
         document.getElementById("btnToggleVisio").disabled = true;
         document.getElementById("btnTerminerVisio").disabled = true;
-        document.getElementById("btnToggleVisio").textContent = "ðŸŽ¥ DÃ©sactiver la visio";
+        document.getElementById("btnToggleVisio").textContent = "🔧 Désactiver la visio";
         document.getElementById("chatInput").disabled = true;
         document.getElementById("btnSendChat").disabled = true;
         document.getElementById("chatBox").innerHTML = "";
@@ -275,17 +275,17 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
         
         if(docs.length === 0) {
             const li = document.createElement("li");
-            li.textContent = "Aucun document reÃ§u.";
+            li.textContent = "Aucun document reçu.";
             liste.appendChild(li);
             return;
         }
         
         docs.forEach((doc, index) => {
             const li = document.createElement("li");
-            li.innerHTML = `ðŸ“„ De <b>${doc.sender}</b>: ${doc.filename}`;
+            li.innerHTML = `📎 De <b>${doc.sender}</b>: ${doc.filename}`;
             
             const btn = document.createElement("button");
-            btn.textContent = "ðŸ—‘ Supprimer";
+            btn.textContent = "🔧 Supprimer";
             btn.className = "danger";
             btn.onclick = () => {
                 docs.splice(index, 1);
@@ -299,7 +299,7 @@ if(window.location.pathname.endsWith("prof_dashboard.html")) {
     }
     setInterval(afficherDocsProf, 2000);
 
-    // --- DÃ©connexion ---
+    // --- Déconnexion ---
     window.logout = function() {
         if(visioActive) terminerVisio();
         localStorage.removeItem("dernier_connecte");

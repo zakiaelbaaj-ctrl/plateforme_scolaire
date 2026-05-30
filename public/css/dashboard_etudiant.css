@@ -281,6 +281,7 @@ body {
 }
 
 /* Barre d'outils (Pinceaux, Couleurs, etc.) */
+/* ❌ Avant */
 .whiteboard-tools {
     padding: 12px;
     background: #f8faf8;
@@ -288,6 +289,33 @@ body {
     gap: 10px;
     justify-content: center;
     border-top: 1px solid var(--border-light);
+}
+
+/* ✅ Après */
+.whiteboard-tools {
+    padding: 12px;
+    background: #f8faf8;
+    display: flex;
+    flex-direction: row;    /* ✅ horizontal */
+    flex-wrap: wrap;        /* ✅ retour à la ligne si trop étroit */
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    border-top: 1px solid var(--border-light);
+}
+
+/* ✅ AJOUTER — groupe d'outils aussi en ligne */
+.wb-tools-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ✅ AJOUTER — séparateur visuel entre groupes */
+.wb-tools-group + .wb-tools-group {
+    padding-left: 10px;
+    border-left: 1px solid var(--border-light);
 }
 /* 8. CHAT & DOCUMENTS */
 .card--chat { height: 400px; display: flex; flex-direction: column; }
@@ -417,8 +445,12 @@ body {
     padding: 20px;
     display: flex;
     flex-direction: column;
+    animation: fadeInScale 0.3s ease-out forwards;
 }
-
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
 .whiteboard-fullscreen .whiteboard-canvas-wrapper {
     flex: 1;
     height: auto !important;
@@ -457,7 +489,9 @@ body {
 .doc-list li a::before {
     content: '📄'; /* Icône auto pour les fichiers */
 }
-
+[title] {
+    position: relative;
+}
 /* --- TOOLTIPS (Pour les boutons d'icônes) --- */
 [title]:hover::after {
     content: attr(title);

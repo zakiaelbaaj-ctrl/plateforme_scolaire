@@ -38,13 +38,14 @@ class _StudentMatchService {
     }
 
     // 🔴 abonnement requis
-    if (ws.subscriptionStatus !== "active") {
-      return safeSend(ws, {
-        type: "error",
-        code: "NO_SUBSCRIPTION",
-        message: "Abonnement requis pour accéder au matching étudiant."
-      });
-    }
+const DEV_FORCE_SUBSCRIPTION = true; // ← mettre false en prod
+if (!DEV_FORCE_SUBSCRIPTION && ws.subscriptionStatus !== "active") {
+  return safeSend(ws, {
+    type: "error",
+    code: "NO_SUBSCRIPTION",
+    message: "Abonnement requis pour accéder au matching étudiant."
+  });
+}
 
     // 🔴 déjà en session
     if (ws.studentRoomId) {

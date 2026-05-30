@@ -46,7 +46,7 @@ async function loadProfs() {
     state.profs = items.map(p => ({
       ...p,
       fullname: `${p.prenom || ""} ${p.nom || ""}`.trim(),
-      matiere: p.matiere || "Non dÃ©fini",
+      matiere: p.matiere || "Non dÃÂ©fini",
       heures_en_ligne: p.heures_en_ligne || 0
     }));
     applyFilter();
@@ -76,7 +76,7 @@ function renderTable() {
   state.filtered.forEach((p, idx) => {
     const tr = document.createElement("tr");
     const statusClass = p.statut === "en_attente" ? "pending" : "validated";
-    const statusText = p.statut === "en_attente" ? "â³ En attente" : "âœ… ValidÃ©";
+    const statusText = p.statut === "en_attente" ? "Ã¢ÂÂ³ En attente" : "Ã¢Åâ¦ ValidÃÂ©";
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td>${escapeHtml(p.fullname)}</td>
@@ -124,7 +124,7 @@ el("#profTable").addEventListener("click", (ev) => {
   } else if (action === "delete") {
     modal.open({
       title: "Supprimer le professeur",
-      message: `Cette action est dÃ©finitive pour "${prof.fullname}". Continuer ?`,
+      message: `Cette action est dÃÂ©finitive pour "${prof.fullname}". Continuer ?`,
       confirmText: "Supprimer",
       onConfirmCallback: async () => {
         try {

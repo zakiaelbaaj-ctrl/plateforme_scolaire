@@ -18,28 +18,40 @@ function shouldLog(level) {
 
 export const WSLogger = {
   debug(...args) {
-    if (shouldLog("debug")) console.log("ðŸŸ¦ WS DEBUG:", ...args);
+    if (shouldLog("debug")) console.log("🔧 WS DEBUG:", ...args);
   },
 
   info(...args) {
-    if (shouldLog("info")) console.log("ðŸŸ© WS INFO:", ...args);
+    if (shouldLog("info")) console.log("📡 WS INFO:", ...args);
   },
 
+  // 🌟 LE CODE EST MODIFIÉ ICI
   warn(...args) {
-    if (shouldLog("warn")) console.warn("ðŸŸ¨ WS WARN:", ...args);
+    if (!shouldLog("warn")) return;
+
+    // Liste noire des types d'événements à ignorer silencieusement
+    const ignoredTypes = ['userLeftRoom', 'tableauClear'];
+
+    // args[0] est "Type non géré:", args[1] est le nom de l'événement (ex: 'userLeftRoom')
+    const eventType = args[1]; 
+
+    // Si le type d'événement est dans notre liste noire, on sort sans rien afficher
+    if (ignoredTypes.includes(eventType)) {
+      return;
+    }
+
+    console.warn("⚠️ WS WARN:", ...args);
   },
 
   error(...args) {
-    console.error("ðŸŸ¥ WS ERROR:", ...args);
+    console.error("❌ WS ERROR:", ...args);
   },
 
   raw(data) {
-    // logs payload brut seulement en dev
     if (!isProd) {
-      console.log("ðŸ“© WS RAW:", data);
+      console.log("📦 WS RAW:", data);
     }
   },
 
   isProd
 };
-

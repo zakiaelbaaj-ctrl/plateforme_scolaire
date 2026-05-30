@@ -16,8 +16,14 @@ class SocketHandlerEleve {
     if (!data || !data.type) return;
     WSLogger.debug("FULL DATA:", data);
     WSLogger.debug("HANDLER ELEVE RECEIVE:", data.type);
-
+    if (data.type.startsWith("student:")) {
+  handleStudentSocketMessage(data);
+  return;
+}
     switch (data.type) {
+      case "ws:status":
+  AppState._notify("ws:status", data);
+  break;
       case "TRANSPORT_OPEN": this.onTransportOpen(); break;
       case "onlineProfessors":
       case "professorsList":
@@ -27,13 +33,12 @@ class SocketHandlerEleve {
        case "documentReceived":
        case "newDocument": {
       console.log("📥 document reçu socket:", data);
-
       const raw = data.document ?? data;
 
       const normalizedDoc = {
       fileName: raw.fileName ?? raw.name,
       fileData: raw.fileData ?? raw.data,
-      sender: raw.userName ?? raw.sender   // ✅ FIX ICI
+      sender: raw.userName ?? raw.sender   // ✔️ FIX ICI
       };
 
       console.log("📦 doc normalisé:", normalizedDoc);
@@ -46,7 +51,7 @@ class SocketHandlerEleve {
   break;
 
 case "twilioToken":
-  AppState.startTimer(); // ✅ Timer démarre uniquement quand Twilio confirme
+  AppState.startTimer(); // ✔️ Timer démarre uniquement quand Twilio confirme
   CallService.handleEvent(data);
   break;
 
@@ -58,7 +63,7 @@ case "twilioRemoteTracks":
   CallService.handleEvent(data);
   break;
       case "invoice:ready": {
-  console.log("🧾 Facture disponible:", data.url);
+  console.log("📥 Facture disponible:", data.url);
   // Afficher notification avec lien de téléchargement
   const container = document.getElementById("invoice-container") 
                  ?? document.getElementById("stripe-status-message");
@@ -66,7 +71,7 @@ case "twilioRemoteTracks":
   if (container) {
     container.innerHTML = `
       <div class="invoice-box">
-        <p>🧾 <strong>Cours terminé</strong></p>
+        <p>📥 <strong>Cours terminé</strong></p>
         <p>Durée : ${data.dureeMinutes} min | Montant : ${data.montant}€</p>
         <a href="${data.url}" target="_blank" class="btn-primary">
           📥 Télécharger ma facture
@@ -76,11 +81,11 @@ case "twilioRemoteTracks":
   }
   break;
    }
-  // ✅ Ces events terminent la session ET stoppent le timer
+  // ✔️ Ces events terminent la session ET stoppent le timer
       case "callEnded":
       case "session:stop":
       case "endSession":
-        console.log("🛑 [Élève] Session terminée par le prof");
+        console.log("📥 [Élève] Session terminée par le prof");
        AppState.stopTimer();
        AppState.endSession();
        CallService.handleEvent(data);
@@ -104,15 +109,34 @@ case "twilioRemoteTracks":
       case "tableauSync":
         WhiteboardService.handleEvent(data);
         break;
+        case "tableauClear":        
+       WhiteboardService.handleEvent(data);
+       break;
         case "userJoined":
         case "userLeft":
-     // ✅ ignoré silencieusement (pas d'action requise)
+     // ✔️ ignoré silencieusement (pas d'action requise)
         break;
+       case "screenShareStarted":
+  // L'overlay est géré par Twilio directement via attachTrack
+  console.log("📺 Partage d'écran démarré par", data.userName);
+  break;
+
+case "screenShareStopped":
+  import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {
+    ScreenShareOverlay.hide();
+  });
+  const btn = document.getElementById("screen-share-btn");
+  if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
+  break;
+  case "screenShareStartSuccess":
+  case "screenShareStopSuccess":
+  break;
+        case "payment:success": { // 💡 FIX : Encapsulé dans un bloc {} pour isoler la portée de 'toast'
         // 1. Création de la carte de notification
         const toast = document.createElement("div");
         toast.innerHTML = `
           <div style="margin-bottom: 12px; font-size: 14px;">
-            ✅ <strong>Paiement réussi (${data.montant}€)</strong><br>
+            ✔️ <strong>Paiement réussi (${data.montant}€)</strong><br>
             <span style="font-size: 12px; opacity: 0.9;">Merci pour cette session de ${data.dureeMinutes} min.</span>
           </div>
           <button id="download-invoice-btn" style="width: 100%; background: white; color: #4CAF50; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">
@@ -145,6 +169,14 @@ case "twilioRemoteTracks":
         }, 20000);
         
         break;
+        }
+       case "error":
+     WSLogger.warn(`Erreur serveur [${data.code ?? "?"}] :`, data.message ?? data);
+     if (data.message) {
+    const el = document.getElementById("call-status");
+      if (el) el.textContent = `⚠️ ${data.message}`;
+      }
+      break;
       default:
         WSLogger.warn("Type non géré:", data.type);
     }

@@ -1,5 +1,5 @@
 // ======================================================
-// WHITEBOARD SOCKET â€” SYNCHRO TEMPS RÃ‰EL (BACKEND-ALIGNED)
+// WHITEBOARD SOCKET Ã¢â¬â SYNCHRO TEMPS RÃâ°EL (BACKEND-ALIGNED)
 // ======================================================
 
 import { sendWs, registerWsHandler } from "../../core/socket.service.js";
@@ -29,13 +29,13 @@ export const WhiteboardSocket = {
   this._handlerRegistered = true;
 }
 
-  console.log("ðŸšª Envoi joinRoom:", roomId);
+  console.log("Ã°Å¸Å¡Âª Envoi joinRoom:", roomId);
 
-  // joinRoom dÃ©jÃ  gÃ©rÃ© par SessionService
+  // joinRoom dÃÂ©jÃÂ  gÃÂ©rÃÂ© par SessionService
 },
 
   // --------------------------------------------------
-  // DÃ‰SACTIVATION
+  // DÃâ°SACTIVATION
   // --------------------------------------------------
   disableSync() {
   this._enabled = false;
@@ -55,7 +55,7 @@ export const WhiteboardSocket = {
 
   if (data.roomId !== this.roomId) return;
 
-  console.log("âœ… Room confirmÃ©e par backend:", data.roomId);
+  console.log("Ã¢Åâ¦ Room confirmÃÂ©e par backend:", data.roomId);
 
   this._roomJoined = true;
 
@@ -101,7 +101,7 @@ export const WhiteboardSocket = {
   // --------------------------------------------------
   sendStroke(stroke) {
 
-    // ðŸ›¡ VÃ©rification minimale cohÃ©rente avec ton core
+    // Ã°Å¸âºÂ¡ VÃÂ©rification minimale cohÃÂ©rente avec ton core
     if (!stroke || !stroke.tool) return;
     if (!this._enabled || !this.roomId || !this._roomJoined) return;
 
@@ -127,7 +127,7 @@ export const WhiteboardSocket = {
   },
 
   // --------------------------------------------------
-  // CALLBACKS (dÃ©finis par WhiteboardService)
+  // CALLBACKS (dÃÂ©finis par WhiteboardService)
   // --------------------------------------------------
   onRemoteStroke: null,
   onRemoteClear:  null,

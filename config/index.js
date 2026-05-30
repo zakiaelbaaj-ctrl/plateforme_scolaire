@@ -5,14 +5,18 @@
 import logger from "#config/logger.js";
 import { Sequelize } from "sequelize";
 
+// ✅ 1. Détecter l'environnement
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: "postgres",
   logging: false,
+  // ✅ 2. SSL dynamique : Activé sur Render (Prod), Désactivé sur ton PC (Local)
   dialectOptions: {
-    ssl: {
+    ssl: isProduction ? {
       require: true,
       rejectUnauthorized: false,
-    },
+    } : false,
   },
   pool: {
     max: 20,
@@ -21,6 +25,7 @@ export const sequelize = new Sequelize(process.env.DATABASE_URL, {
     idle: 10000,
   },
 });
+
 // 🔥 Ajout essentiel : export db
 export const db = sequelize;
 
@@ -33,6 +38,7 @@ export async function initDb({ syncModels = false } = {}) {
     logger.info("✅ Connexion à la base de données réussie");
 
     if (syncModels) {
+      // ⚠️ Attention : alter: true est puissant, ton backup de tout à l'heure te protège ici
       await sequelize.sync({ alter: true });
       logger.info("✅ Modèles synchronisés");
     }

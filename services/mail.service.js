@@ -152,9 +152,52 @@ export async function sendResetPasswordEmail(user, token) {
     throw err;
   }
 }
-
 // ------------------------------------------------------
-// 4. NOUVEAU : Email de régularisation de paiement (SCA)
+// 6. NOUVEAU : Email de Match trouvé (Étudiant ↔ Étudiant)
+// ------------------------------------------------------
+/**
+ * Prévient l'étudiant qu'un partenaire a été trouvé pour sa session
+ */
+export async function sendMatchFoundEmail(user, partnerName) {
+  if (!transporter || process.env.MAILER_DISABLED === "true") {
+    logger.info("Mailer disabled — match email skipped", { to: user.email });
+    return;
+  }
+const displayName = getDisplayName(user);
+  const dashboardUrl = process.env.FRONTEND_URL + "/student/dashboard.js";
+
+  try {
+    await transporter.sendMail({
+      from: defaultFrom,
+      to: user.email,
+      subject: "🎓 Match trouvé ! Un partenaire vous attend",
+      text: `Bonjour ${displayName}, vous avez un match avec ${partnerName} ! Rejoignez la session ici : ${dashboardUrl}`,
+      html: `
+      <div style="font-family: sans-serif; color: #333; line-height: 1.6;">
+          <h2 style="color: #4F46E5;">🎉 Match trouvé !</h2>
+          <p>Bonjour <strong>${displayName}</strong>,</p>
+          <p>Bonne nouvelle ! Un partenaire a été trouvé pour votre session d'étude :</p>
+          <div style="background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Partenaire :</strong> ${partnerName}</p>
+          </div>
+          <p>Cliquez sur le bouton ci-dessous pour rejoindre votre salle de cours virtuelle :</p>
+          <div style="margin: 30px 0;">
+            <a href="${dashboardUrl}" 
+               style="background-color: #4F46E5; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+               Rejoindre la session
+               </a>
+          </div>
+          <p style="font-size: 0.8em; color: #666;">Si vous n'êtes plus disponible, merci de vous déconnecter du dashboard.</p>
+        </div>
+      `,
+    });
+    logger.info("✅ Match found email sent", { to: user.email });
+  } catch (err) {
+    logger.warn("❌ sendMatchFoundEmail failed", { to: user.email, message: err.message });
+  }
+}
+// ------------------------------------------------------
+// 7. Autres fonctions (Invoice, Payment Action, etc.)
 // ------------------------------------------------------
 /**
  * Envoie un lien de paiement manuel si le prélèvement automatique échoue (SCA)

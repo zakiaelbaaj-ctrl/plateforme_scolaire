@@ -1,5 +1,5 @@
 // ======================================================
-// WHITEBOARD HANDLERS â€” SOURIS + TACTILE
+// WHITEBOARD HANDLERS Ã¢â¬â SOURIS + TACTILE
 // ======================================================
 
 import { WhiteboardState } from "./whiteboard.state.js";
@@ -21,7 +21,7 @@ function takeSnapshot() {
 function onMouseDown(e) {
   if (!WhiteboardState.ctx) return;
 
-  // EmpÃªcher conflit avec PAN (bouton droit/milieu)
+  // EmpÃÂªcher conflit avec PAN (bouton droit/milieu)
   if (e.button !== 0) return;
 
   const rect = WhiteboardState.canvas.getBoundingClientRect();
@@ -49,7 +49,7 @@ function onMouseLeave() {
 }
 
 // ------------------------------------------------------
-// TOUCH â†’ SOURIS
+// TOUCH Ã¢â â SOURIS
 // ------------------------------------------------------
 function getTouchPos(e) {
   const rect = WhiteboardState.canvas.getBoundingClientRect();
@@ -62,7 +62,7 @@ function getTouchPos(e) {
 }
 
 function onTouchStart(e) {
-  if (e.touches.length !== 1) return; // Ã©viter conflit pinch-zoom
+  if (e.touches.length !== 1) return; // ÃÂ©viter conflit pinch-zoom
   e.preventDefault();
   onMouseDown(getTouchPos(e));
 }
@@ -97,7 +97,7 @@ function draw(e) {
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
-  // âœï¸ STYLO
+  // Ã¢ÅÂÃ¯Â¸Â STYLO
   if (currentTool === "pen") {
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
@@ -115,7 +115,7 @@ function draw(e) {
     });
   }
 
-  // ðŸ§½ GOMME
+  // Ã°Å¸Â§Â½ GOMME
   else if (currentTool === "eraser") {
     ctx.clearRect(toX - size, toY - size, size * 2, size * 2);
 
@@ -129,7 +129,7 @@ function draw(e) {
     });
   }
 
-  // ðŸ“ LIGNE
+  // Ã°Å¸âÂ LIGNE
   else if (currentTool === "line" && WhiteboardState.snapshot) {
     ctx.putImageData(WhiteboardState.snapshot, 0, 0);
     ctx.beginPath();
@@ -138,7 +138,7 @@ function draw(e) {
     ctx.stroke();
   }
 
-  // â–­ RECTANGLE
+  // Ã¢âÂ­ RECTANGLE
   else if (currentTool === "rect" && WhiteboardState.snapshot) {
     ctx.putImageData(WhiteboardState.snapshot, 0, 0);
     ctx.strokeRect(
@@ -171,6 +171,6 @@ export function initWhiteboard(canvas) {
   canvas.addEventListener("touchmove", onTouchMove, { passive: false });
   canvas.addEventListener("touchend", onTouchEnd);
 
-  console.log("ðŸ“ Whiteboard Handlers initialisÃ©s");
+  console.log("Ã°Å¸âÂ Whiteboard Handlers initialisÃÂ©s");
 }
 

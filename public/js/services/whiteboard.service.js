@@ -1,5 +1,5 @@
 // =======================================================
-// WHITEBOARD SERVICE â€” VERSION FINALE STABLE (PRODUCTION)
+// WHITEBOARD SERVICE ÃÂ¢Ã¢ÂÂ¬Ã¢ÂÂ VERSION FINALE STABLE (PRODUCTION)
 // =======================================================
 
 import { AppState } from "/js/core/state.js";
@@ -19,32 +19,32 @@ export const WhiteboardService = {
   _roomId: null,
 
   // -----------------------------------------------------
-  // INIT (idempotent + sÃ©curisÃ©)
+  // INIT (idempotent + sÃÂ©curisÃÂ©)
   // -----------------------------------------------------
   initCanvas(canvasId, roomId) {
 
     if (this._initialized) {
-      console.warn("âš ï¸ WhiteboardService dÃ©jÃ  initialisÃ©");
+      console.warn("ÃÂ¢ÃÂ¡ÃÂ ÃÂ¯ÃÂ¸ÃÂ WhiteboardService dÃÂ©jÃÂ ÃÂ  initialisÃÂÃÂ©");
       return;
     }
 
     if (!canvasId) {
-      console.error("âŒ WhiteboardService.initCanvas: canvasId manquant");
+      console.error("ÃÂ¢ÃÂÃÂ WhiteboardService.initCanvas: canvasId manquant");
       return;
     }
 
     if (!roomId) {
-      console.error("âŒ WhiteboardService.initCanvas: roomId manquant");
+      console.error("ÃÂ¢ÃÂÃÂ WhiteboardService.initCanvas: roomId manquant");
       return;
     }
 
     this._roomId = roomId;
     this._initialized = true;
 
-    // 1ï¸âƒ£ Init canvas + events locaux
+    // 1Ã¯Â¸ÂÃ¢ÂÂ£ Init canvas + events locaux
     WhiteboardCore.init(canvasId);
 
-    // 2ï¸âƒ£ Envoi des strokes au serveur
+    // 2Ã¯Â¸ÂÃ¢ÂÂ£ Envoi des strokes au serveur
     WhiteboardCore.onLocalDraw = (stroke) => {
       socketService.send({
         type: "tableauStroke",
@@ -53,18 +53,18 @@ export const WhiteboardService = {
       });
     };
 
-    console.log("ðŸ“ Whiteboard initialisÃ© â€” room :", roomId);
+    console.log("ÃÂ°ÃÂ¸Ã¢ÂÂÃÂ Whiteboard initialisÃÂÃÂ© ÃÂ¢Ã¢ÂÂ¬Ã¢ÂÂ room :", roomId);
 
     // -------------------------------------------------
-    // BACKEND â†’ FRONTEND
+    // BACKEND Ã¢ÂÂ FRONTEND
     // -------------------------------------------------
 
-    // ðŸŽ¨ Stroke distant
+    // Palette : Stroke distant
     WhiteboardSocket.onRemoteStroke = (stroke) => {
       this.applyRemoteStroke(stroke);
     };
 
-    // ðŸ§¹ Clear distant
+    // Balai : Clear distant
     WhiteboardSocket.onRemoteClear = () => {
       this.applyRemoteClear();
     };
@@ -87,23 +87,24 @@ export const WhiteboardService = {
     };
 
     // -------------------------------------------------
-    // FRONTEND â†’ BACKEND
+    // FRONTEND Ã¢ÂÂ BACKEND
     // -------------------------------------------------
     WhiteboardSocket.enableSync(roomId);
-    console.log("ðŸŽ¨ WhiteboardService initialisÃ© â€” room:", roomId);
+    window.WhiteboardService = this;
+    console.log("Ã°ÂÂÂ WhiteboardService initialisÃÂÃÂ© ÃÂ¢Ã¢ÂÂ¬Ã¢ÂÂ room:", roomId);
   },
 
   // -----------------------------------------------------
-  // âœ… AJOUT â€” enableSync exposÃ© pour socket.handler.eleve.js
+  // AJOUT  enableSync expose pour socket.handler.eleve.js
   // -----------------------------------------------------
   enableSync(roomId) {
     const id = roomId || this._roomId;
     if (!id) {
-      console.warn("âš ï¸ enableSync: roomId manquant");
+      console.warn("Ã¢ÂÂ Ã¯Â¸Â enableSync: roomId manquant");
       return;
     }
     WhiteboardSocket.enableSync(id);
-    console.log("ðŸ”„ WhiteboardService.enableSync â€” room:", id);
+    console.log("Ã°ÂÂÂ WhiteboardService.enableSync Ã¢ÂÂ room:", id);
   },
 
   // -----------------------------------------------------
@@ -122,13 +123,13 @@ export const WhiteboardService = {
   },
 
   // -----------------------------------------------------
-  // REMOTE STROKES (contrat verrouillÃ©)
+  // REMOTE STROKES (contrat verrouillÃÂ©)
   // -----------------------------------------------------
   applyRemoteStroke(stroke) {
     if (!WhiteboardState.ctx) return;
 
     if (!isValidTableauStroke(stroke)) {
-      console.error("âŒ applyRemoteStroke: contrat violÃ©", stroke);
+      console.error("Ã¢ÂÂ applyRemoteStroke: contrat viole", stroke);
       return;
     }
 
@@ -141,13 +142,13 @@ export const WhiteboardService = {
   },
 
   // -----------------------------------------------------
-  // ACTIONS LOCALES â†’ BACKEND
+  // ACTIONS LOCALES Ã¢ÂÂ BACKEND
   // -----------------------------------------------------
   clear() {
     if (!AppState.sessionInProgress) return;
 
     if (!this._roomId) {
-      console.warn("â¸ clear ignorÃ© (roomId non prÃªt)");
+      console.warn("Ã¢ÂÂ Ã¯Â¸Â clear ignorÃÂ© (roomId non prÃÂªt)");
       return;
     }
 
@@ -174,7 +175,7 @@ export const WhiteboardService = {
     this._initialized = false;
     this._roomId = null;
 
-    console.log("ðŸ§¹ WhiteboardService rÃ©initialisÃ© proprement");
+    console.log("ÃÂ°ÃÂ¸ÃÂ§ÃÂ¹ WhiteboardService rÃÂ©initialisÃÂ© proprement");
   }
 
 };

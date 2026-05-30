@@ -3,9 +3,17 @@ import { CallStateMachine } from "./call.state.machine.js";
 export const VideoService = {
   room: null,
 
-  async connect(token) {
+ async connect(token) {
     try {
-      this.room = await Twilio.Video.connect(token, { audio: true, video: { width: 640 } });
+      const { Logger } = Twilio.Video;
+Logger.setDefaultLevel("warn"); // ✅ nouvelle API
+
+this.room = await Twilio.Video.connect(token, { 
+  audio: true, 
+  video: { width: 640 }
+  // ← supprimer logLevel
+});
+      
       console.log("✅ Connecté à Twilio Room:", this.room.name);
 
       this.room.localParticipant.tracks.forEach(pub => {
@@ -30,11 +38,10 @@ export const VideoService = {
           CallStateMachine.setState(CallStateMachine.STATES.ENDED);
         }
         this._silentDisconnect = false; 
-        
       });
       
-} catch (e) {
-    console.error("❌ Erreur VideoService:", e);
+    } catch (e) {
+      console.error("❌ Erreur VideoService:", e);
     }
   },
 
@@ -44,7 +51,6 @@ export const VideoService = {
     this._stopLocalTracks();
     this.room.disconnect(); // → déclenche "disconnected" → CallStateMachine.setState(ENDED)
     this.room = null;
-    CallStateMachine.setState(CallStateMachine.STATES.ENDED); // ← SUPPRIMÉ (doublon)
   },
 
   // ✅ Déconnexion silencieuse : n'appelle PAS setState (appelée par terminateCall)
@@ -56,16 +62,48 @@ export const VideoService = {
     this.room = null;
   },
 
-  _stopLocalTracks() {
-    this.room?.localParticipant?.tracks?.forEach(pub => {
-      pub.track?.stop();
-      pub.unpublish?.();
+ // ✅ Après
+_stopLocalTracks() {
+  this.room?.localParticipant?.tracks?.forEach(pub => {
+    pub.track?.stop();
+    pub.unpublish?.();
+
+    // ✅ Détache tous les éléments DOM liés à ce track
+    pub.track?.detach?.().forEach(el => {
+      el.srcObject = null;
+      el.remove();
     });
-  },
+  });
+
+  // ✅ Vide aussi les containers vidéo directement
+  ["localVideo", "localVideoContainer"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el?.tagName === "VIDEO") {
+      el.srcObject = null;
+      el.pause?.();
+    }
+  });
+
+  ["remoteVideo", "remoteVideoContainer"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el?.tagName === "VIDEO") {
+      el.srcObject = null;
+      el.pause?.();
+    }
+  });
+},
 
   attachTrack(track, side, attempts = 0) {
     if (track.kind !== "video" && track.kind !== "audio") return;
-
+   // ✅ Track d'écran partagé → fenêtre flottante
+  if (track.name === "screen" && side === "remote") {
+    import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {
+      ScreenShareOverlay.show(track);
+      // Fermer overlay quand la track s'arrête
+      track.on?.("stopped", () => ScreenShareOverlay.hide());
+    });
+    return;
+  }
     const containerId = side === "local"
       ? (document.getElementById("localVideoContainer") ? "localVideoContainer" : "localVideo")
       : (document.getElementById("remoteVideoContainer") ? "remoteVideoContainer" : "remoteVideo");

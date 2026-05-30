@@ -87,9 +87,9 @@ export function getOnlineProfessors() {
     const tempsDepuisConnexion = Math.floor((now - connectedAt) / 1000);
     const tempsDepuisActivite = Math.floor((now - lastActiveAt) / 1000);
 
-    const estActif = tempsDepuisActivite < 300; // 5 min
+    const estActif = tempsDepuisActivite < 1800; // 30 min
     const disponibiliteReelle = prof.status === "disponible" && estActif;
-
+    
     profs.push({
       id: prof.id,
       prenom: prof.prenom,

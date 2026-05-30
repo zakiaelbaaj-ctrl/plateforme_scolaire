@@ -1,0 +1,350 @@
+// ======================================================
+// 🎓 DASHBOARD ÉTUDIANT
+// Interface utilisateur et orchestration des flux
+// ======================================================
+
+import { setAuthProvider }             from "/js/lib/http.js";
+import { Logger }                      from "/js/lib/logger.js";
+import { AppState }                    from "/js/core/state.js";
+import { eventBus }                    from "/js/core/eventBus.js";
+import { EtudiantService }             from "/js/services/etudiant.service.js";
+import { EtudiantSessionOrchestrator } from "/js/domains/etudiant-session/etudiant.session.orchestrator.js";
+import { EtudiantMatchingService }     from "/js/domains/etudiant-session/etudiant.matching.service.js";
+import { WhiteboardService }           from "/js/domains/whiteboard/whiteboard.service.js";
+import { ChatService }                 from "/js/domains/chat/chat.service.js";
+
+// ======================================================
+// AUTH — configuré UNE SEULE FOIS, en premier
+// ======================================================
+
+setAuthProvider({
+    getToken:   async () => localStorage.getItem("token") || null,
+    onAuthFail: async () => {
+        Logger.warn("🔒 Session expirée, redirection...");
+        window.location.href = "/pages/etudiant/login.html";
+        return false;
+    }
+});
+
+// ======================================================
+// MINI-LIBRAIRIE UI
+// ======================================================
+
+const UI = {
+
+    toggleView(view, data = {}) {
+        Logger.log(`🖥️ Vue : ${view}`);
+        document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
+        document.getElementById(`view-${view}`)?.classList.remove('hidden');
+    },
+
+    appendChatMessage(sender, text) {
+        const box = document.getElementById('chat-box');
+        if (box) {
+            const p = document.createElement('p');
+            p.innerHTML = `<strong>${sender}:</strong> ${text}`;
+            box.appendChild(p);
+            box.scrollTop = box.scrollHeight;
+        }
+    },
+
+    clearVideos() {
+        ['local-video', 'remote-video'].forEach(id => {
+            const v = document.getElementById(id);
+            if (v) v.srcObject = null;
+        });
+    },
+
+    notify(msg) {
+        alert(msg);
+    },
+
+    onMatchFound(data) {
+        this.notify(`Match trouvé avec ${data.partnerName} !`);
+        this.toggleView('session');
+    },
+
+    onQueued(data) {
+        this.toggleView('queue', data);
+    },
+
+    onQueueCancelled() {
+        this.toggleView('home');
+    },
+
+    onUserLeft() {
+        this.notify("Le partenaire a quitté la session.");
+        this.toggleView('home');
+    },
+
+    onSessionReset() {
+        this.clearVideos();
+        this.toggleView('home');
+    },
+
+    onSubscriptionRequired() {
+        Logger.warn("🔒 Abonnement requis");
+    },
+
+    onChatMessage({ sender, text }) {
+        this.appendChatMessage(sender, text);
+    },
+
+    onDocument({ name, url }) {
+        const list = document.getElementById('doc-list');
+        if (!list) return;
+        const li = document.createElement('li');
+        li.className = 'doc-list__item';
+        li.innerHTML = `<a href="${url}" download="${name}">📄 ${name}</a>`;
+        list.appendChild(li);
+    },
+};
+
+// ======================================================
+// RÉACTIONS AUX ÉVÉNEMENTS
+// ======================================================
+
+eventBus.on("matching:queued",    (data) => UI.toggleView('queue', data));
+eventBus.on("matching:cancelled", ()     => UI.toggleView('home'));
+eventBus.on("matching:found",     (data) => {
+    UI.notify(`Match trouvé avec ${data.partnerName} !`);
+    UI.toggleView('session');
+});
+
+eventBus.on("media:local-stream", (stream) => {
+    const video = document.getElementById('local-video');
+    if (video) video.srcObject = stream;
+});
+
+eventBus.on("media:remote-stream", (stream) => {
+    const video = document.getElementById('remote-video');
+    if (!video) return;
+    video.srcObject = stream;
+    stream.getVideoTracks().forEach(track => {
+        track.onunmute = () => {
+            video.srcObject = stream;
+            video.play().catch(() => {});
+        };
+    });
+});
+
+eventBus.on("students:online", (students) => {
+    renderStudentList(students);
+});
+
+// ======================================================
+// RENDU LISTE ÉTUDIANTS CONNECTÉS
+// ======================================================
+
+function renderStudentList(students = []) {
+    const list = document.getElementById('etudiant-list');
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    if (!students.length) {
+        list.innerHTML = `<li class="empty">Aucun étudiant connecté</li>`;
+        return;
+    }
+
+    students.forEach(student => {
+        const li = document.createElement('li');
+        li.className = "etudiant-list__item";
+        li.dataset.id = student.id;
+
+        const prenom  = student.prenom || student.name || "Étudiant";
+        const matiere = student.matiere ? `· ${student.matiere}` : "";
+        const niveau  = student.niveau  ? `· ${student.niveau}`  : "";
+
+        li.innerHTML = `
+            <span class="etudiant-list__avatar">👤</span>
+            <span class="etudiant-list__name">${prenom}</span>
+            <span class="etudiant-list__meta">${matiere} ${niveau}</span>
+        `;
+
+        list.appendChild(li);
+    });
+
+    Logger.log(`👥 Liste mise à jour : ${students.length} étudiant(s) connecté(s)`);
+}
+
+// ======================================================
+// INTERACTIONS DOM
+// ======================================================
+
+function setupInteractions() {
+    Logger.log("🔌 Branchement des interactions UI...");
+
+    // 1. Bouton "Trouver un étudiant"
+    const btnFind      = document.getElementById('start-session-btn');
+    const inputMatiere = document.getElementById('matiere');
+    const inputSujet   = document.getElementById('sujet');
+
+    if (btnFind) {
+        btnFind.disabled = false;
+        btnFind.addEventListener('click', () => {
+            const mat = inputMatiere?.value.trim();
+            const suj = inputSujet?.value.trim() || "";
+            if (!mat) { alert("Veuillez saisir une matière."); return; }
+            Logger.log(`⏳ Recherche lancée : ${mat}`);
+            EtudiantMatchingService.enqueue(mat, suj);
+        });
+    } else {
+        Logger.warn("⚠️ #start-session-btn introuvable dans le DOM");
+    }
+
+    // 2. Bouton "Rejoindre un cours"
+    const btnRejoindre = document.getElementById('btn-rejoindre-cours');
+    if (btnRejoindre) {
+        btnRejoindre.addEventListener('click', () => {
+            Logger.log("▶ Rejoindre un cours");
+        });
+    }
+
+    // 3. Chat
+    const btnSend   = document.getElementById('send-msg');
+    const inputChat = document.getElementById('chat-input');
+    const chatBox   = document.getElementById('chat-box');
+    if (btnSend && inputChat) {
+        inputChat.disabled = false;
+        ChatService.onMessage((msg) => {
+            const p = document.createElement("p");
+            p.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+            chatBox.appendChild(p);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+        const sendMessage = () => {
+            const text = inputChat.value.trim();
+            if (text) {
+                ChatService.sendStudent(text);
+                inputChat.value = "";
+            }
+        };
+
+        btnSend.addEventListener('click', sendMessage);
+        inputChat.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+        });
+    } else {
+        Logger.warn("⚠️ #send-msg ou #chat-input introuvable dans le DOM");
+    }
+
+    // 4. Bouton "Terminer la session"
+    const btnEnd = document.getElementById('end-session-btn');
+    if (btnEnd) {
+        btnEnd.addEventListener('click', () => {
+            if (confirm("Voulez-vous terminer cette session ?")) {
+                EtudiantSessionOrchestrator.leaveSession();
+            }
+        });
+    }
+
+    // 5. Bouton "Envoyer un fichier"
+    const btnFile   = document.getElementById('send-file');
+    const fileInput = document.getElementById('file-input');
+    if (btnFile && fileInput) {
+        btnFile.addEventListener('click', () => {
+            const file = fileInput.files?.[0];
+            if (!file) { alert("Veuillez sélectionner un fichier."); return; }
+            if (!AppState.sessionInProgress) {
+                alert("Aucune session active. Rejoignez d'abord une session.");
+                return;
+            }
+            Logger.log(`📎 Envoi fichier : ${file.name}`);
+            EtudiantSessionOrchestrator.sendFile(file);
+        });
+    }
+
+    // 6. Bouton "Déconnexion"
+    const btnLogout = document.getElementById('logout-btn');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            Logger.log("🚪 Déconnexion...");
+            if (AppState.sessionInProgress) {
+                EtudiantSessionOrchestrator.leaveSession();
+            }
+            AppState.resetAll();
+            localStorage.removeItem("token");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("currentUser");
+            window.location.replace("/pages/etudiant/login.html");
+        });
+    } else {
+        Logger.warn("⚠️ #logout-btn introuvable dans le DOM");
+    }
+
+    // 7. Whiteboard — init au match ✅
+    eventBus.on("student:matchFound", (data) => {
+        WhiteboardService.initSession();
+        WhiteboardService.initCanvas("whiteboard-canvas");
+    });
+
+    // 8. Boutons whiteboard
+    const wbUndo     = document.getElementById('undoWhiteboardBtn');
+    const wbClear    = document.getElementById('clearWhiteboardBtn');
+    const wbDownload = document.getElementById('downloadWhiteboardBtn');
+
+    if (wbUndo)     wbUndo.addEventListener('click',     () => WhiteboardService.undo());
+    if (wbClear)    wbClear.addEventListener('click',    () => WhiteboardService.clearBoard());
+    if (wbDownload) wbDownload.addEventListener('click', () => {
+        const canvas = document.getElementById('whiteboard-canvas');
+        if (!canvas) return;
+        const link = document.createElement('a');
+        link.download = 'whiteboard.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+}
+
+// ======================================================
+// RENDU PROFIL
+// ======================================================
+
+function renderProfile() {
+    const user = AppState.currentUser;
+    if (!user) return;
+
+    const elNom      = document.getElementById('student-info');
+    const elLocation = document.getElementById('etudiant-location');
+
+    if (elNom) {
+        const prenom = user.prenom || "";
+        const nom    = user.nom    || "";
+        elNom.textContent = `${prenom} ${nom}`.trim() || "Étudiant";
+    }
+
+    if (elLocation) {
+        const ville = user.ville || "";
+        const pays  = user.pays  || "";
+        elLocation.textContent = [ville, pays].filter(Boolean).join(", ") || "—";
+    }
+
+    Logger.log(`🪪 Profil affiché : ${user.prenom} ${user.nom}`);
+}
+
+// ======================================================
+// INITIALISATION
+// ======================================================
+
+document.addEventListener("DOMContentLoaded", async () => {
+    Logger.log("🚀 Initialisation du Dashboard Étudiant");
+
+    try {
+        await EtudiantService.getProfile();
+        renderProfile();
+        await EtudiantService.getSubscriptionStatus();
+
+        if (!AppState.isSubscribed) {
+            UI.onSubscriptionRequired();
+            return;
+        }
+
+        Logger.log("🔓 Accès autorisé, lancement de l'orchestrateur...");
+        EtudiantSessionOrchestrator.init(UI);
+        setupInteractions();
+
+    } catch (err) {
+        Logger.error("❌ Échec critique lors de l'initialisation :", err);
+    }
+});

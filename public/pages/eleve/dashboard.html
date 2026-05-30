@@ -35,12 +35,11 @@
       <span id="call-time" class="call-timer">00:00</span>
     </div>
 
-    <div class="top-bar__actions">
-      <button id="logout-btn" class="btn btn--ghost">Déconnexion</button>
-    </div>
-
-  </header>
-
+    <div class="actions">
+  <span id="ws-status-badge" style="font-size:12px;">🟢 Connecté</span> <!-- ✅ -->
+  <button id="logout-btn" class="primary" aria-label="Se déconnecter">Déconnexion</button>
+</div>
+</header>
   <!-- ================= PROF LIST BAR ================= -->
   <div class="prof-bar">
     <span class="prof-bar__label">👨‍🏫 Disponibles</span>
@@ -63,7 +62,9 @@
          <button id="btn-rejoindre-cours" class="btn btn--primary btn--sm">
          ▶ Rejoindre
         </button>
-
+          <button id="screen-share-btn" class="btn btn--icon btn--sm" title="Partager l'écran">
+        🖥️
+      </button>
         <button id="end-session-btn" class="btn btn--danger btn--sm">
          ✕ Terminer
              </button>
@@ -101,13 +102,15 @@
         </div>
 
         <div class="whiteboard-tools">
-          <div class="wb-tools-group">
-            <button id="penToolBtn"    class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
-            <button id="eraserToolBtn" class="btn btn--icon wb-tool" title="Gomme">🧽</button>
-            <button id="lineToolBtn"   class="btn btn--icon wb-tool" title="Ligne">📏</button>
-            <button id="rectToolBtn"   class="btn btn--icon wb-tool" title="Rectangle">▭</button>
-            <button id="textToolBtn"   class="btn btn--icon wb-tool" title="Texte">🔤</button>
-          </div>
+  <div class="wb-tools-group">
+    <button id="pointToolBtn" class="btn btn--icon wb-tool" title="Point">•</button>
+    <button id="penToolBtn"     class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
+    <button id="eraserToolBtn"  class="btn btn--icon wb-tool" title="Gomme">🧽</button>
+    <button id="lineToolBtn"    class="btn btn--icon wb-tool" title="Ligne">📏</button>
+    <button id="rectToolBtn"    class="btn btn--icon wb-tool" title="Rectangle">▭</button>
+    <button id="circleToolBtn"  class="btn btn--icon wb-tool" title="Cercle">⭕</button>  <!-- ✅ -->
+    <button id="textToolBtn"    class="btn btn--icon wb-tool" title="Texte">🔤</button>
+  </div>
 
           <div class="wb-tools-group">
             <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
@@ -163,24 +166,11 @@
         <button id="send-file" class="btn btn--primary full-width">Envoyer le document</button>
         <ul id="doc-list" class="doc-list"></ul>
       </div>
-       <!-- STRIPE payement -->
-        <div id="user-info"></div> <!-- ✅ ICI -->
-      <div class="card card--stripe-payment">
-      <div class="card__header">
-      <h3 class="card__title">💳 Mode de paiement</h3>
-      </div>
-       <div class="card__body">
-      <div id="stripe-status" style="margin-bottom: 15px; font-weight: bold;"></div>
-
-     <button id="stripe-setup-btn" class="btn btn--primary full-width">
-      Ajouter une carte bancaire
-      </button>
-         </div>
-         </div>
-       </aside>
-
-     </main>
-
+       <!-- STRIPE payment -->
+<aside class="dashboard__sidebar">
+    <!-- C'est ici que renderCurrentUserInfo injectera tout le HTML (Titre, Icône, Bouton) -->
+    <div id="user-info"></div> 
+</aside>
   <!-- ================= JS ================= -->
   
   <script type="module" src="../../js/pages/eleve/dashboard.js"></script>

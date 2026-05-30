@@ -6,7 +6,8 @@ import bcrypt from "bcryptjs";
 import { sequelize as db } from "#config/index.js";
 import { QueryTypes } from "sequelize";
 import logger from "#config/logger.js";
-
+// ✅ IMPORT DU MODÈLE POUR MODERNISER LE SERVICE
+import User from "../models/user.model.js";
 // ------------------------------
 // Utils
 // ------------------------------
@@ -26,85 +27,28 @@ export async function comparePassword(password, hash) {
     const safeHash = hash || "?a?$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
     return bcrypt.compare(password || "", safeHash);
 }
-
-// ------------------------------
-// CREATE USER
-// ------------------------------
-
-export async function createUser(data) {
-    try {
-        const {
-            username, prenom, nom, email, telephone, ville, pays, 
-            password, role, matiere, niveau, diplome_url,
-            stripe_customer_id
-        } = data;
-
-        const normalizedEmail = normalizeEmail(email);
-        const hashed = await hashPassword(password);
-
-        // ✅ Logique automatique : seuls les profs sont mis en attente
-        const isStudent = (role === 'eleve' || role === 'etudiant');
-        const finalStatut = isStudent ? 'active' : 'pending';
-        const finalIsActive = isStudent ? true : false; // Forçage booléen
-
-        const [result] = await db.query(
-        `INSERT INTO users 
-        (username, prenom, nom, email, telephone, ville, pays, password, role, statut, is_active, matiere, niveau, diplome_url, stripe_customer_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) -- ✅ 2. Ajouter un "?"
-        RETURNING id, username, email, role, statut, is_active, stripe_customer_id, date_inscription`,
-        {
-                replacements: [
-                    username || null, 
-                    prenom, 
-                    nom, 
-                    normalizedEmail, 
-                    telephone || null, 
-                    ville || null, 
-                    pays || "France", 
-                    hashed, 
-                    role || "eleve", 
-                    finalStatut, 
-                   finalIsActive,
-                   matiere || null, 
-                   niveau || null, 
-                   diplome_url || null,
-                   stripe_customer_id || null // ✅ 3. L'ajouter à la fin
-                 ],
-                 type: QueryTypes.INSERT
-               }
-                );
-
-        // ✅ Retour sécurisé pour éviter le "undefined"
-        return result && result.length > 0 ? result[0] : null;
-
-    } catch (err) {
-        logger.error("❌ createUser error", err);
-        // Gestion des doublons
-        if (err?.original?.code === "23505") {
-            const detail = err.original.detail || "";
-            if (detail.includes("email")) throw new Error("Email déjà existant");
-            if (detail.includes("username")) throw new Error("Nom d'utilisateur déjà pris");
-        }
-        throw err;
-    }
-}
 // ------------------------------
 // FINDERS
 // ------------------------------
-export async function findByEmail(email) {
-    const [result] = await db.query(
-        `SELECT id, email, prenom, nom, role, has_payment_method, stripe_customer_id, is_active, statut FROM users WHERE email = ?`,
-        { replacements: [normalizeEmail(email)], type: QueryTypes.SELECT }
-    );
-    return result || null;
-}
+/**
+ * Trouver un utilisateur par son email
+ * @param {string} email 
+ * @param {boolean} includePassword - Si vrai, inclut le champ password (utile pour le login)
+ */
+export async function findByEmail(email, includePassword = false) {
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    const options = {
+        where: { email: normalizedEmail }
+    };
 
-export async function findByEmailWithPassword(email) {
-    const [result] = await db.query(
-        `SELECT * FROM users WHERE email = ?`,
-        { replacements: [normalizeEmail(email)], type: QueryTypes.SELECT }
-    );
-    return result || null;
+    // Si on a besoin du password (pour la comparaison au login), 
+    // on force Sequelize à l'inclure malgré la protection toJSON
+    if (includePassword) {
+        options.attributes = { include: ['password'] };
+    }
+
+    return await User.findOne(options);
 }
 
 export async function findByUsernameWithPassword(username) {
@@ -113,20 +57,6 @@ export async function findByUsernameWithPassword(username) {
         { replacements: [username], type: QueryTypes.SELECT }
     );
     return result || null;
-}
-
-// services/usersService.js
-
-export async function findById(id) {
-  const result = await db.query(
-    `SELECT id, email, prenom, nom, role, ville, pays, 
-            stripe_customer_id, 
-            has_payment_method, 
-            is_active, statut 
-     FROM users WHERE id = ?`, // ✅ Utilise "?" au lieu de "$1"
-    { replacements: [id], type: QueryTypes.SELECT }
-  );
-  return result && result.length > 0 ? result[0] : null; // ✅ Syntaxe Sequelize
 }
 
 // ------------------------------
@@ -305,4 +235,26 @@ return await db.query(
         logger.error("Error getDernieresFactures", err);
         return [];
     }
+}
+export async function createUser(data) {
+    try {
+        // ✅ Utilisation du Modèle au lieu du SQL Brut (Beaucoup plus court !)
+        const isStudent = (data.role === 'eleve' || data.role === 'etudiant');
+        
+        const user = await User.create({
+            ...data,
+            statut: isStudent ? 'active' : 'pending',
+            is_active: isStudent
+        });
+
+        return user;
+    } catch (err) {
+        logger.error("❌ createUser error", err);
+        throw err;
+    }
+}
+
+export async function findById(id) {
+    // ✅ Utilisation du Modèle : plus besoin d'écrire le SELECT manuellement
+    return await User.findByPk(id);
 }

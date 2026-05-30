@@ -1,5 +1,5 @@
 // ============================================
-// 🔐 LOGIN ÉTUDIANT
+// 🔑 LOGIN ÉTUDIANT
 // ============================================
 
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
@@ -11,7 +11,7 @@ const API_BASE = `${API_URL}/api/v1`;
 // 🔹 Vérifier si l'étudiant est déjà connecté
 const existingToken = localStorage.getItem("token");
 if (existingToken) {
-  // ✅ Redirection relative pour le mode "double-clic" (même dossier)
+  // ✔ Redirection relative pour le mode "double-clic" (même dossier)
   window.location.replace("dashboard.html");
 }
 
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (registerLink) {
     registerLink.addEventListener("click", (e) => {
       e.preventDefault(); 
-      // ✅ Redirection relative
+      // ✔ Redirection relative
       window.location.href = "register.html";
     });
   }
@@ -123,10 +123,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showSuccess(msg) {
-    if (successDiv) {
-      successDiv.textContent = "✅ " + msg;
-      successDiv.style.display = "block";
-    }
+  if (successDiv) {
+    successDiv.textContent = "✅ " + msg;
+    successDiv.style.display = "block";
+  }
   }
 
   function hideSuccess() { 

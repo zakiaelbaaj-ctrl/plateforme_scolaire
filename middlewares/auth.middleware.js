@@ -4,7 +4,7 @@
 // =======================================================
 
 import jwt from "jsonwebtoken";
-
+import { sequelize } from "../config/db.js";
 export default function auth(req, res, next) {
   const header = req.headers.authorization;
   if (!header) return res.status(401).json({ message: "Token manquant" });
@@ -12,6 +12,8 @@ export default function auth(req, res, next) {
   const token = header.split(" ")[1];
 
   try {
+    console.log("SECRET UTILISÉ :", process.env.JWT_SECRET); // <--- AJOUTE ÇA
+    console.log("TOKEN REÇU :", token);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
@@ -84,7 +86,58 @@ export function requireRole(role) {
     next();
   };
 }
+/**
+ * Middleware de sécurité pour le Matching :
+ * Bloque l'accès si un ÉTUDIANT n'a pas enregistré sa carte bancaire.
+ */
+export async function requireSubscription(req, res, next) {
+  if (!req.user || !req.user.userId) {
+    return res.status(401).json({ ok: false, message: "Non authentifié" });
+  }
 
+  // 🛠️ Mode DEV : On ignore la sécurité si DISABLE_JWT est actif
+  if (process.env.DISABLE_JWT === "true") {
+    return next();
+  }
+
+  try {
+    // 1. On récupère le statut et le rôle de l'utilisateur dans PostgreSQL
+    const [user] = await sequelize.query(
+      `SELECT subscription_status, is_subscriber, role 
+       FROM users WHERE id = :userId`,
+      { 
+        replacements: { userId: req.user.userId }, 
+        type: sequelize.QueryTypes.SELECT 
+      }
+    );
+
+    if (!user) {
+      return res.status(404).json({ ok: false, message: "Utilisateur introuvable" });
+    }
+
+    // 2. Si ce n'est pas un étudiant (par exemple si c'est un Élève ou un Prof), 
+    // ce middleware ne le concerne pas, on passe à la suite.
+    if (user.role !== "etudiant") {
+      return next();
+    }
+
+    // 3. L'ÉTUDIANT a accès au matching s'il a enregistré sa carte (trial ou active)
+    if (user.is_subscriber === true || user.subscription_status === "trial" || user.subscription_status === "active") {
+      return next(); // Carte OK, on libère l'accès au matching !
+    }
+
+    // 4. Sinon, on bloque l'accès aux fonctionnalités de matching
+    return res.status(403).json({ 
+      ok: false, 
+      error_code: "SUBSCRIPTION_REQUIRED",
+      message: "Accès refusé. Vous devez enregistrer votre carte bancaire (semaine gratuite) pour pouvoir accéder au matching entre étudiants." 
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur middleware requireSubscription:", err.message);
+    return res.status(500).json({ ok: false, message: "Erreur serveur lors de la vérification des accès de l'étudiant" });
+  }
+}
 /**
  * Middleware spécifique pour l'admin
  */

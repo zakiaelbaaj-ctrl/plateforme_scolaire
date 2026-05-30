@@ -6,7 +6,7 @@ import { constructEventFromRaw } from "#services/stripe.service.js";
 import { activateSubscription } from "#services/payment.service.js";
 import { db } from "#config/index.js";
 import { generateInvoicePdf } from "#services/invoicePdf.js";
-
+import { stripe } from "#services/stripe.service.js";
 /**
  * Safe JSON parse pour webhooks génériques
  */
@@ -35,6 +35,7 @@ export async function handleWebhook(req, res) {
     // STRIPE WEBHOOK
     // -----------------------------
      if (isStripe) {
+      console.log("🔥 STRIPE WEBHOOK HIT");
   const rawBody = req.body;
   const sigHeader = req.headers["stripe-signature"];
 
@@ -42,7 +43,8 @@ export async function handleWebhook(req, res) {
     logger.warn("Stripe webhook received without signature header");
     return res.status(400).json({ ok: false, message: "Missing stripe signature" });
   }
-
+   console.log("IS BUFFER:", Buffer.isBuffer(req.body));
+   console.log("BODY:", req.body);
   let event;
   try {
     event = constructEventFromRaw(rawBody, sigHeader);
@@ -73,24 +75,11 @@ export async function handleWebhook(req, res) {
       }
 
       const obj = event.data.object;
-
+       console.log("🔥 SETUP INTENT RECEIVED:", event.type);
+       console.log("CUSTOMER:", obj.customer);
       switch (event.type) {
         case "checkout.session.completed": {
           const metadata = obj?.metadata || {};
-
-          if (obj.mode === 'setup') {
-            const customerId = obj.customer;
-            try {
-              await db.query(
-                "UPDATE users SET has_payment_method = true WHERE stripe_customer_id = $1",
-                [customerId]
-              );
-              logger.info("💳 Carte enregistrée avec succès (Webhook)", { customerId });
-            } catch (dbErr) {
-              logger.error("❌ Erreur DB Webhook (Setup)", { message: dbErr.message, customerId });
-            }
-            break;
-          }
 
           if (!metadata.userId || !metadata.planType) {
             logger.warn("Stripe checkout.session.completed missing metadata", { metadata, eventId });
@@ -105,7 +94,7 @@ export async function handleWebhook(req, res) {
               await generateInvoicePdf({
                 userId,
                 planType,
-                amount: obj.amount_total,
+                amount: obj.amount_total || 0,
                 invoiceNumber: `INV-${userId}-${obj.id}`,
                 date: new Date(),
               });
@@ -117,32 +106,52 @@ export async function handleWebhook(req, res) {
           break;
         }
 
-        case "setup_intent.succeeded": {
-          const customerId = obj.customer;
-          const paymentMethodId = obj.payment_method;
+       case "setup_intent.succeeded": {
+  const customerId = obj.customer;
+  const paymentMethodId = obj.payment_method;
 
-          if (!customerId || !paymentMethodId) {
-            logger.warn("setup_intent.succeeded: données manquantes", { customerId, paymentMethodId });
-            break;
-          }
+  if (!customerId || !paymentMethodId) {
+    logger.warn("setup_intent.succeeded: données manquantes", {
+      customerId,
+      paymentMethodId,
+    });
+    break;
+  }
 
-          try {
-            await stripe.customers.update(customerId, {
-              invoice_settings: {
-                default_payment_method: paymentMethodId,
-              },
-            });
-            await db.query(
-              `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = $1`,
-              [customerId]
-            );
-            logger.info("✅ Carte défaut enregistrée", { customerId, paymentMethodId });
-          } catch (err) {
-            logger.error("❌ Erreur setup_intent.succeeded", { message: err.message, customerId });
-          }
-          break;
-        }
+  try {
+    await stripe.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
 
+    const result = await db.query(
+      `UPDATE users
+       SET has_payment_method = true
+       WHERE stripe_customer_id = $1`,
+      [customerId]
+    );
+
+    logger.info("✅ Carte enregistrée", {
+      customerId,
+      paymentMethodId,
+      updatedRows: result.rowCount,
+    });
+    if (result.rowCount === 0) {
+  logger.warn("⚠️ Aucun utilisateur trouvé pour ce customer Stripe", {
+    customerId,
+  });
+}
+
+  } catch (err) {
+    logger.error("❌ setup_intent.succeeded failed", {
+      message: err.message,
+      customerId,
+    });
+  }
+
+  break;
+}
         case "payment_intent.succeeded": {
           const profId = obj.metadata?.profId;
           const bookingId = obj.metadata?.bookingId;
@@ -241,12 +250,24 @@ export async function handleWebhook(req, res) {
  */
 export async function webhookHealth(req, res) {
   try {
-    const dbOk = await webhookService.dbPing();
-    const queueOk = await webhookService.queuePing();
-    const ok = dbOk && queueOk;
-    return res.status(ok ? 200 : 503).json({ ok });
+    // On lance les pings en parallèle pour gagner du temps
+    const [dbOk, queueOk] = await Promise.all([
+      webhookService.dbPing().catch(() => false),
+      webhookService.queuePing().catch(() => false)
+    ]);
+
+    const status = {
+      status: dbOk && queueOk ? "UP" : "DOWN",
+      timestamp: new Date().toISOString(),
+      services: {
+        database: dbOk ? "OK" : "FAIL",
+        queue: queueOk ? "OK" : "FAIL"
+      }
+    };
+
+    return res.status(dbOk && queueOk ? 200 : 503).json(status);
   } catch (err) {
     logger.warn("webhookHealth check failed", { message: err?.message });
-    return res.status(503).json({ ok: false });
+    return res.status(503).json({ status: "DOWN", error: err.message });
   }
 }

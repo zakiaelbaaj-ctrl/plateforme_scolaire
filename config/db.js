@@ -1,45 +1,50 @@
-// config/db.js
 import pkg from "pg";
 import { Sequelize } from "sequelize";
 import 'dotenv/config';
 
 const { Pool } = pkg;
-// --- Vérification de la variable d'environnement ---
+
+// --- Vérification ---
 if (!process.env.DATABASE_URL) {
-  throw new Error("❌ DATABASE_URL non défini dans Render");
+  throw new Error("❌ DATABASE_URL non défini");
 }
 
+// ✅ Détection de l'environnement
+const isProduction = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL.includes('render.com');
 
 // ---- PostgreSQL Pool (pour requêtes brutes) ----
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // obligatoire pour Render
-  max: 5,                // max connexions simultanées
+  // ✅ SSL Dynamique pour le Pool
+  ssl: isProduction ? { rejectUnauthorized: false } : false, 
+  max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 20000,
 });
-console.log("📌 Connected to DB:", new URL(process.env.DATABASE_URL).pathname.replace("/", ""));
+
+console.log("📌 Database target:", new URL(process.env.DATABASE_URL).hostname);
 
 // Test rapide de la connexion
 pool.connect()
   .then(client => {
-    console.log("✅ Connecté à PostgreSQL via pool");
+    console.log("✅ Pool PG prêt (Local ou Distant)");
     client.release();
   })
   .catch(err => {
-    console.error("❌ Erreur PostgreSQL :", err.message);
+    console.error("❌ Erreur Pool PG :", err.message);
   });
 
-// ---- Sequelize (optionnel, si tu utilises ORM) ----
+// ---- Sequelize ----
 export const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: "postgres",
   protocol: "postgres",
-  logging: console.log,
+  logging: false, // Mis à false pour éviter de polluer ta console
+  // ✅ SSL Dynamique pour Sequelize
   dialectOptions: {
-    ssl: {
+    ssl: isProduction ? {
       require: true,
       rejectUnauthorized: false,
-    },
+    } : false,
   },
   pool: {
     max: 5,
@@ -49,18 +54,18 @@ export const sequelize = new Sequelize(process.env.DATABASE_URL, {
   },
 });
 
-// Fonction pour initialiser la DB (option sync)
+// Fonction pour initialiser la DB
 export async function initDb({ syncModels = false } = {}) {
   try {
     await sequelize.authenticate();
-    console.log("✅ Connexion PostgreSQL (Sequelize) OK");
+    console.log("✅ Sequelize connecté");
 
     if (syncModels) {
       await sequelize.sync({ alter: true });
-      console.log("✅ Modèles synchronisés avec la DB");
+      console.log("✅ Modèles synchronisés");
     }
   } catch (err) {
-    console.error("❌ Connexion Sequelize échouée :", err.message);
+    console.error("❌ Échec Sequelize :", err.message);
     throw err;
   }
 }

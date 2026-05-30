@@ -26,6 +26,8 @@
 
   <div class="actions">
     <span id="call-time">00:00</span>
+  <span id="ws-status-badge" style="font-size:12px;">🟢 Connecté</span>
+</div>
     <button id="logout-btn" class="primary" aria-label="Se déconnecter">Déconnexion</button>
   </div>
 </header>
@@ -51,7 +53,7 @@
          <button id="btn-rejoindre-cours" class="btn btn--primary btn--sm">
          ▶ Rejoindre
         </button>
-
+       <button id="screen-share-btn" class="btn btn--icon btn--sm" title="Partager l'écran">🖥️</button>  <!-- ✅ -->
         <button id="end-session-btn" class="btn btn--danger btn--sm">
          ✕ Terminer
              </button>
@@ -62,18 +64,22 @@
   <div class="video-block">
     <div class="video-label">Vous</div>
     <div id="localVideoContainer" class="video-box">
-      <div class="video-overlay">CAM</div>
-    </div>
+  <video id="local-video" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+  <div class="video-overlay">CAM</div>
+</div>
   </div>
 
   <div class="video-block video-block--remote">
-    <div class="video-label">etudiant</div>
-    <div id="remoteVideoContainer" class="video-box">
-      <div class="video-overlay">LIVE</div>
-    </div>
-
-      </div>
-    </div>
+  <div class="video-label">etudiant</div>
+  <div id="remoteVideoContainer" class="video-box" style="position: relative;"> <video id="remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+    
+    <video id="remote-screen" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; display:none; background:#000;"></video>
+    
+    <button id="screen-fullscreen-btn" class="btn btn--icon" style="position: absolute; bottom: 10px; right: 10px; z-index: 10; display: none; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;" title="Plein écran">⛶ Plein écran</button>
+    
+    <div class="video-overlay">LIVE</div>
+  </div>
+</div>
      </section>
     <!-- WHITEBOARD -->
       <section class="card card--whiteboard">
@@ -89,13 +95,15 @@
         </div>
 
         <div class="whiteboard-tools">
-          <div class="wb-tools-group">
-            <button id="penToolBtn"    class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
-            <button id="eraserToolBtn" class="btn btn--icon wb-tool" title="Gomme">🧽</button>
-            <button id="lineToolBtn"   class="btn btn--icon wb-tool" title="Ligne">📏</button>
-            <button id="rectToolBtn"   class="btn btn--icon wb-tool" title="Rectangle">▭</button>
-            <button id="textToolBtn"   class="btn btn--icon wb-tool" title="Texte">🔤</button>
-          </div>
+  <div class="wb-tools-group">
+    <button id="pointToolBtn" class="btn btn--icon wb-tool" title="Point">•</button>
+    <button id="penToolBtn"     class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
+    <button id="eraserToolBtn"  class="btn btn--icon wb-tool" title="Gomme">🧽</button>
+    <button id="lineToolBtn"    class="btn btn--icon wb-tool" title="Ligne">📏</button>
+    <button id="rectToolBtn"    class="btn btn--icon wb-tool" title="Rectangle">▭</button>
+    <button id="circleToolBtn"  class="btn btn--icon wb-tool" title="Cercle">⭕</button>  <!-- ✅ -->
+    <button id="textToolBtn"    class="btn btn--icon wb-tool" title="Texte">🔤</button>
+  </div>
 
           <div class="wb-tools-group">
             <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
@@ -168,7 +176,7 @@
        <div class="card__body">
       <div id="stripe-status" style="margin-bottom: 15px; font-weight: bold;"></div>
 
-     <button id="stripe-setup-btn" class="btn btn--primary full-width">
+     <button id="stripe-setup-btn" type="button" class="btn btn--primary full-width">
       Ajouter une carte bancaire
       </button>
          </div>
@@ -176,48 +184,61 @@
        </aside>
 
      </main>
-
-
 <!-- ================= JS ================= -->
-<script type="module" src="../../js/core/state.js"></script>
-<script type="module" src="../../js/modules/ui/uiRenderers.js"></script>
-<script type="module" src="../../js/modules/ui/uiBindings.js"></script>
-<script type="module" src="../../js/pages/etudiant/dashboard.js"></script>
-<script type="module" src="../../js/services/session.service.js"></script>
-<script type="module" src="../../js/services/whiteboard.service.js"></script>
+<!-- Ajoute type="module" à TOUTES les balises -->
+<script type="module" src="/js/lib/logger.js"></script>
+<script type="module" src="/js/domains/etudiant-session/etudiant.session.orchestrator.js"></script>
+<script type="module" src="/js/pages/etudiant/dashboard.js"></script>
 
-<script type="module">
-  // ================= STRIPE =================
-  const stripeBtn = document.getElementById("stripe-onboarding-btn");
-   if (stripeBtn) {
-    stripeBtn.addEventListener("click", async () => {
-      try {
-        const token = localStorage.getItem("token");
-        // Détection de l'URL
-        const API_URL = window.location.hostname === "localhost" 
-          ? "http://localhost:4000" 
+<!-- ================= STRIPE ================= -->
+<script>
+// 1. Définition de l'URL de l'API (À GARDER ABSOLUMENT)
+const API_URL = window.location.hostname === "localhost"
+          ? "http://localhost:4000"
           : "https://plateforme-scolaire-1.onrender.com";
 
-        const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
+// 2. Logique du bouton d'ajout de carte
+const stripeBtn = document.getElementById("stripe-setup-btn"); 
+if (stripeBtn) {
+  // 1. On ajoute "e" (l'événement) ici 👇
+   stripeBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    try {
+        const token = localStorage.getItem("token");
+
+        // ✅ Vérifie d'abord le statut
+        const statusRes = await fetch(`${API_URL}/api/v1/stripe-student/status`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const statusData = await statusRes.json();
+
+        if (statusData.isSubscriber || statusData.status === "active") {
+            alert("✅ Votre carte est déjà enregistrée et votre accès est actif.");
+            return;
+        }
+
+        // Sinon procède à l'enregistrement
+        const res = await fetch(`${API_URL}/api/v1/stripe-student/subscribe`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ planType: "monthly" })
         });
 
         const data = await res.json();
-        if (data.stripeLink) {
-          window.location.href = data.stripeLink;
+        if (data.url) {
+            window.location.href = data.url;
         } else {
-          alert("Erreur : " + (data.message || "Lien Stripe non reçu."));
+            alert("Erreur : " + (data.error || "Impossible d'accéder au paiement."));
         }
-      } catch (err) {
-        console.error("Erreur Stripe onboarding:", err);
-        alert("Le serveur est injoignable.");
-      }
-    });
-  }
+    } catch (err) {
+        console.error("Erreur Stripe :", err);
+        alert("Erreur lors de la connexion à Stripe.");
+    }
+});
+}
 </script>
 </body>
 </html>

@@ -6,7 +6,7 @@ const API_URL = window.location.hostname === "localhost" || window.location.host
 // 2. Configuration de la route API
 const API_BASE = `${API_URL}/api/v1`; // Utilise maintenant API_URL !
 
-// 🔹 Vérifier si déjà connecté (Correction)
+// 🔹 Vérifier si déjà connecté
 const storedUser = localStorage.getItem("currentUser");
 const token = localStorage.getItem("token");
 
@@ -14,10 +14,10 @@ if (storedUser && token) {
   try {
     const user = JSON.parse(storedUser);
     if (user.role === "prof") {
-      // ✅ C'est un prof déjà connecté, on l'envoie sur son dashboard
+      //✅ C'est un prof déjà connecté, on l'envoie sur son dashboard
       window.location.replace("/pages/professeur/dashboard.html");
     } else {
-      // ⚠️ Un élève (ou autre) arrive sur le login prof !
+      // 🔴 Un élève (ou autre) arrive sur le login prof !
       // On détruit sa session pour éviter les conflits et le laisser se connecter.
       console.warn("Session non-professeur détectée. Déconnexion automatique.");
       localStorage.clear();
@@ -58,7 +58,7 @@ async function loginProfesseur(event) {
     hideError();
     hideSuccess();
 
-    console.log("ðŸ“¤ Connexion en cours pour:", username);
+    console.log("📤 Connexion en cours pour:", username);
 
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
@@ -67,15 +67,14 @@ async function loginProfesseur(event) {
     });
 
     const json = await res.json();
-    console.log("ðŸ“¥ RÃ©ponse serveur:", json);
-
-    if (!res.ok) throw new Error(json.message || "Connexion Ã©chouÃ©e");
+    console.log("📤 Réponse serveur:", json);
+    if (!res.ok) throw new Error(json.message || "Connexion échouée");
 
     const accessToken = json.accessToken;
     const currentUser = json.user;
 
-    if (!accessToken) throw new Error("Token absent dans la rÃ©ponse serveur");
-    if (!currentUser || currentUser.role !== "prof")
+    if (!accessToken) throw new Error("Token absent dans la rÃÂÃÂ©ponse serveur");
+    if (!currentUser || !["prof", "professeur"].includes(currentUser.role))
       throw new Error("Cet utilisateur n'est pas professeur");
 
     // Enrichir utilisateur
@@ -86,9 +85,9 @@ async function loginProfesseur(event) {
     localStorage.setItem("token", accessToken);
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
 
-    console.log("âœ… DonnÃ©es stockÃ©es:", { token: "***", user: currentUser });
+    console.log("✅ Données stockées:", { token: "***", user: currentUser });
 
-    showSuccess("Connexion rÃ©ussie! Redirection...");
+    showSuccess("Connexion réussie ! Redirection...");
 
     //  Redirection vers dashboard professeur
     setTimeout(() => {
@@ -96,7 +95,7 @@ async function loginProfesseur(event) {
     }, 1000);
 
   } catch (err) {
-    console.error("âŒ Erreur:", err);
+    console.error("❌ Erreur:", err);
     showError(err.message || "Erreur de connexion");
     showLoading(false);
   }
@@ -106,20 +105,20 @@ async function loginProfesseur(event) {
  * Affichage / masquage messages
  */
 function showError(msg) {
-  errorDiv.textContent = "âŒ " + msg;
+  errorDiv.textContent = "❌ " + msg;
   errorDiv.classList.add("show");
 }
 function hideError() { errorDiv.classList.remove("show"); }
 
 function showSuccess(msg) {
-  successDiv.textContent = "âœ… " + msg;
+  successDiv.textContent = "✅ " + msg;
   successDiv.classList.add("show");
 }
 function hideSuccess() { successDiv.classList.remove("show"); }
 
 function showLoading(isLoading) {
   if (isLoading) {
-    loadingDiv.textContent = "â³ Connexion en cours...";
+    loadingDiv.textContent = "🔄 Connexion en cours...";
     loadingDiv.classList.add("show");
     submitBtn.disabled = true;
   } else {

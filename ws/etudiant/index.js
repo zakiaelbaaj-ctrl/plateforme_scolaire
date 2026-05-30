@@ -7,6 +7,8 @@ import { chatMessage }          from "./chat.js";
 import { documentShare }        from "./documents.js";
 import { handleSignal }         from "./video.js";
 import { StudentMatchService }  from "./match.service.js";
+import { safeSend } from "../utils.js";
+import { clients } from "../../socket.js";
 
 // =======================================================
 // HANDLER PRINCIPAL
@@ -37,10 +39,12 @@ export async function handleStudentMessage(ws, msg) {
         // ROOM — rejoindre après un match
         // --------------------------------------------------
         case "student:joinRoom":
+        case "student:join-room":
             await joinRoom(ws, { roomId: msg.roomId });
             break;
 
         case "student:leaveRoom":
+        case "student:leave-room":
             await leaveRoom(ws);
             break;
 
@@ -58,12 +62,25 @@ export async function handleStudentMessage(ws, msg) {
         // --------------------------------------------------
         // CHAT
         // --------------------------------------------------
-        case "student:chatMessage":
-            chatMessage(ws, {
-                roomId: msg.roomId,
-                text:   msg.text
-            });
-            break;
+        case "student:chatMessage": {
+      const { text, roomId } = msg;
+      if (!text) {
+        return safeSend(ws, { type: "error", message: "Message vide" });
+      }
+
+      clients.forEach(client => {
+        if (client.readyState === 1 && client.role === "etudiant") {
+          client.send(JSON.stringify({
+            type: "student:chatMessage",
+            sender: ws.userName,
+            text,
+            roomId: roomId || "general",
+            timestamp: new Date().toISOString()
+          }));
+        }
+      });
+      break;
+    }
 
         // --------------------------------------------------
         // DOCUMENTS

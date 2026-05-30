@@ -1,5 +1,5 @@
 // ======================================================
-// INIT WHITEBOARD â€” ORCHESTRATION
+// INIT WHITEBOARD Ã¢â¬â ORCHESTRATION
 // ======================================================
 
 import { WhiteboardCore } from "/js/modules/whiteboard/whiteboard.core.js";
@@ -14,28 +14,28 @@ export function initWhiteboard(canvasId, roomId) {
   const canvas = document.getElementById(canvasId);
 
   if (!canvas) {
-    console.error(`âŒ initWhiteboard: canvas "${canvasId}" introuvable`);
+    console.error(`Ã¢ÂÅ initWhiteboard: canvas "${canvasId}" introuvable`);
     return;
   }
 
-  // 1ï¸âƒ£ Initialisation du moteur (core)
+  // 1Ã¯Â¸ÂÃ¢ÆÂ£ Initialisation du moteur (core)
   WhiteboardCore.init(canvasId);
 
-  // 2ï¸âƒ£ Initialisation des handlers (souris + tactile)
+  // 2Ã¯Â¸ÂÃ¢ÆÂ£ Initialisation des handlers (souris + tactile)
   initHandlers(canvas);
 
-  // 3ï¸âƒ£ Initialisation du socket (temps rÃ©el)
+  // 3Ã¯Â¸ÂÃ¢ÆÂ£ Initialisation du socket (temps rÃÂ©el)
   if (roomId) {
-    WhiteboardSocket.enableSync(roomId);   // â† CORRECTION ICI
+    WhiteboardSocket.enableSync(roomId);   // Ã¢â Â CORRECTION ICI
   } else {
-    console.warn("âš ï¸ initWhiteboard: aucun roomId fourni â†’ pas de synchronisation");
+    console.warn("Ã¢Å¡Â Ã¯Â¸Â initWhiteboard: aucun roomId fourni Ã¢â â pas de synchronisation");
   }
 
-  // 4ï¸âƒ£ Outils par dÃ©faut
+  // 4Ã¯Â¸ÂÃ¢ÆÂ£ Outils par dÃÂ©faut
   setTool("pen");
   setColor("#000000");
   setSize(3);
 
-  console.log("ðŸŽ‰ Whiteboard initialisÃ© avec succÃ¨s !");
+  console.log("Ã°Å¸Å½â° Whiteboard initialisÃÂ© avec succÃÂ¨s !");
 }
 

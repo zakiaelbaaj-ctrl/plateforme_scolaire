@@ -31,28 +31,10 @@ export function safeSend(ws, data) {
 // BROADCAST AUX ÉLÈVES
 // =======================================================
 export function broadcastOnlineProfs(onlineProfessors, clients) {
-  const allProfs = onlineProfessors || new Map();
-
-  // 1. Préparation et Tri (Disponibles en premier)
-  const profs = Array.from(allProfs.values())
-    .sort((a, b) => {
-      const statusOrder = { disponible: 0, en_appel: 1, occupe: 2, absent: 3 };
-      return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
-    })
-    .map(prof => ({
-      id: prof.id,
-      prenom: prof.prenom || "",
-      nom: prof.nom || "",
-      ville: prof.ville || "",
-      pays: prof.pays || "",
-      status: prof.status,
-      matiere: prof.matiere || "Général", // Ajouté pour l'élève
-      eleveId: prof.eleveId || null
-    }));
+  const profs = getOnlineProfessors(); // ✅ calcule disponibilite correctement
 
   console.log(`📡 Broadcast: ${profs.length} profs envoyés aux élèves.`);
 
-  // 2. Diffusion ciblée uniquement aux élèves
   for (const ws of clients.values()) {
     if (ws.role === "eleve" && ws.readyState === 1) {
       safeSend(ws, {

@@ -22,7 +22,20 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
       message: "Action non autorisée"
     });
   }
-
+   // 🔒 Vérification du moyen de paiement — relecture DB (valeur fraîche)
+const { rows } = await pool.query(
+  `SELECT has_payment_method FROM users WHERE id = $1`,
+  [eleveId]
+);
+const hasPaymentMethod = rows[0]?.has_payment_method ?? false;
+if (!hasPaymentMethod) {
+  return safeSend(ws, {
+    type: "error",
+    code: "NO_PAYMENT_METHOD",
+    message: "⚠️ Aucun moyen de paiement enregistré. Veuillez ajouter une carte bancaire avant d'appeler un professeur."
+  });
+}
+  
   const profIdNum = parseInt(profId, 10);
   if (isNaN(profIdNum)) {
     return safeSend(ws, {
@@ -39,12 +52,19 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
     });
   }
 
-  if (prof.sessionStartedAt) {
-    return safeSend(ws, {
-      type: "error",
-      message: "Professeur déjà en session"
-    });
-  }
+ if (prof.status !== "disponible") {
+  const reason = {
+    "en_session":  "Ce professeur est déjà en session",
+    "appel_reçu":  "Ce professeur est déjà sollicité",
+    "offline":     "Ce professeur est hors ligne",
+  }[prof.status] || "Ce professeur est indisponible";
+ 
+  return safeSend(ws, {
+    type:    "error",
+    code:    "PROF_UNAVAILABLE",
+    message: reason,
+  });
+}
 
   const roomId = `room_${profIdNum}_${eleveId}`;
 
@@ -153,6 +173,14 @@ export function acceptCall(ws, onlineProfessors, clients) {
       message: "Vous êtes déjà en session"
     });
   }
+ // Autoriser acceptation si le prof est en état "appel_reçu"
+if (prof.status === "en_session") {
+  return safeSend(ws, {
+    type: "error",
+    message: "Vous êtes déjà en session",
+    code: "PROF_UNAVAILABLE"
+  });
+}
 
   // ✅ DÉMARRER LA SESSION (SERVEUR ONLY)
   startSession(profId, eleveId, onlineProfessors, ws, eleveWs, clients);

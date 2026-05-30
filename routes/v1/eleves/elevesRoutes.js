@@ -5,8 +5,10 @@
 
 import express from "express";
 import * as elevesController from "#controllers/eleves.controller.js";
-
+// 1. Importe ton middleware de sécurité
+import { requireAuth, requireRole } from "#middlewares/auth.middleware.js";
 const router = express.Router();
+router.use(requireAuth); // Applique l'authentification à toutes les routes de ce router
 
 /**
  * Middleware pour capturer les erreurs async
@@ -66,51 +68,55 @@ router.get(
 
 /**
  * GET /api/v1/eleves
- * Liste paginée / filtrée des élèves
+ * Liste des élèves : Généralement réservé aux profs/admins
  */
 router.get(
   "/",
+  requireRole("admin"), // Seul l'admin voit la liste globale
   asyncHandler(elevesController.getAllEleves)
 );
 
 /**
  * GET /api/v1/eleves/:id
- * Récupérer un élève par ID
  */
 router.get(
   "/:id",
   validateIdParam,
+  requireRole("admin"),
   asyncHandler(elevesController.getEleveById)
 );
 
 /**
  * POST /api/v1/eleves
- * Créer un élève
+ * Créer un élève : SEULS les profs/admins
  */
 router.post(
   "/",
+  requireRole("admin"),
   express.json(),
   asyncHandler(elevesController.createEleve)
 );
 
 /**
  * PUT /api/v1/eleves/:id
- * Mettre à jour un élève
+ * Mettre à jour : SEULS les profs/admins
  */
 router.put(
   "/:id",
   validateIdParam,
+  requireRole("admin"),
   express.json(),
   asyncHandler(elevesController.updateEleve)
 );
 
 /**
  * DELETE /api/v1/eleves/:id
- * Supprimer un élève
+ * Supprimer : SEULS les profs/admins
  */
 router.delete(
   "/:id",
   validateIdParam,
+  requireRole("admin"),
   asyncHandler(elevesController.deleteEleve)
 );
 

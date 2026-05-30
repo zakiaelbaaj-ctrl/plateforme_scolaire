@@ -23,6 +23,8 @@ import webhookRoutes from "./routes/v1/webhooks/webhook.routes.js";
 import authRoutes from "./routes/v1/auth/auth.routes.js";
 import elevesRoutes from "./routes/v1/eleves/elevesRoutes.js";
 import professeursRoutes from "./routes/v1/professeurs/professeursRoutes.js";
+import etudiantRoutes from "./routes/v1/etudiant/etudiant.routes.js";
+import webrtcRoutes from "./routes/v1/webrtc.routes.js"; // Ton code actuel
 import appelsRoutes from "./routes/v1/appels/appels.routes.js";
 import adminRoutes from "./routes/v1/admin/adminRoutes.js";
 import adminUsersRoutes from "./routes/v1/admin/users.js";
@@ -33,7 +35,6 @@ import profileRoutes from "./routes/v1/users/profile.routes.js";
 import stripeConnectRoutes from "./routes/v1/stripeConnect.routes.js";
 import whiteboardRoutes from "./routes/whiteboard.routes.js"; 
 import stripeStudentRoutes from "./routes/v1/stripe/stripe.student.routes.js";
-import webrtcRoutes from "./routes/v1/webrtc.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -68,12 +69,37 @@ app.use(helmet({
   xssFilter: false,
 }));
 // ✅ AJOUTE CETTE ROUTE juste après tes middlewares pour supprimer les 404 polluants
+// 1. logs
+app.use((req, res, next) => {
+  console.log("INCOMING REQUEST:", req.method, req.url);
+  next();
+});
+
+// 2. filtre
 app.use((req, res, next) => {
   if (req.url.includes('6babaf8f') || req.url.includes('.well-known')) {
     return res.status(204).end();
   }
   next();
 });
+
+// 3. STRIPE WEBHOOK (RAW - PRIORITÉ ABSOLUE)
+app.use(
+  "/api/v1/webhooks",
+  express.raw({ type: "application/json" }),
+  webhookRoutes
+);
+
+// 4. JSON PARSERS (TOUT LE RESTE)
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+// 5. autres routes
+app.use("/api/v1/stripeConnect", stripeStudentRoutes);
+app.use("/api/v1/stripe-student", stripeStudentRoutes);
+app.use("/api/v1/etudiant", etudiantRoutes);
+app.use("/api/v1/webrtc", webrtcRoutes);
+app.use("/api/v1/appels", appelsRoutes);
 // =======================================================
 // CORS (Correction pour PATCH)
 // =======================================================
@@ -89,14 +115,7 @@ app.use(cors({
 }));
 app.options("*", cors()); 
 
-// =======================================================
-// MIDDLEWARES STANDARDS
-// =======================================================
-app.use("/api/v1/webhooks", webhookRoutes); 
-app.use("/api/v1/stripe-student", stripeStudentRoutes);
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
-app.use("/api/v1/webrtc", webrtcRoutes);
+
 // =======================================================
 // VUES & STATIQUE
 // =======================================================
@@ -105,11 +124,6 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 const publicPath = path.join(__dirname, "public");
-
-// ✅ Retour Stripe — redirige selon le rôle
-app.get("/stripe/success", (req, res) => {
-  res.sendFile(path.join(publicPath, "stripe/success.html"));
-});
 
 app.get("/stripe/refresh", (req, res) => {
   res.sendFile(path.join(publicPath, "stripe/success.html"));
@@ -207,7 +221,6 @@ app.use("/api/v1/auth", signupRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/eleves", elevesRoutes);
 app.use("/api/v1/professeurs", professeursRoutes);
-app.use("/api/v1/appels", appelsRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/admin/users", adminUsersRoutes);
 // (Car tes routes /users sont déjà gérées à l'intérieur de adminRoutes.js)

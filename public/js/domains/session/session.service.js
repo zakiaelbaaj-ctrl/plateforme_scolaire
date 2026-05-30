@@ -1,5 +1,5 @@
 // ======================================================
-// SESSION DOMAIN SERVICE â€” ROUTEUR MÃ‰TIER CENTRAL
+// SESSION DOMAIN SERVICE — ROUTEUR MÉTIER CENTRAL
 // ======================================================
 
 import { AppState } from "/js/core/state.js";
@@ -8,11 +8,11 @@ import { ChatService } from "/js/domains/chat/chat.service.js";
 import { CallService } from "/js/domains/call/call.service.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
 import { DocumentService } from "/js/domains/document/document.service.js";
-import { updateToolButtons } from "/js/domains/whiteboard/whiteboard.events.js";
+import { updateToolButtons } from "/js/domains/whiteboard/whiteboard.contract.js";
 export const SessionService = {
 
   // --------------------------------------------------
-  // SYSTÃˆME D'ABONNEMENT INTERNE
+  // SYSTEME D'ABONNEMENT INTERNE
   // --------------------------------------------------
 
   _listeners: [],
@@ -53,7 +53,7 @@ export const SessionService = {
         AppState.currentRoomId = roomId;
 
         socketService.send({ type: "joinRoom", roomId });
-        // âœ… Notifie le dashboard prof
+        /// ✅ Notifie le dashboard prof
         this._notify({ type: "sessionStarted", roomId });
         break;
       }
@@ -63,7 +63,7 @@ export const SessionService = {
 
        break;
       }
-      // âœ… Ajouter aprÃ¨s case "joinedRoom"
+      // ✅ Ajouter après case "joinedRoom"
        case "userJoined": {
   // L'autre participant a rejoint la room
   // On notifie le dashboard et on attend le twilioToken
@@ -101,7 +101,7 @@ export const SessionService = {
 
       case "twilioToken": {
         this.startHeartbeat(); // ✅ Timer commence quand le prof accepte
-       CallService.handleEvent(data); // dÃ©lÃ¨gue Ã  CallService, pas de double appel
+       CallService.handleEvent(data); // délègue à CallService, pas de double appel
        break;
       }
 
@@ -149,10 +149,10 @@ export const SessionService = {
       }
 
        case "error": {
-  //  Ignorer certaines erreurs cÃ´tÃ© Ã©lÃ¨ve
+  //  Ignorer certaines erreurs côté élève
       if (data.message === "Stroke invalide" || 
       data.message === "stroke requis" || 
-      data.message === "Vous n'Ãªtes pas dans cette room") break;
+      data.message === "Vous n'êtes pas dans cette room") break;
       console.error("WS Error:", data.message);
       break;
     }
@@ -160,7 +160,7 @@ export const SessionService = {
       case "TRANSPORT_CLOSED":
       break;
       default:
-        console.log("⚠️ Event non géré (SessionDomain):", data.type);
+        console.log("🛑 Event non géré (SessionDomain):", data.type);
     }
   },
 
@@ -187,12 +187,11 @@ requestStudentMatch(matiere) {
 
 stopVideoCall() {
     console.log("🛑 Arrêt de la session vidéo...");
-    
     // 1. Déconnexion Twilio
     if (typeof CallService !== 'undefined' && CallService.disconnectTwilio) {
       CallService.disconnectTwilio();
     }
-    // 2. 📡 ON PRÉVIENT LE SERVEUR EN PREMIER ! (Avant de perdre la mémoire)
+    // 2. ON PRÉVIENT LE SERVEUR EN PREMIER ! (Avant de perdre la mémoire)
     this.endSession();
     // 3. 🧹 ON NETTOIE LE LOCAL EN DERNIER (Chrono, UI, State)
     if (typeof CallService !== 'undefined') {
@@ -201,26 +200,26 @@ stopVideoCall() {
   },
 
  endSession() {
-  console.log("📤 endSession envoyé, roomId:", AppState.currentRoomId);
+  console.log("🛑 endSession envoyée, roomId:", AppState.currentRoomId);
 
   if (AppState.currentRoomId) {
     socketService.send({ type: "endSession", roomId: AppState.currentRoomId });
   } else {
-    console.warn("⚠️ endSession appelé mais currentRoomId est null !");
+    console.warn("🛑 endSession appelée mais currentRoomId est null !");
   }
   // ✅ NE PAS appeler handleSessionEnded ici — c'est terminateCall qui s'en charge
 },
 
   // ==============================================================
-  // ⏱️ GESTION DU TIMER (Déléguée proprement à l'AppState)
+  //⏱️ GESTION DU TIMER (Déléguée proprement à l'AppState)
   // ==============================================================
   
   startTimer() {
     if (typeof AppState !== 'undefined' && AppState.startTimer) {
-      console.log("⏱️ SessionService demande le démarrage du timer...");
+      console.log("🛑 SessionService demande le démarrage du timer...");
       AppState.startTimer();
     } else {
-      console.warn("⚠️ Impossible de démarrer le timer : AppState.startTimer est introuvable.");
+      console.warn("🛑 Impossible de démarrer le timer : AppState.startTimer est introuvable.");
     }
   },
   

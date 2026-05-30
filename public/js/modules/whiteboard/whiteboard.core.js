@@ -1,5 +1,5 @@
 // ======================================================
-// WHITEBOARD CORE â€” MOTEUR CANVAS + ZOOM/PAN
+// WHITEBOARD CORE Ã¢â¬â MOTEUR CANVAS + ZOOM/PAN
 // ======================================================
 
 import { WhiteboardState } from "/js/modules/whiteboard/whiteboard.state.js";
@@ -33,7 +33,7 @@ export const WhiteboardCore = {
   init(canvasId) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
-      console.warn("WhiteboardCore.init â†’ canvas introuvable:", canvasId);
+      console.warn("WhiteboardCore.init Ã¢â â canvas introuvable:", canvasId);
       return;
     }
 
@@ -44,19 +44,19 @@ export const WhiteboardCore = {
     WhiteboardState.ctx = canvas.getContext("2d");
 
     if (!WhiteboardState.ctx) {
-      console.error("WhiteboardCore.init â†’ impossible d'obtenir le contexte 2D");
+      console.error("WhiteboardCore.init Ã¢â â impossible d'obtenir le contexte 2D");
       return;
     }
 
     WhiteboardState.ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-// ðŸ›¡ EmpÃªche le double binding des Ã©vÃ©nements
+// Ã°Å¸âºÂ¡ EmpÃÂªche le double binding des ÃÂ©vÃÂ©nements
 if (!this._eventsBound) {
   this.bindEvents();
   this._eventsBound = true;
 }
 
-console.log("ðŸ“ WhiteboardCore initialisÃ© sur", canvasId);
+console.log("Ã°Å¸âÂ WhiteboardCore initialisÃÂ© sur", canvasId);
 
   },
 
@@ -67,13 +67,13 @@ console.log("ðŸ“ WhiteboardCore initialisÃ© sur", canvasId);
     const canvas = WhiteboardState.canvas;
     if (!canvas) return;
 
-    // SOURIS â€” dessin
+    // SOURIS Ã¢â¬â dessin
     canvas.addEventListener("mousedown", (e) => {
-      // bouton gauche â†’ dessin
+      // bouton gauche Ã¢â â dessin
       if (e.button === 0) {
         this.startDraw(e);
       }
-      // bouton milieu ou droit â†’ pan
+      // bouton milieu ou droit Ã¢â â pan
       if (e.button === 1 || e.button === 2) {
         this.startPan(e);
       }
@@ -94,7 +94,7 @@ console.log("ðŸ“ WhiteboardCore initialisÃ© sur", canvasId);
       this.stopPan();
     });
 
-    // TACTILE â€” dessin simple
+    // TACTILE Ã¢â¬â dessin simple
     canvas.addEventListener(
       "touchstart",
       (e) => {

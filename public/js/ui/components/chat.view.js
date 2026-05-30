@@ -2,7 +2,7 @@
 // CHAT VIEW (UI UNIQUEMENT)
 // ============================================================
 
-// âœ… RÃ©solution DOM lazy â€” au moment de l'appel, pas du chargement
+// Ã¢Åâ¦ RÃÂ©solution DOM lazy Ã¢â¬â au moment de l'appel, pas du chargement
 function getChatBox() {
   return document.getElementById("chat-box");
 }

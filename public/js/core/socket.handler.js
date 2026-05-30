@@ -23,7 +23,6 @@ class SocketHandlerProf {
      case "documentReceived":
      case "newDocument": {
      console.log("📥 document reçu PROF:", data);
-
      const raw = data.document ?? data;
 
 const normalizedDoc = {
@@ -32,8 +31,7 @@ const normalizedDoc = {
   sender: raw.userName ?? raw.sender ?? "Inconnu"
 };
 
-      console.log("📦 doc normalisé PROF:", normalizedDoc);
-
+     console.log("📦 doc normalisé PROF:", normalizedDoc);
       AppState.addDocument(normalizedDoc);
       break;
       }
@@ -55,36 +53,57 @@ const normalizedDoc = {
 case "joinedRoom": {
   console.log("✅ joinedRoom reçu côté prof", data);
   const roomId = data.roomId ?? data.room;
-  if (!roomId) { console.warn("⚠️ joinedRoom sans roomId", data); break; }
-
-  // ✅ PAS de startSession ici (déjà fait dans handleStartSession)
-  // ✅ PAS de setCallState ici (CallService.handleEvent("startSession") le fait)
-
-  // ✅ Timer démarré ici, une seule fois
-  AppState.startTimer();
+  if (!roomId) {
+  console.warn("⚠️ joinedRoom sans roomId", data);
   break;
 }
 
-      case "chatMessage":
-        AppState.addChatMessage({
-          sender: data.sender ?? "�l�ve",
-          text: data.text ?? ""
-        });
-        break;
+// ✅ PAS de startSession ici (déjà fait dans handleStartSession)
+// ✅ PAS de setCallState ici (CallService.handleEvent("startSession") le fait)
+
+// ✅ Timer démarré ici, une seule fois
+AppState.startTimer();
+break;
+}
+
+case "chatMessage":
+  AppState.addChatMessage({
+    sender: data.sender ?? "élève",
+    text: data.text ?? ""
+  });
+  break;
+  case "ws:status":
+  AppState._notify("ws:status", data);
+  break;
 
       case "tableauStroke":
       case "tableauSync":
         WhiteboardService.handleEvent(data);
         break;
 
-      case "tableauClear":
-        AppState._notify("whiteboard:clear"); // ✅ corrigé : _notify au lieu de emit
-        break;
+     case "tableauClear":
+  WhiteboardService.handleEvent(data);
+  break;
+  case "screenShareStarted":
+  // L'overlay est géré par Twilio directement via attachTrack
+  console.log("📺 Partage d'écran démarré par", data.userName);
+  break;
+
+case "screenShareStopped": {
+  import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {
+    ScreenShareOverlay.hide();
+  });
+  const btn = document.getElementById("screen-share-btn");
+  if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
+  break;
+}
 
       case "userJoined":
       case "userLeft":
         break;
-         case "invoice:ready":
+        
+        case "invoice:ready":
+        
         // 1. Log d'information discret (utile pour le monitoring)
         console.info(`[PAIE] Session payée : ${data.montant}€`);
         
@@ -97,14 +116,26 @@ case "joinedRoom": {
 
         // 3. Mettre à jour le solde du prof s'il est affiché sur son tableau de bord
         AppState._notify("wallet:update", data.montant); 
+        
         break;
+        // Dans SocketHandlerProf.handle(), avant default:
+      case "TRANSPORT_CLOSED":
+       // ✅ Silencieux — la reconnexion est gérée par socket.service.js
+       break;
+        case "error":
+       WSLogger.warn(`Erreur serveur [${data.code ?? "?"}] :`, data.message ?? "");
+       if (data.message) {
+       const el = document.getElementById("call-status");
+       if (el) el.textContent = `⚠️ ${data.message}`;
+      }
+       break;
         default:
         WSLogger.warn("Type WS non géré (prof) :", data.type);
-    }
-  }
-  onTransportOpen() {
-    AppState.setWsConnected(true);
-    if (AppState.currentUser?.id) {
+        }
+        }
+      onTransportOpen() {
+      AppState.setWsConnected(true);
+       if (AppState.currentUser?.id) {
       socketService.send({
         type: "identify",
         ...AppState.currentUser,
@@ -116,7 +147,7 @@ case "joinedRoom": {
  handleStartSession(data) {
   const roomId = data.roomId ?? data.room;
   if (!roomId) return;
-  AppState.startSession({ roomId }); // ← une seule fois
+  AppState.startSession({ roomId }); // ✅ une seule fois
   socketService.send({ type: "joinRoom", roomId });
   // ✅ Timer démarré dans joinedRoom, pas ici
 }

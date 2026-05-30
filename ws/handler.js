@@ -1,6 +1,7 @@
 // =======================================================
 // WS/HANDLER.JS – Routeur Principal avec Sécurité Renforcée
 // =======================================================
+import { WebSocket } from 'ws';
 
 import {
   validateMessage,
@@ -15,7 +16,6 @@ import {
 // Domaines existants
 import { initAppel, handleAppelMessages } from './appel/index.js';
 import { initAuth, handleAuthMessages } from './auth/index.js';
-import { initChat, handleChatMessages } from './chat/index.js';
 import { initFils, handleFilsMessages } from './fils/index.js';
 import { initMatieres, handleMatieresMessages } from './matieres/index.js';
 import { initSignaling, handleSignalingMessages } from './signaling/index.js';
@@ -25,8 +25,8 @@ import { joinRoom, chatMessage, documentShare, leaveRoom } from './rooms.js';
 
 // Domaine tableau blanc + partage écran
 import * as Whiteboard from './tableau.js';
-
-import wsContext from './context.js';
+import { startSession } from './state/onlineProfessors.js';
+import wsContext from './context.js'; // Pour accéder à tous les clients connectés
 
 // =======================================================
 // CONFIGURATION
@@ -67,15 +67,13 @@ const DOMAIN_HANDLERS = {
   'identify': 'auth',
   'authenticate': 'auth',
 
-  // Domaine Chat (global)
-  'chatMessage': 'rooms',
   'userJoined': 'rooms',
   'userLeft': 'rooms',
 // Domaine Rooms
 'joinRoom': 'rooms',
-'joinChat': 'rooms',        // ✅ AJOUT
+
 'documentShare': 'rooms',
-'chatMessage': 'rooms',
+
   // Domaine Fils
   'createThread': 'fils',
   'replyThread': 'fils',
@@ -101,9 +99,7 @@ const DOMAIN_HANDLERS = {
   // Heartbeat
   'ping': 'ping'
 };
-console.log("DOMAIN_HANDLERS:", DOMAIN_HANDLERS);
-console.log("🧭 ROUTES ACTIVES :", Object.keys(DOMAIN_HANDLERS));
-
+logInfo('Handler', `🧭 ${Object.keys(DOMAIN_HANDLERS).length} routes actives`);
 // =======================================================
 // HANDLERS PAR DOMAINE
 // =======================================================
@@ -202,27 +198,26 @@ export function handleMessage(ws, data) {
         code: 'INVALID_MESSAGE'
       });
     }
-    console.log("RATE CHECK:", data.type);
-    if (!NO_RATE_LIMIT_TYPES.has(data.type)) {
 
-  if (data.type === 'chatMessage') {
-    if (!chatLimiter.isAllowed(ws.userId)) {
-      return safeSend(ws, {
-        type: 'error',
-        message: 'Trop de messages',
-        code: 'RATE_LIMITED'
-      });
+    if (!NO_RATE_LIMIT_TYPES.has(data.type)) {
+      if (data.type === 'chatMessage') {
+        if (!chatLimiter.isAllowed(ws.userId)) {
+          return safeSend(ws, {
+            type: 'error',
+            message: 'Trop de messages',
+            code: 'RATE_LIMITED'
+          });
+        }
+      } else {
+        if (!actionLimiter.isAllowed(ws.userId)) {
+          return safeSend(ws, {
+            type: 'error',
+            message: 'Trop de requêtes',
+            code: 'RATE_LIMITED'
+          });
+        }
+      }
     }
-  } else {
-    if (!actionLimiter.isAllowed(ws.userId)) {
-      return safeSend(ws, {
-        type: 'error',
-        message: 'Trop de requêtes',
-        code: 'RATE_LIMITED'
-      });
-    }
-  }
-}
 
     const messageType = data.type;
     logInfo('Handler', `📩 ${ws.userId} (${ws.role}): ${messageType}`);
@@ -243,6 +238,40 @@ export function handleMessage(ws, data) {
         message: 'Erreur serveur interne',
         code: 'INTERNAL_ERROR'
       });
+    }
+
+    // ✅ INTERCEPTION INDISPONIBILITÉ PROFESSEUR
+    if (messageType === 'joinRoom' && ws.role === 'professeur') {
+
+      const eleveId = data.eleveId || data.targetId;
+      if (!eleveId) {
+        return safeSend(ws, {
+          type: 'error',
+          message: 'eleveId manquant',
+          code: 'INVALID_MESSAGE'
+        });
+      }
+
+      startSession(ws.userId, eleveId);
+
+      const updatePayload = JSON.stringify({
+        type: 'professor_status_update',
+        profId: ws.userId,
+        status: 'en_session',
+        disponibilite: false
+      });
+
+      if (wsContext?.clients) {
+        wsContext.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN && client.role === 'eleve') {
+            client.send(updatePayload);
+          }
+        });
+      } else {
+        logError('Status', 'wsContext non disponible pour broadcast');
+      }
+
+      logInfo('Status', `🚫 Professeur ${ws.userId} est maintenant en session.`);
     }
 
     domainHandler(ws, data);
@@ -268,10 +297,12 @@ export async function handleDisconnect(ws) {
 
     leaveRoom(ws);
 
-    wsContext.clients.delete(userId);
+    if (wsContext?.clients) {
+      wsContext.removeClient(ws);
+    }
 
-    if (ws.role === 'prof') {
-      wsContext.onlineProfessors.delete(userId);
+    if (ws.role === 'professeur') {
+      wsContext?.onlineProfessors?.delete(userId);
     }
 
     logSuccess('Handler', `Nettoyage complet pour ${userId}`);
@@ -280,7 +311,6 @@ export async function handleDisconnect(ws) {
     logError('Handler', err);
   }
 }
-
 // =======================================================
 // EXPORTS
 // =======================================================

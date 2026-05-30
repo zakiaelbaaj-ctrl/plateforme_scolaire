@@ -6,10 +6,10 @@ import { CallStateMachine } from "./call.state.machine.js";
 export const CallService = {
   _callbacks: {},
 
-  _on(event, cb) {
-    this._callbacks[event] = cb;
-  },
-
+ // ✅ Corriger
+_on(event, cb) {
+  this._callbacks[event] = cb;
+},
   _emit(event, data) {
     if (this._callbacks[event]) this._callbacks[event](data);
   },
@@ -42,7 +42,18 @@ export const CallService = {
         }, 500);
         break;
       }
-
+       case "tableauClear": {
+        const wb = window.WhiteboardService;
+        if (wb && typeof wb.clearCanvas === "function") {
+          // On efface localement le tableau (false pour éviter de renvoyer l'event en boucle au serveur)
+          wb.clearCanvas(false); 
+        } else if (wb && typeof wb.initCanvas === "function") {
+          // Si clearCanvas n'existe pas, certaines structures ré-initialisent juste le canvas
+          const roomId = AppState.currentRoomId;
+          if (roomId) wb.initCanvas("whiteboard-canvas", roomId);
+        }
+        break;
+      }
       case "twilioToken":
         if (data.token) VideoService.connect(data.token);
         break;
@@ -67,40 +78,36 @@ export const CallService = {
     socketService.send({ type: "callProfessor", profId: parseInt(profId) });
   },
 
-  // ✅ Guard anti-double-appel
+  // 🛑 Guard anti-double-appel
   _terminating: false,
 
   terminateCall() {
-    if (this._terminating) return; // ✅ bloque les appels récursifs
+    // 🌟 ÉTAPE 1 : Si un nettoyage est déjà en cours, ou si la session est DÉJÀ nettoyée, on sort immédiatement
+    if (this._terminating || !AppState.currentRoomId) {
+      return; 
+    }
     this._terminating = true;
 
     console.log("🛑 terminateCall()");
 
+    // 🌟 L'ASTUCE : On sauvegarde l'ID avant que le système ne l'efface
+    const savedRoomId = AppState.currentRoomId;
+
     // 1. Déconnexion Twilio (sans déclencher setState via l'event "disconnected")
-    VideoService.disconnectSilent(); // ✅ nouveau : ne setState pas
+    VideoService.disconnectSilent(); // nouveau : ne setState pas
 
     // 2. Machine d'état → ended (une seule fois)
     CallStateMachine.setState(CallStateMachine.STATES.ENDED);
 
-    // 3. Nettoyage AppState (endSession appelle reset() qui remet idle)
+    // 3. Nettoyage AppState (endSession efface currentRoomId)
     AppState.stopTimer();
-    AppState.endSession(); // → reset() → idle → onChange → setCallState(idle) → cleanupSession
-     
-    // ✅ AJOUT : récupération de la facture
-  fetch(`/api/payments/session/${AppState.currentRoomId}`)
-    .then(res => res.json())
-    .then(result => {
-      if (result?.status === 'succeeded') {
-        AppState.showInvoice(result);
-      }
-    })
-    .catch(err => console.error("Erreur récupération facture:", err));
+    AppState.endSession(); 
+
     // 4. Notif UI
     AppState._notify("ui:closeCallOverlay");
 
     this._terminating = false;
   },
-
   handleSessionEnded() {
     this.terminateCall();
   },

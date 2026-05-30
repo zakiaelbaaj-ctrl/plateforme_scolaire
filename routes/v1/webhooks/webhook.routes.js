@@ -3,12 +3,21 @@ import { sequelize } from "#config/db.js";
 import stripe from "#config/stripe.js";
 import logger from "#config/logger.js";
 import { requireAuth } from "#middlewares/auth.middleware.js";
+
 const router = express.Router();
+
+router.use((req, res, next) => {
+  console.log("🔥 WEBHOOK ROUTE HIT:", req.method, req.url);
+  next();
+});
 
 router.post(
   "/stripe",
   express.raw({ type: "application/json" }),
   async (req, res) => {
+    console.log("🔔 WEBHOOK REÇU, type body:", Buffer.isBuffer(req.body) ? "Buffer ✅" : "PAS un Buffer ❌");
+    console.log("🔔 Stripe-Signature:", req.headers["stripe-signature"] ? "✅ présente" : "❌ absente");
+
     const sig = req.headers["stripe-signature"];
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -53,17 +62,81 @@ router.post(
 );
 
 /**
- * ✅ Gère les abonnements (Plans classiques ET Entraide Étudiante à 20€)
+ * ✅ Gère les abonnements et l'enregistrement de carte bancaire
  */
 async function handleCheckoutSessionCompleted(session) {
-
   const { userId, planType, type } = session.metadata || {};
-
+  const customerId = session.customer;
   const sessionId = session.id;
 
+  logger.info("📩 Traitement Checkout Session", { sessionId, mode: session.mode, userId });
+
+  // ======================================================
+  // 💳 CAS 1 : ENREGISTREMENT CARTE SEULE (MODE SETUP)
+  // ======================================================
+  // ✅ APRÈS — met à jour has_payment_method + is_subscriber + subscription_status
+if (session.mode === 'setup') {
+    if (!customerId) {
+      logger.error("❌ CustomerId manquant pour le mode setup", { sessionId });
+      return;
+    }
+
+    try {
+      // Récupérer le rôle pour ne pas affecter prof/eleve
+      const [userRecord] = await sequelize.query(
+        `SELECT role FROM users WHERE stripe_customer_id = :customerId`,
+        { replacements: { customerId }, type: sequelize.QueryTypes.SELECT }
+      );
+
+      if (userRecord?.role === 'etudiant') {
+        // Étudiant : carte + accès matching activé
+        await sequelize.query(
+          `UPDATE users 
+           SET has_payment_method = true,
+               is_subscriber = true,
+               subscription_status = 'active'
+           WHERE stripe_customer_id = :customerId`,
+          { replacements: { customerId } }
+        );
+        logger.info("💳 Carte étudiant enregistrée + accès activé", { customerId });
+      } else {
+        // Élève / Prof : uniquement has_payment_method
+        await sequelize.query(
+          `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = :customerId`,
+          { replacements: { customerId } }
+        );
+        logger.info("💳 Carte enregistrée (Mode Setup)", { customerId });
+      }
+      return;
+    } catch (err) {
+      logger.error("❌ Erreur DB lors du setup carte", { customerId, message: err.message });
+      return;
+    }
+  }
+
+  // ======================================================
+  // 🛡️ SÉCURITÉ POUR LES PAIEMENTS (MODE PAYMENT)
+  // ======================================================
   if (!userId) {
-    logger.error("❌ Metadata userId manquante dans la session", { sessionId });
+    logger.error("❌ Metadata userId manquante pour paiement", { sessionId });
     return;
+  }
+
+  // 🔒 Définir la carte utilisée comme carte par défaut (si paiement immédiat)
+  if (session.payment_intent) {
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
+      const paymentMethodId = paymentIntent.payment_method;
+
+      if (paymentMethodId) {
+        await stripe.customers.update(customerId, {
+          invoice_settings: { default_payment_method: paymentMethodId }
+        });
+        logger.info("💳 Carte définie comme défaut", { customerId, paymentMethodId });
+      }
+    } catch (err) {
+      logger.warn("⚠️ Impossible de définir la carte par défaut", { message: err.message });
+    }
   }
 
   // ======================================================
@@ -93,34 +166,13 @@ async function handleCheckoutSessionCompleted(session) {
       userId,
       planType
     });
-
+    logger.info("Données Webhook", { 
+   sessionCustomer: session.customer, 
+   metadataUserId: session.metadata?.userId 
+});
     return;
   }
-
-  // ======================================================
-  // 💳 ENREGISTREMENT CARTE (SETUP INTENT)
-  // ======================================================
-  if (session.mode === 'setup') {
-    const customerId = session.customer;
-
-    try {
-      await sequelize.query(
-        `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = :customerId`,
-        {
-          replacements: { customerId }
-        }
-      );
-
-      logger.info("💳 Carte enregistrée avec succès", { customerId });
-      return;
-    } catch (err) {
-      logger.error("❌ Erreur mise à jour carte", {
-        customerId,
-        message: err.message
-      });
-      return;
-    }
-  }
+  
   // ======================================================
   // 💰 ANCIEN SYSTÈME (ABONNEMENTS / PAIEMENTS EXISTANTS)
   // ======================================================
@@ -367,8 +419,8 @@ router.post("/create-setup-session", requireAuth, async (req, res) => {
       customer: customerId,
       currency: "eur",
       payment_method_types: ["card"],
-      success_url: `${process.env.CLIENT_URL}/pages/eleve/dashboard.html?setup=success`,
-      cancel_url:  `${process.env.CLIENT_URL}/pages/eleve/dashboard.html?setup=cancel`,
+      success_url: `${process.env.CLIENT_URL}/pages/eleve/dashboard.html?stripe=success`,
+      cancel_url:  `${process.env.CLIENT_URL}/pages/eleve/dashboard.html?stripe=cancel`,
       metadata: { userId: String(userId) },
     });
 
@@ -384,6 +436,10 @@ router.post("/create-setup-session", requireAuth, async (req, res) => {
  * Appelé par le frontend de l'élève juste avant d'ouvrir la salle.
  */
   router.post("/pre-auth", requireAuth, async (req, res) => {
+    // ✅ Vérification rôle
+  if (req.user.role !== "eleve") {
+    return res.status(403).json({ message: "Accès réservé aux élèves." });
+  }
     console.log("🔥 ROUTE PRE-AUTH HIT");
     try {
     const eleveId = req.user.userId;
@@ -525,32 +581,32 @@ router.post("/subscribe-student", requireAuth, async (req, res) => {
         }
 
         // 1. Récupérer ou créer le customer Stripe de l'étudiant
-        const [user] = await sequelize.query(
-            `SELECT stripe_customer_id, email, prenom, nom, role, subscription_status
-             FROM users WHERE id = :userId`,
-            { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
-        );
+        const [subStudent] = await sequelize.query(
+    `SELECT stripe_customer_id, email, prenom, nom, role, subscription_status
+     FROM users WHERE id = :userId`,
+    { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
+);
 
-        if (!user) {
+        if (!subStudent) {
             return res.status(404).json({ error: "Utilisateur introuvable" });
         }
 
         // Sécurité : seuls les élèves/étudiants peuvent s'abonner
-        if (user.role === "prof" || user.role === "admin") {
+        if (subStudent.role === "prof" || subStudent.role === "admin") {
             return res.status(403).json({ error: "Action non autorisée." });
         }
 
         // Déjà abonné et actif
-        if (user.subscription_status === "active") {
+        if (subStudent.subscription_status === "active") {
             return res.status(409).json({ error: "Vous avez déjà un abonnement actif." });
         }
 
-        let customerId = user.stripe_customer_id;
+        let customerId = subStudent.stripe_customer_id;
 
         if (!customerId) {
             const customer = await stripe.customers.create({
-                email: user.email,
-                name:  `${user.prenom} ${user.nom}`,
+                email: subStudent.email,
+                name:  `${subStudent.prenom} ${subStudent.nom}`,
                 metadata: { userId: String(userId) },
             });
             customerId = customer.id;
@@ -611,40 +667,71 @@ router.get("/subscription-status", requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId;
 
-        const [user] = await sequelize.query(
+        const [subUser] = await sequelize.query(
             `SELECT subscription_status, plan_type, subscription_end_date, is_subscriber
              FROM users WHERE id = :userId`,
             { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
         );
 
-        if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
+        if (!subUser) return res.status(404).json({ error: "Utilisateur introuvable" });
 
-        // Vérifier si l'abonnement a expiré en DB mais pas encore mis à jour
         const now = new Date();
-        const isExpired = user.subscription_end_date && new Date(user.subscription_end_date) < now;
+        const isExpired = subUser.subscription_end_date && new Date(subUser.subscription_end_date) < now;
 
-        if (isExpired && user.subscription_status === "active") {
-            // Expiration automatique
+        if (isExpired && subUser.subscription_status === "active") {
             await sequelize.query(
                 `UPDATE users 
                  SET subscription_status = 'expired', is_subscriber = false 
                  WHERE id = :userId`,
                 { replacements: { userId } }
             );
-            user.subscription_status = "expired";
-            user.is_subscriber = false;
+            subUser.subscription_status = "expired";
+            subUser.is_subscriber = false;
         }
 
         res.json({
-            status:     user.subscription_status || "none",  // "active" | "expired" | "none"
-            planType:   user.plan_type,
-            endDate:    user.subscription_end_date,
-            isSubscriber: user.is_subscriber ?? false,
+            status:     subUser.subscription_status || "none",
+            planType:   subUser.plan_type,
+            endDate:    subUser.subscription_end_date,
+            isSubscriber: subUser.is_subscriber ?? false,
         });
 
     } catch (err) {
         logger.error("❌ Erreur vérification abonnement", { message: err.message });
         res.status(500).json({ error: "Erreur serveur" });
     }
+});
+router.get("/session/:roomId", requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const [session] = await sequelize.query(
+      `SELECT v.payment_status as status, 
+              v.amount,
+              v.duration_seconds,
+              p.invoice_number
+       FROM visio_sessions v
+       LEFT JOIN payments p ON p.stripe_session_id = v.payment_intent_id
+       WHERE v.room_id = :roomId
+       ORDER BY v.created_at DESC
+       LIMIT 1`,
+      { replacements: { roomId }, type: sequelize.QueryTypes.SELECT }
+    );
+
+    if (!session) {
+      return res.status(404).json({ error: "Session introuvable" });
+    }
+
+    res.json({
+      status:        session.status,
+      amount:        session.amount,
+      dureeMinutes:  session.duration_seconds ? Math.ceil(session.duration_seconds / 60) : null,
+      invoiceNumber: session.invoice_number
+    });
+
+  } catch (err) {
+    logger.error("❌ Erreur récupération session paiement", { message: err.message });
+    res.status(500).json({ error: "Erreur serveur" });
+  }
 });
 export default router;

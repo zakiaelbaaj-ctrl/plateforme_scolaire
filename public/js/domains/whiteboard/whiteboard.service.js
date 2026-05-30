@@ -1,14 +1,15 @@
-﻿// ======================================================
+// ======================================================
 // WHITEBOARD DOMAIN SERVICE
 // /js/domains/whiteboard/whiteboard.service.js
 // ======================================================
 
-import { AppState }                                   from "/js/core/state.js";
-import { socketService }                              from "/js/core/socket.service.js";
+import { AppState }                           from "/js/core/state.js";
+import { socketService }                      from "/js/core/socket.service.js";
 import { WhiteboardEvents, WhiteboardPayloadFactory } from "./whiteboard.contract.js";
+import { DataChannelService } from "/js/webrtc/datachannel.service.js";
 
 // --------------------------------------------------
-// Ãƒâ€°TAT INTERNE
+// ÉTAT INTERNE
 // --------------------------------------------------
 
 let _paths       = [];
@@ -28,6 +29,7 @@ const _cb = {
   undo:   null,
   redo:   null,
   text:   null,
+  tool:   null,
 };
 
 export const WhiteboardService = {
@@ -36,21 +38,26 @@ export const WhiteboardService = {
   // ABONNEMENTS UI
   // ============================
 
-  onStroke(cb) { _cb.stroke = cb; },
-  onClear(cb)  { _cb.clear  = cb; },
-  onSync(cb)   { _cb.sync   = cb; },
-  onUndo(cb)   { _cb.undo   = cb; },
-  onRedo(cb)   { _cb.redo   = cb; },
-  onText(cb)   { _cb.text   = cb; },
-
+  onStroke(cb)     { _cb.stroke = cb; },
+  onClear(cb)      { _cb.clear  = cb; },
+  onSync(cb)       { _cb.sync   = cb; },
+  onUndo(cb)       { _cb.undo   = cb; },
+  onRedo(cb)       { _cb.redo   = cb; },
+  onText(cb)       { _cb.text   = cb; },
+  onToolChange(cb) { _cb.tool   = cb; },
 
   // ============================
   // INIT SESSION
   // ============================
 
   initSession() {
-    _myUserId = AppState.currentUserId ?? AppState.userId ?? null;
-    if (!_myUserId) console.warn("Ã¢Å¡Â Ã¯Â¸Â WhiteboardService : userId introuvable dans AppState");
+    _myUserId = AppState.currentUserId
+             ?? AppState.userId
+             ?? AppState.currentUser?.id
+             ?? JSON.parse(localStorage.getItem("currentUser") || "{}").id
+             ?? null;
+    console.log("WhiteboardService initSession — _myUserId =", _myUserId);
+    if (!_myUserId) console.warn("⚠️ WhiteboardService : userId introuvable");
     this.resetSession();
   },
 
@@ -61,14 +68,13 @@ export const WhiteboardService = {
     _currentPath = null;
   },
 
-
   // ============================
   // INIT CANVAS
   // ============================
 
   initCanvas(canvasId, options = {}) {
     import("/js/ui/components/whiteboard.canvas.js").then(({ WhiteboardCanvas }) => {
-
+     console.log("🖼️ initCanvas appelé", canvasId, options); 
       this._canvas = new WhiteboardCanvas(canvasId, this, {
         colorPicker: options.colorPicker ?? document.getElementById("whiteboardColor"),
         sizeSlider:  options.sizeSlider  ?? document.getElementById("whiteboardSize")
@@ -82,32 +88,30 @@ export const WhiteboardService = {
     });
   },
 
-
   // ============================
-  // RÃƒâ€°CEPTION Ã¢â‚¬â€ appelÃƒÂ© par SessionService
+  // RECEPTION - appelé par SessionService
   // ============================
 
   handleEvent(data) {
     switch (data.type) {
 
       case WhiteboardEvents.TABLEAU_STROKE: {
-  const path = data.path ?? data.stroke;  // Ã¢â€ Â accepte les deux
-  if (!path) break;
-  if (!_paths.find(p => p.id === path.id)) {
-    _paths.push(path);
-    _undoStack.push(path);
-    _redoStack = [];
-    _paths.sort((a, b) => a.timestamp - b.timestamp);
-  }
-  _cb.stroke?.(path);
-  break;
-}
+        const path = data.path ?? data.stroke;
+        if (!path) break;
+        if (!_paths.find(p => p.id === path.id)) {
+          _paths.push(path);
+          _undoStack.push(path);
+          _redoStack = [];
+          _paths.sort((a, b) => a.timestamp - b.timestamp);
+        }
+        _cb.stroke?.(path);
+        break;
+      }
+
+      case "tableauClear":
       case WhiteboardEvents.TABLEAU_CLEAR: {
-        const authorId = data.authorId;
-        _paths     = _paths.filter(p => p.authorId !== authorId);
-        _undoStack = _undoStack.filter(p => p.authorId !== authorId);
-        _redoStack = _redoStack.filter(p => p.authorId !== authorId);
-        _cb.clear?.();
+        // Efface TOUT le tableau quand le serveur l'ordonne
+        this.clearCanvas(false);
         break;
       }
 
@@ -138,18 +142,55 @@ export const WhiteboardService = {
         _cb.redo?.(path);
         break;
       }
-       case WhiteboardEvents.TABLEAU_TEXT: {   // Ã°Å¸â€Â¹ Ajouter ce case
-       if (!data.textStroke) break;          // Ã¢Å¡Â¡ VÃƒÂ©rifie que le texte existe
-       _cb.text?.(data.textStroke);          // Ã¢Å¡Â¡ Appelle le callback UI
+
+      case WhiteboardEvents.TABLEAU_TEXT: {
+        if (!data.textStroke) break;
+        _cb.text?.(data.textStroke);
         break;
       }
+
+      case WhiteboardEvents.TABLEAU_TOOL: {
+        if (!data.tool) break;
+        const normalizedTool = data.tool === "ruler" ? "line" : data.tool;
+        _cb.tool?.(normalizedTool);
+        this._canvas?.setTool?.(normalizedTool);
+        break;
+      }
+
       default:
-        console.warn("Ã¢Å¡Â Ã¯Â¸Â WhiteboardService : event inconnu", data.type);
-       }
-     },
+        console.warn("⚠️ WhiteboardService : event inconnu", data.type);
+        break;
+    }
+  },
+
   // ============================
   // ACTIONS LOCALES
   // ============================
+
+  // Efface tout + envoie optionnellement au réseau
+  clearCanvas(emit = true) {
+  _paths     = [];
+  _undoStack = [];
+  _redoStack = [];
+
+  this._canvas?.clear?.();
+  this._canvas?.redraw?.();
+  _cb.clear?.();
+
+  if (emit) {
+    // DataChannel = étudiants uniquement (peer-to-peer)
+    if (DataChannelService.isDrawReady?.()) {
+      DataChannelService.clear();
+    } else {
+      // Prof + Élève = WebSocket vers serveur
+      const payload = typeof WhiteboardPayloadFactory.createClear === "function"
+        ? WhiteboardPayloadFactory.createClear(AppState.currentRoomId)
+        : { type: "tableauClear", roomId: AppState.currentRoomId };
+
+      socketService.send(payload);
+    }
+  }
+},
 
   startPath(data) {
     _currentPath = {
@@ -170,6 +211,7 @@ export const WhiteboardService = {
   endPath() {
     if (!_currentPath) return;
     const path   = _currentPath;
+    console.log("📤 ENVOI STROKE tool=", path.tool);
     _currentPath = null;
 
     _paths.push(path);
@@ -177,27 +219,67 @@ export const WhiteboardService = {
     _redoStack = [];
 
     _cb.stroke?.(path);
-    socketService.send(WhiteboardPayloadFactory.createStroke(path, AppState.currentRoomId));
+
+    if (DataChannelService.isDrawReady?.()) {
+      DataChannelService.sendStroke(path);
+    } else {
+      socketService.send(WhiteboardPayloadFactory.createStroke(path, AppState.currentRoomId));
+    }
   },
-  sendText(textStroke) {                  // Ã°Å¸â€Â¹ Nouvelle mÃƒÂ©thode
-  if (!textStroke || !_myUserId) return;
-  socketService.send(WhiteboardPayloadFactory.createText(textStroke, AppState.currentRoomId));
-  _cb.text?.(textStroke);               // Ã¢Å¡Â¡ Callback local pour redessiner immÃƒÂ©diatement
+  commitPath(path) {
+    console.log("📤 COMMIT STROKE tool=", path.tool);
+    _paths.push(path);
+    _undoStack.push(path);
+    _redoStack = [];
+    _cb.stroke?.(path);
+
+    if (DataChannelService.isDrawReady?.()) {
+      if (path.tool === "text") {
+        DataChannelService.sendText(path);
+      } else {
+        DataChannelService.sendStroke(path);
+      }
+    } else {
+      socketService.send(
+        WhiteboardPayloadFactory.createStroke(path, AppState.currentRoomId)
+      );
+    }
   },
+
+  sendText(textStroke) {
+    if (!textStroke || !_myUserId) return;
+    if (DataChannelService.isDrawReady?.()) {
+      DataChannelService.sendText(textStroke);
+    } else {
+      socketService.send(WhiteboardPayloadFactory.createText(textStroke, AppState.currentRoomId));
+    }
+    _cb.text?.(textStroke);
+  },
+
   setTool(tool) {
-  this._currentTool = tool;
-  // Ã¢Å¡Â¡ Optionnel : notifier le canvas pour redessiner si nÃƒÂ©cessaire
-  if (this._canvas) this._canvas.setTool?.(tool);
+    this._currentTool = tool;
+    this._canvas?.setTool?.(tool);
+
+    if (typeof WhiteboardPayloadFactory.createTool === "function") {
+      socketService.send(WhiteboardPayloadFactory.createTool(tool, AppState.currentRoomId));
+    } else {
+      socketService.send({ type: "whiteboard:tool", tool, roomId: AppState.currentRoomId });
+    }
   },
+
   undo() {
     const idx = [..._undoStack].reverse().findIndex(p => p.authorId === _myUserId);
     if (idx === -1) return;
     const path = _undoStack.splice(_undoStack.length - 1 - idx, 1)[0];
     _redoStack.push(path);
     _paths = _paths.filter(p => p.id !== path.id);
-
     _cb.undo?.(path);
-    socketService.send(WhiteboardPayloadFactory.createUndo(_myUserId, AppState.currentRoomId));
+
+    if (DataChannelService.isDrawReady?.()) {
+      DataChannelService.sendDraw({ type: "undo", payload: { authorId: _myUserId } });
+    } else {
+      socketService.send(WhiteboardPayloadFactory.createUndo(_myUserId, AppState.currentRoomId));
+    }
   },
 
   redo() {
@@ -206,18 +288,13 @@ export const WhiteboardService = {
     const path = _redoStack.splice(_redoStack.length - 1 - idx, 1)[0];
     _undoStack.push(path);
     _paths.push(path);
-
     _cb.redo?.(path);
-    socketService.send(WhiteboardPayloadFactory.createRedo(_myUserId, AppState.currentRoomId));
-  },
 
-  clearBoard() {
-    _paths     = _paths.filter(p => p.authorId !== _myUserId);
-    _undoStack = _undoStack.filter(p => p.authorId !== _myUserId);
-    _redoStack = _redoStack.filter(p => p.authorId !== _myUserId);
-
-    _cb.clear?.();
-    socketService.send(WhiteboardPayloadFactory.createClear(AppState.currentRoomId));
+    if (DataChannelService.isDrawReady?.()) {
+      DataChannelService.sendDraw({ type: "redo", payload: { authorId: _myUserId } });
+    } else {
+      socketService.send(WhiteboardPayloadFactory.createRedo(_myUserId, AppState.currentRoomId));
+    }
   },
 
   getPaths() {
@@ -229,9 +306,8 @@ export const WhiteboardService = {
   }
 };
 
-
-// Forçage de la visibilité globale
-if (typeof window !== 'undefined') {
-    window.WhiteboardService = WhiteboardService;
-    console.log("🚀 WhiteboardService exposé globalement sur window");
+// Exposition globale
+if (typeof window !== "undefined") {
+  window.WhiteboardService = WhiteboardService;
+  console.log("✅ WhiteboardService exposé globalement sur window");
 }

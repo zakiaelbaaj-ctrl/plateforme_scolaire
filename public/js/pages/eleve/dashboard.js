@@ -12,6 +12,8 @@ import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js"
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
 import { DocumentService } from "/js/domains/document/document.service.js";
 import { addDocument } from "/js/ui/components/document.view.js";
+import { ScreenShareService } from "/js/domains/call/screen.share.service.js";
+import { ScreenShareOverlay }  from "/js/ui/components/screen.share.overlay.js";
 import { initUIRenderers } from "/js/modules/ui/uiRenderers.js";
 import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
 import { getUserProfile } from "../../services/user.service.js";
@@ -23,76 +25,108 @@ import { openSetupSession } from "/js/services/stripe.service.js";
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 Initialisation du Dashboard...");
+  console.log("⚠️🤖 Initialisation du Dashboard...");
 
-  // ✅ Stripe return
+  // 1. Gérer les messages de retour Stripe (Succés/Annul)
   handleAllStripeReturns();
 
-  // ✅ Vérification carte
-  
-
-  // Lire URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const stripeStatus = urlParams.get("stripe");
-
-  if (stripeStatus === "success") {
-    setTimeout(refreshUI, 2500);
-  }
-
-  // Débloquer audio
-  document.addEventListener("click", () => {
+  // 2. Débloquer l'audio au premier clic
+  const unlockAudio = () => {
     const audio = document.getElementById("incomingCallSound");
-    if (audio) { 
-      audio.muted = false; 
-      audio.play().catch(() => {}); 
+    if (audio) {
+      audio.muted = false;
+      audio.play().catch(() => {});
+      console.log("⚠️🤖 Audio débloqué");
     }
-  }, { once: true });
+    document.removeEventListener("click", unlockAudio);
+  };
+  document.addEventListener("click", unlockAudio);
 
-  // User
-  const userData = await getUserProfile();
+  // 3. Récupération unique du profil utilisateur
+  let userData = await getUserProfile();
   
   if (!userData) {
+    console.warn("⚠️🤖 Session expirée, redirection...");
     window.location.replace("/pages/eleve/login.html");
     return;
   }
 
-  AppState.setCurrentUser(userData);
-  localStorage.setItem("currentUser", JSON.stringify(userData));
+  // Initialisation de l'état global et de l'UI
+  saveAndRenderUser(userData);
   AppState.token = localStorage.getItem("token");
   AppState.setCallState(null);
 
-  // Initialisation de l'UI
-  renderCurrentUserInfo(userData);
-await refreshUI(); // ou rien du tout
+  // 4. LOGIQUE DE SYNCHRONISATION (Polling) : Si retour Stripe mais carte encore 'false'
+  const urlParams = new URLSearchParams(window.location.search);
+  const stripeStatus = urlParams.get("stripe");
 
-  // WebSocket
-  const _wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const _wsToken = localStorage.getItem("token") ?? AppState.token ?? "";
-  if (!_wsToken) {
-  console.warn("⚠️ Aucun token WebSocket");
-}
+  if (stripeStatus === "success" && !userData.has_payment_method) {
+    console.log("⚠️🤖 Carte en cours de validation par Stripe, polling lancé...");
+    
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      console.log(`⚠️🤖 Vérification Webhook (tentative ${attempts}/5)...`);
+      
+      const freshData = await getUserProfile();
+      if (freshData.has_payment_method || attempts >= 5) {
+        console.log("⚠️🤖 Statut mis à jour ou limite atteinte");
+        saveAndRenderUser(freshData);
+        clearInterval(interval);
+      }
+    }, 2500); // 2.5 secondes entre chaque vérification
+  }
+  // Lancer les WebSockets
   socketHandlerEleve.init();
-  socketService.connect(`${_wsProtocol}//${window.location.host}?token=${_wsToken}`);
-  
-  // Bind
+  const _wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  socketService.connect(`${_wsProtocol}//${window.location.host}?token=${AppState.token}`);
+
+  // Activer les clics et les abonnements
   bindUI();
-   initUIRenderers();
+  initUIRenderers();
   subscribeToDomains();
-
-
-  console.log("🚀 Dashboard initialisé pour:", userData.prenom || userData.username || "Utilisateur");
+  console.log("⚠️🤖 Dashboard prêt");
 });
+
+/**
+ * Fonction utilitaire pour synchroniser LocalStorage, AppState et UI
+ */
+function saveAndRenderUser(user) {
+  if (!user) return;
+  localStorage.setItem("currentUser", JSON.stringify(user));
+  if (typeof AppState !== 'undefined' && AppState.setCurrentUser) {
+    AppState.setCurrentUser(user);
+  }
+  renderCurrentUserInfo(user);
+// Optionnel : met à jour le bouton Rejoindre si présent
+  if (typeof updateJoinButton === 'function') updateJoinButton(user);
+}
 
 // ======================================================
 // DOMAIN SUBSCRIPTIONS
 // ======================================================
 
     function subscribeToDomains() {
+      // ================= INDICATEUR CONNEXION =================
+AppState.on("ws:status", (data) => {
+  updateWsStatus(data?.status, data?.attempt);
+  if (data?.status === "connected" && AppState.currentUser?.id) {
+    socketService.send({ type: "identify", ...AppState.currentUser });
+  }
+});
 
   // ================= SESSION =================
-  AppState.on('session:start', (session) => {
-    WhiteboardService.initCanvas('whiteboard-canvas', session?.roomId);
-});
+    AppState.on('session:start', (session) => {
+      WhiteboardService.initSession();
+      WhiteboardService.initCanvas('whiteboard-canvas', {
+       colorPicker: document.getElementById("whiteboardColor"),
+       sizeSlider:  document.getElementById("whiteboardSize")
+      });
+     });
+// ================= PROFESSEURS EN LIGNE =================  ← AJOUTER ICI
+  AppState.on("professors:update", (profs) => {
+    renderProfList(profs);
+  });
 
   // ================= CHAT =================
   // Un seul abonnement, ici, avec appendMessage
@@ -100,24 +134,20 @@ await refreshUI(); // ou rien du tout
     if (!msg?.text) return;
    appendMessage(msg.sender, msg.text);
   });
-
+  
   // ================= WHITEBOARD =================
-  WhiteboardService.onStroke((stroke) => {
-    drawStroke(stroke);
-  });
-
-  WhiteboardService.onClear(() => {
-    clearCanvas();
-  });
-  WhiteboardService.onSync((strokes) => {
-  clearCanvas();
-  for (const s of strokes) drawStroke(s);
+  WhiteboardService.onToolChange?.((remoteTool) => {WhiteboardService.setTool(remoteTool);});
+  AppState.on("whiteboard:clear", () => {WhiteboardService.applyRemoteClear(false);});
+  // ================= PARTAGE D'ÉCRAN =================
+ScreenShareService.onStart((track) => {
+  // Affiche l'overlay pour celui qui partage aussi (optionnel)
 });
 
-WhiteboardService.onText((textStroke) => {
-  drawText(textStroke);
+ScreenShareService.onStop(() => {
+  ScreenShareOverlay.hide();
+  const btn = document.getElementById("screen-share-btn");
+  if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
 });
-
   // ================= CALL =================
   AppState.on('ui:updateTools', (canUse) => { 
   AppState.canUseTools = canUse;
@@ -128,9 +158,9 @@ WhiteboardService.onText((textStroke) => {
     case 'calling':  updateCallStatus('Appel en cours...'); break;
     case 'ringing':  updateCallStatus('Appel entrant...'); break;
     case 'inCall':   updateCallStatus('En communication'); break;
-    case 'ended':    cleanupSession('Session terminée'); break; // ✅ explicite
-    case null:       cleanupSession('Session terminée'); break; // ✅ explicite
-    // default vide — ignore les états inconnus
+    case 'ended':    cleanupSession('Session terminée'); break; // ⚠️ explicite
+    case null:       cleanupSession('Session terminée'); break; // ⚠️ explicite
+    // default vide  ignore les états inconnus
   }
 });
    AppState.on("timer:update", (seconds) => {
@@ -141,7 +171,7 @@ WhiteboardService.onText((textStroke) => {
   AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
   AppState.on('video:connected',    ()       => updateCallStatus('En communication'));
   AppState.on("documents:new", (doc) => {
-  console.log("🔥 EVENT documents:new déclenché", doc);
+  console.log("⚠️🤖 EVENT documents:new déclenché", doc);
 
   addDocument({
     id:       doc.id ?? doc.fileName,
@@ -174,15 +204,28 @@ function bindUI() {
   document.getElementById("end-session-btn")?.addEventListener("click", async () => {
   const btn = document.getElementById("end-session-btn");
   if (!btn || btn.disabled) return;
-
   btn.disabled = true;
-
-  console.log("🖱️ Fin de session — room:", AppState.currentRoomId);
-
+  console.log("⚠️🤖 Fin de session ⚠️🤖 room:", AppState.currentRoomId);
   try {
-    await SessionService.endSession();
+    SessionService.stopVideoCall(); // ✅ stopVideoCall = disconnectTwilio + endSession + terminateCall
   } finally {
     btn.disabled = false;
+  }
+});
+// ================= PARTAGE D'ÉCRAN =================
+document.getElementById("screen-share-btn")?.addEventListener("click", async () => {
+  const btn = document.getElementById("screen-share-btn");
+
+  if (ScreenShareService.isSharing()) {
+    await ScreenShareService.stop(VideoService.room);
+    btn.textContent = "🖥️";
+    btn.title = "Partager l'écran";
+  } else {
+    await ScreenShareService.start(VideoService.room);
+    if (ScreenShareService.isSharing()) {
+      btn.textContent = "⏹️";
+      btn.title = "Arrêter le partage";
+    }
   }
 });
 // ================= REJOINDRE SESSION =================
@@ -205,13 +248,13 @@ document.getElementById("btn-rejoindre-cours")?.addEventListener("click", async 
       return;
     }
 
-    // 🔥 2. STOCKAGE GLOBAL
+    //🔥 2. STOCKAGE GLOBAL
     window.currentPaymentIntentId = intentId;
     window.sessionStartTime = Date.now();
 
     btn.innerText = "Connexion...";
 
-    // 🎥 3. LANCEMENT SESSION
+    // 🔥 3. LANCEMENT SESSION
     AppState.currentPaymentIntentId = intentId;
 AppState.currentRoomId = AppState.currentRoomId || "room_18_32";
 
@@ -236,14 +279,14 @@ document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => {
 
 document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
-  WhiteboardService.clearBoard();
+  WhiteboardService.clearCanvas(); // ✅
 });
 
 document.getElementById("downloadWhiteboardBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
   WhiteboardService.download?.();
 });
-
+// ✅ setTool sans ?. + helper setWbTool pour la classe active
 document.getElementById("penToolBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
   setWbTool("penToolBtn", () => WhiteboardService.setTool?.("pen"));
@@ -253,7 +296,9 @@ document.getElementById("eraserToolBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
   setWbTool("eraserToolBtn", () => WhiteboardService.setTool?.("eraser"));
 });
-
+document.getElementById("pointToolBtn")?.addEventListener("click", () => {
+  setWbTool("pointToolBtn", () => WhiteboardService.setTool("point"));
+});
 document.getElementById("lineToolBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
   setWbTool("lineToolBtn", () => WhiteboardService.setTool?.("line"));
@@ -263,7 +308,9 @@ document.getElementById("rectToolBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
   setWbTool("rectToolBtn", () => WhiteboardService.setTool?.("rect"));
 });
-
+document.getElementById("circleToolBtn")?.addEventListener("click", () => {
+  setWbTool("circleToolBtn", () => WhiteboardService.setTool("circle"));
+});
 document.getElementById("textToolBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return; 
   setWbTool("textToolBtn", () => WhiteboardService.setTool?.("text"));
@@ -271,23 +318,31 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
 
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", toggleWhiteboardFullscreen);
 
-// ================= STRIPE =================
-document.getElementById("stripe-setup-btn")?.addEventListener("click", async () => {
-  console.log("🖱️ Clic carte bancaire");
-  const btn = document.getElementById("stripe-setup-btn");
-  const originalText = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = "⏳ Connexion sécurisée...";
-  try {
-    await openSetupSession();
-  } catch (err) {
-    console.error("Erreur Stripe:", err);
-    btn.innerHTML = "❌ Erreur, réessayer";
-    setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
-  }
-});
-
 } 
+function updateWsStatus(status, attempt = 0) {
+  const badge = document.getElementById("ws-status-badge");
+  if (!badge) return;
+
+  switch (status) {
+    case "connected":
+      badge.textContent = "🟢 Connecté";
+      badge.style.color = "#4CAF50";
+      badge.title = "";
+      break;
+
+    case "reconnecting":
+      badge.textContent = `🟡 Reconnexion... (${attempt})`;
+      badge.style.color = "#FF9800";
+      badge.title = `Tentative ${attempt}`;
+      break;
+
+    case "disconnected":
+      badge.textContent = "🔴 Hors ligne";
+      badge.style.color = "#f44336";
+      badge.title = "Connexion perdue";
+      break;
+  }
+}
 
 // ======================================================
 // CHAT
@@ -301,11 +356,9 @@ function sendChat() {
   input.value = "";
 }
 
-
 // ======================================================
 // PROF LIST
 // ======================================================
-
 function renderProfList(profs = []) {
   const list = document.getElementById("prof-list");
   if (!list) return;
@@ -317,27 +370,74 @@ function renderProfList(profs = []) {
     return;
   }
 
+  // ✅ On récupère l'utilisateur actuel depuis l'état global
+  const user = AppState.currentUser;
+
   profs.forEach(prof => {
-    const li   = document.createElement("li");
+    const li = document.createElement("li");
     li.className = "prof-item";
 
-    // Ã¢Å“â€¦ textContent Ã¢â‚¬â€ plus de XSS
+    // Nom du prof — sans XSS
     const span = document.createElement("span");
+    span.className = "prof-name";
     span.textContent = `${prof.prenom} ${prof.nom}`;
 
-    const btn  = document.createElement("button");
-    btn.className   = "call-prof-btn";
-    btn.textContent = "Appeler";
-    btn.addEventListener("click", () => {
-      SessionService.callProfessor(prof.id);
-    });
+    // Indicateur de statut visuel
+    const badge = document.createElement("span");
+    badge.className = "prof-status-badge";
+
+    const btn = document.createElement("button");
+    btn.className = "call-prof-btn";
+
+    /**
+     * ✅ LOGIQUE DE DISPONIBILITÉ
+     * Un prof est appelable seulement si :
+     * 1. Il est marqué comme disponible (prof.disponibilite)
+     * 2. L'élève a enregistré une carte (user.has_payment_method)
+     */
+    const canCall = prof.disponibilite && user?.has_payment_method;
+
+    if (canCall) {
+      // --- État : DISPONIBLE ---
+      badge.textContent = "⚠️ Disponible";
+      badge.style.color = "#3b6d11";
+      btn.textContent = "Appeler";
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.style.cursor = "pointer";
+      btn.onclick = () => {
+        SessionService.callProfessor(prof.id);
+      };
+    } else {
+      // --- État : INDISPONIBLE (ou carte manquante) ---
+      let statusLabel = "Indisponible";
+      
+      if (!user?.has_payment_method) {
+        statusLabel = "Carte requise";
+      } else {
+        statusLabel = {
+          "en_session": "En session",
+          "appel_reçu": "Occupé",
+          "offline":    "Hors ligne",
+        }[prof.status] || "Indisponible";
+      }
+
+      badge.textContent = `⚠️ ${statusLabel}`;
+      badge.style.color = "#a32d2d";
+      btn.textContent = user?.has_payment_method ? "Indisponible" : "⚠️ Bloqué";
+      btn.disabled = true;
+      btn.style.opacity = "0.45";
+      btn.style.cursor = "not-allowed";
+    }
 
     li.appendChild(span);
+    li.appendChild(badge);
     li.appendChild(btn);
     list.appendChild(li);
   });
 }
 
+window.renderProfList = renderProfList;
 
 // ======================================================
 // DOCUMENT
@@ -398,10 +498,14 @@ function drawText(textStroke) {
 function clearCanvas() {
   const canvas = document.getElementById("whiteboard-canvas");
   if (!canvas) return;
-
-  const ctx = canvas.getContext("2d");
-if (!ctx) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+}
+ 
+// ✅ Helper manquant — gère la classe "active" sur les boutons d'outils
+function setWbTool(activeId, callback) {
+  document.querySelectorAll(".wb-tool").forEach(btn => btn.classList.remove("active"));
+  document.getElementById(activeId)?.classList.add("active");
+  callback();
 }
 
 function toggleWhiteboardFullscreen() {
@@ -463,21 +567,63 @@ function updateCallStatus(text) {
 // ======================================================
 // CLEANUP - Correction pour éviter les erreurs null
 // ======================================================
-
 function cleanupSession(message) {
   if (cleanupSession._running) return; // ✅ guard anti-boucle
   cleanupSession._running = true;
 
-  VideoService.disconnect();
+  // ✅ 1. Stopper les tracks AVANT de vider le DOM
+  VideoService.disconnectSilent();
+
+  // ✅ 2. Vider explicitement les éléments vidéo locaux
+  ["localVideo", "localVideoContainer"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (el.tagName === "VIDEO") {
+        el.srcObject = null;
+        el.pause?.();
+      } else {
+        el.querySelectorAll("video").forEach(v => {
+          v.srcObject = null;
+          v.pause?.();
+        });
+        el.innerHTML = "";
+      }
+    }
+  });
+
+  // ✅ 3. Vider explicitement les éléments vidéo distants
+  ["remoteVideo", "remoteVideoContainer"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (el.tagName === "VIDEO") {
+        el.srcObject = null;
+        el.pause?.();
+      } else {
+        el.querySelectorAll("video").forEach(v => {
+          v.srcObject = null;
+          v.pause?.();
+        });
+        el.innerHTML = "En attente du professeur...";
+      }
+    }
+  });
+  // ✅ Arrêter le partage d'écran si actif
+ScreenShareService.stop(VideoService.room).catch(() => {});
+ScreenShareOverlay.hide();
+const ssBtn = document.getElementById("screen-share-btn");
+if (ssBtn) { ssBtn.textContent = "🖥️"; }
+
+  // ✅ 4. Supprimer les éléments audio orphelins
+  document.querySelectorAll("audio[autoplay]").forEach(a => {
+    a.srcObject = null;
+    a.remove();
+  });
+
   AppState.setCallState(null);
+  AppState.canUseTools = true;
   AppState.sessionInProgress = false;
   SessionService.stopTimer?.();
   updateCallStatus(message);
-
-  const remote = document.getElementById("remoteVideoContainer");
-  const local  = document.getElementById("localVideoContainer");
-  if (remote) remote.innerHTML = "En attente du professeur...";
-  if (local)  local.innerHTML  = "";
 
   const timerEl = document.getElementById("call-time");
   if (timerEl) timerEl.textContent = "00:00";
@@ -487,7 +633,7 @@ function cleanupSession(message) {
 
   cleanupSession._running = false; // ✅ libère le guard
 }
-// ✔ Ajouter avant la derniÃƒÂ¨re fonction renderCurrentUserInfo
+
 function updateTimerUI(time) {
   const el = document.getElementById("call-time");
   if (el) el.textContent = time;
@@ -517,89 +663,95 @@ function updateJoinButton(user) {
   }
 }
 // ======================================================
-// USER INFO
-// ======================================================
-
-// ======================================================
 // 1. GESTION DE L'INTERFACE UTILISATEUR (UI)
 // ======================================================
 
 /**
- * Rafraichit les données utilisateur depuis le serveur et met ÃƒÂ  jour l'UI
+ * Rafraichit les donnees utilisateur depuis le serveur et met à jour l'UI
  */
 async function refreshUI() {
-  console.log("🔄 Actualisation des données utilisateur...");
-
   const userData = await getUserProfile();
+  if (!userData) return;
 
-  if (userData) {
-    AppState.setCurrentUser(userData);
-    renderCurrentUserInfo(userData);
-  }
+  // ✅ Mettre à jour l’état global
+  AppState.setCurrentUser(userData);
+
+  // ✅ Re‐rendre l’UI avec les nouvelles infos
+  renderCurrentUserInfo(userData);
+  renderProfList(AppState.professors);
 }
-
 /**
  * Affiche les informations de profil et l'état des paiements Stripe
  */
 function renderCurrentUserInfo(user) {
   if (!user) return;
-  const { prenom, nom, ville, pays, role, has_payment_method, stripe_onboarding_complete } = user;
 
- // --- MISE À JOUR DES ÉLÉMENTS FIXES (TEXTE) ---
-const nameEl = document.getElementById("eleve-name") || document.getElementById("user-full-name");
-const cityEl = document.getElementById("eleve-location") || document.getElementById("user-city");
+  const { 
+    prenom, nom, ville, pays, role, 
+    has_payment_method, stripe_onboarding_complete 
+  } = user;
 
-if (nameEl) nameEl.textContent = `${prenom || ""} ${nom || ""}`.trim();
-if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || "Lieu non précisé");
+  // --- 1. MISE À JOUR DES TEXTES DE PROFIL ---
+  const nameEl = document.getElementById("eleve-name") || document.getElementById("user-full-name");
+  const cityEl = document.getElementById("eleve-location") || document.getElementById("user-city");
 
-// --- GESTION DU CONTENEUR STRIPE ---
+  if (nameEl) nameEl.textContent = `${prenom || ""} ${nom || ""}`.trim();
+  if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || "Lieu non précisé");
+
+  // --- 2. PREPARATION DU CONTENU STRIPE ---
   const infoContainer = document.getElementById("user-info");
   if (!infoContainer) return;
 
   let stripeHTML = "";
 
-  // Cas ÉLÈVE : Inscription d'une carte bancaire
-if (role === "eleve") {
-  if (has_payment_method) {
-    stripeHTML = `
-      <div class="stripe-box success">
-        <p>✅ <strong>Carte bancaire enregistrée</strong></p>
-        <p class="small">Votre moyen de paiement est prêt pour vos prochains cours.</p>
-        <button id="stripe-setup-btn" class="btn-link">Mettre à jour ma carte</button>
-      </div>`;
-  } else {
-    stripeHTML = `
-      <div class="stripe-box warning">
-        <p>⚠️ <strong>Paiement requis</strong></p>
-        <p class="small">Veuillez enregistrer une carte pour pouvoir appeler un professeur.</p>
-        <button id="stripe-setup-btn" class="btn-primary">💳 Ajouter une carte bancaire</button>
-      </div>`;
-  }
-}
-  // Cas PROFESSEUR : Onboarding Stripe Connect
-else if (role === "prof") {
-  if (stripe_onboarding_complete) {
-    stripeHTML = `
-      <div class="stripe-box success">
-        <p>✅ <strong>Compte Stripe configuré</strong></p>
-        <p class="small">Vous pouvez recevoir des paiements de vos élèves.</p>
-      </div>`;
-  } else {
-    stripeHTML = `
-      <div class="stripe-box warning">
-        <p>💰 <strong>Revenus en attente</strong></p>
-        <p class="small">Configurez votre compte pour recevoir vos virements.</p>
-        <button id="stripe-onboarding-btn" class="btn-primary">⚡ Activer Stripe Connect</button>
-      </div>`;
-  }
-}
+  if (role === "eleve") {
+    const config = has_payment_method ? {
+        status: "success",
+        icon: "✅",
+        title: "Carte bancaire enregistrée",
+        text: "Votre moyen de paiement est prêt pour vos prochains cours.",
+        btnClass: "btn-link",
+        btnText: "Mettre à jour ma carte"
+    } : {
+        status: "warning",
+        icon: "⚠️",
+        title: "Paiement requis",
+        text: "Veuillez enregistrer une carte pour pouvoir appeler un professeur.",
+        btnClass: "btn-primary",
+        btnText: "💳 Ajouter une carte bancaire"
+    };
 
-  // Injection du HTML dans la carte dédiée
+    stripeHTML = `
+      <div class="stripe-box ${config.status}">
+        <p>${config.icon} <strong>${config.title}</strong></p>
+        <p class="small">${config.text}</p>
+        <button id="stripe-setup-btn" class="${config.btnClass}">${config.btnText}</button>
+      </div>`;
+
+  } else if (role === "prof") {
+    if (stripe_onboarding_complete) {
+        stripeHTML = `
+          <div class="stripe-box success">
+            <p>✅ <strong>Compte Stripe configuré</strong></p>
+            <p class="small">Vous pouvez recevoir des paiements de vos élèves.</p>
+          </div>`;
+    } else {
+        stripeHTML = `
+          <div class="stripe-box warning">
+            <p>🏦 <strong>Revenus en attente</strong></p>
+            <p class="small">Configurez votre compte pour recevoir vos virements.</p>
+            <button id="stripe-onboarding-btn" class="btn-primary">⚙️ Activer Stripe Connect</button>
+          </div>`;
+    }
+  }
+
+  // --- 3. INJECTION UNIQUE DANS LE DOM ---
+  // On n'injecte qu'une seule fois pour éviter de détruire les événements
   infoContainer.innerHTML = `
     <div class="user-card">
       <div class="user-card__header">
         <h3 class="card-title">💳 Paramètres de paiement</h3>
-        </div>
+      </div>
       <div class="user-card__body">
         <div class="user-card__stripe-content">
           ${stripeHTML}
@@ -608,45 +760,50 @@ else if (role === "prof") {
       </div>
     </div>
   `;
-// --- ATTACHEMENT SÉCURISÉ DES ÉVÉNEMENTS ---
+
+  // --- 4. ATTACHEMENT DES événements ---
+  // On utilise .onclick pour s'assurer qu'il n'y a qu'un seul écouteur à la fois
+
+  // Bouton Élève (Setup)
   const setupBtn = document.getElementById("stripe-setup-btn");
-console.log("🔍 setupBtn =", setupBtn);
+  if (setupBtn) {
+    setupBtn.onclick = async (e) => {
+      const btn = e.currentTarget;
+      const originalText = btn.innerHTML;
 
-if (setupBtn) {
-  setupBtn.replaceWith(setupBtn.cloneNode(true));
-  const cleanBtn = document.getElementById("stripe-setup-btn");
+      btn.disabled = true;
+      btn.innerHTML = "🔄 Connexion sécurisée...";
 
-  cleanBtn.addEventListener("click", async (e) => {
-    const btn = e.currentTarget;
-
-    const originalText = btn.innerHTML;
-
-    btn.disabled = true;
-    btn.innerHTML = "⏳ Connexion sécurisée...";
-
-    try {
-      await openSetupSession();
-    } catch (err) {
-      console.error("Erreur Stripe:", err);
-      btn.innerHTML = "❌ Erreur, réessayer";
-    } finally {
-      btn.disabled = false;
-
-      // optionnel : restaurer le texte si erreur
-      if (btn.innerHTML.includes("Erreur")) {
-        setTimeout(() => {
-          btn.innerHTML = originalText;
-        }, 2000);
+      try {
+        await openSetupSession();
+      } catch (err) {
+        console.error("Erreur Stripe:", err);
+        btn.innerHTML = "❌ Erreur, réessayer";
+        setTimeout(() => { 
+          btn.innerHTML = originalText; 
+          btn.disabled = false; 
+        }, 3000);
       }
-    }
-  });
-}
+    };
+  }
 
+  // Bouton Prof (Onboarding)
   const onboardingBtn = document.getElementById("stripe-onboarding-btn");
   if (onboardingBtn) {
-    onboardingBtn.addEventListener("click", initStripeOnboarding);
+    onboardingBtn.onclick = async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.innerHTML = "🔄 Redirection...";
+      try {
+        await initStripeOnboarding();
+      } catch (err) {
+        console.error("Erreur Onboarding:", err);
+        btn.disabled = false;
+        btn.innerHTML = "⚙️ Activer Stripe Connect";
+      }
+    };
   }
 }
 
-
+// Garder cette ligne à la toute fin
 window.renderProfList = renderProfList;

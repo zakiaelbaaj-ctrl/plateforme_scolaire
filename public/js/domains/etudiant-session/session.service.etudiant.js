@@ -1,7 +1,7 @@
 // ======================================================
-// SESSION SERVICE ÉTUDIANT — SYSTÈME PEER ÉTUDIANT-ÉTUDIANT
-// ✅ Fichier séparé — ne touche pas session.service.js (prof-élève)
-// ✅ Imports minimaux : AppState + socketService uniquement
+// SESSION SERVICE ÃÂTUDIANT Ã¢ÂÂ SYSTÃÂME PEER ÃÂTUDIANT-ÃÂTUDIANT
+// Ã¢ÂÂ Fichier sÃÂ©parÃÂ© Ã¢ÂÂ ne touche pas session.service.js (prof-ÃÂ©lÃÂ¨ve)
+// Ã¢ÂÂ Imports minimaux : AppState + socketService uniquement
 // ======================================================
 
 import { AppState }      from "/js/core/state.js";
@@ -10,7 +10,7 @@ import { socketService } from "/js/core/socket.service.js";
 export const SessionServiceEtudiant = {
 
   // --------------------------------------------------
-  // SYSTÈME D'ABONNEMENT INTERNE
+  // SYSTÃÂME D'ABONNEMENT INTERNE
   // --------------------------------------------------
   _listeners: [],
 
@@ -26,7 +26,7 @@ export const SessionServiceEtudiant = {
 
   // --------------------------------------------------
   // ROUTAGE DES EVENTS WS
-  // Ne traite QUE les types préfixés "student:"
+  // Ne traite QUE les types prÃÂ©fixÃÂ©s "student:"
   // --------------------------------------------------
   _handleWs(data) {
     if (!data?.type) return;
@@ -53,8 +53,8 @@ export const SessionServiceEtudiant = {
 
       case "student:matchFound": {
     AppState.currentStudentRoomId = data.roomId;
-    console.log("🎯 Envoi student:joinRoom pour:", data.roomId);
-    // ✅ joinRoom envoyé AVANT le notify pour éviter la déconnexion WS
+    console.log("Ã°ÂÂÂ¯ Envoi student:joinRoom pour:", data.roomId);
+    // Ã¢ÂÂ joinRoom envoyÃÂ© AVANT le notify pour ÃÂ©viter la dÃÂ©connexion WS
     socketService.send({ 
         type: "student:joinRoom", 
         roomId: data.roomId 
@@ -202,7 +202,7 @@ export const SessionServiceEtudiant = {
       });
       return await res.json();
     } catch (err) {
-      console.error("❌ Erreur vérification abonnement:", err);
+      console.error("Ã¢ÂÂ Erreur vÃÂ©rification abonnement:", err);
       return { status: "none" };
     }
   },
@@ -221,7 +221,7 @@ export const SessionServiceEtudiant = {
       if (data.url) window.location.href = data.url;
       return data;
     } catch (err) {
-      console.error("❌ Erreur abonnement:", err);
+      console.error("Ã¢ÂÂ Erreur abonnement:", err);
       return null;
     }
   },

@@ -1,7 +1,6 @@
 // ======================================================
 // DASHBOARD PROFESSEUR _ UI PURE / DOMAIN-DRIVEN
 // ======================================================
-
 import { AppState }          from "/js/core/state.js";
 import { socketService }     from "/js/core/socket.service.js";
 import { SessionService }    from "/js/domains/session/session.service.js";
@@ -13,8 +12,10 @@ import { DocumentService }   from "/js/domains/document/document.service.js";
 import { addDocument }    from "/js/ui/components/document.view.js";
 import { appendMessage, resetChat } from "/js/ui/components/chat.view.js";
 import { socketHandlerProf } from "/js/core/socket.handler.js";
-import { getUserProfile } from "../../services/user.service.js"; // service fictif qui rÃ©cupÃ¨re le user connectÃ©
+import { getUserProfile } from "../../services/user.service.js"; // service fictif qui récupère le user connecté
 import { handleAllStripeReturns, openSetupSession } from '/js/services/stripe.service.js';
+import { ScreenShareService } from "/js/domains/call/screen.share.service.js";
+import { ScreenShareOverlay }  from "/js/ui/components/screen.share.overlay.js";
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:4000" 
   : "https://plateforme-scolaire-1.onrender.com";
@@ -23,7 +24,7 @@ const API_BASE = `${API_URL}/api/v1`;
 // ================= STRIPE ONBOARDING =================
 async function initStripeOnboarding() {
   try {
-    // On utilise API_BASE qui est dÃ©finie en haut du fichier
+    // On utilise API_BASE qui est définie en haut du fichier
     const resp = await fetch(`${API_BASE}/stripeConnect/onboarding`, {
       method: "POST",
       headers: { 
@@ -37,12 +38,12 @@ async function initStripeOnboarding() {
     if (data.stripeLink) {
       window.location.href = data.stripeLink;
     } else {
-      // Ajout d'une alerte si le lien est absent (trÃ¨s utile pour le dÃ©bug)
-      alert("Erreur : " + (data.message || "Impossible de gÃ©nÃ©rer le lien Stripe."));
+      // Ajout d'une alerte si le lien est absent (très utile pour le débug)
+      alert("Erreur : " + (data.message || "Impossible de générer le lien Stripe."));
     }
   } catch (err) {
     console.error("Erreur Stripe onboarding:", err);
-    alert("Une erreur rÃ©seau est survenue.");
+    alert("Une erreur réseau est survenue.");
   }
 }
 
@@ -52,16 +53,16 @@ async function initStripeOnboarding() {
 document.addEventListener("DOMContentLoaded", async () => {
   // 1. Gérer immédiatement le retour de Stripe (Succès/Annulation)
     handleAllStripeReturns();
-  // Débloquer l'audio dÃ¨s la premiÃ¨re interaction
+  // Débloquer l'audio dès la première interaction
   document.addEventListener("click", () => {
     const audio = document.getElementById("incomingCallSound");
     if (audio) { audio.muted = false; audio.play().catch(() => {}); }
   }, { once: true });
 
-  // 🔴 récupérer user via service
+  // 👇 ICI EXACTEMENT (juste après les autres whiteboard handlers)
   const userData = await getUserProfile();
   if (!userData) {
-    window.location.replace("/pages/professeur/login.html"); // redirection si pas connectÃ©
+    window.location.replace("/pages/professeur/login.html"); // redirection si pas connecté
     return;
   }
 
@@ -71,7 +72,7 @@ AppState.token = localStorage.getItem("token"); // OK pour token (mais idéaleme
 
   renderCurrentUserInfo(userData);
 
-  // 🔴 si c'est un professeur, init Stripe onboarding
+  // // 🔴 Si c'est un professeur, init Stripe onboarding
 if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboarding_complete) {
   const stripeBtn = document.getElementById("stripe-onboarding-btn");
   if (stripeBtn) {
@@ -88,7 +89,7 @@ if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboa
   bindUI();
   subscribeToDomains();
 
-  // 🔵 Broadcast initial des profs connectés vers les élèves
+  // 🔴 Broadcast initial des profs connectés vers les élèves
   updateOnlineProfessors();
   });
 // ======================================================
@@ -96,6 +97,19 @@ if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboa
 // ======================================================
 
 function subscribeToDomains() {
+  // ================= INDICATEUR CONNEXION =================
+  AppState.on("ws:status", (data) => {
+    updateWsStatus(data?.status, data?.attempt);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const wrapper = document.getElementById("whiteboard-wrapper");
+      if (wrapper?.classList.contains("whiteboard-fullscreen")) {
+        toggleWhiteboardFullscreen();
+      }
+    }
+  });
+
   // ================= SESSION =================
   AppState.on('session:start', (session) => onSessionStarted({ roomId: session?.roomId, type: 'startSession' }));
   
@@ -111,20 +125,25 @@ function subscribeToDomains() {
     }
   });
   AppState.on('video:localTrack',   (track)  => attachLocalVideo(track));
+  AppState.on("timer:update", (seconds) => {
+    const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const s = String(seconds % 60).padStart(2, "0");
+    updateTimerUI(`${m}:${s}`);
+  });
   AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
   AppState.on('call:incoming',      (data)   => showIncomingCall(data));
 
   // ================= CHAT =================
   AppState.on('chat:new', (msg) => renderChat(msg));
 
-  // ================= DOCUMENT =================
-  // ✅ écouter AppState (source officielle)
-  if (!window.__DOC_SUBSCRIBED__) {
-  window.__DOC_SUBSCRIBED__ = true;
-
+  
+  // ================= WHITEBOARD =================
+  WhiteboardService.onToolChange?.((remoteTool) => {
+  WhiteboardService.setTool(remoteTool);
+});
+// ================= DOCUMENT =================
 AppState.on("documents:new", (doc) => {
-  console.log("📄 UI PROF reçoit doc:", doc);
-
+  console.log("✅ UI PROF reçoit doc:", doc);
   addDocument({
     id:       doc.id ?? doc.fileName,
     name:     doc.fileName ?? doc.name,
@@ -132,18 +151,16 @@ AppState.on("documents:new", (doc) => {
     url:      doc.url ?? doc.fileUrl ?? null
   });
 });
-}
-  // ================= WHITEBOARD =================
-  WhiteboardService.onStroke((stroke) => drawStroke(stroke));
-  WhiteboardService.onClear(() => clearCanvas());
-  WhiteboardService.onSync((strokes) => {
-  clearCanvas();
-  for (const s of strokes) drawStroke(s);
-  });
-  // 👇 ICI EXACTEMENT (juste après les autres whiteboard handlers)
-  AppState.on("whiteboard:clear", () => {
-    WhiteboardService.applyRemoteClear(false);
-  });
+// ================= PARTAGE D'ÉCRAN =================
+ScreenShareService.onStart((track) => {
+  // Affiche l'overlay pour celui qui partage aussi (optionnel)
+});
+
+ScreenShareService.onStop(() => {
+  ScreenShareOverlay.hide();
+  const btn = document.getElementById("screen-share-btn");
+  if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
+});
   // ================= NOTIFICATION PAIEMENT =================
   AppState.on("ui:notification", (notif) => {
     const toast = document.createElement("div");
@@ -155,7 +172,7 @@ AppState.on("documents:new", (doc) => {
     `;
     toast.innerHTML = `
       <div style="font-weight: bold; margin-bottom: 6px;">
-        💰 ${notif.title || "Paiement reçu"}
+        ✅ ${notif.title || "Paiement reçu"}
       </div>
       <div style="font-size: 14px;">${notif.message || ""}</div>
     `;
@@ -187,17 +204,16 @@ function updateOnlineProfessors() {
 }
 
 // ======================================================
-// BIND UI — boutons bindés une seule fois
+// // BIND UI — Boutons bindés une seule fois
 // ======================================================
 
 function bindUI() {
 
   // ================= BOUTON TERMINER =================
-  // ================= BOUTON TERMINER =================
 const endBtn = document.getElementById("end-session-btn");
 endBtn?.addEventListener("click", () => {
-  console.log("🖱️ Clic Terminer — roomId:", AppState.currentRoomId);
-  SessionService.stopVideoCall(); // ← appelle déjà terminateCall en interne
+  console.log("✅ Clic Terminer â roomId:", AppState.currentRoomId);
+ SessionService.stopVideoCall(); // ⬅️ appelle déjà terminateCall en interne
 });
   // ================= BOUTONS D'APPEL =================
   let acceptInProgress = false;
@@ -205,7 +221,7 @@ endBtn?.addEventListener("click", () => {
   acceptBtn?.addEventListener("click", () => {
     if (acceptInProgress) return;
     const eleveId = AppState.currentIncomingCallEleveId;
-    if (!eleveId) { console.warn("âš ï¸ Aucun appel Ã  accepter"); return; }
+    if (!eleveId) { console.warn("⚠️ Aucun appel à accepter"); return; }
     acceptInProgress = true;
     socketService.send({ type: "acceptCall", eleveId });
     AppState.currentIncomingCallEleveId = null;
@@ -223,23 +239,48 @@ endBtn?.addEventListener("click", () => {
     updateCallStatus("Appel refusé");
   });
 
-  // ================= WHITEBOARD =================
-  document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => WhiteboardService.undo());
-  document.getElementById("clearWhiteboardBtn")?.addEventListener("click",    () => WhiteboardService.clearBoard());
+   // ================= WHITEBOARD =================
+  
+document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => WhiteboardService.undo());
+document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
+  WhiteboardService.clearCanvas(); // emit=true par défaut → broadcast tableauClear à toute la room
+});
   document.getElementById("downloadWhiteboardBtn")?.addEventListener("click", () => WhiteboardService.download?.());
-  document.getElementById("penToolBtn")?.addEventListener("click",    () => setWbTool("penToolBtn",    () => WhiteboardService.setTool?.("pen")));
-  document.getElementById("eraserToolBtn")?.addEventListener("click", () => setWbTool("eraserToolBtn", () => WhiteboardService.setTool?.("eraser")));
-  document.getElementById("lineToolBtn")?.addEventListener("click",   () => setWbTool("lineToolBtn",   () => WhiteboardService.setTool?.("line")));
-  document.getElementById("rectToolBtn")?.addEventListener("click",   () => setWbTool("rectToolBtn",   () => WhiteboardService.setTool?.("rect")));
-  document.getElementById("textToolBtn")?.addEventListener("click",   () => setWbTool("textToolBtn",   () => WhiteboardService.setTool?.("text")));
+  document.getElementById("penToolBtn")?.addEventListener("click",    () => setWbTool("penToolBtn",    () => WhiteboardService.setTool("pen")));
+  document.getElementById("eraserToolBtn")?.addEventListener("click", () => setWbTool("eraserToolBtn", () => WhiteboardService.setTool("eraser")));
+  document.getElementById("pointToolBtn")?.addEventListener("click", () => {
+  setWbTool("pointToolBtn", () => WhiteboardService.setTool("point"));
+});
+  document.getElementById("lineToolBtn")?.addEventListener("click",   () => setWbTool("lineToolBtn",   () => WhiteboardService.setTool("line")));
+  document.getElementById("rectToolBtn")?.addEventListener("click",   () => setWbTool("rectToolBtn",   () => WhiteboardService.setTool("rect")));
+  document.getElementById("circleToolBtn")?.addEventListener("click", () => {
+  setWbTool("circleToolBtn", () => WhiteboardService.setTool("circle"));
+});
+  document.getElementById("textToolBtn")?.addEventListener("click",   () => setWbTool("textToolBtn",   () => WhiteboardService.setTool("text")));
   document.getElementById("wb-fullscreen-btn")?.addEventListener("click", toggleWhiteboardFullscreen);
-
+  document.getElementById("eraser-btn")?.addEventListener("click", () => WhiteboardService.setTool("eraser"));
+ 
   // ================= CHAT =================
   document.getElementById("send-msg")?.addEventListener("click", sendChat);
   document.getElementById("chat-input")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); sendChat(); }
   });
+// ================= PARTAGE D'ÉCRAN =================
+document.getElementById("screen-share-btn")?.addEventListener("click", async () => {
+  const btn = document.getElementById("screen-share-btn");
 
+  if (ScreenShareService.isSharing()) {
+    await ScreenShareService.stop(VideoService.room);
+    btn.textContent = "🖥️";
+    btn.title = "Partager l'écran";
+  } else {
+    await ScreenShareService.start(VideoService.room);
+    if (ScreenShareService.isSharing()) {
+      btn.textContent = "⏹️";
+      btn.title = "Arrêter le partage";
+    }
+  }
+});
   // ================= DOCUMENTS =================
   document.getElementById("send-file")?.addEventListener("click", sendDocument);
 
@@ -253,7 +294,30 @@ endBtn?.addEventListener("click", () => {
     window.location.href = "/pages/professeur/login.html";
   });
 }
+function updateWsStatus(status, attempt = 0) {
+  const badge = document.getElementById("ws-status-badge");
+  if (!badge) return;
 
+  switch (status) {
+    case "connected":
+      badge.textContent = "🟢 Connecté";
+      badge.style.color = "#4CAF50";
+      badge.title = "";
+      break;
+
+    case "reconnecting":
+      badge.textContent = `🟡 Reconnexion... (${attempt})`;
+      badge.style.color = "#FF9800";
+      badge.title = `Tentative ${attempt}`;
+      break;
+
+    case "disconnected":
+      badge.textContent = "🔴 Hors ligne";
+      badge.style.color = "#f44336";
+      badge.title = "Connexion perdue";
+      break;
+  }
+}
 // ======================================================
 // SESSION UI
 // ======================================================
@@ -263,24 +327,20 @@ function onSessionStarted(event) {
   AppState.currentRoomId     = event.roomId;
 
   updateCallStatus("En communication");
-  setSessionActive(true); // ✅ affiche le timer ET le bouton terminer
+  setSessionActive(true); //✅ affiche le timer ET le bouton terminer
 
-  WhiteboardService.initCanvas("whiteboard-canvas", event.roomId);
-
+  WhiteboardService.initCanvas("whiteboard-canvas", {
+  colorPicker: document.getElementById("whiteboardColor"),
+  sizeSlider:  document.getElementById("whiteboardSize")
+  });
   const remoteInfo = document.getElementById("remote-eleve-info");
   if (remoteInfo) remoteInfo.style.display = "none";
-
+}
   // ✅ NE PAS appeler SessionService.startTimer ici
   // Le timer est démarré dans joinedRoom du socket handler prof
-  // SessionService.startTimer?.(updateTimerUI); ← SUPPRIMER cette ligne
+  // SessionService.startTimer?.(updateTimerUI); ➡️ SUPPRIMER cette ligne
 
-  // ✅ Abonner updateTimerUI au tick du timer
-  AppState.on("timer:update", (seconds) => {
-    const m = String(Math.floor(seconds / 60)).padStart(2, "0");
-    const s = String(seconds % 60).padStart(2, "0");
-    updateTimerUI(`${m}:${s}`);
-  });
-}
+  
 function setSessionActive(active) {
   const endBtn = document.getElementById("end-session-btn");
   const badge  = document.getElementById("session-badge");
@@ -294,8 +354,12 @@ function setSessionActive(active) {
 function cleanupSession(message) {
   if (cleanupSession._running) return; // ✅ guard anti-boucle
   cleanupSession._running = true;
-
-  VideoService.disconnect();
+  // ✅ AJOUTER ICI — Arrêter le partage d'écran si actif
+  ScreenShareService.stop(VideoService.room).catch(() => {});
+  ScreenShareOverlay.hide();
+  const ssBtn = document.getElementById("screen-share-btn");
+  if (ssBtn) { ssBtn.textContent = "🖥️"; }
+ VideoService.disconnect();
   AppState.setCallState(null);
   AppState.sessionInProgress = false;
   SessionService.stopTimer?.();
@@ -309,13 +373,12 @@ function cleanupSession(message) {
   });
 
   const remoteInfo = document.getElementById("remote-eleve-info");
-  if (remoteInfo) { remoteInfo.textContent = "En attente d'un Ã©lÃ¨veâ€¦"; remoteInfo.style.display = ""; }
-
+  if (remoteInfo) { remoteInfo.textContent = "En attente d'un élève…"; remoteInfo.style.display = ""; }
   const timerEl = document.getElementById("call-time");
   if (timerEl) timerEl.textContent = "00:00";
   resetChat();
   clearCanvas();
-  cleanupSession._running = false; // ✅ libère le guard
+  cleanupSession._running = false; // ✅ Libère le guard
 }
 
 // ======================================================
@@ -323,7 +386,7 @@ function cleanupSession(message) {
 // ======================================================
 
 function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays }) {
-  console.log("🔔 showIncomingCall appelée", { eleveId, eleveName });
+  console.log("⚠️ showIncomingCall appelée", { eleveId, eleveName });
 
   AppState.currentIncomingCallEleveId = eleveId ?? null;
   const audio = document.getElementById("incomingCallSound");
@@ -340,18 +403,17 @@ function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays }) {
   }
   if (noCall) noCall.style.display = "none";
   if (text) {
-    const location = eleveVille && elevePays ? ` â€” ${eleveVille}, ${elevePays}` : "";
-    text.textContent = `${eleveName || "Ã‰lÃ¨ve"}${location}`;
-  }
-
-  console.log("box aprÃ¨s:", box?.className, getComputedStyle(box).display, box?.offsetHeight);
+    const location = eleveVille && elevePays ? ` — ${eleveVille}, ${elevePays}` : "";
+text.textContent = `${eleveName || "Élève"}${location}`;
+}
+ console.log("box après:", box?.className, getComputedStyle(box).display, box?.offsetHeight);
 }
 
 function hideIncomingAlert() {
   const box    = document.getElementById("incoming-call-box");
   const noCall = document.getElementById("no-call");
   if (box) {
-    box.classList.remove("visible"); // retire .visible â†’ CSS repasse Ã  display: none
+    box.classList.remove("visible"); // Retire .visible ➔ CSS repasse à display: none
   }
   if (noCall) noCall.style.display = "flex";
 }
@@ -419,9 +481,8 @@ function sendChat() {
 }
 
 function renderChat({ sender, text }) {
-  appendMessage(sender, text, false); // âœ…
+  appendMessage(sender, text, false); // élève/écran…
 }
-
 // ======================================================
 // DOCUMENT UI
 // ======================================================
@@ -471,11 +532,19 @@ function setWbTool(activeId, callback) {
   document.getElementById(activeId)?.classList.add("active");
   callback();
 }
-
 function toggleWhiteboardFullscreen() {
   const wrapper = document.getElementById("whiteboard-wrapper");
+  const btn     = document.getElementById("wb-fullscreen-btn");
   if (!wrapper) return;
-  wrapper.classList.toggle("whiteboard-fullscreen");
+
+  const isFullscreen = wrapper.classList.toggle("whiteboard-fullscreen");
+
+  if (isFullscreen) {
+    if (btn) { btn.textContent = "⊡"; btn.title = "Quitter le plein écran"; }
+  } else {
+    if (btn) { btn.textContent = "⛶"; btn.title = "Plein écran"; }
+  }
+
   WhiteboardService.resizeCanvas?.();
 }
 
@@ -505,11 +574,10 @@ function renderCurrentUserInfo(user) {
         <div class="card">
             <h3>Mon compte</h3>
             <p>Utilisateur : ${prenom ?? ""} ${nom ?? ""}</p>
-            <p>Statut : ${is_subscriber ? 'âœ… AbonnÃ©' : 'âŒ Non abonnÃ©'}</p>
-            
+            <p>Statut : ${is_subscriber ? '✅ Abonné' : '❌ Non abonné'}</p>
             <button id="stripe-setup-btn" class="btn-primary">
-                ${role === 'prof' ? 'âš™ï¸ Configurer mon compte Stripe' : 'ðŸ’³ Enregistrer ma carte bancaire'}
-            </button>
+                ${role === 'prof' ? '⚙️ Configurer mon compte Stripe' : '💳 Enregistrer ma carte bancaire'}
+                </button>
             
             <div id="stripe-status" style="margin-top: 10px;"></div>
         </div>
@@ -522,10 +590,9 @@ function renderCurrentUserInfo(user) {
             e.preventDefault();
             stripeBtn.disabled = true;
             const originalText = stripeBtn.textContent;
-            stripeBtn.textContent = "â³ Chargement...";
-
+             stripeBtn.textContent = "🔄 Chargement...";
             try {
-                await openSetupSession(); // La fonction importÃ©e
+                await openSetupSession(); // La fonction importée
             } catch (error) {
                 console.error("Erreur Stripe:", error);
                 alert("Impossible d'ouvrir la session Stripe.");

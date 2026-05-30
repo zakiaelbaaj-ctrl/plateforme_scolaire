@@ -18,8 +18,6 @@
 <body class="role-professeur">
   
   <header class="top-bar">
-
-    <!-- ✅ APRÈS -->
 <div class="top-bar__brand">
   <img src="../../images/logo.png" alt="Urgence Scolaire" style="width:40px; height:40px; object-fit:contain;" />
   <div class="user-info">
@@ -29,12 +27,13 @@
     </div>
 
     <div class="top-bar__session">
-      <div class="session-badge" id="session-badge">
-        <span class="session-dot"></span>
-        <span id="call-status">En attente d'un élève…</span>
-      </div>
-      <span id="call-time" class="call-timer"></span>
-    </div>
+  <div class="session-badge" id="session-badge">
+    <span class="session-dot"></span>
+    <span id="call-status">En attente d'un élève…</span>
+  </div>
+  <span id="call-time" class="call-timer"></span>
+  <span id="ws-status-badge" style="font-size:12px; margin-left:8px;">🟢 Connecté</span> <!-- ✅ -->
+</div>
 
     <div class="top-bar__actions">
       <button id="end-session-btn"  class="btn btn--danger btn--sm"  style="display:none;">✕ Terminer</button>
@@ -54,10 +53,11 @@
       <section class="card card--video">
         <div class="card__header">
           <h3 class="card__title">🎥 Session vidéo</h3>
-        </div>
-
+        <div class="wb-header-actions">
+      <button id="screen-share-btn" class="btn btn--icon" title="Partager l'écran">🖥️</button>
+    </div>
+  </div>
         <div class="videos">
-
           <div class="video-block video-block--remote">
             <div class="video-label">Élève</div>
             <div class="video-box">
@@ -91,13 +91,15 @@
         </div>
 
         <div class="whiteboard-tools">
-          <div class="wb-tools-group">
-            <button id="penToolBtn"    class="btn btn--icon wb-tool active" title="Crayon">✏️</button>
-            <button id="eraserToolBtn" class="btn btn--icon wb-tool" title="Gomme">🧽</button>
-            <button id="lineToolBtn"   class="btn btn--icon wb-tool" title="Ligne">📏</button>
-            <button id="rectToolBtn"   class="btn btn--icon wb-tool" title="Rectangle">▭</button>
-            <button id="textToolBtn"   class="btn btn--icon wb-tool" title="Texte">🔤</button>
-          </div>
+  <div class="wb-tools-group">
+    <button id="pointToolBtn" class="btn btn--icon wb-tool" title="Point">•</button>
+    <button id="penToolBtn"     class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
+    <button id="eraserToolBtn"  class="btn btn--icon wb-tool" title="Gomme">🧽</button>
+    <button id="lineToolBtn"    class="btn btn--icon wb-tool" title="Ligne">📏</button>
+    <button id="rectToolBtn"    class="btn btn--icon wb-tool" title="Rectangle">▭</button>
+    <button id="circleToolBtn"  class="btn btn--icon wb-tool" title="Cercle">⭕</button>  <!-- ✅ -->
+    <button id="textToolBtn"    class="btn btn--icon wb-tool" title="Texte">🔤</button>
+  </div>
 
           <div class="wb-tools-group">
             <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />

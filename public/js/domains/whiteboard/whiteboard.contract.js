@@ -1,10 +1,10 @@
 // ======================================================
-// WHITEBOARD CONTRACT â€” TYPES WS + PAYLOAD FACTORY
+// // WHITEBOARD CONTRACT — TYPES WS + PAYLOAD FACTORY
 // /js/domains/whiteboard/whiteboard.contract.js
 // ======================================================
-// âœ… Aucune dÃ©pendance â€” importe rien
-// âœ… Source unique des types WS whiteboard
-// âœ… UtilisÃ© par WhiteboardService uniquement
+// ✓ Aucune dépendance — importe rien
+// ✓ Source unique des types WS whiteboard
+// ✓ Utilisé par WhiteboardService uniquement
 // ======================================================
 
 export const WhiteboardEvents = {
@@ -13,8 +13,16 @@ export const WhiteboardEvents = {
   TABLEAU_SYNC:   "tableauSync",
   TABLEAU_UNDO:   "tableauUndo",
   TABLEAU_REDO:   "tableauRedo",
-  TABLEAU_TEXT:   "tableauText"
+  TABLEAU_TEXT:   "tableauText",
+  TABLEAU_TOOL:   "tableauTool",
 };
+
+export function updateToolButtons(canUse) {
+  document.querySelectorAll(".wb-tool").forEach(btn => {
+    btn.disabled = !canUse;
+    btn.classList.toggle("disabled", !canUse);
+  });
+}
 
 export const WhiteboardPayloadFactory = {
 

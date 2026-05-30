@@ -68,7 +68,9 @@ const STUDENT_TYPES = new Set([
   "student:enqueue",
   "student:dequeue",
   "student:joinRoom",
+  "student:join-room",
   "student:leaveRoom",
+  "student:leave-room",
   "student:signal",
   "student:chatMessage",
   "student:documentShare"
@@ -159,12 +161,19 @@ if (clients.has(ws.userId)) {
     // -------------------------
     // 3️⃣ EVENTS
     // -------------------------
-    ws.on("pong", () => (ws.isAlive = true));
+   ws.on("pong", () => {
+  ws.isAlive = true;
+  ws.lastActiveAt = new Date().toISOString();
 
-    // ✅ CORRECTION 3 — utiliser onMessage (avec logs + validateMessage)
+  if (ws.role === "prof") {
+    const prof = onlineProfessors.get(ws.userId);
+    if (prof) {
+      prof.lastActiveAt = ws.lastActiveAt;
+      onlineProfessors.set(ws.userId, prof);
+    }
+  }
+});
     ws.on("message", raw => onMessage(ws, raw));
-
-    // ✅ CORRECTION 1 — appelle handleDisconnect (correctement nommée en bas)
     ws.on("close", () => handleDisconnect(ws));
     ws.on("error", err => console.error("❌ Erreur WS:", err));
   }); // ← ferme wss.on("connection")
@@ -538,13 +547,50 @@ async function handleIdentify(ws, data) {
     }
     return;
   }
+  // 2️⃣ CAS ÉTUDIANT
+if (ws.role === "etudiant") {
+  // Liste avec le nouvel étudiant inclus
+    const currentStudents = [];
+    for (const client of clients.values()) {
+        if (client.role === "etudiant" && client.readyState === 1 && client.prenom) {
+            currentStudents.push({
+                id:      client.userId,
+                prenom:  client.prenom  || "Étudiant",
+                nom:     client.nom     || "",
+                matiere: client.matiere || "Général",
+                niveau:  client.niveau  || "",
+                role:    client.role
+            });
+        }
+    }
 
-  // 2️⃣ CAS ÉTUDIANT (Segmentation stricte)
-  if (ws.role === "etudiant") {
-    console.log(`🎓 Étudiant identifié: ${ws.userId} — prenom: ${ws.prenom} — broadcast students`);
-    broadcastOnlineStudents(clients);
+    // ✅ Ajouter le nouvel étudiant lui-même s'il n'est pas encore dans la liste
+    const dejaDedans = currentStudents.some(s => s.id === ws.userId);
+    if (!dejaDedans) {
+        currentStudents.push({
+            id:      ws.userId,
+            prenom:  ws.prenom  || "Étudiant",
+            nom:     ws.nom     || "",
+            matiere: ws.matiere || "Général",
+            niveau:  ws.niveau  || "",
+            role:    ws.role
+        });
+    }
+
+    // Envoyer la liste complète au nouvel étudiant (avec lui-même dedans)
+    ws.send(JSON.stringify({
+        type:     "student:onlineStudents",
+        students: currentStudents
+    }));
+    // ✅ Broadcaster aux AUTRES seulement (pas au nouvel étudiant)
+    clients.forEach(client => {
+        if (client !== ws && client.role === "etudiant" && client.readyState === 1) {
+            client.send(JSON.stringify({ type: "student:onlineStudents", students: currentStudents }));
+        }
+    });
+
     return;
-  }
+}
   // 3️⃣ CAS ÉLÈVE (Segmentation stricte)
   if (ws.role === "eleve") {
     console.log(`👨‍🎓 Élève enregistré: ${ws.userId}`);
