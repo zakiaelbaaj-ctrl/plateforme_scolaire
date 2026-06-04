@@ -100,13 +100,7 @@ return;
     isQueueing = false;
     AppState.isQueueing = false;
     AppState.startSession({ roomId: data.roomId });
-
-    eventBus.emit("student:match-found", {
-      roomId:      data.roomId,
-      partnerName: data.partnerName,
-      initiator:   data.initiator,
-    });
-
+   logger.log("🎯 Match reçu (matching service)");
     logger.log("🔍 Match trouvé :", data.roomId);
   }
 

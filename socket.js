@@ -196,6 +196,7 @@ if (clients.has(ws.userId)) {
 // MESSAGE ROUTER
 // =======================================================
 async function onMessage(ws, raw) {
+  console.log(`📩 RAW reçu de ${ws.userId}:`, raw.toString().substring(0, 100));
   let data;
 
   try {
@@ -496,18 +497,18 @@ if (type === "requestStudentMatch") {
 // =======================================================
 // IDENTIFY
 // =======================================================
-async function handleIdentify(ws, data) {
-  console.log("📋 Identify reçu pour:", ws.userId);
+  async function handleIdentify(ws, data) {
+  console.log("📋 Identify reçu pour:", ws.userId, "role:", ws.role, "prenom:", data.prenom);
 
   const { prenom, nom, ville, pays, niveau, matiere } = data;
-  ws.matiere = matiere || null;
   ws.prenom = prenom || "";
   ws.nom = nom || "";
+  ws.matiere = matiere || null;
+  ws.niveau = niveau || null;
   ws.userName = `${ws.prenom || ""} ${ws.nom || ""}`.trim() || ws.userId;
   ws.ville = ville || "";
   ws.pays = pays || "";
-  ws.niveau = niveau || null;
-
+  
   console.log(`🆔 Identify: ${ws.userId} (${ws.role}) → ${ws.prenom} ${ws.nom}`);
 
   // 1️⃣ CAS PROFESSEUR
@@ -549,46 +550,7 @@ async function handleIdentify(ws, data) {
   }
   // 2️⃣ CAS ÉTUDIANT
 if (ws.role === "etudiant") {
-  // Liste avec le nouvel étudiant inclus
-    const currentStudents = [];
-    for (const client of clients.values()) {
-        if (client.role === "etudiant" && client.readyState === 1 && client.prenom) {
-            currentStudents.push({
-                id:      client.userId,
-                prenom:  client.prenom  || "Étudiant",
-                nom:     client.nom     || "",
-                matiere: client.matiere || "Général",
-                niveau:  client.niveau  || "",
-                role:    client.role
-            });
-        }
-    }
-
-    // ✅ Ajouter le nouvel étudiant lui-même s'il n'est pas encore dans la liste
-    const dejaDedans = currentStudents.some(s => s.id === ws.userId);
-    if (!dejaDedans) {
-        currentStudents.push({
-            id:      ws.userId,
-            prenom:  ws.prenom  || "Étudiant",
-            nom:     ws.nom     || "",
-            matiere: ws.matiere || "Général",
-            niveau:  ws.niveau  || "",
-            role:    ws.role
-        });
-    }
-
-    // Envoyer la liste complète au nouvel étudiant (avec lui-même dedans)
-    ws.send(JSON.stringify({
-        type:     "student:onlineStudents",
-        students: currentStudents
-    }));
-    // ✅ Broadcaster aux AUTRES seulement (pas au nouvel étudiant)
-    clients.forEach(client => {
-        if (client !== ws && client.role === "etudiant" && client.readyState === 1) {
-            client.send(JSON.stringify({ type: "student:onlineStudents", students: currentStudents }));
-        }
-    });
-
+    setTimeout(() => broadcastOnlineStudents(clients), 50);
     return;
 }
   // 3️⃣ CAS ÉLÈVE (Segmentation stricte)

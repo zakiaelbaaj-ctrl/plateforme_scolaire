@@ -73,6 +73,8 @@ if (!DEV_FORCE_SUBSCRIPTION && ws.subscriptionStatus !== "active") {
       sujet,
       niveau,
       disponibilite: ws.disponibilite || "now",
+      ville: ws.ville || "",
+      pays: ws.pays || "",
       ts: Date.now()
     });
 
@@ -155,19 +157,24 @@ if (!DEV_FORCE_SUBSCRIPTION && ws.subscriptionStatus !== "active") {
     // ======================================================
     // 4️⃣ NOTIFICATION — les clients doivent envoyer student:joinRoom
     // ======================================================
-    safeSend(bestPair.a.ws, {
-      type: "student:matchFound",
-      roomId,
-      partnerName: `${bestPair.b.ws.prenom} ${bestPair.b.ws.nom}`
-    });
+safeSend(bestPair.a.ws, {
+    type: "student:matchFound",
+    roomId,
+    partnerName: `${bestPair.b.ws.prenom} ${bestPair.b.ws.nom}`,
+    partnerVille: bestPair.b.ws.ville || "",
+    partnerPays:  bestPair.b.ws.pays  || "",
+    initiator: true
+});
 
-    safeSend(bestPair.b.ws, {
-      type: "student:matchFound",
-      roomId,
-      partnerName: `${bestPair.a.ws.prenom} ${bestPair.a.ws.nom}`
-    });
-  }
-
+safeSend(bestPair.b.ws, {
+    type: "student:matchFound",
+    roomId,
+    partnerName: `${bestPair.a.ws.prenom} ${bestPair.a.ws.nom}`,
+    partnerVille: bestPair.a.ville || "",
+    partnerPays:  bestPair.a.pays  || "",
+    initiator: false
+   });
+   } 
   // ======================================================
   // 5️⃣ REMOVE QUEUE
   // ======================================================

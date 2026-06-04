@@ -28,9 +28,9 @@ export function handleStudentSocketMessage(data) {
     // ==================================================
 
     case "TRANSPORT_OPEN":
-  eventBus.emit("socket:open");
-  eventBus.emit("ws:status", { status: "connected" }); // ✅ AJOUTER
-  break;
+     eventBus.emit("socket:open");
+     eventBus.emit("ws:status", { status: "connected" }); // ✅ AJOUTER
+     break;
 
     case "TRANSPORT_CLOSED":
   eventBus.emit("socket:close");
@@ -65,15 +65,24 @@ export function handleStudentSocketMessage(data) {
       eventBus.emit("student:dequeued");
       break;
 
-      case "student:match-found":
-case "student:matchFound":
+      
+  case "student:matchFound":
+case "student:match-found":
   AppState.isQueueing = false;
-  AppState.startSession({ roomId: data.roomId });
+  AppState.partnerName = data.partnerName || "Partenaire";
   eventBus.emit("student:match-found", {
-    roomId:      data.roomId,
+    roomId:    data.roomId,
+    initiator: data.initiator,
     partnerName: data.partnerName,
-    initiator:   data.initiator,
+    partnerVille: data.partnerVille || "",
+    partnerPays:  data.partnerPays  || "",
   });
+  break;
+
+case "student:session-ready":
+case "student:sessionReady":
+  // Ignoré — WebRTC déjà lancé depuis matchFound
+  Logger.log("📡 sessionReady ignoré — WebRTC déjà initié");
   break;
 
     // ==================================================
@@ -94,22 +103,27 @@ case "student:matchFound":
       });
       break;
 
-    case "student:user-left":
-      case "student:userLeft":
-      AppState.sessionInProgress = false;
-      AppState.currentRoomId     = null;
-
-      eventBus.emit("student:user-left", {
-        userId: data.userId,
-      });
-      break;
+   case "student:user-left":
+case "student:userLeft":
+  Logger.log("📡 Le partenaire a quitté, notification envoyée à l'orchestrateur pour cleanup...");
+  
+  // Repasse uniquement le bébé à l'orchestrateur via l'eventBus
+  eventBus.emit("student:user-left", {
+    userId: data.userId,
+  });
+  break;
 
     case "student:session-ready":
-      case "student:sessionReady":
-      eventBus.emit("student:session-ready", {
-        initiator: data.initiator,
-      });
-      break;
+    case "student:sessionReady":
+  Logger.log("📡 Sockets : Session prête, initiateur :", data.initiator);
+  if (!AppState.sessionInProgress) {
+    eventBus.emit("student:match-found", {
+      roomId:    data.roomId,
+      initiator: data.initiator,
+      partnerName: data.partnerName,
+    });
+  }
+  break
 
     // ==================================================
     // 🔍 SIGNALING WEBRTC

@@ -14,7 +14,7 @@ router.get("/me", auth, async (req, res) => {
 
     // ✅ Correction des noms de colonnes dans la requête SELECT
 const [user] = await db.query(
-  `SELECT id, email, prenom, nom, role, is_active, is_subscriber 
+  `SELECT id, email, prenom, nom, role, is_active, is_subscriber, ville, pays, matiere, tarif_horaire, balance, minutes_remaining, date_inscription 
    FROM users WHERE id = :userId`,
   {
     replacements: { userId },

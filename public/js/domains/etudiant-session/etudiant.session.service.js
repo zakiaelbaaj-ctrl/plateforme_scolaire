@@ -1,261 +1,65 @@
 // ======================================================
-// ETUDIANT SESSION SERVICE
-// Orchestration côté client (WS + EventBus + AppState)
+// 🎓 ETUDIANT SESSION SERVICE
+// // Gestionnaire de signaux et actions de session (Passif)
 // ======================================================
 
-import { socketService } from "/js/core/socket.service.js";
-import { AppState }      from "/js/core/state.js";
-import { eventBus }      from "/js/core/eventBus.js";
-import { Logger }        from "/js/lib/logger.js";
+import { AppState }         from "/js/core/state.js";
+import { socketService }     from "/js/core/socket.service.js";
+import { Logger as logger } from "/js/lib/logger.js";
 
-// ======================================================
-// SERVICE
-// ======================================================
-
-export const EtudiantSessionService = (() => {
-
-  // ====================================================
-  //ÉTAT LOCAL
-  // ====================================================
-
-  let initialized = false;
+export const EtudiantSessionService = {
 
   // ====================================================
   // INIT
   // ====================================================
 
-  function init() {
-    if (initialized) return;
-    initialized = true;
-
-    Logger.log("🧠 EtudiantSessionService initialisé");
-
-    bindEventBus();
-    // ✅ AJOUT — sans ça, le socket ne démarre jamais
-    const token  = localStorage.getItem("token");
-    if (!token) {
-        Logger.warn("⚠️ Pas de token — connexion WS impossible");
-        return;
-    }
-    const HOST   = window.location.hostname === "localhost"
-      ? "ws://localhost:4000"
-      : "wss://plateforme-scolaire-1.onrender.com";
-      const WS_URL = `${HOST}?token=${token}`;
-      socketService.connect(WS_URL);
-  }
+  init() {
+    logger.log("📦 EtudiantSessionService initialisé");
+  },
 
   // ====================================================
-  // EVENT BUS LISTENERS
+  // ACTIONS DE SIGNALING (WebRTC)
   // ====================================================
 
-  function bindEventBus() {
-
-    // Quand socket ouverte → identification
-    eventBus.on("socket:open", () => {
-    setTimeout(() => {
-        identify();
-    }, 300);
-});
-
-    // Quand match trouvé → rejoindre room
-    eventBus.on("student:match-found", ({ roomId }) => {
-      AppState.currentRoomId     = roomId;
-      AppState.sessionInProgress = true;
-      // Optionnel : rejoindre la room automatiquement si le matching suffit
-      joinRoom(roomId);
-    });
-
-    // Quand user quitte → cleanup état
-    eventBus.on("student:user-left", () => {
-      resetSessionState();
-    });
-  }
-
-  // ====================================================
-  // IDENTIFICATION
-  // ====================================================
-
-  function identify() {
-    const u = AppState.currentUser;
-    if (!u) {
-      Logger.warn("⚠️ Impossible d’identifier : utilisateur manquant");
+  /**
+   * Envoie un signal WebRTC (Offre, Réponse ou Candidat ICE) au partenaire via le serveur.
+   * @param {Object} signal - Le payload du signal WebRTC (sdp ou candidate)
+   */
+  sendSignal(signal) {
+    const roomId = AppState.currentRoomId;
+    if (!roomId) {
+      logger.warn("⚠️ Impossible d'envoyer le signal : aucune currentRoomId dans AppState");
       return;
     }
-    if (!u.prenom) {
-        Logger.warn("⚠️ currentUser existe mais prenom est vide — identify annulé");
-        return;
-    }
-    // ✅ AJOUT — confirmer l'état du socket au moment de l'envoi
 
-    socketService.send({
-      type:    "identify",
-      role:    "etudiant",
-      prenom:  u.prenom  || "",
-      nom:     u.nom     || "",
-      ville:   u.ville   || "",
-      pays:    u.pays    || "",
-      matiere: u.matiere || "",
-      niveau:  u.niveau  || "",
-    });
-
-    Logger.log("✅ Identification envoyée (étudiant)");
+    logger.log(`📡 Envoi du signal réseau [${signal.type}] pour la room : ${roomId}`);
     
-  }
-
-  // ====================================================
-  // 🎯 MATCHMAKING
-  // ====================================================
-
-  function enqueue(matiere, sujet = "") {
-    if (!matiere) {
-      Logger.warn("⚠️ enqueue sans matière");
-      return;
-    }
-
     socketService.send({
-      type:    "student:enqueue",
-      matiere,
-      sujet,
-    });
-
-    AppState.isQueueing = true;
-
-    Logger.log("🎯 Enqueue :", matiere);
-  }
-
-  function dequeue() {
-    socketService.send({
-      type: "student:dequeue",
-    });
-
-    AppState.isQueueing = false;
-
-    Logger.log("❌ Dequeue");
-  }
-
-  // ====================================================
-  // 📦 SESSION
-  // ====================================================
-
-  function joinRoom(roomId) {
-    if (!roomId) return;
-
-    socketService.send({
-      type:   "student:join-room",
+      type: "student:signal",
       roomId,
+      signal
     });
-
-    AppState.currentRoomId     = roomId;
-    AppState.sessionInProgress = true;
-
-    Logger.log("📦 Join room :", roomId);
-  }
-
-  function leaveRoom() {
-    socketService.send({
-      type: "student:leave-room",
-    });
-
-    resetSessionState();
-
-    Logger.log("🚪 Leave room");
-  }
-
-  function resetSessionState() {
-    AppState.currentRoomId     = null;
-    AppState.sessionInProgress = false;
-    AppState.isQueueing        = false;
-
-    eventBus.emit("session:reset");
-  }
+  },
 
   // ====================================================
-  //¡ SIGNALING WEBRTC
+  // ACTIONS DE FIN DE SESSION
   // ====================================================
 
-  function sendSignal(signal) {
-    if (!signal?.type) {
-      Logger.warn("⚠️ Signal invalide :", signal);
+  /**
+   * Informe le serveur WebSocket que l'étudiant quitte volontairement la room.
+   */
+  leaveRoom() {
+    const roomId = AppState.currentRoomId;
+    if (!roomId) {
+      logger.warn("⚠️ Impossible d'envoyer le signal de départ : aucune currentRoomId active");
       return;
     }
 
+    logger.log(`🚪 Envoi de la trame student:leaveRoom pour la room : ${roomId}`);
+    
     socketService.send({
-      type:   "student:signal",
-      roomId: AppState.currentRoomId,
-      signal,
-    });
-
-    Logger.log("✅ Signal envoyé :", signal.type);
-  }
-
-  // ====================================================
-  // 📮 CHAT (Envoi Mixte : WebRTC principal + WS historique)
-  // ====================================================
-
-  function sendChat(text) {
-    if (!text) return;
-
-    // 1. 🚀 ENVOI DIRECT VIA WEBRTC (Pour que Fady le reçoive instantanément)
-    // On émet un événement interne que l'Orchestrateur va intercepter pour appeler son DataChannel
-    eventBus.emit("chat:send-local", text);
-
-    // 2. 📡 ENVOI AU SERVEUR (Historique / Fallback)
-    // Correction du type : "student:chatMessage" pour correspondre au format attendu
-    socketService.send({
-      type: "student:chatMessage", 
-      text,
+      type: "student:leaveRoom",
+      roomId
     });
   }
-  // ====================================================
-  // 📁 DOCUMENT (fallback serveur)
-  // ====================================================
-
-  function sendDocument(fileName, fileData) {
-    if (!fileName || !fileData) return;
-
-    socketService.send({
-      type:     "student:document",
-      fileName,
-      fileData,
-    });
-
-    Logger.log("📁 Document envoyé :", fileName);
-  }
-
-  // ====================================================
-  // 🕵️ ONLINE USERS
-  // ====================================================
-
-  function requestOnlineStudents() {
-    socketService.send({
-      type: "student:get-online",
-    });
-  }
-
-  // ====================================================
-  // PUBLIC API
-  // ====================================================
-
-  return {
-    init,
-
-    // matchmaking
-    enqueue,
-    dequeue,
-
-    // session
-    joinRoom,
-    leaveRoom,
-
-    // webrtc
-    sendSignal,
-
-    // fallback
-    sendChat,
-    sendDocument,
-
-    // utils
-    requestOnlineStudents,
-  };
-
-})();
+};

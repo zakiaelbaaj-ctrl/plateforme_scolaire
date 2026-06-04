@@ -49,8 +49,9 @@ const UI = {
         }
     },
 
-    clearVideos() {
-        ['local-video', 'remote-video'].forEach(id => {
+   clearVideos() {
+        // 🟢 Ajout de 'remote-screen' dans le tableau de nettoyage
+        ['local-video', 'remote-video', 'remote-screen'].forEach(id => {
             const v = document.getElementById(id);
             if (v) v.srcObject = null;
         });
@@ -59,11 +60,22 @@ const UI = {
     notify(msg) {
         alert(msg);
     },
-
-    onMatchFound(data) {
-        this.notify(`Match trouvé avec ${data.partnerName} !`);
-        this.toggleView('session');
-    },
+        onMatchFound(data) {
+    this.toggleView('session');
+    const wrapper = document.getElementById('whiteboard-wrapper');
+    if (wrapper) wrapper.style.display = 'block';
+    WhiteboardService.initSession();
+    WhiteboardService.initCanvas("whiteboard-canvas");
+     const remoteInfo = document.getElementById('remote-etudiant-info');
+    if (remoteInfo) remoteInfo.textContent = data?.partnerName || "—";
+     const remoteLocation = document.getElementById('remote-etudiant-location');
+    if (remoteLocation) {
+        const lieu = [data?.partnerVille, data?.partnerPays]
+            .filter(Boolean)
+            .join(", ");
+        remoteLocation.textContent = lieu || "—";
+     }    
+     },
 
     onQueued(data) {
         this.toggleView('queue', data);
@@ -72,14 +84,39 @@ const UI = {
     onQueueCancelled() {
         this.toggleView('home');
     },
+    // 🟢 AJOUTER CETTE MÉTHODE ICI :
+    onStudentsOnline(students = []) {
+    const list = document.getElementById('etudiant-list');
+    if (!list) return;
 
-    // ❌ Avant
-onUserLeft() {
-  this.notify("Le partenaire a quitté la session.");
-  this.toggleView('home');
+    list.innerHTML = "";
+
+    if (!students.length) {
+        list.innerHTML = `<li class="empty">Aucun étudiant connecté</li>`;
+        return;
+    }
+
+    students.forEach(student => {
+        const li = document.createElement('li');
+        li.className = "etudiant-list__item";
+        li.dataset.id = student.id;
+
+        const nom = `${student.prenom || ""} ${student.nom || ""}`.trim() || "étudiant";
+        const meta = [student.matiere, student.niveau]
+            .filter(v => v && v !== "Général" && v !== "")
+            .join(" · ");
+
+        li.innerHTML = `
+            <span class="etudiant-list__avatar">👤</span>
+            <span class="etudiant-list__name">${nom}</span>
+            ${meta ? `<span class="etudiant-list__meta">${meta}</span>` : ""}
+        `;
+
+        list.appendChild(li);
+    });
+
+    Logger.log(`🧹 Liste mise à jour visuellement : ${students.length} étudiant(s)`);
 },
-
-// ✅ Après — toast non bloquant + cleanup propre
 onUserLeft() {
   // 1. Toast non bloquant
   const toast = document.createElement("div");
@@ -115,6 +152,8 @@ onUserLeft() {
     onSessionReset() {
         this.clearVideos();
         this.toggleView('home');
+        const remoteInfo = document.getElementById('remote-etudiant-info');
+        if (remoteInfo) remoteInfo.textContent = "—";
     },
 
     onSubscriptionRequired() {
@@ -140,19 +179,13 @@ onUserLeft() {
 // ======================================================
 
 eventBus.on("matching:queued",    (data) => UI.toggleView('queue', data));
+eventBus.on("students:online", (students) => {
+    UI.onStudentsOnline(students);
+});
 eventBus.on("matching:cancelled", ()     => UI.toggleView('home'));
 
-// 🟢 FUSION ICI : Un seul écouteur pour tout gérer au moment du match
-eventBus.on("matching:found",     (data) => {
-    // 1. Gestion de la vue (Ton code existant)
+eventBus.on("student:match-found", (data) => {
     UI.notify(`Match trouvé avec ${data.partnerName} !`);
-    UI.toggleView('session');
-    
-    // 2. Gestion du tableau blanc (L'intégration pas à pas)
-    const wrapper = document.getElementById('whiteboard-wrapper');
-    if (wrapper) wrapper.style.display = 'block';
-    WhiteboardService.initSession();
-    WhiteboardService.initCanvas("whiteboard-canvas");
 });
 
 eventBus.on("media:local-stream", (stream) => {
@@ -239,10 +272,6 @@ eventBus.on("ws:status", (data) => {
   updateWsStatus(data?.status, data?.attempt);
 });
 
-eventBus.on("students:online", (students) => {
-    renderStudentList(students);
-});
-
 // ✅ session:reset sans btnFile (géré dans setupInteractions)
 eventBus.on("session:reset", () => {
     stopSessionTimer();
@@ -292,38 +321,6 @@ document.addEventListener('fullscreenchange', () => {
 // ======================================================
 // RENDU LISTE ETUDIANTS CONNECTES
 // ======================================================
-
-function renderStudentList(students = []) {
-    const list = document.getElementById('etudiant-list');
-    if (!list) return;
-
-    list.innerHTML = "";
-
-    if (!students.length) {
-        list.innerHTML = `<li class="empty">Aucun étudiant connecté</li>`;
-        return;
-    }
-
-    students.forEach(student => {
-        const li = document.createElement('li');
-        li.className = "etudiant-list__item";
-        li.dataset.id = student.id;
-
-        const prenom  = student.prenom || student.name || "étudiant";
-const matiere = student.matiere ? `· ${student.matiere}` : "";
-const niveau  = student.niveau  ? `· ${student.niveau}`  : "";
-
-        li.innerHTML = `
-            <span class="etudiant-list__avatar">👤</span>
-<span class="etudiant-list__name">${prenom}</span>
-<span class="etudiant-list__meta">${matiere} ${niveau}</span>
-        `;
-
-        list.appendChild(li);
-    });
-
-    Logger.log(`🧹 Liste mise à jour : ${students.length} étudiant(s) connecté(s)`);
-}
 function updateWsStatus(status, attempt = 0) {
   const badge = document.getElementById("ws-status-badge");
   if (!badge) return;
@@ -441,6 +438,23 @@ Logger.log(`🔍 Recherche lancée : ${mat}`);
             }
         });
     }
+     // ✅ AJOUTER ICI — Swap vidéo locale/distante au clic
+document.querySelector('.video-block:not(.video-block--remote)')?.addEventListener('click', () => {
+    const localVideo  = document.getElementById('local-video');
+    const remoteVideo = document.getElementById('remote-video');
+    const localBlock  = document.querySelector('.video-block:not(.video-block--remote)');
+    const remoteBlock = document.querySelector('.video-block--remote');
+
+    const tmpStream = localVideo.srcObject;
+    localVideo.srcObject  = remoteVideo.srcObject;
+    remoteVideo.srcObject = tmpStream;
+
+    const localLabel  = localBlock.querySelector('.video-label');
+    const remoteLabel = remoteBlock.querySelector('.video-label');
+    const tmpText     = localLabel.textContent;
+    localLabel.textContent  = remoteLabel.textContent;
+    remoteLabel.textContent = tmpText;
+});
     // 5. Bouton "Envoyer un fichier"
 const btnFile   = document.getElementById('send-file');
 const fileInput = document.getElementById('file-input');
@@ -492,15 +506,7 @@ if (btnFile && fileInput) {
        Logger.warn("⚠️ #logout-btn introuvable dans le DOM");
     }
 
-    // 7. Whiteboard
-    eventBus.on("student:match-found", (data) => {
-        // ✅ Afficher le whiteboard
-    const wrapper = document.getElementById('whiteboard-wrapper');
-    if (wrapper) wrapper.style.display = 'block';
-        WhiteboardService.initSession();
-        WhiteboardService.initCanvas("whiteboard-canvas");
-    
-      });
+    // 7. Whiteboard — initialisation dans onMatchFound, interactions ci-dessous
     // 8. Boutons whiteboard
     const wbUndo     = document.getElementById('undoWhiteboardBtn');
     const wbClear    = document.getElementById('clearWhiteboardBtn');
@@ -539,11 +545,27 @@ if (btnFile && fileInput) {
     document.getElementById("textToolBtn")?.addEventListener("click", () => {
         setWbTool("textToolBtn", () => WhiteboardService.setTool("text"));
     });
-    document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
+   document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
+    const card = document.querySelector(".card--whiteboard");
+    const wbBtn = document.getElementById("wb-fullscreen-btn");
+    const isFullscreen = card?.classList.toggle("whiteboard-fullscreen");
+    if (isFullscreen) {
+        wbBtn.textContent = "✕ Quitter";
+        wbBtn.title = "Quitter le plein écran";
+    } else {
+        wbBtn.textContent = "⛶";
+        wbBtn.title = "Plein écran";
+    }
+    setTimeout(() => {
+        const canvas = document.getElementById("whiteboard-canvas");
         const wrapper = document.getElementById("whiteboard-wrapper");
-        wrapper?.classList.toggle("whiteboard-fullscreen");
+        if (canvas && wrapper) {
+            canvas.width  = wrapper.offsetWidth;
+            canvas.height = wrapper.offsetHeight;
+        }
         WhiteboardService.resizeCanvas?.();
-    });
+    }, 50);
+});
     // ================= PARTAGE D'ÉCRAN =================
 document.getElementById("screen-share-btn")?.addEventListener("click", async () => {
   const btn = document.getElementById("screen-share-btn");
@@ -615,44 +637,53 @@ function renderProfile() {
 }
 
 // ======================================================
-// INITIALISATION
+// INITIALISATION DU DASHBOARD
 // ======================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
     Logger.log("🚀 Initialisation du Dashboard Étudiant");
 
     try {
+        // 1. Charger les données de l'utilisateur
         await EtudiantService.getProfile();
         renderProfile();
+        
+        // 2. Vérifier son statut Stripe / Abonnement
         await EtudiantService.getSubscriptionStatus();
-if (!AppState.isSubscribed) {
-    Logger.warn("⚠️ Abonnement requis pour le matching");
-    // On initialise quand même le dashboard mais on bloque le matching
-    EtudiantSessionOrchestrator.init(UI);
-    setupInteractions();
-    
-    // Désactiver uniquement le bouton de recherche
-    const btnFind = document.getElementById('start-session-btn');
-    if (btnFind) {
-        btnFind.disabled = true;
-        btnFind.title = "Veuillez enregistrer votre carte bancaire";
-    }
-    
-    // Afficher message dans stripe-status
-    const stripeStatus = document.getElementById('stripe-status');
-    if (stripeStatus) {
-        stripeStatus.textContent = "⚠️ Enregistrez votre carte pour accéder au matching";
-        stripeStatus.style.color = "orange";
-    }
-    return; // ✅ garde le return pour ne pas dupliquer init
-}
 
-Logger.log("🎨 Accès autorisé, lancement de l'orchestrateur...");
-EtudiantSessionOrchestrator.init(UI);
-setupInteractions();
+        // 3. INITIALISATION SYNC DE L'ORCHESTRATEUR (Toujours en premier pour lier l'UI)
+        Logger.log("🎨 Liaison de l'UI à l'orchestrateur...");
+        EtudiantSessionOrchestrator.init(UI);
+        setupInteractions();
+
+        // 4. 🟢 CONNEXION AU SOCKET (Le déclencheur indispensable)
+        // On initie la connexion WS pour recevoir la liste des étudiants en ligne, abonnés ou non
+        Logger.log("🔌 Tentative de connexion au serveur WebSocket...");
+       Logger.log("🔌 WebSocket géré par l'orchestrateur.");
+
+        // 5. Restriction visuelle si non abonné (Sans bloquer le Socket)
+        if (!AppState.isSubscribed) {
+            Logger.warn("⚠️ Abonnement requis pour le matchmaking (Mode consultation uniquement)");
+            
+            // Désactiver le bouton de recherche / mise en file d'attente
+            const btnFind = document.getElementById('start-session-btn');
+            if (btnFind) {
+                btnFind.disabled = true;
+                btnFind.title = "Veuillez enregistrer votre carte bancaire";
+            }
+            
+            // Affichage du statut Stripe restrictif
+            const stripeStatus = document.getElementById('stripe-status');
+            if (stripeStatus) {
+                stripeStatus.textContent = "⚠️ Enregistrez votre carte pour accéder au matching";
+                stripeStatus.style.color = "orange";
+            }
+            return; // Fin d'exécution propre pour les non-abonnés
+        }
+
+        Logger.log("✅ Accès complet validé et orchestrateur opérationnel.");
 
     } catch (err) {
         Logger.error("❌ Échec critique lors de l'initialisation :", err);
     }
 });
-

@@ -25,6 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const nom = document.getElementById("nom")?.value.trim();
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
+     const ville    = document.getElementById("ville")?.value.trim() || "";
+    const pays     = document.getElementById("pays")?.value.trim()  || "";
 
     // Validation basique avant envoi
     if (!username || !email || !password) {
@@ -36,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch(`${API_BASE}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, prenom, nom, email, password, role: "etudiant" })
+        body: JSON.stringify({ username, prenom, nom, email, password, ville, pays, role: "etudiant" })
       });
 
       const json = await res.json();

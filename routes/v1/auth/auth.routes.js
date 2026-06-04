@@ -32,7 +32,9 @@ router.post(
     body("email").isEmail().withMessage("Email invalide"),
     body("password").isLength({ min: 6 }).withMessage("Mot de passe trop court (min 6 caractères)"),
     body("prenom").trim().notEmpty().withMessage("Prénom requis"),
-    body("nom").trim().notEmpty().withMessage("Nom requis")
+    body("nom").trim().notEmpty().withMessage("Nom requis"),
+    body("ville").trim().notEmpty().withMessage("Ville requise"),
+    body("pays").trim().notEmpty().withMessage("Pays requis")
   ],
   registerController
 );

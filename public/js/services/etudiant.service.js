@@ -19,7 +19,9 @@ export const EtudiantService = {
     async getProfile() {
     try {
         const res = await http.get("/v1/etudiant/me");
-        const userData = res.data || res;
+        console.log("DEBUG RES COMPLET =", JSON.stringify(res));
+        const userData = res.user || res.data || res;
+        console.log("DEBUG USER DATA =", JSON.stringify(userData));
        AppState.setCurrentUser(userData); // ✅ merge + notify
 Logger.log("👤 Profil étudiant chargé");
 return userData;
@@ -36,7 +38,7 @@ throw error;
             const res = await http.put(`${API_BASE}/me`, payload);
             
             // On gère la récupération des données qu'elles soient dans res.data ou res
-            const updatedData = res.data || res;
+            const updatedData = res.user || res.data || res;
             AppState.currentUser = updatedData;
             
             Logger.log("✅ Profil mis à jour");
