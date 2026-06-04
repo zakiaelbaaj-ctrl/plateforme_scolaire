@@ -35,7 +35,8 @@ function sanitizeUser(user) {
 // ---------------- REGISTER ----------------
 export async function registerController(req, res) {
   try {
-    const { username, prenom, nom, email, telephone, pays, ville, password, role } = req.body;
+    const { username, prenom, nom, email, telephone, pays, ville, password, role, matiere, 
+      langue_matiere } = req.body;
 
     // 1. Validation des champs
     if (!email || !password || !prenom || !nom) {
@@ -89,6 +90,8 @@ export async function registerController(req, res) {
       ville,
       password: password,
       role: role || "eleve",
+      matiere,
+      langue_matiere,
       stripe_customer_id,
       stripe_account_id,
       is_active: role !== "prof" // true pour élève, false pour prof (attente admin)
