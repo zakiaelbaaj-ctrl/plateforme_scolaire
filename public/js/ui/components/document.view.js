@@ -20,7 +20,7 @@ export function addDocument(doc) {
 
   const btn = document.createElement("button");
   btn.className = "document-link";
-  btn.textContent = "TÃÂ©lÃÂ©charger";
+  btn.textContent = "Télécharger";
   btn.addEventListener("click", () => {
     const link = document.createElement("a");
     link.href = doc.fileData ?? doc.url;

@@ -82,6 +82,10 @@ _on(event, cb) {
   _terminating: false,
 
   terminateCall() {
+    console.log("🔴 terminateCall ENTER", {
+    currentRoomId: AppState.currentRoomId,
+    terminating: this._terminating
+  });
     // 🌟 ÉTAPE 1 : Si un nettoyage est déjà en cours, ou si la session est DÉJÀ nettoyée, on sort immédiatement
     if (this._terminating || !AppState.currentRoomId) {
       return; 

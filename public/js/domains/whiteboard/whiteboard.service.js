@@ -6,8 +6,6 @@
 import { AppState }                           from "/js/core/state.js";
 import { socketService }                      from "/js/core/socket.service.js";
 import { WhiteboardEvents, WhiteboardPayloadFactory } from "./whiteboard.contract.js";
-import { DataChannelService } from "/js/webrtc/datachannel.service.js";
-
 // --------------------------------------------------
 // ÉTAT INTERNE
 // --------------------------------------------------
@@ -56,7 +54,6 @@ export const WhiteboardService = {
              ?? AppState.currentUser?.id
              ?? JSON.parse(localStorage.getItem("currentUser") || "{}").id
              ?? null;
-    console.log("WhiteboardService initSession — _myUserId =", _myUserId);
     if (!_myUserId) console.warn("⚠️ WhiteboardService : userId introuvable");
     this.resetSession();
   },
@@ -73,14 +70,23 @@ export const WhiteboardService = {
   // ============================
 
   initCanvas(canvasId, options = {}) {
-    import("/js/ui/components/whiteboard.canvas.js").then(({ WhiteboardCanvas }) => {
-     console.log("🖼️ initCanvas appelé", canvasId, options); 
+    import("/js/ui/components/whiteboard.canvas.js").then(({ WhiteboardCanvas }) => { 
       this._canvas = new WhiteboardCanvas(canvasId, this, {
         colorPicker: options.colorPicker ?? document.getElementById("whiteboardColor"),
         sizeSlider:  options.sizeSlider  ?? document.getElementById("whiteboardSize")
       });
 
-      this.onStroke(() => this._canvas.redraw());
+      this.onStroke((path) => {
+  if (!this._canvas) return;
+  // Dessine uniquement le nouveau path — pas de redraw complet
+  if (typeof this._canvas.drawPath === "function") {
+    this._canvas.drawPath(path);
+   } else {
+    // Fallback au cas où drawPath n'existe pas, mais attention au coût CPU
+          this._canvas.redraw?.();
+        }
+      });
+
       this.onClear(()  => this._canvas.clear());
       this.onSync(()   => this._canvas.redraw());
       this.onUndo(()   => this._canvas.redraw());
@@ -92,19 +98,28 @@ export const WhiteboardService = {
   // RECEPTION - appelé par SessionService
   // ============================
 
-  handleEvent(data) {
+handleEvent(data) {
+    if (!data) return;
     switch (data.type) {
 
       case WhiteboardEvents.TABLEAU_STROKE: {
         const path = data.path ?? data.stroke;
-        if (!path) break;
+
+        if (!path) {
+          console.warn("⚠️ tableauStroke reçu sans path/stroke", data);
+          break;
+        }
+
+        // 🛡️ Sécurité anti-doublon / anti-écho réseau
         if (!_paths.find(p => p.id === path.id)) {
           _paths.push(path);
           _undoStack.push(path);
           _redoStack = [];
           _paths.sort((a, b) => a.timestamp - b.timestamp);
+          // ✅ On ne déclenche le rendu incrémental QUE si le path est nouveau
+          _cb.stroke?.(path);
+        } else {
         }
-        _cb.stroke?.(path);
         break;
       }
 
@@ -130,6 +145,7 @@ export const WhiteboardService = {
         _redoStack.push(path);
         _paths = _paths.filter(p => p.id !== path.id);
         _cb.undo?.(path);
+        this._canvas?.redraw?.(); // 🔄 Redraw nécessaire pour masquer le path annulé
         break;
       }
 
@@ -140,6 +156,7 @@ export const WhiteboardService = {
         _undoStack.push(path);
         _paths.push(path);
         _cb.redo?.(path);
+        this._canvas?.redraw?.(); // 🔄 Redraw nécessaire pour réafficher le path rétabli
         break;
       }
 
@@ -162,7 +179,6 @@ export const WhiteboardService = {
         break;
     }
   },
-
   // ============================
   // ACTIONS LOCALES
   // ============================
@@ -178,19 +194,14 @@ export const WhiteboardService = {
   _cb.clear?.();
 
   if (emit) {
-    // DataChannel = étudiants uniquement (peer-to-peer)
-    if (DataChannelService.isDrawReady?.()) {
-      DataChannelService.clear();
-    } else {
-      // Prof + Élève = WebSocket vers serveur
+      // 🌐 Envoi direct et unique via WebSocket
       const payload = typeof WhiteboardPayloadFactory.createClear === "function"
         ? WhiteboardPayloadFactory.createClear(AppState.currentRoomId)
         : { type: "tableauClear", roomId: AppState.currentRoomId };
 
       socketService.send(payload);
     }
-  }
-},
+  },
 
   startPath(data) {
     _currentPath = {
@@ -211,7 +222,6 @@ export const WhiteboardService = {
   endPath() {
     if (!_currentPath) return;
     const path   = _currentPath;
-    console.log("📤 ENVOI STROKE tool=", path.tool);
     _currentPath = null;
 
     _paths.push(path);
@@ -219,40 +229,36 @@ export const WhiteboardService = {
     _redoStack = [];
 
     _cb.stroke?.(path);
-
-    if (DataChannelService.isDrawReady?.()) {
-      DataChannelService.sendStroke(path);
-    } else {
+    // 🌐 Forcer l'utilisation de la WebSocket
       socketService.send(WhiteboardPayloadFactory.createStroke(path, AppState.currentRoomId));
-    }
   },
-  commitPath(path) {
-    console.log("📤 COMMIT STROKE tool=", path.tool);
-    _paths.push(path);
-    _undoStack.push(path);
-    _redoStack = [];
-    _cb.stroke?.(path);
+ commitPath(path) {
+    if (!path) return;
 
-    if (DataChannelService.isDrawReady?.()) {
-      if (path.tool === "text") {
-        DataChannelService.sendText(path);
-      } else {
-        DataChannelService.sendStroke(path);
-      }
-    } else {
-      socketService.send(
-        WhiteboardPayloadFactory.createStroke(path, AppState.currentRoomId)
-      );
+    // 🛡️ Sécurité anti-écho : on s'assure que le tracé est signé localement
+    if (!path.authorId) {
+      path.authorId = _myUserId;
     }
+
+    // Deep clone de sécurité
+    const pathClone = JSON.parse(JSON.stringify(path));
+    _paths.push(pathClone);
+    _undoStack.push(pathClone);
+    _redoStack = [];
+    _cb.stroke?.(pathClone);
+
+    // 🌐 Envoi exclusif via WebSocket
+    socketService.send(
+      WhiteboardPayloadFactory.createStroke(pathClone, AppState.currentRoomId)
+    );
   },
 
   sendText(textStroke) {
     if (!textStroke || !_myUserId) return;
-    if (DataChannelService.isDrawReady?.()) {
-      DataChannelService.sendText(textStroke);
-    } else {
-      socketService.send(WhiteboardPayloadFactory.createText(textStroke, AppState.currentRoomId));
-    }
+    if (!textStroke.authorId) textStroke.authorId = _myUserId;
+
+    // 🌐 Tout passe par la socket centrale
+    socketService.send(WhiteboardPayloadFactory.createText(textStroke, AppState.currentRoomId));
     _cb.text?.(textStroke);
   },
 
@@ -267,19 +273,19 @@ export const WhiteboardService = {
     }
   },
 
-  undo() {
+ undo() {
     const idx = [..._undoStack].reverse().findIndex(p => p.authorId === _myUserId);
     if (idx === -1) return;
     const path = _undoStack.splice(_undoStack.length - 1 - idx, 1)[0];
     _redoStack.push(path);
     _paths = _paths.filter(p => p.id !== path.id);
+
+    // 🎨 Forcer le rafraîchissement visuel du tableau suite à l'annulation
+    this._canvas?.redraw?.();
     _cb.undo?.(path);
 
-    if (DataChannelService.isDrawReady?.()) {
-      DataChannelService.sendDraw({ type: "undo", payload: { authorId: _myUserId } });
-    } else {
-      socketService.send(WhiteboardPayloadFactory.createUndo(_myUserId, AppState.currentRoomId));
-    }
+    // 🌐 Notification au serveur via WebSocket
+    socketService.send(WhiteboardPayloadFactory.createUndo(_myUserId, AppState.currentRoomId));
   },
 
   redo() {
@@ -288,15 +294,14 @@ export const WhiteboardService = {
     const path = _redoStack.splice(_redoStack.length - 1 - idx, 1)[0];
     _undoStack.push(path);
     _paths.push(path);
+
+    // 🎨 Forcer le rafraîchissement visuel du tableau suite au rétablissement
+    this._canvas?.redraw?.();
     _cb.redo?.(path);
 
-    if (DataChannelService.isDrawReady?.()) {
-      DataChannelService.sendDraw({ type: "redo", payload: { authorId: _myUserId } });
-    } else {
-      socketService.send(WhiteboardPayloadFactory.createRedo(_myUserId, AppState.currentRoomId));
-    }
+    // 🌐 Notification au serveur via WebSocket
+    socketService.send(WhiteboardPayloadFactory.createRedo(_myUserId, AppState.currentRoomId));
   },
-
   getPaths() {
     return [..._paths];
   },

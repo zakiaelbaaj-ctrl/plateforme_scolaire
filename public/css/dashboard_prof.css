@@ -176,11 +176,16 @@ h3 {
   padding: 6px 9px;
   font-size: 0.9rem;
 }
-.btn--icon:hover { background: var(--border); color: var(--text-primary); }
+.btn--icon:hover { 
+  background: var(--border); 
+  color: var(--text-primary); 
+}
+
 .btn--icon.active {
   background: var(--accent-dim);
   border-color: var(--accent);
   color: var(--accent);
+  box-shadow: var(--shadow-glow); /* Félicitations, le bouton s'illumine ! 🚀 */
 }
 
 .btn--sm { padding: 5px 11px; font-size: 0.75rem; }
@@ -375,23 +380,83 @@ h3 {
 .card__title { flex: 1; }
 
 /* ======================================================
-   8. VIDEO
+   8. VIDEO (Version PiP Premium Intégrée)
    ====================================================== */
 
+/* Le conteneur devient le cadre de référence 16/9 pour la superposition */
 .videos {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--space-sm);
-  padding: var(--space-md);
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
   background: #000;
+  overflow: hidden;
 }
 
 .video-block {
+  position: absolute;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
 }
 
+/* --- ÉTAT STRUCTUREL : FLUX PRINCIPAL (Plein écran) --- */
+.video-block.video-main {
+  inset: 0;
+  z-index: 1;
+  pointer-events: none; /* Laisse passer le clic à travers vers la miniature */
+}
+
+.video-main .video-box {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+}
+
+.video-main .video-label {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+  z-index: 3;
+  background: rgba(13, 15, 20, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+/* --- ÉTAT STRUCTUREL : FLUX FLOTTANT (Miniature PiP cliquable) --- */
+.video-block.video-floating {
+  bottom: var(--space-md);
+  right: var(--space-md);
+  width: 240px;
+  z-index: 10;
+  cursor: pointer;
+  pointer-events: auto; /* Active la zone cliquable sur la miniature */
+}
+
+.video-floating:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.video-floating .video-box {
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+}
+
+.video-floating .video-label {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  z-index: 11;
+  background: rgba(13, 15, 20, 0.85);
+  backdrop-filter: blur(4px);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* --- LOGIQUE INTERNE DES COMPOSANTS --- */
 .video-label {
   font-size: 0.65rem;
   font-weight: 600;
@@ -403,10 +468,11 @@ h3 {
 .video-box {
   position: relative;
   background: #050403;
-  border-radius: var(--radius-md);
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  aspect-ratio: 16/9;
   border: 1px solid var(--border);
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .video-box video {
@@ -418,7 +484,7 @@ h3 {
 
 .video-overlay {
   position: absolute;
-  bottom: var(--space-sm);
+  top: var(--space-sm);
   right: var(--space-sm);
   font-family: var(--font-body);
   font-size: 0.58rem;
@@ -429,16 +495,19 @@ h3 {
   padding: 2px 6px;
   border-radius: 3px;
   pointer-events: none;
+  z-index: 4;
 }
 
+/* --- MODIFICATEURS SPÉCIFIQUES --- */
 .video-overlay--live {
   color: var(--accent);
   border: 1px solid rgba(232,160,32,0.3);
 }
 
-.video-block--remote .video-box {
-  border-color: rgba(232,160,32,0.3);
-  box-shadow: inset 0 0 40px rgba(232,160,32,0.04);
+/* Application de votre identité visuelle ambrée si le flux distant est minimisé */
+.video-block--remote.video-floating .video-box {
+  border-color: rgba(232,160,32,0.5);
+  box-shadow: 0 0 0 1px rgba(232,160,32,0.2), 0 8px 32px rgba(0,0,0,0.5), inset 0 0 40px rgba(232,160,32,0.04);
 }
 
 .video-waiting {
@@ -451,8 +520,31 @@ h3 {
   color: var(--text-muted);
   background: rgba(14,12,10,0.85);
   font-style: italic;
+  z-index: 2;
+}
+/* La grande vidéo laisse passer les clics à travers elle */
+.video-main {
+  pointer-events: none;
 }
 
+/* La petite vignette flottante doit intercepter le clic */
+.video-block.video-floating {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Les éléments internes (boutons, vidéos) réinterceptent le clic */
+.video-main button, 
+.video-main video {
+  pointer-events: auto;
+}
+#screen-fullscreen-btn {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 20;
+  pointer-events: auto; /* Rend le bouton cliquable */
+}
 /* ======================================================
    9. WHITEBOARD
    ====================================================== */
@@ -464,6 +556,7 @@ h3 {
   overflow: hidden;
   height: 400px;
   border: 1px solid var(--border-light);
+  position: relative;
 }
 
 .whiteboard-canvas-wrapper canvas {
@@ -523,6 +616,24 @@ h3 {
 }
 
 .wb-header-actions { display: flex; gap: var(--space-sm); }
+/* === Vidéo miniature flottante === */
+.video-miniature {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 200px;
+  height: 120px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  z-index: 1000; /* au-dessus du canvas */
+}
+.video-miniature video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
   /* ======================================================
    10. APPELS ENTRANTS — ÉRADICATION DU BUG D'INVISIBILITÉ
    ====================================================== */

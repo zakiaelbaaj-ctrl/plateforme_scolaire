@@ -35,12 +35,13 @@
   <span id="ws-status-badge" style="font-size:12px; margin-left:8px;">🟢 Connecté</span> <!-- ✅ -->
 </div>
 
-    <div class="top-bar__actions">
-      <button id="end-session-btn"  class="btn btn--danger btn--sm"  style="display:none;">✕ Terminer</button>
-    
-      <button id="logout-btn"       class="btn btn--ghost">🚪 Déconnexion</button>
-    </div>
-
+<div class="top-bar__actions">
+  <button id="end-session-btn" class="btn btn--danger btn--sm" style="display:none;">✕ Terminer</button>
+  
+  <button id="screen-share-btn" class="btn btn--icon" title="Partager mon écran">🖥️</button>
+  
+  <button id="logout-btn" class="btn btn--ghost">🚪 Déconnexion</button>
+</div>
   </header>
 
   <!-- ================= LAYOUT ================= -->
@@ -49,34 +50,31 @@
     <!-- ================= COL PRINCIPALE ================= -->
     <div class="col-main">
 
-      <!-- VIDEO -->
-      <section class="card card--video">
-        <div class="card__header">
-          <h3 class="card__title">🎥 Session vidéo</h3>
-        <div class="wb-header-actions">
-      <button id="screen-share-btn" class="btn btn--icon" title="Partager l'écran">🖥️</button>
+      <div class="videos">
+
+  <div id="localBlock" class="video-block video-block--local video-floating">
+    <div class="video-label">Vous</div>
+    <div id="localVideoContainer" class="video-box">
+      <video id="local-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+      <div class="video-overlay">CAM</div>
     </div>
   </div>
-        <div class="videos">
-          <div class="video-block video-block--remote">
-            <div class="video-label">Élève</div>
-            <div class="video-box">
-              <video id="remoteVideo" autoplay playsinline></video>
-              <div class="video-overlay video-overlay--live">LIVE</div>
-              <div id="remote-eleve-info" class="video-waiting">En attente d'un élève…</div>
-            </div>
-          </div>
 
-          <div class="video-block">
-            <div class="video-label">Vous</div>
-            <div class="video-box">
-              <video id="localVideo" autoplay muted playsinline></video>
-              <div class="video-overlay">CAM</div>
-            </div>
-          </div>
-        </div>
-      </section>
+  <div id="remoteBlock" class="video-block video-block--remote video-main">
+    <div class="video-label">Étudiant</div>
+    <div id="remoteVideoContainer" class="video-box" style="position: relative;"> 
+      
+      <video id="remote-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+      
+      <video id="remote-screen" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; display:none; background:#000;"></video>
+      
+      <button id="screen-fullscreen-btn" class="btn btn--icon" style="display: none;" title="Plein écran">⛶ Plein écran</button>
+      
+      <div class="video-overlay video-overlay--live">LIVE</div>
+    </div>
+  </div>
 
+</div>
       <!-- WHITEBOARD -->
       <section class="card card--whiteboard">
         <div class="card__header">
@@ -87,11 +85,8 @@
         </div>
 
         <div class="whiteboard-canvas-wrapper" id="whiteboard-wrapper">
-          <canvas id="whiteboard-canvas"></canvas>
-        </div>
-
+          <!-- Barre d’outils intégrée -->
         <div class="whiteboard-tools">
-  <div class="wb-tools-group">
     <button id="pointToolBtn" class="btn btn--icon wb-tool" title="Point">•</button>
     <button id="penToolBtn"     class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
     <button id="eraserToolBtn"  class="btn btn--icon wb-tool" title="Gomme">🧽</button>
@@ -100,7 +95,14 @@
     <button id="circleToolBtn"  class="btn btn--icon wb-tool" title="Cercle">⭕</button>  <!-- ✅ -->
     <button id="textToolBtn"    class="btn btn--icon wb-tool" title="Texte">🔤</button>
   </div>
+  <!-- Canvas -->
+    <canvas id="whiteboard-canvas"></canvas>
 
+  <!-- Vidéo miniature flottante -->
+  <div class="video-miniature" style="display:none;">
+    <video id="remote-video-mini" autoplay playsinline></video>
+  </div>
+</div>
           <div class="wb-tools-group">
             <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
             <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
@@ -111,11 +113,9 @@
             <button id="clearWhiteboardBtn"    class="btn btn--icon btn--danger-ghost" title="Effacer">🗑️</button>
             <button id="downloadWhiteboardBtn" class="btn btn--icon" title="Télécharger">⬇️</button>
           </div>
-        </div>
-      </section>
+       </section>
 
-    </div>
-
+      </div>
     <!-- ================= SIDE PANEL ================= -->
     <aside class="side-panel">
 

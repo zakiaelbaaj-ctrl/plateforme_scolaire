@@ -18,6 +18,9 @@ import { clients } from "../../socket.js";
 // =======================================================
 export async function handleStudentMessage(ws, msg) {
     switch (msg.type) {
+        case "student:getOnlineStudents":
+        // déjà géré
+         break;
 
         // --------------------------------------------------
         // MATCHING — file d'attente
@@ -27,7 +30,8 @@ export async function handleStudentMessage(ws, msg) {
                 ws,
                 msg.matiere,
                 msg.sujet,
-                msg.niveau
+                msg.niveau,
+                msg.inviteId
             );
             break;
 

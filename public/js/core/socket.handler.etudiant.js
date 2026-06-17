@@ -43,11 +43,22 @@ export function handleStudentSocketMessage(data) {
     // ==================================================
     // 👥 UTILISATEURS EN LIGNE
     // ==================================================
+case "student:onlineStudents":
+    AppState.setOnlineStudents?.(data.students || []);
+    eventBus.emit("students:online", data.students || []);
 
-    case "student:onlineStudents":
-      AppState.setOnlineStudents?.(data.students || []);
-      eventBus.emit("students:online", data.students || []);
-      break;
+    // ✅ Si invitation en attente, vérifier que l'invitant est en ligne
+    if (AppState.pendingInviteId) {
+        const invitant = (data.students || []).find(
+            s => String(s.id) === String(AppState.pendingInviteId)
+        );
+        if (invitant) {
+            Logger.log("🔗 Invitant trouvé en ligne :", invitant.prenom);
+            AppState.pendingInviteId = null;
+            eventBus.emit("invite:found", { invitant });
+        }
+    }
+    break;
 
     // ==================================================
     // 🎯 MATCHMAKING
@@ -193,7 +204,14 @@ case "onlineProfessors":
   AppState.onlineProfessors = data.professors || [];
   eventBus.emit("professors:online", data.professors || []);
   break;
-
+case "student:invited":
+    Logger.log("🔗 Invitation reçue de :", data.fromName);
+    eventBus.emit("student:invited", {
+        fromId:   data.fromId,
+        fromName: data.fromName,
+        matiere:  data.matiere,
+    });
+    break;
 // ==================================================
 // console.error("❌ ERREUR SERVEUR");
 // ==================================================

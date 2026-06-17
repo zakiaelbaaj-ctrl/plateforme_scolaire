@@ -76,13 +76,13 @@ export const SessionService = {
       }
 
       case "endSession": {
-        AppState.currentRoomId = null;
-        AppState.roomReady = false;
-        this.stopHeartbeat();
-        CallService.handleSessionEnded?.();
-        break;
-      }
-
+  AppState.currentRoomId = null;
+  AppState.roomReady = false;
+  this.stopHeartbeat();
+  socketService.markSessionEnded(); // ✅ coupe le flood immédiatement
+  CallService.handleSessionEnded?.();
+  break;
+}
       case "chatMessage": {
         ChatService.handleEvent(data);
         break;
@@ -156,7 +156,10 @@ export const SessionService = {
       console.error("WS Error:", data.message);
       break;
     }
-      case "TRANSPORT_OPEN":
+      case "TRANSPORT_OPEN": {
+      socketService.markSessionActive(); // ✅ prêt pour une nouvelle session
+      break;
+  }
       case "TRANSPORT_CLOSED":
       break;
       default:
@@ -186,27 +189,27 @@ requestStudentMatch(matiere) {
 },
 
 stopVideoCall() {
-    console.log("🛑 Arrêt de la session vidéo...");
-    // 1. Déconnexion Twilio
-    if (typeof CallService !== 'undefined' && CallService.disconnectTwilio) {
-      CallService.disconnectTwilio();
-    }
-    // 2. ON PRÉVIENT LE SERVEUR EN PREMIER ! (Avant de perdre la mémoire)
-    this.endSession();
-    // 3. 🧹 ON NETTOIE LE LOCAL EN DERNIER (Chrono, UI, State)
-    if (typeof CallService !== 'undefined') {
-      CallService.terminateCall(); 
-    }
-  },
-
- endSession() {
-  console.log("🛑 endSession envoyée, roomId:", AppState.currentRoomId);
-
-  if (AppState.currentRoomId) {
-    socketService.send({ type: "endSession", roomId: AppState.currentRoomId });
-  } else {
-    console.warn("🛑 endSession appelée mais currentRoomId est null !");
+  socketService.markSessionEnded(); // ✅ coupe send() immédiatement, avant tout le reste
+  this.stopHeartbeat();             // ✅ stoppe le heartbeat interval
+  if (typeof CallService !== 'undefined' && CallService.disconnectTwilio) {
+    CallService.disconnectTwilio();
   }
+  this.endSession();
+  if (typeof CallService !== 'undefined') {
+    CallService.terminateCall();
+  }
+},
+
+endSession() {
+  // 🟢 Si currentRoomId est null, on s'arrête tout de suite
+  if (!AppState.currentRoomId) {
+    return;
+  }
+
+  // 🔵 Si on arrive ici, currentRoomId est forcément valide
+  console.log("🛑 endSession envoyée, roomId:", AppState.currentRoomId);
+  socketService.send({ type: "endSession", roomId: AppState.currentRoomId });
+
   // ✅ NE PAS appeler handleSessionEnded ici — c'est terminateCall qui s'en charge
 },
 

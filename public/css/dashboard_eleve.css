@@ -412,98 +412,187 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
 }
 
 /* ======================================================
-   9. VIDEO
+   9. VIDEO (MODE FLOTTANT STYLE WHATSAPP)
    ====================================================== */
 
+/* Carte vidéo flottante */
+.card--video {
+  position: fixed;
+  bottom: var(--space-lg);
+  right: var(--space-lg);
+  width: 340px;
+  z-index: 999;
+  background: rgba(21, 24, 32, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-float);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s;
+
+  resize: both;
+  overflow: visible; /* bouton visible */
+  min-width: 260px;
+  min-height: 260px; /* plus haut pour inclure le bouton */
+}
+
+/* Conteneur vidéo */
+.videos {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+  background: #000;
+  padding-bottom: var(--space-lg); /* espace réservé pour le bouton */
+  overflow: visible;
+}
+/* Bouton Terminer style télécommande */
+/* Bouton Terminer style télécommande */
+#end-session-btn {
+  position: fixed;          /* indépendant de la carte vidéo */
+  bottom: var(--space-lg);
+  left: var(--space-lg);    /* ⬅️ placé à gauche */
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e53935;      /* rouge vif */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Symbole carré blanc au centre */
+#end-session-btn::before {
+  content: "";
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+/* Responsive mobile */
+@media (max-width: 480px) {
+  #end-session-btn {
+    width: 42px;
+    height: 42px;
+    bottom: var(--space-sm);
+    left: var(--space-sm);  /* ⬅️ reste à gauche sur mobile */
+  }
+
+  #end-session-btn::before {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* En-tête réduit pour maximiser l'espace vidéo */
 .card--video .card__header {
-  padding: var(--space-sm) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(13, 15, 20, 0.5);
+  cursor: move; /* Indique graphiquement que la fenêtre est déplaçable */
 }
 
 .session-timer {
   font-family: var(--font-display);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: var(--text-muted);
-  letter-spacing: 0.08em;
+  color: var(--accent);
+  letter-spacing: 0.05em;
   background: var(--ink-muted);
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
 
+/* Grille des vidéos adaptée au mode flottant incrusté (Style WhatsApp) */
 .videos {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  background: var(--ink);
-}
-
-.video-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.video-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 0 var(--space-xs);
-}
-
-.video-box {
   position: relative;
+  width: 100%;
+  height: 220px; /* Hauteur fixe pour stabiliser le conteneur */
   background: #000;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  aspect-ratio: 16/9;
-  border: 1px solid var(--border);
+  padding: 0;
+  overflow: visible;
 }
 
+/* 1. FLUX DISTANT (Le Professeur) - Remplit tout l'arrière-plan */
+.video-block--remote {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.video-block--remote .video-box {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  aspect-ratio: auto;
+}
+
+/* 2. FLUX LOCAL (L'Élève) - Vignette flottante en bas à droite */
+.video-block--local {
+  position: absolute;
+  bottom: var(--space-sm);
+  right: var(--space-sm);
+  width: 90px;  /* Petite taille style WhatsApp */
+  height: 120px; /* Ratio vertical souvent utilisé pour les caméras selfie */
+  z-index: 2;   /* Passe au-dessus du professeur */
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+
+.video-block--local .video-box {
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  aspect-ratio: auto;
+}
+
+/* Masquer les labels textuels pour épurer l'interface comme sur mobile */
+.video-label {
+  display: none; 
+}
+
+/* Ajustements des overlays textuels miniatures */
+.video-overlay {
+  font-size: 0.5rem;
+  padding: 1px 3px;
+  bottom: 2px;
+  right: 2px;
+}
+/* À laisser ou ajouter juste après votre nouveau bloc pour que les vidéos s'affichent correctement */
 .video-box video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-/* État vide : quand il n'y a pas encore de vidéo */
+
 .video-box:empty::before {
-  content: 'Flux vidéo...';
+  content: 'Flux...';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   color: var(--text-muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+/* ======================================================
+   9. EXTRA : COMPORTEMENT QUAND LE TABLEAU EST EN GRAND (SANS IMPORTANT)
+   ====================================================== */
+/* Masque complètement la grille des vidéos */
+.card.card--video.is-collapsed .videos {
+  display: none;
 }
 
-.video-overlay {
-  position: absolute;
-  bottom: var(--space-sm);
-  right: var(--space-sm);
-  font-family: var(--font-display);
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.15em;
-  color: rgba(255,255,255,0.5);
-  background: rgba(0,0,0,0.4);
-  padding: 2px 7px;
-  border-radius: 4px;
-  pointer-events: none;
-}
-
-.video-block--remote .video-box {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), inset 0 0 40px rgba(79,140,255,0.06);
-}
-
-.video-block--remote .video-overlay {
-  color: var(--live);
-  border: 1px solid rgba(255,107,61,0.4);
+/* Force la carte à s'adapter uniquement à la hauteur de sa barre de titre */
+.card.card--video.is-collapsed {
+  height: auto;
+  min-height: auto;
 }
 
 /* ======================================================
@@ -529,16 +618,6 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   display: block;
   width: 100%;
   height: 100%;
-}
-
-/* Fullscreen */
-.whiteboard-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  margin: 0;
-  border-radius: 0;
-  min-height: 100vh;
 }
 
 .whiteboard-tools {
@@ -587,6 +666,66 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   gap: var(--space-sm);
 }
 
+/* ======================================================
+   CONFIGURATION DU TABLEAU BLANC EN PLEIN ÉCRAN
+   ====================================================== */
+
+/* 🟢 FORCE LES OUTILS À RESTER VISIBLES PAR-DESSUS */
+#whiteboard-wrapper.whiteboard-fullscreen .whiteboard-toolbar,
+#whiteboard-wrapper.whiteboard-fullscreen .canvas-tools,
+#whiteboard-wrapper.whiteboard-fullscreen [class*="toolbar"] {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000; /* Passe au-dessus du canvas blanc */
+  display: flex !important; /* Si jamais un script essayait de le cacher */
+}
+
+/* Ajustement du bouton pour qu'il change de texte ou de couleur en plein écran */
+#whiteboard-wrapper.whiteboard-fullscreen #btn-fullscreen-whiteboard {
+  background: var(--btn-danger-bg, #ff4d4d);
+  color: white;
+}
+/* Outils en overlay dans le wrapper (visibles en fullscreen) */
+.whiteboard-tools--overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: rgba(13, 15, 20, 0.92);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  flex-wrap: wrap;
+}
+#whiteboard-wrapper {
+  position: relative;
+}
+/* Miniature vidéo dans le wrapper */
+#whiteboard-wrapper .video-miniature {
+  position: absolute;
+  bottom: 60px;
+  right: 10px;
+  width: 200px;
+  height: 120px;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+  z-index: 20;
+  box-shadow: var(--shadow-float);
+}
+
+#whiteboard-wrapper .video-miniature video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 /* ======================================================
    11. SIDE PANEL CARDS
    ====================================================== */
@@ -818,6 +957,18 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
 
   .whiteboard-tools { gap: 4px; }
   .wb-size-slider { width: 56px; }
+}
+@media (max-width: 560px) {
+  .card--video {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%; /* S'accroche en bas sur mobile style appel WhatsApp */
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+    resize: none; /* Désactivé sur mobile */
+  }
 }
 
 /* ======================================================

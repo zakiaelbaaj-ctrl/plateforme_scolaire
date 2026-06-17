@@ -16,6 +16,8 @@ import { getUserProfile } from "../../services/user.service.js"; // service fict
 import { handleAllStripeReturns, openSetupSession } from '/js/services/stripe.service.js';
 import { ScreenShareService } from "/js/domains/call/screen.share.service.js";
 import { ScreenShareOverlay }  from "/js/ui/components/screen.share.overlay.js";
+let whiteboardWrapper = null;
+let videoMiniature = null;
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:4000" 
   : "https://plateforme-scolaire-1.onrender.com";
@@ -241,25 +243,54 @@ endBtn?.addEventListener("click", () => {
 
    // ================= WHITEBOARD =================
   
+// ================= WHITEBOARD =================
+
+// Boutons outils
 document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => WhiteboardService.undo());
 document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
   WhiteboardService.clearCanvas(); // emit=true par défaut → broadcast tableauClear à toute la room
 });
-  document.getElementById("downloadWhiteboardBtn")?.addEventListener("click", () => WhiteboardService.download?.());
-  document.getElementById("penToolBtn")?.addEventListener("click",    () => setWbTool("penToolBtn",    () => WhiteboardService.setTool("pen")));
-  document.getElementById("eraserToolBtn")?.addEventListener("click", () => setWbTool("eraserToolBtn", () => WhiteboardService.setTool("eraser")));
-  document.getElementById("pointToolBtn")?.addEventListener("click", () => {
-  setWbTool("pointToolBtn", () => WhiteboardService.setTool("point"));
+document.getElementById("downloadWhiteboardBtn")?.addEventListener("click", () => WhiteboardService.download?.());
+
+document.getElementById("penToolBtn")?.addEventListener("click",    () => setWbTool("penToolBtn",    () => WhiteboardService.setTool("pen")));
+document.getElementById("eraserToolBtn")?.addEventListener("click", () => setWbTool("eraserToolBtn", () => WhiteboardService.setTool("eraser")));
+document.getElementById("pointToolBtn")?.addEventListener("click",  () => setWbTool("pointToolBtn",  () => WhiteboardService.setTool("point")));
+document.getElementById("lineToolBtn")?.addEventListener("click",   () => setWbTool("lineToolBtn",   () => WhiteboardService.setTool("line")));
+document.getElementById("rectToolBtn")?.addEventListener("click",   () => setWbTool("rectToolBtn",   () => WhiteboardService.setTool("rect")));
+document.getElementById("circleToolBtn")?.addEventListener("click", () => setWbTool("circleToolBtn", () => WhiteboardService.setTool("circle")));
+document.getElementById("textToolBtn")?.addEventListener("click",   () => setWbTool("textToolBtn",   () => WhiteboardService.setTool("text")));
+document.getElementById("eraser-btn")?.addEventListener("click",    () => WhiteboardService.setTool("eraser"));
+
+// === Toggle plein écran ===
+const fullscreenBtn   = document.getElementById('wb-fullscreen-btn');
+whiteboardWrapper = document.getElementById('whiteboard-wrapper'); 
+videoMiniature = document.querySelector('.video-miniature');
+const videoMini       = document.getElementById('remote-video-mini');
+
+// Toggle plein écran
+fullscreenBtn?.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    whiteboardWrapper.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
 });
-  document.getElementById("lineToolBtn")?.addEventListener("click",   () => setWbTool("lineToolBtn",   () => WhiteboardService.setTool("line")));
-  document.getElementById("rectToolBtn")?.addEventListener("click",   () => setWbTool("rectToolBtn",   () => WhiteboardService.setTool("rect")));
-  document.getElementById("circleToolBtn")?.addEventListener("click", () => {
-  setWbTool("circleToolBtn", () => WhiteboardService.setTool("circle"));
+
+// Synchroniser si l’utilisateur entre/sort du fullscreen
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement === whiteboardWrapper) {
+    videoMiniature.style.display = "block";
+    syncMiniatureStream(); // ✅ attache le track sur la miniature visible
+    fullscreenBtn.textContent = "❌ Quitter";
+    fullscreenBtn.title = "Quitter le plein écran";
+  } else {
+    videoMiniature.style.display = "none";
+    // Détacher proprement en sortant du plein écran
+    if (remoteVideoTrack) remoteVideoTrack.detach(videoMini);
+    fullscreenBtn.textContent = "⛶";
+    fullscreenBtn.title = "Plein écran";
+  }
 });
-  document.getElementById("textToolBtn")?.addEventListener("click",   () => setWbTool("textToolBtn",   () => WhiteboardService.setTool("text")));
-  document.getElementById("wb-fullscreen-btn")?.addEventListener("click", toggleWhiteboardFullscreen);
-  document.getElementById("eraser-btn")?.addEventListener("click", () => WhiteboardService.setTool("eraser"));
- 
   // ================= CHAT =================
   document.getElementById("send-msg")?.addEventListener("click", sendChat);
   document.getElementById("chat-input")?.addEventListener("keydown", (e) => {
@@ -367,10 +398,10 @@ function cleanupSession(message) {
   updateCallStatus(message);
   WhiteboardService.reset?.();
 
-  ["remoteVideo", "localVideo"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.srcObject = null;
-  });
+  ["remote-video", "local-video"].forEach(id => { // ✅
+  const el = document.getElementById(id);
+  if (el) el.srcObject = null;
+});
 
   const remoteInfo = document.getElementById("remote-eleve-info");
   if (remoteInfo) { remoteInfo.textContent = "En attente d'un élève…"; remoteInfo.style.display = ""; }
@@ -420,29 +451,48 @@ function hideIncomingAlert() {
 // ======================================================
 // VIDEO TRACKS
 // ======================================================
-
 function attachLocalVideo(track) {
-  const container = document.getElementById("localVideo");
+  const container = document.getElementById("localVideoContainer"); // ✅ cible le wrapper
   if (!container || track.kind !== "video") return;
   const el = track.attach();
+  el.id = "local-video";
   el.autoplay = true;
   el.playsInline = true;
   el.muted = true;
-  container.replaceWith(el);
-  el.id = "localVideo";
+  el.style.cssText = "width:100%; height:100%; object-fit:cover;";
+  const old = container.querySelector("video#local-video");
+  if (old) old.replaceWith(el);
+  else container.prepend(el);
 }
+// Stocker le track distant globalement
+let remoteVideoTrack = null; // ← déclaré en haut du fichier (scope module)
 
 function attachRemoteTracks(tracks) {
   tracks?.forEach(track => {
     if (track.kind === "video") {
-      const container = document.getElementById("remoteVideo");
+      remoteVideoTrack = track; // ✅ stocké pour syncMiniatureStream
+
+      const container = document.getElementById("remoteVideoContainer");
       if (!container) return;
+
       const el = track.attach();
+      el.id = "remote-video";
       el.autoplay = true;
       el.playsInline = true;
-      container.replaceWith(el);
-      el.id = "remoteVideo";
+      el.style.cssText = "width:100%; height:100%; object-fit:cover;";
+
+      const old = container.querySelector("video#remote-video");
+      if (old) old.replaceWith(el);
+      else container.prepend(el);
+
+      // ✅ Si on est déjà en fullscreen quand le track arrive, attacher direct
+      if (document.fullscreenElement === whiteboardWrapper) {
+        console.log("🎯 track arrivé pendant fullscreen, attach miniature");
+        const videoMini = document.getElementById("remote-video-mini");
+        if (videoMini) _doAttachMiniature(videoMini);
+      }
     }
+
     if (track.kind === "audio") {
       const audio = track.attach();
       audio.autoplay = true;
@@ -450,6 +500,39 @@ function attachRemoteTracks(tracks) {
       document.body.appendChild(audio);
     }
   });
+}
+
+function _doAttachMiniature(videoMini) {
+  if (!remoteVideoTrack || !videoMini) return;
+  remoteVideoTrack.detach(videoMini);
+  remoteVideoTrack.attach(videoMini);
+  videoMini.autoplay = true;
+  videoMini.playsInline = true;
+  videoMini.muted = true;
+  videoMini.play().catch(e => console.error("❌ miniature play() failed:", e));
+}
+
+function syncMiniatureStream() {
+  const videoMini = document.getElementById("remote-video-mini");
+  if (!videoMini) return;
+
+  if (!remoteVideoTrack) {
+    // Track pas encore là → retry toutes les 500ms, max 10s
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (remoteVideoTrack) {
+        clearInterval(interval);
+        _doAttachMiniature(videoMini);
+      } else if (attempts >= 20) {
+        clearInterval(interval);
+        console.warn("❌ track jamais arrivé après 10s");
+      }
+    }, 500);
+    return;
+  }
+
+  _doAttachMiniature(videoMini);
 }
 
 function toggleVideo() {
@@ -604,3 +687,33 @@ function renderCurrentUserInfo(user) {
   }
 }
 
+// ================= ALTERNANCE DES VIDÉOS =================
+const localBlock = document.getElementById("localBlock");
+const remoteBlock = document.getElementById("remoteBlock");
+
+function toggleVideoFocus(clickedBlock, otherBlock) {
+  // On n'agit que si le bloc cliqué est actuellement la petite miniature
+  if (clickedBlock.classList.contains("video-floating")) {
+    
+    // Le bloc cliqué devient grand
+    clickedBlock.classList.remove("video-floating");
+    clickedBlock.classList.add("video-main");
+
+    // L'autre bloc devient la miniature flottante
+    otherBlock.classList.remove("video-main");
+    otherBlock.classList.add("video-floating");
+  }
+}
+
+// Écouteur sur ton bloc (Caméra Prof)
+localBlock.addEventListener("click", (e) => {
+  // Sécurité : si on clique sur un bouton ou un overlay textuel, on ne switch pas
+  if (e.target.closest("button") || e.target.closest(".video-overlay")) return;
+  toggleVideoFocus(localBlock, remoteBlock);
+});
+
+// Écouteur sur le bloc de l'étudiant
+remoteBlock.addEventListener("click", (e) => {
+  if (e.target.closest("button") || e.target.closest(".video-overlay")) return;
+  toggleVideoFocus(remoteBlock, localBlock);
+});

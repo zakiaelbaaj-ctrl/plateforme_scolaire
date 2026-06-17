@@ -21,6 +21,7 @@ class SocketService {
     this.heartbeatInterval = null;
     this.lastPong = null;
     this.reconnectTimeout = null;
+    this._sessionEnded = false;
   }
 
   /* ======================================================
@@ -94,15 +95,24 @@ class SocketService {
   /* ======================================================
      SEND SAFE
   ====================================================== */
-  send(payload) {
-    if (!payload) return;
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(payload));
-   } else {
-      if (this.queue.length >= CONFIG.MAX_QUEUE_SIZE) this.queue.shift();
-      this.queue.push(payload);
-    }
+ send(payload) {
+  if (!payload) return;
+
+  // ✅ Bloquer tout envoi si la session est terminée
+  // Seuls les messages système passent toujours
+  const ALWAYS_ALLOWED = ["ping", "identify", "joinRoom"];
+  if (this._sessionEnded && !ALWAYS_ALLOWED.includes(payload.type)) {
+    console.warn("📤 SEND bloqué (session terminée) :", payload.type);
+    return;
   }
+
+  if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    this.ws.send(JSON.stringify(payload));
+  } else {
+    if (this.queue.length >= CONFIG.MAX_QUEUE_SIZE) this.queue.shift();
+    this.queue.push(payload);
+  }
+}
   flushQueue() {
     while (this.queue.length > 0) {
       const msg = this.queue.shift();
@@ -170,7 +180,17 @@ class SocketService {
       }
     }, delay);
   }
+/* ======================================================
+     SESSION STATE
+  ====================================================== */
+  markSessionEnded() {
+    this._sessionEnded = true;
+    this.queue = []; // vider la queue accumulée immédiatement
+  }
 
+  markSessionActive() {
+    this._sessionEnded = false;
+  }
   /* ======================================================
      CLOSE MANUAL
   ====================================================== */
@@ -182,7 +202,6 @@ class SocketService {
     this.ws = null;
   }
 }
-
 /* ======================================================
      INITIALISATION SECURISÉE (Singleton)
 ====================================================== */

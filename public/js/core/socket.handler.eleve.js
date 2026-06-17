@@ -105,32 +105,39 @@ case "twilioRemoteTracks":
         AppState.addChatMessage({ sender: data.sender, text: data.text });
         break;
 
-      case "tableauStroke":
-      case "tableauSync":
+        case "tableauStroke":
+        case "tableauSync":
+        case "tableauClear": 
         WhiteboardService.handleEvent(data);
         break;
-        case "tableauClear":        
-       WhiteboardService.handleEvent(data);
-       break;
         case "userJoined":
         case "userLeft":
      // ✔️ ignoré silencieusement (pas d'action requise)
         break;
-       case "screenShareStarted":
+       
+        case "screenShareStarted":
   // L'overlay est géré par Twilio directement via attachTrack
   console.log("📺 Partage d'écran démarré par", data.userName);
   break;
 
-case "screenShareStopped":
+case "screenShareStopped": {
   import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {
     ScreenShareOverlay.hide();
   });
   const btn = document.getElementById("screen-share-btn");
-  if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
-  break;
-  case "screenShareStartSuccess":
-  case "screenShareStopSuccess":
-  break;
+        if (btn) { 
+          btn.classList.remove("active"); // 🛑 Éteint le halo bleu comme côté prof
+          btn.title = "Partager l'écran"; 
+        }
+        break;
+      }
+     case "screenShareStartSuccess":
+      console.log("🖥️ [WS] Le serveur a validé le début de ton partage d'écran.");
+        break;
+     case "screenShareStopSuccess":
+      console.log("🖥️ [WS] Le serveur a validé l'arrêt de ton partage d'écran.");
+        break;
+  
         case "payment:success": { // 💡 FIX : Encapsulé dans un bloc {} pour isoler la portée de 'toast'
         // 1. Création de la carte de notification
         const toast = document.createElement("div");

@@ -56,76 +56,81 @@
 
       <!-- VIDEO AREA -->
       <section class="card card--video">
-        <div class="card__header">
-          <h3 class="card__title">🎥 Vidéo</h3>
-          <div style="display:flex; gap:10px;">
-         <button id="btn-rejoindre-cours" class="btn btn--primary btn--sm">
-         ▶ Rejoindre
-        </button>
-          <button id="screen-share-btn" class="btn btn--icon btn--sm" title="Partager l'écran">
-        🖥️
+  <div class="card__header" style="cursor: move;">
+    <h3 class="card__title">🎥 Vidéo</h3>
+    <div style="display:flex; gap:10px; align-items: center;">
+      
+      <button id="toggle-collapse-btn" class="btn btn--icon btn--sm" title="Réduire / Agrandir" style="background: rgba(255,255,255,0.1); border: none; font-size: 0.8rem; cursor: pointer;">
+        ➖
       </button>
-        <button id="end-session-btn" class="btn btn--danger btn--sm">
-         ✕ Terminer
-             </button>
-        </div>
-        </div>
 
-        <div class="videos">
-  <div class="video-block">
-    <div class="video-label">Vous</div>
-    <div id="localVideoContainer" class="video-box">
-      <div class="video-overlay">CAM</div>
+      <button id="btn-rejoindre-cours" class="btn btn--primary btn--sm">▶ Rejoindre</button>
+      <button id="screen-share-btn" class="btn btn--icon btn--sm" title="Partager l'écran">🖥️</button>
+      <button id="end-session-btn" class="btn btn--danger btn--sm">✕ Terminer</button>
     </div>
   </div>
 
-  <div class="video-block video-block--remote">
-    <div class="video-label">Professeur</div>
-    <div id="remoteVideoContainer" class="video-box">
-      <div class="video-overlay">LIVE</div>
+  <div class="videos">
+    
+      <div class="video-block video-block--remote">
+        <div id="remoteVideoContainer" class="video-box">
+          <div class="video-overlay">PROFESSEUR</div>
+        </div>
+      </div>
+
+      <div class="video-block video-block--local">
+        <div id="localVideoContainer" class="video-box">
+          <div class="video-overlay">VOUS</div>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-      </section>
+  </section>
 
       <!-- WHITEBOARD -->
       <section class="card card--whiteboard">
-        <div class="card__header">
-          <h3 class="card__title">🖊 Tableau blanc</h3>
-          <div class="wb-header-actions">
-            <button id="wb-fullscreen-btn" class="btn btn--icon" title="Plein écran">⛶</button>
-          </div>
-        </div>
-
-        <div class="whiteboard-canvas-wrapper" id="whiteboard-wrapper">
-          <canvas id="whiteboard-canvas"></canvas>
-        </div>
-
-        <div class="whiteboard-tools">
-  <div class="wb-tools-group">
-    <button id="pointToolBtn" class="btn btn--icon wb-tool" title="Point">•</button>
-    <button id="penToolBtn"     class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
-    <button id="eraserToolBtn"  class="btn btn--icon wb-tool" title="Gomme">🧽</button>
-    <button id="lineToolBtn"    class="btn btn--icon wb-tool" title="Ligne">📏</button>
-    <button id="rectToolBtn"    class="btn btn--icon wb-tool" title="Rectangle">▭</button>
-    <button id="circleToolBtn"  class="btn btn--icon wb-tool" title="Cercle">⭕</button>  <!-- ✅ -->
-    <button id="textToolBtn"    class="btn btn--icon wb-tool" title="Texte">🔤</button>
+  <div class="card__header">
+    <h3 class="card__title">🖊 Tableau blanc</h3>
+    <div class="wb-header-actions">
+      <button id="wb-fullscreen-btn" class="btn btn--icon" title="Plein écran">⛶</button>
+    </div>
   </div>
 
-          <div class="wb-tools-group">
-            <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
-            <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
-          </div>
+  <div class="whiteboard-canvas-wrapper" id="whiteboard-wrapper">
 
-          <div class="wb-tools-group wb-tools-group--right">
-            <button id="undoWhiteboardBtn"     class="btn btn--icon" title="Annuler">↩</button>
-            <button id="clearWhiteboardBtn"    class="btn btn--icon btn--danger-ghost" title="Effacer tout">🗑️</button>
-            <button id="downloadWhiteboardBtn" class="btn btn--icon" title="Télécharger">⬇️</button>
-          </div>
-        </div>
-      </section>
+    <!-- Canvas -->
+    <canvas id="whiteboard-canvas"></canvas>
 
+    <!-- Miniature vidéo flottante (prof) -->
+    <div class="video-miniature" style="display:none;">
+      <video id="remote-video-mini" autoplay playsinline muted></video>
     </div>
+
+    <!-- Outils DANS le wrapper → visibles en fullscreen -->
+    <div class="whiteboard-tools whiteboard-tools--overlay">
+      <div class="wb-tools-group">
+        <button id="pointToolBtn"  class="btn btn--icon wb-tool" title="Point">•</button>
+        <button id="penToolBtn"    class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
+        <button id="eraserToolBtn" class="btn btn--icon wb-tool" title="Gomme">🧽</button>
+        <button id="lineToolBtn"   class="btn btn--icon wb-tool" title="Ligne">📏</button>
+        <button id="rectToolBtn"   class="btn btn--icon wb-tool" title="Rectangle">▭</button>
+        <button id="circleToolBtn" class="btn btn--icon wb-tool" title="Cercle">⭕</button>
+        <button id="textToolBtn"   class="btn btn--icon wb-tool" title="Texte">🔤</button>
+      </div>
+      <div class="wb-tools-group">
+        <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
+        <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
+      </div>
+      <div class="wb-tools-group wb-tools-group--right">
+        <button id="undoWhiteboardBtn"     class="btn btn--icon" title="Annuler">↩</button>
+        <button id="clearWhiteboardBtn"    class="btn btn--icon btn--danger-ghost" title="Effacer tout">🗑️</button>
+        <button id="downloadWhiteboardBtn" class="btn btn--icon" title="Télécharger">⬇️</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</div>
 
     <!-- ================= SIDE PANEL ================= -->
     <aside class="side-panel">

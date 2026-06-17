@@ -5,7 +5,7 @@
 
 import { safeSend } from "../utils.js";          // ✅ était "../ws/utils.js" → incorrect
 import { MatchRegistry } from "./match.registry.js";
-
+import { clients } from "../../socket.js";
 // ======================================================
 // CLASSE (nom interne _StudentMatchService)
 // pour éviter le conflit avec l'export const StudentMatchService
@@ -19,7 +19,7 @@ class _StudentMatchService {
   // ======================================================
   // 1️⃣ AJOUT DANS LA FILE
   // ======================================================
-  enqueueStudent(ws, matiere, sujet, niveau) {
+  enqueueStudent(ws, matiere, sujet, niveau, inviteId = null) {
 
     // 🔴 sécurité : PROF interdit
     if (ws.role === "prof") {
@@ -77,8 +77,19 @@ if (!DEV_FORCE_SUBSCRIPTION && ws.subscriptionStatus !== "active") {
       pays: ws.pays || "",
       ts: Date.now()
     });
-
-    console.log(`➕ ${ws.role} ${ws.userId} ajouté matching étudiant`);
+    // ✅ Si invitation directe, notifier l'invitant
+    if (inviteId) {
+        const invitant = clients.get(parseInt(inviteId));
+        if (invitant) {
+            safeSend(invitant, {
+                type:        "student:invited",
+                fromId:      ws.userId,
+                fromName:    `${ws.prenom} ${ws.nom}`,
+                matiere,
+            });
+        }
+    }
+   console.log(`➕ ${ws.role} ${ws.userId} ajouté matching étudiant`);
 
     // Confirmer à l'étudiant qu'il est en file
     safeSend(ws, {
@@ -89,8 +100,23 @@ if (!DEV_FORCE_SUBSCRIPTION && ws.subscriptionStatus !== "active") {
     });
 
     this.tryMatch();
-  }
 
+    // ✅ Notifier l'invitant
+    if (inviteId) {
+        console.log("🔗 clients map size:", clients.size);
+        console.log("🔗 Cherche userId:", parseInt(inviteId));
+        const invitant = clients.get(parseInt(inviteId));
+        console.log("🔗 invitant trouvé:", invitant?.prenom);
+        if (invitant && invitant.readyState === 1) {
+            safeSend(invitant, {
+                type:     "student:invited",
+                fromId:   ws.userId,
+                fromName: `${ws.prenom} ${ws.nom}`,
+                matiere:  matiere || "Général",
+            });
+        }
+    }
+  }
   // ======================================================
   // 2️⃣ MATCHING
   // ======================================================

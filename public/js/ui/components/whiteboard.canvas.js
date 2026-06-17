@@ -2,36 +2,64 @@ import { WhiteboardTools } from "/js/domains/whiteboard/whiteboard.tools.js";
 export class WhiteboardCanvas {
   constructor(canvasId, whiteboardService, options = {}) {
     this.canvas            = document.getElementById(canvasId);
-    this.ctx               = this.canvas.getContext("2d");
+    this.ctx = this.canvas.getContext("2d", { willReadFrequently: true }); // ✅
     this.whiteboardService = whiteboardService;
     this.colorPicker       = options.colorPicker || null;
     this.sizeSlider        = options.sizeSlider  || null;
 
     this._drawing     = false;
     this._currentTool = "pen"; // outil par défaut
+    this._toolJustChanged = false;
+    this._toolChangedTimer = null;
+    this._disposed   = false;
+    this._rulerStart = null;
+    // ✅ Initialiser le flag AVANT resizeCanvas et ResizeObserver
+  this._inFullscreenTransition    = false;
+  this._fullscreenTransitionTimer = null;
+  this._onFullscreenChange = () => {
+    this._inFullscreenTransition = true;
+    clearTimeout(this._fullscreenTransitionTimer);
+    this._fullscreenTransitionTimer = setTimeout(() => {
+      this._inFullscreenTransition = false;
+      this.resizeCanvas();
+    }, 500); // ✅ 500ms pour couvrir toutes les transitions
+  };
+  document.addEventListener("fullscreenchange", this._onFullscreenChange);
 
     this.resizeCanvas();
 
     this._initEvents();
+    const debouncedResize = this._debounce(this.resizeCanvas.bind(this), 600);
+    this._resizeObserver = new ResizeObserver(debouncedResize);
+    this._resizeObserver.observe(this.canvas.parentElement);
+    this._sessionId  = options.sessionId || null;
+    
 
-    this._boundResize = this.resizeCanvas.bind(this);
-    window.addEventListener("resize", this._boundResize);
-    this._sessionId = options.sessionId || null;
-    this._disposed = false;
-    this._rulerStart = null;
     this._tools = new WhiteboardTools(this.canvas, this.ctx, {
   getColor:   () => this._getColor(),
   getSize:    () => this._getSize(),
   getTool:    () => this._currentTool,
-  redraw:     () => this.redraw(),
+  redraw:      () => this.requestRedraw(),
   // Dans whiteboard.canvas.js — onPathDone simplifié
-onPathDone: (path) => {
+  onPathDone: (path) => {
   this.whiteboardService.commitPath(path); // ✅ méthode à ajouter dans WhiteboardService
 },
 onText: (path) => {
   this.whiteboardService.commitPath(path); // ✅ même méthode
 }
 });
+  }
+  // ============================
+  // EXPOSITION DE LA METHODE DE TRACÉ UNIQUE (RENDU INCRÉMENTAL)
+  // ============================
+  
+  /**
+   * Appelé par WhiteboardService lors de la réception d'un seul tracé distant.
+   * Évite le recalcul complet de l'historique (O(1)).
+   */
+  drawPath(path) {
+    if (this._disposed || !path) return;
+    this._drawPath(path);
   }
 
   // ============================
@@ -40,7 +68,23 @@ onText: (path) => {
 
   setTool(tool) {
     this._currentTool = tool;
+    this._toolJustChanged = true;
+    // ✅ Sécurité : si aucun pointerdown ne suit dans les 300ms,
+  // on remet le flag à false pour ne pas bloquer le prochain vrai clic
+  clearTimeout(this._toolChangedTimer);
+  this._toolChangedTimer = setTimeout(() => {
+    this._toolJustChanged = false;
+  }, 300);
+    if (this._tools) {
+    if (typeof this._tools.reset === "function") {
+      this._tools.reset();
+    } else if (typeof this._tools.cancel === "function") {
+      this._tools.cancel();
+    }
+    if (this._tools.currentShape) this._tools.currentShape = null;
+    if (this._tools.activePath)  this._tools.activePath = null;
   }
+}
 
   // ============================
   // HELPER COORDONNEES
@@ -61,16 +105,21 @@ onText: (path) => {
   _initEvents() {
     const start = (e) => {
       e.preventDefault();
+      if (this._toolJustChanged) {
+    this._toolJustChanged = false;
+    return;
+  }
       const pos = this._getCanvasPos(e);
       this._drawing = true;
+      const tool = this._currentTool;
        
-       if (this._tools.onPointerDown(pos)) return;
-       if (this._currentTool === "ruler") {
+       if (this._tools.onPointerDown(pos, tool)) return;
+        if (tool === "ruler") {
         this._rulerStart = pos;
         return;
       }
      
-if (this._currentTool === "point") {
+if (tool === "point") {
   const color = this._getColor();
   const size  = this._getSize();
   const ctx   = this.ctx;
@@ -94,7 +143,7 @@ if (this._currentTool === "point") {
       this.whiteboardService.startPath({
         x:     pos.x,
         y:     pos.y,
-        tool:  this._currentTool,
+        tool,
         color: this._getColor(),
         size:  this._getSize()
       });
@@ -114,7 +163,7 @@ if (this._currentTool === "point") {
       const pos = this._getCanvasPos(e);
       if (this._tools.onPointerMove(pos)) return;
       if (this._currentTool === "ruler" && this._rulerStart) {
-        this.redraw(); // clean preview
+        this.requestRedraw();
 
         const ctx = this.ctx;
         ctx.beginPath();
@@ -201,30 +250,74 @@ if (this._currentTool === "point") {
 
   // ============================
   // REDRAW COMPLET
-  // ============================
 
-  redraw() {
-    const paths = this.whiteboardService.getPaths();
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    for (const path of paths) {
-      if (!path.points?.length) continue;
-      this._drawPath(path);
+  // ============================
+  _needsRedraw = false; // flag de debounce RAF
+  _isRedrawing = false;
+requestRedraw() {
+  if (this._needsRedraw) return; // déjà schedulé → ignoré
+  this._needsRedraw = true;
+  requestAnimationFrame(() => {
+    this._needsRedraw = false;
+    if (!this._isRedrawing) { // ✅ ne pas s'empiler sur un redraw en cours
+      this.redraw();
     }
+  });
   }
-    _drawPath(path) {
- if (["line", "rect", "text", "circle"].includes(path.tool)) {
-  this._tools.drawRemotePath(path);
-  return;
+ redraw() {
+  if (this._isRedrawing) return; // ✅ guard anti-récursion
+  this._isRedrawing = true;
+  
+  if (this._disposed) return;
+
+  const paths = this.whiteboardService.getPaths();
+  if (!paths) {
+    this._isRedrawing = false;
+    return;
+  }
+
+  this.ctx.globalCompositeOperation = "source-over";
+  this.ctx.lineCap = "round";
+  this.ctx.lineJoin = "round";
+  this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+  for (const path of paths) {
+    if (!path || !path.points || !path.points.length) continue;
+    this._drawPath(path);
+  }
+
+  this._isRedrawing = false; // ✅ libérer à la fin
 }
-if (path.tool === "point") {
+   _drawPath(path) {
+  if (!path || !path.tool) return;
+
+  // 1. Si c'est un outil géré par WhiteboardTools, on délègue et ON COUPE DIRECTEMENT LE CODE ICI
+  if (["line", "rect", "text", "circle"].includes(path.tool)) {
+    this._tools.drawRemotePath(path);
+    // Rétablir le mode normal au cas où WhiteboardTools l'altère
+      this.ctx.globalCompositeOperation = "source-over";
+    return;
+  }
+
+  // 2. Si c'est un point unique
+  if (path.tool === "point") {
+    if (!path.points || !path.points[0]) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(path.points[0].x, path.points[0].y, (path.size || 3) / 2, 0, Math.PI * 2);
+    ctx.fillStyle = path.color || "#000";
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 3. Sécurité : Si l'outil n'est ni un pen ni un eraser à ce stade, on ignore pour éviter la contamination
+  if (path.tool !== "pen" && path.tool !== "eraser") return;
+
+  // 4. Tracé exclusif pour "pen" et "eraser"
   const ctx = this.ctx;
-  ctx.beginPath();
-  ctx.arc(path.points[0].x, path.points[0].y, (path.size || 3) / 2, 0, Math.PI * 2);
-  ctx.fillStyle = path.color || "#000";
-  ctx.fill();
-  return;
-}
-  const ctx = this.ctx;
+  ctx.save();
   ctx.beginPath();
   ctx.lineCap  = "round";
   ctx.lineJoin = "round";
@@ -243,11 +336,8 @@ if (path.tool === "point") {
     ctx.lineTo(path.points[i].x, path.points[i].y);
   }
   ctx.stroke();
-
-  // ✅ Toujours remettre source-over après chaque path
-  ctx.globalCompositeOperation = "source-over";
+  ctx.restore();
 }
-
   // ============================
   // HELPERS
   // ============================
@@ -259,22 +349,30 @@ if (path.tool === "point") {
   _getSize() {
     return this.sizeSlider ? parseInt(this.sizeSlider.value) : 3;
   }
-
+ _debounce(fn, delay) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
+    };
+  }
  resizeCanvas() {
   if (this._disposed) return;
-
+  if (this._inFullscreenTransition) return; // ✅ ignorer pendant la transition
   const wrapper = this.canvas.parentElement;
   const rect = wrapper?.getBoundingClientRect() ?? this.canvas.getBoundingClientRect();
-  // Protection anti-boucle : ignorer si taille irréaliste
   if (rect.width < 100 || rect.height < 100) return;
   const dpr = window.devicePixelRatio || 1;
-  this.canvas.width  = rect.width  * dpr;
-  this.canvas.height = rect.height * dpr;
-
+  const newW = Math.round(rect.width  * dpr);
+  const newH = Math.round(rect.height * dpr);
+  if (this.canvas.width === newW && this.canvas.height === newH) {
+    return;
+  }
+  this.canvas.width  = newW;
+  this.canvas.height = newH;
   this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   this.ctx.scale(dpr, dpr);
-
-  this.redraw();
+  this.requestRedraw(); // ✅ dédupliqué via RAF
 }
 
   clear() {
@@ -282,10 +380,14 @@ if (path.tool === "point") {
   }
 
   destroy() {
-    window.removeEventListener("resize", this._boundResize);
-    this._onResize = null;
-    this.whiteboardService = null;
-    this.canvas = null;
-    this.ctx = null;
-  }
+  this._disposed = true;
+  this._resizeObserver?.disconnect();
+  document.removeEventListener("fullscreenchange", this._onFullscreenChange); // ✅
+  clearTimeout(this._fullscreenTransitionTimer); // ✅
+  this._resizeObserver = null;
+  this._onResize = null;
+  this.whiteboardService = null;
+  this.canvas = null;
+  this.ctx = null;
+}
 }

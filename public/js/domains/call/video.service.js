@@ -1,5 +1,6 @@
 import { CallStateMachine } from "./call.state.machine.js";
-
+import { AppState } from "/js/core/state.js";
+import { socketService } from "/js/core/socket.service.js"; 
 export const VideoService = {
   room: null,
 
@@ -13,8 +14,7 @@ this.room = await Twilio.Video.connect(token, {
   video: { width: 640 }
   // ← supprimer logLevel
 });
-      
-      console.log("✅ Connecté à Twilio Room:", this.room.name);
+      this._reconnectAttempts = 0;
 
       this.room.localParticipant.tracks.forEach(pub => {
         if (pub.track) this.attachTrack(pub.track, "local");
@@ -33,18 +33,52 @@ this.room = await Twilio.Video.connect(token, {
 
       // ✅ Twilio déclenche "disconnected" → on setState ended UNE SEULE FOIS
       // mais seulement si ce n'est pas nous qui avons initié la déconnexion
-      this.room.on("disconnected", () => {
-        if (!this._silentDisconnect) {
-          CallStateMachine.setState(CallStateMachine.STATES.ENDED);
-        }
-        this._silentDisconnect = false; 
-      });
-      
+     this.room.on("disconnected", (room, error) => {
+  if (this._silentDisconnect) {
+    this._silentDisconnect = false;
+    return; // déconnexion volontaire → on ne fait rien
+  }
+
+  // Coupure réseau temporaire → on tente de reconnecter
+  if (error && error.code === 53001) {
+    // 53001 = Room not found (token expiré ou room fermée côté serveur)
+    // → pas de reconnect possible, on termine
+    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+    return;
+  }
+    // Autre coupure (réseau, ERR_CONNECTION_RESET) → demander un nouveau token
+  console.warn("⚠️ Twilio déconnecté inopinément, demande de reconnexion...");
+  this._requestNewToken();
+}); 
     } catch (e) {
       console.error("❌ Erreur VideoService:", e);
     }
   },
+  // Demande un nouveau token au serveur et reconnecte
+_requestNewToken() {
+  if (!AppState.currentRoomId) {
+    console.warn("⚠️ Pas de roomId, reconnexion Twilio annulée");
+    return;
+  }
 
+  // Limite : pas plus de 3 tentatives
+  this._reconnectAttempts = (this._reconnectAttempts ?? 0) + 1;
+  if (this._reconnectAttempts > 3) {
+    console.error("❌ Trop de tentatives Twilio, on termine l'appel");
+    this._reconnectAttempts = 0;
+    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+    return;
+  }
+
+  console.log(`🔄 Tentative Twilio #${this._reconnectAttempts}...`);
+
+  // Demander un nouveau token via WS → le serveur répondra avec "twilioToken"
+  // → CallService.handleEvent("twilioToken") → VideoService.connect(newToken)
+  socketService.send({
+    type: "requestTwilioToken",
+    roomId: AppState.currentRoomId
+  });
+},
   // ✅ Déconnexion normale (déclenche l'event "disconnected" → setState ended)
   disconnect() {
     if (!this.room) return;
@@ -136,6 +170,13 @@ _stopLocalTracks() {
       el.muted = (side === "local");
       el.style.cssText = "width:100%;height:100%;object-fit:cover;";
       container.appendChild(el);
+    }
+    // ✅ AJOUT ICI — émettre le track vers dashboard.js
+    if (side === "remote" && track.kind === "video") {
+      AppState._notify("video:remoteTracks", [track]);
+    }
+    if (side === "local" && track.kind === "video") {
+      AppState._notify("video:localTrack", [track]);
     }
   }
 };

@@ -13,10 +13,9 @@ export async function joinRoom(ws, { roomId }) {
 
     if (!roomId || !ws.userId)
         return safeSend(ws, { type: "error", message: "roomId requis" });
-
-    if (ws.subscriptionStatus !== "active")
-        return safeSend(ws, { type: "error", code: "NO_SUBSCRIPTION", message: "Abonnement requis." });
-
+const DEV_FORCE_SUBSCRIPTION = true; // ← mettre false en prod
+if (!DEV_FORCE_SUBSCRIPTION && ws.subscriptionStatus !== "active")
+    return safeSend(ws, { type: "error", code: "NO_SUBSCRIPTION", message: "Abonnement requis." });
     if (!MatchRegistry.exists(roomId))
         return safeSend(ws, { type: "error", message: "Room introuvable." });
 

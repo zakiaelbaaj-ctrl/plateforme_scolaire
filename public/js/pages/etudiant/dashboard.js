@@ -368,14 +368,18 @@ Logger.log(`🔍 Recherche lancée : ${mat}`);
     } else {
         Logger.warn("⚠️ #start-session-btn introuvable dans le DOM");
     }
-
-    // 2. Bouton "Rejoindre un cours"
-    const btnRejoindre = document.getElementById('btn-rejoindre-cours');
-    if (btnRejoindre) {
-        btnRejoindre.addEventListener('click', () => {
-            Logger.log("🎨 Rejoindre un cours");
+const btnRejoindre = document.getElementById('btn-rejoindre-cours');
+if (btnRejoindre) {
+    btnRejoindre.addEventListener('click', () => {
+        const userId = AppState.currentUser?.id;
+        const lien = `${window.location.origin}/pages/etudiant/dashboard.html?invite=${userId}`;
+        
+        navigator.clipboard.writeText(lien).then(() => {
+            btnRejoindre.textContent = "✅ Lien copié !";
+            setTimeout(() => { btnRejoindre.textContent = "▶ Rejoindre"; }, 3000);
         });
-    }
+    });
+}
 
     // 3. Chat
     const btnSend   = document.getElementById('send-msg');

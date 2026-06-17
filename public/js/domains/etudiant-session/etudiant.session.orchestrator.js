@@ -111,6 +111,14 @@ init(uiInterface = null) {
         }
       }, 100);
     });
+    eventBus.on("student:invited", ({ fromId, fromName, matiere }) => {
+    logger.log("🔗 Invitation reçue de :", fromName);
+    socketService.send({
+        type:    "student:enqueue",
+        matiere: matiere || "Général",
+        sujet:   "",
+    });
+});
     eventBus.on("socket:open", () => {
     const user = AppState.currentUser;
     // ✅ Délai pour s'assurer que le socket est prêt
@@ -130,6 +138,35 @@ init(uiInterface = null) {
     });
     logger.log("🪪 Identify envoyé au serveur");
     }, 300);
+});
+// ✅ COLLER ICI — Détecter si l'étudiant arrive via un lien d'invitation
+const params = new URLSearchParams(window.location.search);
+const inviteId = params.get("invite");
+console.log("🔗 URL complète :", window.location.href);
+console.log("🔗 inviteId détecté :", inviteId);
+if (inviteId) {
+    logger.log("🔗 Invitation détectée — userId invitant :", inviteId);
+    AppState.pendingInviteId = inviteId;
+}
+
+if (inviteId) {
+    logger.log("🔗 Invitation détectée — userId invitant :", inviteId);
+    AppState.pendingInviteId = inviteId;
+    
+    // ✅ Nettoyer l'URL sans recharger la page
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+// ✅ Lancement matching automatique quand l'invitant est trouvé en ligne
+eventBus.on("invite:found", ({ invitant }) => {
+    const matiere = AppState.currentUser?.matiere || "Général";
+    socketService.send({
+        type:     "student:enqueue",
+        matiere,
+        sujet:    "",
+        inviteId: invitant.id
+    });
+    logger.log("🔗 Enqueue automatique vers :", invitant.prenom);
 });
     // 📡 SIGNAL WEBRTC 🕒 mise en queue si peer pas encore prêt
     eventBus.on("webrtc:signal", async (signal) => {

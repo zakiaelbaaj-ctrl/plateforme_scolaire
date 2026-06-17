@@ -4,7 +4,7 @@
 
 import { socketService } from "/js/core/socket.service.js";
 import { AppState }      from "/js/core/state.js";
-
+import { showNotification } from "/js/ui/components/notification.js";
 export const DocumentService = {
 
   // --------------------------------------------------
@@ -36,8 +36,6 @@ export const DocumentService = {
       const userName = AppState.currentUser
         ? `${AppState.currentUser.prenom ?? ""} ${AppState.currentUser.nom ?? ""}`.trim()
         : "Utilisateur";
-
-      console.log("🟢 Envoi document:", file.name, AppState.currentRoomId, "sender:", userName);
       socketService.send({
         type: "document",
         roomId: AppState.currentRoomId,
@@ -46,6 +44,8 @@ export const DocumentService = {
         fileType: file.type || guessFileType(file.name),
         fileData: reader.result
       });
+      // ✅ Notification côté envoyeur
+  showNotification(`📎 "${file.name}" envoyé avec succès`);
     };
 
     reader.readAsDataURL(file);
@@ -56,17 +56,9 @@ export const DocumentService = {
   // --------------------------------------------------
 
   async handleEvent(data) {
-    console.log("🔍 handleEvent appelé, currentUser role:", AppState.currentUser?.role);
   const { userId, userName, fileName, fileType, fileData } = data;
-   console.log("📞 fileData reçu:", fileData?.substring(0, 100));
   const finalUser = userName?.trim() || "Utilisateur inconnu";
   const finalType = fileType || guessFileType(fileName);
-
-  console.log("🟢 Document reçu:", {
-    fileName,
-    from: userId,
-    userName: finalUser
-  });
 
   // 🔹 Télécharger automatiquement le document
 await this._downloadFile(fileName, fileData);
@@ -77,6 +69,8 @@ await this._downloadFile(fileName, fileData);
     fileType: finalType,
     fileData
   });
+  // ✅ Notification côté receveur
+showNotification(`📎 "${fileName}" reçu de ${finalUser}`);
 },
 
   // --------------------------------------------------

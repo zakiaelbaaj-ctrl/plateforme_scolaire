@@ -17,6 +17,9 @@ export async function joinRoom(ws, { roomId }, onlineProfessors, clients) {
         return safeSend(ws, { type: "error", message: "roomId requis" });
     }
 
+    if (ws.roomId === roomId && !rooms.has(roomId)) {
+        ws.roomId = null;
+    }
     if (ws.roomId === roomId) return;
     if (ws.roomId) await leaveRoom(ws); 
 
@@ -129,7 +132,31 @@ export async function leaveRoom(ws) {
 
     ws.roomId = null;
 }
-
+// =======================================================
+// ⚡ FIX : FORCE CLOSE ROOM (Avec avertissement aux clients)
+// =======================================================
+export function closeRoom(roomId) {
+    if (!roomId) return;
+    
+    const room = rooms.get(roomId);
+    if (room) {
+        console.log(`🗑️ Fermeture et nettoyage forcé de la room : ${roomId}`);
+        
+        // 📣 FIX CRUCIAL : On prévient l'élève et le prof de couper la visio IMMEDIATEMENT
+        for (const client of room) {
+            if (client.readyState === 1) {
+                safeSend(client, { 
+                    type: "session:stop", 
+                    roomId 
+                });
+            }
+            client.roomId = null; // Libère l'état du socket pour le prochain appel
+        }
+        
+        rooms.delete(roomId);
+    }
+    sessionData.delete(roomId);
+}
 // =======================================================
 // CHAT & DOCUMENTS
 // =======================================================

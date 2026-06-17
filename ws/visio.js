@@ -6,7 +6,7 @@ import { pool } from "../config/db.js";
 import { safeSend } from "./utils.js";
 import { endSession } from "./state/onlineProfessors.js";
 import * as StripeService from "../services/payment.service.js"; // 👈 Ajoute cet import en haut
-// ws/visio.js
+import { closeRoom } from "./rooms.js";
 
 export async function saveVisioSession(ws, { roomId, duration, matiere }) {
   // 🔒 Seule l'élève envoie la durée
@@ -40,7 +40,7 @@ export async function saveVisioSession(ws, { roomId, duration, matiere }) {
     );
 
     console.log(`✅ Durée sauvegardée en DB (${durationSec}s).`);
-
+     closeRoom(roomId); // 🧹 Ferme la room Twilio et libère les ressources
     // 3️⃣ DÉCLENCHEMENT DU PAIEMENT AVEC DÉLAI DE SÉCURITÉ 🚀
     // On attend 1 seconde pour laisser la DB finir d'écrire avant que Stripe ne lise.
     setTimeout(async () => {

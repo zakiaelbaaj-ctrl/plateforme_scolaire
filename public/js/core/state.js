@@ -154,22 +154,39 @@ this._notify("session:end");
   timerInterval: null,
 
   startTimer() {
-    if (this.timerRunning) return;
+
+    if (this.timerInterval) {
+        console.warn("⚠️ Timer déjà actif");
+        return;
+    }
 
     this.timerRunning = true;
     this.callSeconds = 0;
 
+    console.log(
+      "🔥 TIMER INTERVAL CREATED",
+      new Date().toISOString()
+    );
+
     this._notify("timer:start");
 
     this.timerInterval = setInterval(() => {
-      this.callSeconds++;
-      this._notify("timer:update", this.callSeconds);
-    }, 1000);
-  },
 
-  stopTimer() {
+        this.callSeconds++;
+
+        this._notify(
+          "timer:update",
+          this.callSeconds
+        );
+
+    }, 1000);
+},
+
+stopTimer() {
+
     if (this.timerInterval) {
-      clearInterval(this.timerInterval);
+        clearInterval(this.timerInterval);
+        console.log("🛑 TIMER STOPPED");
     }
 
     this.timerInterval = null;
@@ -177,8 +194,7 @@ this._notify("session:end");
     this.callSeconds = 0;
 
     this._notify("timer:reset");
-  },
-
+},
   // ==================================================
   // CHAT
   // ==================================================
@@ -316,7 +332,10 @@ this._notify("documents:new", doc);
     const listenersCopy = [...list]; // ✅ safe dispatch
 
     console.log("📥 _notify:", event, payload);
-
+     // 🔎 TRACE UNIQUEMENT POUR LE TIMER
+if (event === "timer:update") {
+  console.trace("⏱️ timer:update appelé avec :", payload);
+}
     for (const cb of listenersCopy) {
       try {
         cb(payload);

@@ -550,7 +550,7 @@ if (type === "requestStudentMatch") {
   }
   // 2️⃣ CAS ÉTUDIANT
 if (ws.role === "etudiant") {
-    setTimeout(() => broadcastOnlineStudents(clients), 50);
+    broadcastOnlineStudents(clients);
     return;
 }
   // 3️⃣ CAS ÉLÈVE (Segmentation stricte)
@@ -558,6 +558,9 @@ if (ws.role === "etudiant") {
     console.log(`👨‍🎓 Élève enregistré: ${ws.userId}`);
     // L'élève ne reçoit QUE la liste des professeurs
     const profs = getOnlineProfessors();
+    console.log("🔍 getOnlineProfessors() retourne :", profs);
+    console.log("🔍 onlineProfessors MAP :", [...onlineProfessors.entries()]);
+   
     safeSend(ws, {
       type: "onlineProfessors",
       profs,

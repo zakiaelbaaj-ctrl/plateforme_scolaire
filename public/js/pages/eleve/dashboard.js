@@ -21,6 +21,10 @@ import { handleAllStripeReturns, holdFundsForSession }
 from "/js/services/stripe.service.js";
 import { initStripeOnboarding } from "/js/services/stripe.service.js";
 import { openSetupSession } from "/js/services/stripe.service.js";
+// ✅ Variables module pour la miniature
+let remoteVideoTrack = null;
+let whiteboardWrapper = null;
+let videoMiniature = null;
 // ======================================================
 // INIT
 // ======================================================
@@ -101,7 +105,37 @@ function saveAndRenderUser(user) {
 // Optionnel : met à jour le bouton Rejoindre si présent
   if (typeof updateJoinButton === 'function') updateJoinButton(user);
 }
+function _doAttachMiniature(videoMini) {
+  if (!remoteVideoTrack || !videoMini) return;
+  remoteVideoTrack.detach(videoMini);
+  remoteVideoTrack.attach(videoMini);
+  videoMini.autoplay = true;
+  videoMini.playsInline = true;
+  videoMini.muted = true;
+  videoMini.play().catch(e => console.error("❌ miniature play() failed:", e));
+}
 
+function syncMiniatureStream() {
+  const videoMini = document.getElementById("remote-video-mini");
+  if (!videoMini) return;
+
+  if (!remoteVideoTrack) {
+    console.warn("❌ remoteVideoTrack est null");
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (remoteVideoTrack) {
+        clearInterval(interval);
+        _doAttachMiniature(videoMini);
+      } else if (attempts >= 20) {
+        clearInterval(interval);
+        console.warn("❌ track jamais arrivé après 10s");
+      }
+    }, 500);
+    return;
+  }
+  _doAttachMiniature(videoMini);
+}
 // ======================================================
 // DOMAIN SUBSCRIPTIONS
 // ======================================================
@@ -109,14 +143,21 @@ function saveAndRenderUser(user) {
     function subscribeToDomains() {
       // ================= INDICATEUR CONNEXION =================
 AppState.on("ws:status", (data) => {
+  console.log("WS STATUS", data);
+  console.log("CURRENT USER", AppState.currentUser);
+
   updateWsStatus(data?.status, data?.attempt);
   if (data?.status === "connected" && AppState.currentUser?.id) {
+    console.log("🚀 ENVOI IDENTIFY", AppState.currentUser);
+
     socketService.send({ type: "identify", ...AppState.currentUser });
   }
 });
 
   // ================= SESSION =================
     AppState.on('session:start', (session) => {
+      AppState.canUseTools = true;
+      updateToolButtons(); 
       WhiteboardService.initSession();
       WhiteboardService.initCanvas('whiteboard-canvas', {
        colorPicker: document.getElementById("whiteboardColor"),
@@ -136,7 +177,10 @@ AppState.on("ws:status", (data) => {
   });
   
   // ================= WHITEBOARD =================
-  WhiteboardService.onToolChange?.((remoteTool) => {WhiteboardService.setTool(remoteTool);});
+  WhiteboardService.onToolChange?.((remoteTool) => {
+  // Met à jour l'outil ET l'état visuel du bouton chez l'élève
+  setWbTool(`${remoteTool}ToolBtn`, () => WhiteboardService.setTool(remoteTool));
+});
   AppState.on("whiteboard:clear", () => {WhiteboardService.applyRemoteClear(false);});
   // ================= PARTAGE D'ÉCRAN =================
 ScreenShareService.onStart((track) => {
@@ -169,6 +213,14 @@ ScreenShareService.onStop(() => {
   updateTimerUI(`${m}:${s}`);
   });
   AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
+  // ✅ Stocker le track pour la miniature
+window.addEventListener("remoteVideoTrackReady", (e) => {
+  remoteVideoTrack = e.detail;
+  if (document.fullscreenElement === whiteboardWrapper) {
+    const videoMini = document.getElementById("remote-video-mini");
+    if (videoMini) _doAttachMiniature(videoMini);
+  }
+});
   AppState.on('video:connected',    ()       => updateCallStatus('En communication'));
   AppState.on("documents:new", (doc) => {
   console.log("⚠️🤖 EVENT documents:new déclenché", doc);
@@ -186,7 +238,109 @@ ScreenShareService.onStop(() => {
 // ======================================================
 
 function bindUI() {
+// ================= VIDEO MAGNETIQUE STYLE WHATSAPP =================
+whiteboardWrapper = document.getElementById("whiteboard-wrapper");
+videoMiniature    = document.querySelector("#whiteboard-wrapper .video-miniature"); 
+const elVideo = document.querySelector('.card--video');
+  const videoHeader = elVideo?.querySelector('.card__header');
 
+  if (videoHeader && elVideo) {
+    // On ajoute une transition CSS pour un effet d'aimant fluide lors du relâchement
+    elVideo.style.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s";
+
+    videoHeader.onmousedown = function(e) {
+      // On coupe la transition pendant qu'on glisse pour éviter les saccades
+      elVideo.style.transition = "none";
+
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      pos3 = e.clientX;
+      pos4 = e.clientY;
+      
+      document.onmouseup = () => { 
+        document.onmouseup = null; 
+        document.onmousemove = null; 
+
+        // --- LOGIQUE D'AIMANTATION (SNAP TO CORNERS) ---
+        elVideo.style.transition = "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"; // On remet l'effet fluide
+        
+        const rect = elVideo.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const margin = 24; // L'espace (var(--space-lg)) entre la fenêtre et le bord de l'écran
+
+        // Calculer si on est plus proche de la gauche ou de la droite
+        if (rect.left + rect.width / 2 < windowWidth / 2) {
+          elVideo.style.left = `${margin}px`;
+          elVideo.style.right = "auto";
+        } else {
+          elVideo.style.left = "auto";
+          elVideo.style.right = `${margin}px`;
+        }
+
+        // Calculer si on est plus proche du haut ou du bas
+        if (rect.top + rect.height / 2 < windowHeight / 2) {
+          elVideo.style.top = `${margin}px`;
+          elVideo.style.bottom = "auto";
+        } else {
+          elVideo.style.top = "auto";
+          elVideo.style.bottom = `${margin}px`;
+        }
+      };
+      
+      document.onmousemove = (e) => {
+        pos1 = pos3 - e.clientX; 
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX; 
+        pos4 = e.clientY;
+        
+        elVideo.style.top = (elVideo.offsetTop - pos2) + "px";
+        elVideo.style.left = (elVideo.offsetLeft - pos1) + "px";
+        elVideo.style.bottom = "auto"; 
+        elVideo.style.right = "auto";
+      };
+    };
+  }
+
+  // ================= ALTERNANCE DES VIDÉOS AU CLIC =================
+  const videosContainer = document.querySelector('.videos');
+
+  if (videosContainer) {
+    videosContainer.addEventListener('click', (e) => {
+      const clickedBlock = e.target.closest('.video-block');
+      if (clickedBlock) {
+        const isCurrentlyLocalSmall = !videosContainer.classList.contains('is-swapped') && clickedBlock.classList.contains('video-block--local');
+        const isCurrentlyRemoteSmall = videosContainer.classList.contains('is-swapped') && clickedBlock.classList.contains('video-block--remote');
+        
+        if (isCurrentlyLocalSmall || isCurrentlyRemoteSmall) {
+          videosContainer.classList.toggle('is-swapped');
+          console.log("⚠️🤖 Alternance des flux vidéo appliquée");
+        }
+      }
+    });
+  }
+  // ================= RÉDUIRE / AGRANDIR LA FENÊTRE VIDÉO =================
+  const collapseBtn = document.getElementById('toggle-collapse-btn');
+  
+  if (collapseBtn && elVideo) {
+    collapseBtn.addEventListener('click', (e) => {
+      // TRÈS IMPORTANT : Empêche le drag-and-drop de s'activer quand on clique sur le bouton
+      e.stopPropagation(); 
+      
+      // Alterne la classe CSS de réduction
+      elVideo.classList.toggle('is-collapsed');
+      
+      // Met à jour l'icône du bouton dynamiquement
+      if (elVideo.classList.contains('is-collapsed')) {
+        collapseBtn.textContent = "🔲"; // Icône "Agrandir"
+        collapseBtn.title = "Agrandir la vidéo";
+      } else {
+        collapseBtn.textContent = "➖"; // Icône "Réduire"
+        collapseBtn.title = "Réduire la vidéo";
+      }
+      
+      console.log("⚠️🤖 Fenêtre vidéo repliée/dépliée par l'utilisateur");
+    });
+  }
   document.getElementById("send-msg")?.addEventListener("click", sendChat);
 
   document.getElementById("chat-input")?.addEventListener("keydown", (e) => {
@@ -273,52 +427,82 @@ socketService.send({
 });
 // ================= WHITEBOARD =================
 document.getElementById("undoWhiteboardBtn")?.addEventListener("click", () => {
-  if (!AppState.canUseTools) return; 
+  if (!AppState.canUseTools) return;
   WhiteboardService.undo();
 });
 
 document.getElementById("clearWhiteboardBtn")?.addEventListener("click", () => {
-  if (!AppState.canUseTools) return; 
-  WhiteboardService.clearCanvas(); // ✅
+  if (!AppState.canUseTools) return;
+  WhiteboardService.clearCanvas();
 });
 
 document.getElementById("downloadWhiteboardBtn")?.addEventListener("click", () => {
-  if (!AppState.canUseTools) return; 
+  if (!AppState.canUseTools) return;
   WhiteboardService.download?.();
 });
-// ✅ setTool sans ?. + helper setWbTool pour la classe active
+
 document.getElementById("penToolBtn")?.addEventListener("click", () => {
-  if (!AppState.canUseTools) return; 
+  if (!AppState.canUseTools) return;
   setWbTool("penToolBtn", () => WhiteboardService.setTool?.("pen"));
 });
 
 document.getElementById("eraserToolBtn")?.addEventListener("click", () => {
-  if (!AppState.canUseTools) return; 
+  if (!AppState.canUseTools) return;
   setWbTool("eraserToolBtn", () => WhiteboardService.setTool?.("eraser"));
 });
+
 document.getElementById("pointToolBtn")?.addEventListener("click", () => {
+  if (!AppState.canUseTools) return;
   setWbTool("pointToolBtn", () => WhiteboardService.setTool("point"));
 });
+
 document.getElementById("lineToolBtn")?.addEventListener("click", () => {
-  if (!AppState.canUseTools) return; 
+  if (!AppState.canUseTools) return;
   setWbTool("lineToolBtn", () => WhiteboardService.setTool?.("line"));
 });
 
 document.getElementById("rectToolBtn")?.addEventListener("click", () => {
-  if (!AppState.canUseTools) return; 
+  if (!AppState.canUseTools) return;
   setWbTool("rectToolBtn", () => WhiteboardService.setTool?.("rect"));
 });
+
 document.getElementById("circleToolBtn")?.addEventListener("click", () => {
+  if (!AppState.canUseTools) return;
   setWbTool("circleToolBtn", () => WhiteboardService.setTool("circle"));
 });
+
 document.getElementById("textToolBtn")?.addEventListener("click", () => {
-  if (!AppState.canUseTools) return; 
+  if (!AppState.canUseTools) return;
   setWbTool("textToolBtn", () => WhiteboardService.setTool?.("text"));
 });
-
-document.getElementById("wb-fullscreen-btn")?.addEventListener("click", toggleWhiteboardFullscreen);
-
-} 
+  // ✅ wb-fullscreen-btn — utilise l'API Fullscreen native
+document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
+  whiteboardWrapper = whiteboardWrapper || document.getElementById("whiteboard-wrapper");
+  if (!document.fullscreenElement) {
+    whiteboardWrapper.requestFullscreen()
+      .then(() => console.log("✅ requestFullscreen OK"))
+      .catch(e => console.error("❌ requestFullscreen failed:", e));
+  } else {
+    document.exitFullscreen();
+  }
+});
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement === whiteboardWrapper) {
+    if (videoMiniature) videoMiniature.style.display = "block";
+    syncMiniatureStream();
+    const btn = document.getElementById("wb-fullscreen-btn");
+    if (btn) btn.textContent = "❌ Quitter";
+  } else {
+    if (videoMiniature) videoMiniature.style.display = "none";
+    if (remoteVideoTrack) {
+      const videoMini = document.getElementById("remote-video-mini");
+      if (videoMini) remoteVideoTrack.detach(videoMini);
+    }
+    const btn = document.getElementById("wb-fullscreen-btn");
+    if (btn) btn.textContent = "⛶";
+  }
+});
+} // ← fermeture de bindUI()
 function updateWsStatus(status, attempt = 0) {
   const badge = document.getElementById("ws-status-badge");
   if (!badge) return;
@@ -507,16 +691,6 @@ function setWbTool(activeId, callback) {
   document.getElementById(activeId)?.classList.add("active");
   callback();
 }
-
-function toggleWhiteboardFullscreen() {
-  const wrapper = document.getElementById("whiteboard-wrapper");
-  if (!wrapper) return;
-
-  wrapper.classList.toggle("whiteboard-fullscreen");
-  WhiteboardService.resizeCanvas?.();
-}
-
-
 // ======================================================
 // CALL UI
 // ======================================================
@@ -535,10 +709,11 @@ function attachLocalVideo(track) {
   container.innerHTML = ""; // On vide l'ancien flux
   container.appendChild(el);
 }
-
 function attachRemoteTracks(tracks) {
   tracks?.forEach(track => {
     if (track.kind === "video") {
+      remoteVideoTrack = track; // ✅ stocké pour la miniature
+
       const container = document.getElementById("remoteVideoContainer");
       if (!container) return;
 
@@ -546,9 +721,16 @@ function attachRemoteTracks(tracks) {
       el.autoplay = true;
       el.playsInline = true;
       el.id = "remoteVideo";
+      el.style.cssText = "width:100%; height:100%; object-fit:cover;";
 
-      container.innerHTML = ""; 
+      container.innerHTML = "";
       container.appendChild(el);
+
+      // ✅ Si fullscreen déjà actif quand le track arrive
+      if (document.fullscreenElement === whiteboardWrapper) {
+        const videoMini = document.getElementById("remote-video-mini");
+        if (videoMini) _doAttachMiniature(videoMini);
+      }
     }
 
     if (track.kind === "audio") {

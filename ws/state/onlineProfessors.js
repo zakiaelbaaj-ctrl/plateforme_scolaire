@@ -12,12 +12,19 @@ const onlineProfessors = new Map();
  */
 function addProfessor(prof) {
   if (!prof.id) return;
+  console.log("🚨 addProfessor APPELÉ", {
+    id: prof.id,
+    prenom: prof.prenom,
+    role: prof.role
+  });
   // 🔥 IMPORTANT : stocker la WebSocket 
   if (!prof.ws) { 
     console.warn("⚠️ addProfessor appelé sans ws !"); 
   }
   prof.status = "disponible";
   onlineProfessors.set(prof.id, prof);
+  console.log("📊 onlineProfessors.size =", onlineProfessors.size);
+  console.log("📊 IDs =", [...onlineProfessors.keys()]);
   console.log(`✅ Professeur connecté : ${prof.prenom} ${prof.nom} (${prof.id})`);
 }
 
@@ -77,6 +84,10 @@ function endSession(profId) {
  * Retourne la liste des professeurs en ligne (sans WebSocket)
  */
 export function getOnlineProfessors() {
+  onsole.log("🔍 getOnlineProfessors()");
+  console.log("🔍 onlineProfessors.size =", onlineProfessors.size);
+  console.log("🔍 IDs =", [...onlineProfessors.keys()]);
+
   const profs = [];
   const now = new Date();
 

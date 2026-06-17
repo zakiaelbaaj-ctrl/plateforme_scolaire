@@ -16,7 +16,7 @@ class SocketHandlerProf {
     WSLogger.debug("HANDLER PROF RECEIVE:", data.type);
 
     switch (data.type) {
-      case "TRANSPORT_OPEN": 
+    case "TRANSPORT_OPEN": 
         this.onTransportOpen(); 
         break;
      case "document":
@@ -78,12 +78,9 @@ case "chatMessage":
 
       case "tableauStroke":
       case "tableauSync":
+        case "tableauClear":
         WhiteboardService.handleEvent(data);
         break;
-
-     case "tableauClear":
-  WhiteboardService.handleEvent(data);
-  break;
   case "screenShareStarted":
   // L'overlay est géré par Twilio directement via attachTrack
   console.log("📺 Partage d'écran démarré par", data.userName);
@@ -94,9 +91,12 @@ case "screenShareStopped": {
     ScreenShareOverlay.hide();
   });
   const btn = document.getElementById("screen-share-btn");
-  if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
-  break;
-}
+        if (btn) { 
+          btn.classList.remove("active"); // 🛑 Éteint proprement le halo bleu lumineux
+          btn.title = "Partager l'écran"; 
+        }
+        break;
+      }
 
       case "userJoined":
       case "userLeft":
@@ -129,10 +129,22 @@ case "screenShareStopped": {
        if (el) el.textContent = `⚠️ ${data.message}`;
       }
        break;
+     // 🟢 Ajout du succès de démarrage du partage d'écran
+       case 'screenShareStartSuccess':
+       console.log("🖥️ [WS] Le serveur a validé le début du partage d'écran.");
+        // Optionnel : tu peux forcer un état ici si nécessaire
+        break;
+
+      // 🟢 Ajout du succès d'arrêt du partage d'écran
+        case 'screenShareStopSuccess':
+        console.log("🖥️ [WS] Le serveur a validé l'arrêt du partage d'écran.");
+        break;
+
+       // Ton cas par défaut qui générait le warning :
         default:
         WSLogger.warn("Type WS non géré (prof) :", data.type);
         }
-        }
+         }
       onTransportOpen() {
       AppState.setWsConnected(true);
        if (AppState.currentUser?.id) {
