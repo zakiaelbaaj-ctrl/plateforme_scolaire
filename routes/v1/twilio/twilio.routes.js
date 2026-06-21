@@ -3,11 +3,6 @@ import Twilio from "twilio";
 import auth from "../../../middlewares/auth.middleware.js";
 
 const router = express.Router();
-
-console.log("TWILIO_ACCOUNT_SID:", process.env.TWILIO_ACCOUNT_SID);
-console.log("TWILIO_API_KEY:", process.env.TWILIO_API_KEY);
-console.log("TWILIO_API_SECRET:", process.env.TWILIO_API_SECRET ? "OK" : "undefined");
-
 const {
   TWILIO_ACCOUNT_SID,
   TWILIO_API_KEY,
