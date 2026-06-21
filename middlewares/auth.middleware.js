@@ -12,8 +12,6 @@ export default function auth(req, res, next) {
   const token = header.split(" ")[1];
 
   try {
-    console.log("SECRET UTILISÉ :", process.env.JWT_SECRET); // <--- AJOUTE ÇA
-    console.log("TOKEN REÇU :", token);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
