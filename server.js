@@ -15,6 +15,16 @@ import { verifyMailer } from "./services/mail.service.js";
 // Initialisation DB
 // =======================================================
 await initDb({ syncModels: false })
+// TEMPORAIRE - supprimer après usage !
+app.get("/admin/migrate-langue", async (req, res) => {
+  try {
+    const { sequelize } = await import("./config/index.js");
+    await sequelize.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS langue_matiere VARCHAR(50)");
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
 
 // =======================================================
 // PostgreSQL Pool
