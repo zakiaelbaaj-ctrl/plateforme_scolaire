@@ -1,5 +1,5 @@
 // ======================================================
-// INIT WHITEBOARD Ã¢â¬â ORCHESTRATION
+// INIT WHITEBOARD - ORCHESTRATION
 // ======================================================
 
 import { WhiteboardCore } from "/js/modules/whiteboard/whiteboard.core.js";
@@ -18,24 +18,22 @@ export function initWhiteboard(canvasId, roomId) {
     return;
   }
 
-  // 1Ã¯Â¸ÂÃ¢ÆÂ£ Initialisation du moteur (core)
+  // 1️⃣⚙️ Initialisation du moteur (core)
   WhiteboardCore.init(canvasId);
-
-  // 2Ã¯Â¸ÂÃ¢ÆÂ£ Initialisation des handlers (souris + tactile)
+   // 2️⃣⚙️ Initialisation des handlers (souris + tactile)
   initHandlers(canvas);
-
-  // 3Ã¯Â¸ÂÃ¢ÆÂ£ Initialisation du socket (temps rÃÂ©el)
+   // 3️⃣⚙️ Initialisation du socket (temps réel)
   if (roomId) {
-    WhiteboardSocket.enableSync(roomId);   // Ã¢â Â CORRECTION ICI
-  } else {
-    console.warn("Ã¢Å¡Â Ã¯Â¸Â initWhiteboard: aucun roomId fourni Ã¢â â pas de synchronisation");
-  }
+   WhiteboardSocket.enableSync(roomId);   // 🔧 CORRECTION ICI
+} else {
+  console.warn("⚠️ initWhiteboard: aucun roomId fourni → pas de synchronisation");
+}
 
-  // 4Ã¯Â¸ÂÃ¢ÆÂ£ Outils par dÃÂ©faut
-  setTool("pen");
-  setColor("#000000");
-  setSize(3);
+// 4️⃣⚙️ Outils par défaut
+setTool("pen");
+setColor("#000000");
+setSize(3);
 
-  console.log("Ã°Å¸Å½â° Whiteboard initialisÃÂ© avec succÃÂ¨s !");
+console.log("🖼️ Whiteboard initialisé avec succès !");
 }
 

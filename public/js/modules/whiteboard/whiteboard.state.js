@@ -1,5 +1,5 @@
 // ======================================================
-// WHITEBOARD STATE Ã¢â¬â Ãâ°TAT GLOBAL DU MODULE
+//  // WHITEBOARD STATE — ÉTAT GLOBAL DU MODULE
 // ======================================================
 
 export const WhiteboardState = {
@@ -28,11 +28,11 @@ textValue: "",
 isPreview: false,
 
 
-  // Snapshot utilisÃÂ© pour line/rect (handlers)
+  // Snapshot utilisé pour line/rect (handlers)
   snapshot: null,
 
   // ======================================================
-  // ZOOM / PAN Ã¢â¬â GÃâ°RÃâ°S PAR WHITEBOARD CORE
+  // ZOOM / PAN — GÉRÉS PAR WHITEBOARD CORE
   // ======================================================
 
   view: {
@@ -43,7 +43,7 @@ isPreview: false,
     offsetY: 0
   },
 
-  // Pan (dÃÂ©placement)
+  // Pan (déplacement)
   isPanning: false,
   panStart: { x: 0, y: 0 },
 

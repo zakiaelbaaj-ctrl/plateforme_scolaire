@@ -153,14 +153,24 @@ export async function loginController(req, res) {
       return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
     }
       // 🔒 Vérification Stripe : élève doit avoir une carte
-    console.log(">>> LOGIN user:", user.id, user.role, user.stripe_customer_id);
-      let has_payment_method = false;
-    if (user.role === "eleve" || user.role === "etudiant") {
-      if (user.stripe_customer_id) {
-        const customer = await stripe.customers.retrieve(user.stripe_customer_id);
+console.log(">>> LOGIN user:", user.id, user.role, user.stripe_customer_id);
+let has_payment_method = false;
+
+if (user.role === "eleve" || user.role === "etudiant") {
+  if (user.stripe_customer_id) {
+    try {
+      const customer = await stripe.customers.retrieve(user.stripe_customer_id);
+      // Vérifie que le customer n'est pas supprimé côté Stripe
+      if (!customer.deleted) {
         has_payment_method = !!customer.invoice_settings?.default_payment_method;
       }
+    } catch (stripeErr) {
+      // Customer introuvable ou erreur Stripe → on continue sans bloquer le login
+      console.warn("⚠️ Stripe customer introuvable pour user", user.id, stripeErr.message);
+      has_payment_method = false;
     }
+  }
+}
     // 5. Génération des tokens
     // On utilise user.id et user.email directement depuis l'instance Sequelize
     const tokens = await tokenService.generateTokens({ 
