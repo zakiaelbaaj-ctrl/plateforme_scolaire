@@ -84,7 +84,7 @@ function endSession(profId) {
  * Retourne la liste des professeurs en ligne (sans WebSocket)
  */
 export function getOnlineProfessors() {
-  onsole.log("🔍 getOnlineProfessors()");
+  console.log("🔍 getOnlineProfessors()");
   console.log("🔍 onlineProfessors.size =", onlineProfessors.size);
   console.log("🔍 IDs =", [...onlineProfessors.keys()]);
 
