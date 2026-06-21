@@ -27,3 +27,8 @@ Archives_plateforme/
 invoices/*.pdf
  
  
+public/venv/
+invoices/
+*.backup
+*.bak
+connectedProfs
