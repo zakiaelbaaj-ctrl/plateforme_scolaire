@@ -15,20 +15,6 @@ import { verifyMailer } from "./services/mail.service.js";
 // Initialisation DB
 // =======================================================
 await initDb({ syncModels: false })
-// TEMPORAIRE - supprimer après usage !
-app.get("/admin/check-user/:username", async (req, res) => {
-  try {
-    const { sequelize } = await import("./config/index.js");
-    const [results] = await sequelize.query(
-      `SELECT id, username, prenom, nom, email, role, is_active 
-       FROM users WHERE LOWER(username) = LOWER(:username)`,
-      { replacements: { username: req.params.username } }
-    );
-    res.json(results);
-  } catch (err) {
-    res.json({ error: err.message });
-  }
-});
 // =======================================================
 // PostgreSQL Pool
 // =======================================================
