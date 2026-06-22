@@ -478,6 +478,16 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
   // ✅ wb-fullscreen-btn — utilise l'API Fullscreen native
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   whiteboardWrapper = whiteboardWrapper || document.getElementById("whiteboard-wrapper");
+  
+  if (!document.fullscreenEnabled) {
+    // Fallback CSS pour tablette/iOS
+    const btn = document.getElementById("wb-fullscreen-btn");
+    const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
+    if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
+    WhiteboardService._canvas?.resizeCanvas?.();
+    return;
+  }
+
   if (!document.fullscreenElement) {
     whiteboardWrapper.requestFullscreen()
       .then(() => console.log("✅ requestFullscreen OK"))
@@ -502,6 +512,11 @@ document.addEventListener("fullscreenchange", () => {
     if (btn) btn.textContent = "⛶";
   }
 });
+// Cacher le partage d'écran si non supporté (tablette/mobile)
+const screenShareBtn = document.getElementById("screen-share-btn");
+if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
+  screenShareBtn.style.display = "none";
+}
 } // ← fermeture de bindUI()
 function updateWsStatus(status, attempt = 0) {
   const badge = document.getElementById("ws-status-badge");

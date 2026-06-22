@@ -90,6 +90,11 @@ if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboa
 
   bindUI();
   subscribeToDomains();
+  // Cacher le partage d'écran si non supporté (tablette/mobile)
+const screenShareBtn = document.getElementById("screen-share-btn");
+if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
+  screenShareBtn.style.display = "none";
+}
 
   // 🔴 Broadcast initial des profs connectés vers les élèves
   updateOnlineProfessors();
@@ -269,10 +274,17 @@ const videoMini       = document.getElementById('remote-video-mini');
 
 // Toggle plein écran
 fullscreenBtn?.addEventListener('click', () => {
-  if (!document.fullscreenElement) {
-    whiteboardWrapper.requestFullscreen();
+  const isMobile = !document.fullscreenEnabled;
+
+  if (isMobile) {
+    // Fallback CSS pour tablette/iOS
+    toggleWhiteboardFullscreen();
   } else {
-    document.exitFullscreen();
+    if (!document.fullscreenElement) {
+      whiteboardWrapper.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
   }
 });
 

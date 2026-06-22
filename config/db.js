@@ -11,19 +11,24 @@ if (!process.env.DATABASE_URL) {
 
 // ✅ Détection de l'environnement
 const isProduction = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL.includes('render.com');
-
+// ✅ Config SSL : actif seulement en production
+const sslConfig = isProduction ? { rejectUnauthorized: false } : false;
 // ---- PostgreSQL Pool (pour requêtes brutes) ----
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // ✅ SSL Dynamique pour le Pool
-  ssl: isProduction ? { rejectUnauthorized: false } : false, 
+ 
+  ssl: sslConfig,  // ← false en local, actif sur Render
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 20000,
 });
 
-console.log("📌 Database target:", new URL(process.env.DATABASE_URL).hostname);
-
+// ---- LOG SAFE ----
+try {
+  console.log("📌 Database target:", new URL(process.env.DATABASE_URL).hostname);
+} catch (e) {
+  console.log("📌 Database loaded");
+}
 // Test rapide de la connexion
 pool.connect()
   .then(client => {
@@ -41,10 +46,7 @@ export const sequelize = new Sequelize(process.env.DATABASE_URL, {
   logging: false, // Mis à false pour éviter de polluer ta console
   // ✅ SSL Dynamique pour Sequelize
   dialectOptions: {
-    ssl: isProduction ? {
-      require: true,
-      rejectUnauthorized: false,
-    } : false,
+    ssl: isProduction ? { require: true, rejectUnauthorized: false } : false  // ← même logique
   },
   pool: {
     max: 5,
