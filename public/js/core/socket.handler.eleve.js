@@ -86,9 +86,8 @@ case "twilioRemoteTracks":
       case "session:stop":
       case "endSession":
         console.log("📥 [Élève] Session terminée par le prof");
-       AppState.stopTimer();
-       AppState.endSession();
        CallService.handleEvent(data);
+       SessionService._handleWs(data);
        break;
        
        case "startSession":

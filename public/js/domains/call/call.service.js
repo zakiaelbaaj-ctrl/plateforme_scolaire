@@ -2,7 +2,8 @@ import { AppState } from "../../core/state.js";
 import { socketService } from "../../core/socket.service.js";
 import { VideoService } from "./video.service.js";
 import { CallStateMachine } from "./call.state.machine.js";
-
+import { SessionService } from "../../services/session.service.js";
+import { ScreenShareService } from "./screen.share.service.js";
 export const CallService = {
   _callbacks: {},
 
@@ -81,42 +82,32 @@ _on(event, cb) {
   // 🛑 Guard anti-double-appel
   _terminating: false,
 
-  terminateCall() {
-    console.log("🔴 terminateCall ENTER", {
+ async terminateCall() {
+  // ✅ guard EN PREMIER — avant tout log
+  if (this._terminating || !AppState.currentRoomId) return;
+
+  console.log("🔴 terminateCall ENTER", {
     currentRoomId: AppState.currentRoomId,
     terminating: this._terminating
   });
-    // 🌟 ÉTAPE 1 : Si un nettoyage est déjà en cours, ou si la session est DÉJÀ nettoyée, on sort immédiatement
-    if (this._terminating || !AppState.currentRoomId) {
-      return; 
-    }
-    this._terminating = true;
 
-    console.log("🛑 terminateCall()");
+  this._terminating = true;
+  console.log("🛑 terminateCall()");
 
-    // 🌟 L'ASTUCE : On sauvegarde l'ID avant que le système ne l'efface
-    const savedRoomId = AppState.currentRoomId;
+  const savedRoomId = AppState.currentRoomId;
 
-    // 1. Déconnexion Twilio (sans déclencher setState via l'event "disconnected")
-    VideoService.disconnectSilent(); // nouveau : ne setState pas
-
-    // 2. Machine d'état → ended (une seule fois)
-    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
-
-    // 3. Nettoyage AppState (endSession efface currentRoomId)
-    AppState.stopTimer();
-    AppState.endSession(); 
-
-    // 4. Notif UI
-    AppState._notify("ui:closeCallOverlay");
-
-    this._terminating = false;
-  },
-  handleSessionEnded() {
-    this.terminateCall();
-  },
-
-  disconnectTwilio() {
+  try {
     VideoService.disconnectSilent();
+    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+    SessionService.handleCallTerminated();
+    AppState._notify("ui:closeCallOverlay");
+  } finally {
+    this._terminating = false;
   }
+},
+// ❌ handleSessionEnded() supprimé — plus appelé nulle part
+
+disconnectTwilio() {
+  VideoService.disconnectSilent();
+}
 };

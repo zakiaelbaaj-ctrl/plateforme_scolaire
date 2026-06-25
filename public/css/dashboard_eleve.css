@@ -300,8 +300,38 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   display: flex;
   gap: var(--space-sm);
   align-items: center;
+  flex: 1;
+  overflow-x: auto;        /* défilement horizontal */
+  scrollbar-width: none;   /* cache la scrollbar */
+}
+.prof-list::-webkit-scrollbar { display: none; }
+.prof-scroll-arrows {
+  display: flex;
+  flex-direction: column;  /* empilées verticalement */
+  gap: 2px;
+  flex-shrink: 0;
 }
 
+.prof-scroll-arrow {
+  background: var(--ink-muted);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  width: 22px;
+  height: 18px;           /* petites pour tenir dans la barre */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.prof-scroll-arrow:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
 .prof-list .empty {
   font-size: 0.78rem;
   color: var(--text-muted);
@@ -410,16 +440,16 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
 .card__title {
   flex: 1;
 }
-
 /* ======================================================
    9. VIDEO (MODE FLOTTANT STYLE WHATSAPP)
    ====================================================== */
 
-/* Carte vidéo flottante */
 .card--video {
   position: fixed;
   bottom: var(--space-lg);
-  right: var(--space-lg);
+  left: var(--space-lg);
+  right: auto;
+  top: auto;
   width: 340px;
   z-index: 999;
   background: rgba(21, 24, 32, 0.85);
@@ -427,70 +457,30 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-float);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s;
-
   resize: both;
-  overflow: visible; /* bouton visible */
+  overflow: hidden;
   min-width: 260px;
-  min-height: 260px; /* plus haut pour inclure le bouton */
+  min-height: 180px;
 }
 
-/* Conteneur vidéo */
-.videos {
-  position: relative;
-  width: 100%;
-  min-height: 220px;
-  background: #000;
-  padding-bottom: var(--space-lg); /* espace réservé pour le bouton */
-  overflow: visible;
-}
-/* Bouton Terminer style télécommande */
-/* Bouton Terminer style télécommande */
-#end-session-btn {
-  position: fixed;          /* indépendant de la carte vidéo */
-  bottom: var(--space-lg);
-  left: var(--space-lg);    /* ⬅️ placé à gauche */
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #e53935;      /* rouge vif */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 1000;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+.card--video:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow), var(--shadow-float);
 }
 
-/* Symbole carré blanc au centre */
-#end-session-btn::before {
-  content: "";
-  display: block;
-  width: 18px;
-  height: 18px;
-  background: #fff;
-  border-radius: 2px;
-}
-
-/* Responsive mobile */
-@media (max-width: 480px) {
-  #end-session-btn {
-    width: 42px;
-    height: 42px;
-    bottom: var(--space-sm);
-    left: var(--space-sm);  /* ⬅️ reste à gauche sur mobile */
-  }
-
-  #end-session-btn::before {
-    width: 14px;
-    height: 14px;
-  }
-}
-
-/* En-tête réduit pour maximiser l'espace vidéo */
 .card--video .card__header {
   padding: var(--space-sm) var(--space-md);
   background: rgba(13, 15, 20, 0.5);
-  cursor: move; /* Indique graphiquement que la fenêtre est déplaçable */
+  cursor: move;
+}
+
+.videos {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  background: #000;
+  padding: 0;
+  overflow: hidden;
 }
 
 .session-timer {
@@ -503,16 +493,6 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-}
-
-/* Grille des vidéos adaptée au mode flottant incrusté (Style WhatsApp) */
-.videos {
-  position: relative;
-  width: 100%;
-  height: 220px; /* Hauteur fixe pour stabiliser le conteneur */
-  background: #000;
-  padding: 0;
-  overflow: visible;
 }
 
 /* 1. FLUX DISTANT (Le Professeur) - Remplit tout l'arrière-plan */
@@ -957,18 +937,6 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
 
   .whiteboard-tools { gap: 4px; }
   .wb-size-slider { width: 56px; }
-}
-@media (max-width: 560px) {
-  .card--video {
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    left: 0;
-    width: 100%; /* S'accroche en bas sur mobile style appel WhatsApp */
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
-    resize: none; /* Désactivé sur mobile */
-  }
 }
 
 /* ======================================================

@@ -21,6 +21,7 @@ import { handleAllStripeReturns, holdFundsForSession }
 from "/js/services/stripe.service.js";
 import { initStripeOnboarding } from "/js/services/stripe.service.js";
 import { openSetupSession } from "/js/services/stripe.service.js";
+import { initRatingModal, openRatingModal } from "/js/ui/components/rating.modal.js";
 // ✅ Variables module pour la miniature
 let remoteVideoTrack = null;
 let whiteboardWrapper = null;
@@ -31,6 +32,7 @@ let videoMiniature = null;
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("⚠️🤖 Initialisation du Dashboard...");
 
+  await initRatingModal();
   // 1. Gérer les messages de retour Stripe (Succés/Annul)
   handleAllStripeReturns();
 
@@ -202,7 +204,10 @@ ScreenShareService.onStop(() => {
     case 'calling':  updateCallStatus('Appel en cours...'); break;
     case 'ringing':  updateCallStatus('Appel entrant...'); break;
     case 'inCall':   updateCallStatus('En communication'); break;
-    case 'ended':    cleanupSession('Session terminée'); break; // ⚠️ explicite
+    case 'ended':    cleanupSession('Session terminée');
+    const prof = AppState.currentSession?.prof;
+  if (prof) openRatingModal(`${prof.prenom} ${prof.nom}`, prof.id);
+   break; // ⚠️ explicite
     case null:       cleanupSession('Session terminée'); break; // ⚠️ explicite
     // default vide  ignore les états inconnus
   }
@@ -238,69 +243,60 @@ window.addEventListener("remoteVideoTrackReady", (e) => {
 // ======================================================
 
 function bindUI() {
-// ================= VIDEO MAGNETIQUE STYLE WHATSAPP =================
-whiteboardWrapper = document.getElementById("whiteboard-wrapper");
-videoMiniature    = document.querySelector("#whiteboard-wrapper .video-miniature"); 
-const elVideo = document.querySelector('.card--video');
+  whiteboardWrapper = document.getElementById("whiteboard-wrapper");
+  videoMiniature    = document.querySelector("#whiteboard-wrapper .video-miniature"); 
+  const elVideo     = document.querySelector('.card--video');
   const videoHeader = elVideo?.querySelector('.card__header');
 
   if (videoHeader && elVideo) {
-    // On ajoute une transition CSS pour un effet d'aimant fluide lors du relâchement
     elVideo.style.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s";
 
-    videoHeader.onmousedown = function(e) {
-      // On coupe la transition pendant qu'on glisse pour éviter les saccades
-      elVideo.style.transition = "none";
+   videoHeader.onmousedown = function(e) {
+  elVideo.style.transition = "none";
 
-      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-      pos3 = e.clientX;
-      pos4 = e.clientY;
-      
-      document.onmouseup = () => { 
-        document.onmouseup = null; 
-        document.onmousemove = null; 
+  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  let hasDragged = false;   // ← NOUVEAU
+  pos3 = e.clientX;
+  pos4 = e.clientY;
 
-        // --- LOGIQUE D'AIMANTATION (SNAP TO CORNERS) ---
-        elVideo.style.transition = "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"; // On remet l'effet fluide
-        
-        const rect = elVideo.getBoundingClientRect();
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        const margin = 24; // L'espace (var(--space-lg)) entre la fenêtre et le bord de l'écran
+  document.onmousemove = (e) => {
+    hasDragged = true;       // ← NOUVEAU
+    pos1 = pos3 - e.clientX;
+    pos2 = pos4 - e.clientY;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
 
-        // Calculer si on est plus proche de la gauche ou de la droite
-        if (rect.left + rect.width / 2 < windowWidth / 2) {
-          elVideo.style.left = `${margin}px`;
-          elVideo.style.right = "auto";
-        } else {
-          elVideo.style.left = "auto";
-          elVideo.style.right = `${margin}px`;
-        }
+    elVideo.style.top    = (elVideo.offsetTop  - pos2) + "px";
+    elVideo.style.left   = (elVideo.offsetLeft - pos1) + "px";
+    elVideo.style.bottom = "auto";
+    elVideo.style.right  = "auto";
+  };
 
-        // Calculer si on est plus proche du haut ou du bas
-        if (rect.top + rect.height / 2 < windowHeight / 2) {
-          elVideo.style.top = `${margin}px`;
-          elVideo.style.bottom = "auto";
-        } else {
-          elVideo.style.top = "auto";
-          elVideo.style.bottom = `${margin}px`;
-        }
-      };
-      
-      document.onmousemove = (e) => {
-        pos1 = pos3 - e.clientX; 
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX; 
-        pos4 = e.clientY;
-        
-        elVideo.style.top = (elVideo.offsetTop - pos2) + "px";
-        elVideo.style.left = (elVideo.offsetLeft - pos1) + "px";
-        elVideo.style.bottom = "auto"; 
-        elVideo.style.right = "auto";
-      };
-    };
-  }
+  document.onmouseup = () => {
+    document.onmouseup   = null;
+    document.onmousemove = null;
 
+    if (!hasDragged) return;   // ← NOUVEAU : pas de snap si pas bougé
+
+    elVideo.style.transition = "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)";
+
+    const rect         = elVideo.getBoundingClientRect();
+    const windowHeight = window.innerHeight;
+    const margin       = 24;
+
+    elVideo.style.left  = `${margin}px`;
+    elVideo.style.right = "auto";
+
+    if (rect.top + rect.height / 2 < windowHeight / 2) {
+      elVideo.style.top    = `${margin}px`;
+      elVideo.style.bottom = "auto";
+    } else {
+      elVideo.style.top    = "auto";
+      elVideo.style.bottom = `${margin}px`;
+    }
+  };
+};
+}
   // ================= ALTERNANCE DES VIDÉOS AU CLIC =================
   const videosContainer = document.querySelector('.videos');
 
@@ -355,13 +351,30 @@ const elVideo = document.querySelector('.card--video');
     window.location.href = "/pages/eleve/login.html";
   });
 
-  document.getElementById("end-session-btn")?.addEventListener("click", async () => {
+document.getElementById("end-session-btn")?.addEventListener("click", async () => {
   const btn = document.getElementById("end-session-btn");
   if (!btn || btn.disabled) return;
+
   btn.disabled = true;
+
   console.log("⚠️🤖 Fin de session ⚠️🤖 room:", AppState.currentRoomId);
+
   try {
-    SessionService.stopVideoCall(); // ✅ stopVideoCall = disconnectTwilio + endSession + terminateCall
+    await SessionService.stopVideoCall();
+
+    // 🔥 récupération du professeur actuel
+    const prof =
+  AppState.currentSession?.prof ||
+  AppState.professors?.find(p => p.id === AppState.currentProfId);
+    if (prof) {
+      openRatingModal(
+        `${prof.prenom} ${prof.nom}`,
+        prof.id
+      );
+    } else {
+      console.warn("⚠️ Professeur introuvable pour la notation");
+    }
+
   } finally {
     btn.disabled = false;
   }
@@ -517,6 +530,17 @@ const screenShareBtn = document.getElementById("screen-share-btn");
 if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
   screenShareBtn.style.display = "none";
 }
+// ======================================================
+// BOUTONS SCROLL LISTE PROFESSEURS
+// ======================================================
+
+document.getElementById("prof-scroll-up")?.addEventListener("click", () => {
+  document.getElementById("prof-list")?.scrollBy({ left: -150, behavior: "smooth" });
+});
+
+document.getElementById("prof-scroll-down")?.addEventListener("click", () => {
+  document.getElementById("prof-list")?.scrollBy({ left: 150, behavior: "smooth" });
+});
 } // ← fermeture de bindUI()
 function updateWsStatus(status, attempt = 0) {
   const badge = document.getElementById("ws-status-badge");
@@ -605,9 +629,17 @@ function renderProfList(profs = []) {
       btn.style.opacity = "1";
       btn.style.cursor = "pointer";
       btn.onclick = () => {
-        SessionService.callProfessor(prof.id);
+      AppState.currentProfId = prof.id;
+
+       AppState.currentSession = {
+       prof,
+       startedAt: Date.now(),
+       roomId: AppState.currentRoomId
+       };
+
+       SessionService.callProfessor(prof.id);
       };
-    } else {
+     } else {
       // --- État : INDISPONIBLE (ou carte manquante) ---
       let statusLabel = "Indisponible";
       
@@ -634,10 +666,39 @@ function renderProfList(profs = []) {
     li.appendChild(btn);
     list.appendChild(li);
   });
+
 }
-
 window.renderProfList = renderProfList;
+// ======================================================
+// LISTE PROFESSEURS BARRE DU HAUT
+// ======================================================
 
+function renderProfScrollList(profs = []) {
+
+  const list = document.getElementById("prof-scroll-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  profs.forEach(prof => {
+
+    const item = document.createElement("div");
+    item.className = "prof-scroll-item";
+
+    item.innerHTML = `
+      <span class="dot"></span>
+      <span>${prof.prenom} ${prof.nom}</span>
+      <button>Appeler</button>
+    `;
+
+    item.querySelector("button").onclick = () => {
+      SessionService.callProfessor(prof.id);
+    };
+
+    list.appendChild(item);
+
+  });
+}
 // ======================================================
 // DOCUMENT
 // ======================================================
@@ -769,7 +830,7 @@ function cleanupSession(message) {
   cleanupSession._running = true;
 
   // ✅ 1. Stopper les tracks AVANT de vider le DOM
-  VideoService.disconnectSilent();
+ // VideoService.disconnectSilent();
 
   // ✅ 2. Vider explicitement les éléments vidéo locaux
   ["localVideo", "localVideoContainer"].forEach(id => {
@@ -805,7 +866,6 @@ function cleanupSession(message) {
     }
   });
   // ✅ Arrêter le partage d'écran si actif
-ScreenShareService.stop(VideoService.room).catch(() => {});
 ScreenShareOverlay.hide();
 const ssBtn = document.getElementById("screen-share-btn");
 if (ssBtn) { ssBtn.textContent = "🖥️"; }
@@ -816,10 +876,8 @@ if (ssBtn) { ssBtn.textContent = "🖥️"; }
     a.remove();
   });
 
-  AppState.setCallState(null);
-  AppState.canUseTools = true;
-  AppState.sessionInProgress = false;
-  SessionService.stopTimer?.();
+AppState.canUseTools = false;       // ✅ désactive les outils — UI uniquement
+updateToolButtons(); 
   updateCallStatus(message);
 
   const timerEl = document.getElementById("call-time");

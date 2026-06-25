@@ -1,0 +1,105 @@
+/* ======================================================
+   RATING MODAL — Notation de session
+   ====================================================== */
+
+.rating-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rating-modal__box {
+  background: var(--ink-soft);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  box-shadow: var(--shadow-float);
+  animation: fade-up 0.25s ease both;
+}
+
+.rating-modal__box h3 {
+  color: var(--text-primary);
+  font-size: 1rem;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.rating-prof-name {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+/* ======================================================
+   ÉTOILES
+   ====================================================== */
+
+.rating-stars {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+.rating-stars span {
+  color: var(--border-light);
+  transition: color 0.15s, transform 0.1s;
+  user-select: none;
+}
+
+.rating-stars span:hover {
+  transform: scale(1.15);
+}
+
+.rating-stars span.active {
+  color: #f5c518;
+}
+
+/* ======================================================
+   COMMENTAIRE
+   ====================================================== */
+
+.rating-comment {
+  background: var(--ink-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  resize: none;
+  height: 80px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+
+.rating-comment:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.rating-comment::placeholder {
+  color: var(--text-muted);
+}
+
+/* ======================================================
+   ACTIONS
+   ====================================================== */
+
+.rating-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}

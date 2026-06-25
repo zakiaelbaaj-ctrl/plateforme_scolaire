@@ -135,16 +135,10 @@ if (this.sessionInProgress && this.currentRoomId !== roomId) {
   },
 
   endSession() {
-  // ✅ Reset complet de la session
   this.sessionInProgress = false;
   this.currentRoomId = null;
   this.selectedStudentId = null;
-
- // ✅ Remet la machine d'état à idle
-CallStateMachine.reset();
-
-// ✅ Notifie les listeners
-this._notify("session:end");
+  this._notify("session:end"); // ✅ données pures uniquement
 },
   // ==================================================
   // TIMER

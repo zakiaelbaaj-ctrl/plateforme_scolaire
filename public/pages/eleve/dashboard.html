@@ -11,7 +11,7 @@
 
   <link rel="stylesheet" href="../../css/base.css" />
   <link rel="stylesheet" href="../../css/dashboard_eleve.css" />
-
+  <link rel="stylesheet" href="../../css/components/rating.modal.css" />
   <script src="https://sdk.twilio.com/js/video/releases/2.30.0/twilio-video.min.js"></script>
 </head>
 
@@ -46,8 +46,11 @@
     <ul id="prof-list" class="prof-list">
       <li class="empty">Aucun professeur connecté</li>
     </ul>
+    <div class="prof-scroll-arrows">
+    <button class="prof-scroll-arrow" id="prof-scroll-up">▲</button>
+  <button class="prof-scroll-arrow" id="prof-scroll-down">▼</button>
   </div>
-
+  </div>
   <!-- ================= LAYOUT ================= -->
   <main class="dashboard-layout">
 
@@ -58,15 +61,24 @@
       <section class="card card--video">
   <div class="card__header" style="cursor: move;">
     <h3 class="card__title">🎥 Vidéo</h3>
-    <div style="display:flex; gap:10px; align-items: center;">
-      
-      <button id="toggle-collapse-btn" class="btn btn--icon btn--sm" title="Réduire / Agrandir" style="background: rgba(255,255,255,0.1); border: none; font-size: 0.8rem; cursor: pointer;">
-        ➖
-      </button>
 
-      <button id="btn-rejoindre-cours" class="btn btn--primary btn--sm">▶ Rejoindre</button>
-      <button id="screen-share-btn" class="btn btn--icon btn--sm" title="Partager l'écran">🖥️</button>
-      <button id="end-session-btn" class="btn btn--danger btn--sm">✕ Terminer</button>
+<div class="video-actions">
+
+  <button id="toggle-collapse-btn" class="btn btn--icon btn--sm">
+    ➖
+  </button>
+
+  <button id="btn-rejoindre" class="btn btn--primary btn--sm">
+    ▶ Rejoindre
+  </button>
+
+  <button id="screen-share-btn" class="btn btn--icon btn--sm">
+    🖥️
+  </button>
+
+  <button id="end-session-btn" class="btn btn--danger btn--sm">
+    ✕
+  </button>
     </div>
   </div>
 
@@ -85,7 +97,7 @@
       </div>
     </div>
   </section>
-
+         
       <!-- WHITEBOARD -->
       <section class="card card--whiteboard">
   <div class="card__header">
@@ -134,7 +146,7 @@
 
     <!-- ================= SIDE PANEL ================= -->
     <aside class="side-panel">
-
+     <div id="user-info"></div>
       <!-- SESSION INFO -->
       <div class="card card--session">
         <div class="card__header">
@@ -171,13 +183,11 @@
         <button id="send-file" class="btn btn--primary full-width">Envoyer le document</button>
         <ul id="doc-list" class="doc-list"></ul>
       </div>
-       <!-- STRIPE payment -->
-<aside class="dashboard__sidebar">
-    <!-- C'est ici que renderCurrentUserInfo injectera tout le HTML (Titre, Icône, Bouton) -->
-    <div id="user-info"></div> 
-</aside>
+
+    </aside>  <!-- ← fermeture side-panel -->
+  </main>     <!-- ← fermeture dashboard-layout -->
+   <!-- Liste défilante profs — en dehors du main, position: fixed -->
   <!-- ================= JS ================= -->
-  
   <script type="module" src="../../js/pages/eleve/dashboard.js"></script>
   <script type="module">
    const stripeBtn = document.getElementById("stripe-onboarding-btn");
@@ -185,11 +195,9 @@
     stripeBtn.addEventListener("click", async () => {
       try {
         const token = localStorage.getItem("token");
-        // Détection de l'URL
         const API_URL = window.location.hostname === "localhost" 
           ? "http://localhost:4000" 
           : "https://plateforme-scolaire-1.onrender.com";
-
         const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
           method: "POST",
           headers: {
@@ -197,7 +205,6 @@
             "Authorization": `Bearer ${token}`
           }
         });
-
         const data = await res.json();
         if (data.stripeLink) {
           window.location.href = data.stripeLink;

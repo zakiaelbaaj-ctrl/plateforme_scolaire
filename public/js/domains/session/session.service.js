@@ -5,10 +5,13 @@
 import { AppState } from "/js/core/state.js";
 import { socketService } from "/js/core/socket.service.js";
 import { ChatService } from "/js/domains/chat/chat.service.js";
+import { ScreenShareService } from "/js/domains/call/screen.share.service.js";
+import { VideoService } from "/js/domains/call/video.service.js";
 import { CallService } from "/js/domains/call/call.service.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
 import { DocumentService } from "/js/domains/document/document.service.js";
 import { updateToolButtons } from "/js/domains/whiteboard/whiteboard.contract.js";
+import { CallStateMachine } from "/js/domains/call/call.state.machine.js";
 export const SessionService = {
 
   // --------------------------------------------------
@@ -74,13 +77,13 @@ export const SessionService = {
       });
       break;
       }
-
+       case "session:stop":
+       case "callEnded":
       case "endSession": {
   AppState.currentRoomId = null;
   AppState.roomReady = false;
   this.stopHeartbeat();
   socketService.markSessionEnded(); // ✅ coupe le flood immédiatement
-  CallService.handleSessionEnded?.();
   break;
 }
       case "chatMessage": {
@@ -117,7 +120,6 @@ export const SessionService = {
 
   case "callAccepted":
   case "callRejected":
-  case "callEnded":
   case "twilioLocalTrack":
   case "twilioRemoteTracks":
   case "twilioDisconnected": {
@@ -188,16 +190,25 @@ requestStudentMatch(matiere) {
   });
 },
 
-stopVideoCall() {
-  socketService.markSessionEnded(); // ✅ coupe send() immédiatement, avant tout le reste
-  this.stopHeartbeat();             // ✅ stoppe le heartbeat interval
-  if (typeof CallService !== 'undefined' && CallService.disconnectTwilio) {
-    CallService.disconnectTwilio();
+// ✅ NOUVEAU — appelé uniquement par CallService.terminateCall()
+handleCallTerminated() {
+  this.stopHeartbeat();
+  this.stopTimer();
+  AppState.endSession();      // currentRoomId → null
+  CallStateMachine.reset();   // ended → idle (ici et nulle part ailleurs)
+},
+
+async stopVideoCall() {
+  console.log("🛑 SessionService stopVideoCall");
+  
+  // ✅ N'appelle stop que si un partage est actif
+  if (ScreenShareService.isSharing()) {
+    await ScreenShareService.stop(VideoService.room).catch(() => {});
   }
+  
   this.endSession();
-  if (typeof CallService !== 'undefined') {
-    CallService.terminateCall();
-  }
+  socketService.markSessionEnded();
+  await CallService.terminateCall();
 },
 
 endSession() {
