@@ -248,41 +248,40 @@ export async function meController(req, res) {
     return res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 }
+// auth.controller.js — remplace l'existant
 export async function forgotPasswordController(req, res) {
   try {
     const { email } = req.body;
 
-    // 1. Validation simple
     if (!email) {
       return res.status(400).json({ success: false, message: "Email requis" });
     }
 
-    // 2. Recherche de l'utilisateur
     const user = await authService.findByEmail(email);
+
+    // ✅ Anti-fingerprinting — même réponse que l'email existe ou non
     if (!user) {
-      return res.status(404).json({ success: false, message: "Email introuvable" });
-    }
-
-    // 3. Génération et sauvegarde du token
-    const token = crypto.randomBytes(32).toString("hex");
-    await authService.saveResetToken(user.id, token);
-
-    // 4. Envoi de l'email avec gestion d'erreur SMTP
-    // Note : On a supprimé l'appel en doublon qui était ici
-    try {
-      await mailService.sendResetPasswordEmail(user, token);
-    } catch (mailErr) {
-      logger.error("Erreur SMTP lors du reset password:", mailErr.message);
-      return res.status(503).json({ 
-        success: false, 
-        message: "Le service d'envoi d'emails est temporairement indisponible." 
+      return res.status(200).json({
+        success: true,
+        message: "Si cet email existe, un lien de réinitialisation a été envoyé"
       });
     }
 
-    return res.json({ success: true, message: "Email de réinitialisation envoyé" });
+    const token = crypto.randomBytes(32).toString("hex");
+    await authService.saveResetToken(user.id, token);
+
+    // ✅ Non bloquant — l'utilisateur n'attend pas l'SMTP
+    mailService.sendResetPasswordEmail(user, token).catch(err =>
+      logger.warn("sendResetPasswordEmail failed:", { to: email, error: err?.message })
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Si cet email existe, un lien de réinitialisation a été envoyé"
+    });
 
   } catch (err) {
     logger.error("forgotPasswordController error:", err);
     return res.status(500).json({ success: false, message: "Erreur serveur" });
   }
-} 
+}
