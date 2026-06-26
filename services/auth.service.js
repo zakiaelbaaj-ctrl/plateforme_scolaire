@@ -84,35 +84,33 @@ export async function verifyCredentials({ email, username, password }) {
   let user = null;
 
   if (email) {
-    // On passe 'true' pour récupérer le password nécessaire à la comparaison
     user = await findByEmail(email, true);
   } else if (username) {
-    user = await User.findOne({ 
-      where: { username }, 
-      attributes: { include: ['password'] } 
-    });
+    const isEmail = username.includes("@");
+    if (isEmail) {
+      user = await findByEmail(username, true);
+    } else {
+      user = await User.scope(null).findOne({
+        where: { username },
+        attributes: { include: ['password'] }
+      });
+    }
   }
 
   if (!user) return null;
 
-  // services/auth.service.js
-
-// ... à la fin de verifyCredentials
+  // ✅ Vérification du mot de passe EN PREMIER
   const valid = await comparePassword(password, user.password);
-
   if (!valid) {
     logger.warn("Invalid credentials", { email, username });
     return null;
   }
 
-  // ✅ Utilise .get({ plain: true }) pour transformer l'instance Sequelize 
-  // en un objet simple que ton contrôleur comprendra.
+  // ✅ Seulement après validation
   const userSafe = user.get({ plain: true });
-  delete userSafe.password; 
-  
+  delete userSafe.password;
   return userSafe;
 }
-
 // ------------------------------
 // FIND BY ID
 // ------------------------------
