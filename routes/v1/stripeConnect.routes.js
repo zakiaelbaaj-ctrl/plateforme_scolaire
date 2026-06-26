@@ -4,14 +4,13 @@ import { db } from "../../config/index.js";
 import auth from "../../middlewares/auth.middleware.js";
 import logger from "../../config/logger.js";
 import Stripe from "stripe";
-  
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
- import {
+import {
   createStripeAccount,
   createOnboardingLink,
   checkAccountReady
 } from "../../services/stripeConnect.service.js";
-  const router = express.Router();
+ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+ const router = express.Router();
   router.post("/onboarding", auth, async (req, res) => {
   try {
     // ✅ Mapping user depuis JWT
@@ -188,12 +187,11 @@ router.post("/pre-auth", auth, async (req, res) => {
   try {
     const eleveId = req.user.userId ?? req.user.id;
     console.log("🔍 eleveId extrait:", eleveId);
-    const { amount } = req.body;
+    const { amount, profId } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: "Montant invalide." });
     }
-
     const [eleve] = await db.query(
       `SELECT stripe_customer_id, has_payment_method
        FROM users
@@ -204,7 +202,6 @@ router.post("/pre-auth", auth, async (req, res) => {
       }
     );
     console.log("🔍 ELEVE DATA:", eleve);
-
     if (!eleve || !eleve.stripe_customer_id || !eleve.has_payment_method) {
       return res.status(400).json({ message: "Aucune carte enregistrée." });
     }
@@ -227,8 +224,9 @@ router.post("/pre-auth", auth, async (req, res) => {
       confirm: true,
       capture_method: "manual",
       metadata: {
-        eleveId: String(eleveId)
-      }
+  eleveId: String(eleveId),
+  ...(profId && { profId: String(profId) })
+   }
     });
 
     logger.info("💳 PRE-AUTH OK", {
@@ -253,32 +251,19 @@ router.post("/pre-auth", auth, async (req, res) => {
 // =======================================================
 router.post("/capture", auth, async (req, res) => {
   try {
-    const { paymentIntentId, profId, amountToCapture } = req.body;
+    const { paymentIntentId, amountToCapture } = req.body;
 
-    if (!paymentIntentId || !profId) {
+    if (!paymentIntentId) {
       return res.status(400).json({ error: "Paramètres manquants pour la capture" });
     }
 
     // 1. Chercher le compte Stripe Connect du professeur
-    const [prof] = await db.query(
-      "SELECT stripe_account_id FROM users WHERE id = :profId",
-      { replacements: { profId }, type: db.QueryTypes.SELECT }
-    );
     const captureOptions = {};
     if (amountToCapture) {
       captureOptions.amount_to_capture = amountToCapture;
     }
 
-    // 2. Sécurisation du transfert direct (Garde-fou anti-chaîne vide)
-    const stripeAccountId = prof?.stripe_account_id;
-    if (stripeAccountId && stripeAccountId.trim() !== "") {
-      captureOptions.transfer_data = {
-        destination: stripeAccountId,
-      };
-      logger.info(`💰 Transfert direct configuré vers le prof ${profId} (${stripeAccountId})`);
-    } else {
-      logger.warn(`⚠️ Le prof ${profId} n'a pas configuré Stripe Connect. Capture directe sur le compte principal.`);
-    }
+    
     // 3. Capture finale sans risque de plantage Stripe
     const capturedIntent = await stripe.paymentIntents.capture(paymentIntentId, captureOptions);
 

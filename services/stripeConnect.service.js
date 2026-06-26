@@ -22,9 +22,9 @@ export async function createStripeAccount(profId, email) {
     });
 
     await db.query(
-      `UPDATE users SET stripe_account_id = $1 WHERE id = $2`,
-      [account.id, profId]
-    );
+  `UPDATE users SET stripe_account_id = :accountId WHERE id = :profId`,
+  { replacements: { accountId: account.id, profId } }
+);
 
     logger.info("Stripe account created", { profId, accountId: account.id });
 

@@ -198,18 +198,6 @@ export async function processSessionPayment(roomId) {
     });
     
     console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR/100}€`);
-    // ✅ FIX SECURITE : N'ajouter le transfert direct que si le prof possède un ID Connect configuré
-    if (prof.stripe_account_id && prof.stripe_account_id.trim() !== "") {
-      paymentIntentParams.transfer_data = { destination: prof.stripe_account_id };
-      paymentIntentParams.application_fee_amount = feeAmountEUR;
-      console.log(`💰 [STRIPE CONNECT] Transfert direct actif vers le prof ${profId}`);
-    } else {
-      logger.warn(`⚠️ Le professeur ID ${profId} n'a pas configuré Stripe Connect. Capture des fonds sur le compte principal.`);
-    }
-
-    const createdIntent = await stripe.paymentIntents.create(paymentIntentParams);
-console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR/100}€`);
-
     // 👉 La génération du PDF
     const { generateInvoicePdf } = await import("./invoicePdf.js"); // Adaptez le chemin
     const invoiceNumber = `VID-${profId}-${eleveId}-${Date.now()}`;
@@ -296,18 +284,6 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
       },
       metadata: { roomId, type: 'recovery_payment', userId: eleve.id }
     });
-    // ✅ FIX SECURITE (SCA) : Idem pour la régularisation manuelle par Checkout Session
-    if (prof.stripe_account_id && prof.stripe_account_id.trim() !== "") {
-      checkoutParams.payment_intent_data = {
-        transfer_data: { destination: prof.stripe_account_id },
-        application_fee_amount: Math.round(totalAmount * 0.26),
-      };
-    } else {
-      logger.warn(`⚠️ Mode de secours (SCA) : Pas de Stripe Connect pour le prof ${prof.id}. Encaissé sur le compte principal.`);
-    }
-
-    const session = await stripe.checkout.sessions.create(checkoutParams);
-    
     await mailService.sendPaymentActionRequiredEmail(eleve.email, {
   amount: totalAmount / 100,
   paymentUrl: session.url,

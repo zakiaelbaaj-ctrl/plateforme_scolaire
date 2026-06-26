@@ -3,7 +3,7 @@ import { sequelize } from "#config/db.js";
 import stripe from "#config/stripe.js";
 import logger from "#config/logger.js";
 import { requireAuth } from "#middlewares/auth.middleware.js";
-
+import { generateInvoicePdf } from "../services/invoicePdf.js";
 const router = express.Router();
 
 router.use((req, res, next) => {
@@ -324,8 +324,6 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
       logger.warn("Duplicate visio payment blocked", { roomId, intentId });
       return;
     }
-    // 🧾 Génération du numéro de facture unique
-    const invoiceNumber = `INV-VISIO-${eleveId}-${Date.now()}`;
     // 💰 INSERT paiement (idempotent Stripe safe)
     await sequelize.query(
       `INSERT INTO payments 
@@ -340,7 +338,6 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
           amount: paymentIntent.amount,
           currency: paymentIntent.currency || "eur",
           intentId,
-          invoiceNumber
         },
         transaction: t
       }
@@ -362,7 +359,6 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
       eleveId,
       profId,
       amount: paymentIntent.amount,
-      invoiceNumber
     });
   });
 }
@@ -528,7 +524,9 @@ router.post("/capture-payment", requireAuth, async (req, res) => {
     
     // Exemple : 50 centimes la minute (ajuste selon ton modèle)
     const prixParMinuteCents = 50; 
-    const montantFinal = dureeMinutes * prixParMinuteCents;
+    const { amount: montantPreAuth } = await stripe.paymentIntents.retrieve(paymentIntentId);
+const montantCalcule = dureeMinutes * prixParMinuteCents;
+const montantFinal = Math.min(montantCalcule, montantPreAuth);
 
     // 2. Si l'appel a duré 0 min (bug ou annulation immédiate)
     if (montantFinal === 0) {
