@@ -3,9 +3,9 @@ import express from "express";
 import { db } from "../../config/index.js";
 import auth from "../../middlewares/auth.middleware.js";
 import logger from "../../config/logger.js";
-
-  import Stripe from "stripe";
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+import Stripe from "stripe";
+  
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
  import {
   createStripeAccount,
   createOnboardingLink,
@@ -246,6 +246,48 @@ router.post("/pre-auth", auth, async (req, res) => {
     res.status(500).json({
       message: "Erreur Stripe pre-auth"
     });
+  }
+});
+// =======================================================
+// SECURED CAPTURE (CAPTURE DU PAIEMENT EN FIN DE SESSION)
+// =======================================================
+router.post("/capture", auth, async (req, res) => {
+  try {
+    const { paymentIntentId, profId, amountToCapture } = req.body;
+
+    if (!paymentIntentId || !profId) {
+      return res.status(400).json({ error: "Paramètres manquants pour la capture" });
+    }
+
+    // 1. Chercher le compte Stripe Connect du professeur
+    const [prof] = await db.query(
+      "SELECT stripe_account_id FROM users WHERE id = :profId",
+      { replacements: { profId }, type: db.QueryTypes.SELECT }
+    );
+    const captureOptions = {};
+    if (amountToCapture) {
+      captureOptions.amount_to_capture = amountToCapture;
+    }
+
+    // 2. Sécurisation du transfert direct (Garde-fou anti-chaîne vide)
+    const stripeAccountId = prof?.stripe_account_id;
+    if (stripeAccountId && stripeAccountId.trim() !== "") {
+      captureOptions.transfer_data = {
+        destination: stripeAccountId,
+      };
+      logger.info(`💰 Transfert direct configuré vers le prof ${profId} (${stripeAccountId})`);
+    } else {
+      logger.warn(`⚠️ Le prof ${profId} n'a pas configuré Stripe Connect. Capture directe sur le compte principal.`);
+    }
+    // 3. Capture finale sans risque de plantage Stripe
+    const capturedIntent = await stripe.paymentIntents.capture(paymentIntentId, captureOptions);
+
+    res.json({ success: true, status: capturedIntent.status });
+
+  } catch (err) {
+    console.error("❌ CAPTURE ERROR:", err.message);
+    logger.error("❌ Erreur lors du traitement du paiement de la session", { message: err.message });
+    res.status(500).json({ error: "Erreur lors de la capture du paiement", details: err.message });
   }
 });
 export default router;
