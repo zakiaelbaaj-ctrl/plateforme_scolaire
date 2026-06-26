@@ -118,11 +118,8 @@ export async function registerController(req, res) {
 // ---------------- LOGIN ----------------
 export async function loginController(req, res) {
   try {
-    // 🔍 DEBUG TEMPORAIRE
-    console.log(">>> BODY REÇU:", req.body);
 
     const { email, username, password } = req.body;
-    console.log(">>> email:", email, "| username:", username, "| password:", !!password);
 
     // 1. Recherche de l'utilisateur
     // On passe 'true' en deuxième argument pour inclure le password via Sequelize
@@ -158,7 +155,6 @@ if (email) {
       return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
     }
       // 🔒 Vérification Stripe : élève doit avoir une carte
-console.log(">>> LOGIN user:", user.id, user.role, user.stripe_customer_id);
 let has_payment_method = false;
 
 if (user.role === "eleve" || user.role === "etudiant") {
