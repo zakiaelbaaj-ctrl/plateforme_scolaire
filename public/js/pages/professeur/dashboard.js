@@ -70,8 +70,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
  AppState.setCurrentUser(userData);
 AppState.token = localStorage.getItem("token"); // OK pour token (mais idéalement setter)
-  AppState.setCallState(null);
-
   renderCurrentUserInfo(userData);
 
   // // 🔴 Si c'est un professeur, init Stripe onboarding
@@ -122,15 +120,16 @@ function subscribeToDomains() {
   
   // ================= CALL =================
   AppState.on('callState:change', (state) => {
-    switch (state) {
-      case 'calling':  updateCallStatus('Appel en cours...'); break;
-      case 'ringing':
-      case 'incoming': showIncomingCall(AppState.currentIncomingCallEleveId); break;
-      case 'inCall':   hideIncomingAlert(); updateCallStatus('En communication'); setSessionActive(true); break;
-      case null:
-      default:         hideIncomingAlert(); cleanupSession('Session terminee'); break;
-    }
-  });
+  switch (state) {
+    case 'calling':  updateCallStatus('Appel en cours...'); break;
+    case 'ringing':
+    case 'incoming': showIncomingCall(AppState.currentIncomingCallEleveId); break;
+    case 'inCall':   hideIncomingAlert(); updateCallStatus('En communication'); setSessionActive(true); break;
+    case 'ended':    hideIncomingAlert(); cleanupSession('Session terminée'); break; // ✅
+    case 'idle':     break; // ✅ ignore silencieusement
+    // ❌ retire case null et default
+  }
+});
   AppState.on('video:localTrack',   (track)  => attachLocalVideo(track));
   AppState.on("timer:update", (seconds) => {
     const m = String(Math.floor(seconds / 60)).padStart(2, "0");
@@ -395,35 +394,39 @@ function setSessionActive(active) {
 }
 
 function cleanupSession(message) {
-  if (cleanupSession._running) return; // ✅ guard anti-boucle
+  if (cleanupSession._running) return;
   cleanupSession._running = true;
-  // ✅ AJOUTER ICI — Arrêter le partage d'écran si actif
-  ScreenShareService.stop(VideoService.room).catch(() => {});
+
+  // ✅ DOM partage écran
   ScreenShareOverlay.hide();
   const ssBtn = document.getElementById("screen-share-btn");
-  if (ssBtn) { ssBtn.textContent = "🖥️"; }
- VideoService.disconnect();
-  AppState.setCallState(null);
-  AppState.sessionInProgress = false;
-  SessionService.stopTimer?.();
+  if (ssBtn) ssBtn.textContent = "🖥️";
+
+  // ✅ DOM vidéo
+  ["remote-video", "local-video"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.srcObject = null;
+  });
+
+  // ✅ DOM session
   setSessionActive(false);
   updateCallStatus(message);
   WhiteboardService.reset?.();
 
-  ["remote-video", "local-video"].forEach(id => { // ✅
-  const el = document.getElementById(id);
-  if (el) el.srcObject = null;
-});
-
-  const remoteInfo = document.getElementById("remote-eleve-info");
-  if (remoteInfo) { remoteInfo.textContent = "En attente d'un élève…"; remoteInfo.style.display = ""; }
+  // ✅ DOM timer
   const timerEl = document.getElementById("call-time");
   if (timerEl) timerEl.textContent = "00:00";
+
+  // ✅ DOM chat + canvas
   resetChat();
   clearCanvas();
-  cleanupSession._running = false; // ✅ Libère le guard
-}
 
+  // ✅ DOM remote info
+  const remoteInfo = document.getElementById("remote-eleve-info");
+  if (remoteInfo) { remoteInfo.textContent = "En attente d'un élève…"; remoteInfo.style.display = ""; }
+
+  cleanupSession._running = false;
+}
 // ======================================================
 // CALL UI
 // ======================================================
