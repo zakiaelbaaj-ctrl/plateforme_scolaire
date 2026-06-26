@@ -3,7 +3,7 @@ import { sequelize } from "#config/db.js";
 import stripe from "#config/stripe.js";
 import logger from "#config/logger.js";
 import { requireAuth } from "#middlewares/auth.middleware.js";
-import { generateInvoicePdf } from "../services/invoicePdf.js";
+import { generateInvoicePdf } from "../../../services/invoicePdf.js";
 const router = express.Router();
 
 router.use((req, res, next) => {
