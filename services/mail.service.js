@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import logger from "../config/logger.js";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
+console.log("🔑 RESEND_API_KEY:", process.env.RESEND_API_KEY?.slice(0, 10) + "...");
 const defaultFrom = process.env.RESEND_FROM || "Plateforme Scolaire <noreply@urgencescolaire.com>";
 
 // ------------------------------------------------------
