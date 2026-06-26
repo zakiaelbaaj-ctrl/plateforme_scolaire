@@ -135,11 +135,11 @@ export async function processSessionPayment(roomId) {
     eleveId = sessionData.user_id;
     profId = sessionData.professor_id;
 
-    // Récupération des infos Stripe et tarifs
+    // ✅ CORRECTION SQL : Remplacement de $1, $2 par des replacements nommés Sequelize
     const users = await db.query(
       `SELECT id, email, username, role, stripe_customer_id, stripe_account_id, currency, is_university_prof, is_subscriber 
-       FROM users WHERE id IN ($1, $2)`,
-      { bind: [profId, eleveId], type: QueryTypes.SELECT }
+       FROM users WHERE id IN (:profId, :eleveId)`,
+      { replacements: { profId, eleveId }, type: QueryTypes.SELECT }
     );
 
     const prof = users.find(u => u.id == profId);
@@ -147,18 +147,15 @@ export async function processSessionPayment(roomId) {
 
     if (!eleve || !prof) throw new Error("Participants introuvables.");
 
-    // CAS : Communication entre étudiants (20€/mois déjà payés)
     if (eleve.role === 'eleve' && prof.role === 'eleve') {
       if (!eleve.is_subscriber) throw new Error("Abonnement entraide requis.");
       return { status: 'covered_by_subscription' };
     }
 
-    // Calcul du montant selon le grade (40€ ou 20€)
     const hourlyRate = prof.is_university_prof ? 40 : 20;
     const pricePerMinEUR = hourlyRate / 60;
     const totalAmountEUR = Math.round(duration * pricePerMinEUR * 100);
 
-    // Sécurité minimum Stripe (50 cents)
     if (totalAmountEUR < 50) {
       console.log(`⚠️ Montant ${totalAmountEUR}cts trop bas. Ignoré.`);
       return { status: 'skipped', reason: 'amount_too_low' };
@@ -169,8 +166,22 @@ export async function processSessionPayment(roomId) {
 
     // Prélèvement automatique
     const customer = await stripe.customers.retrieve(eleve.stripe_customer_id);
-    const paymentMethodId = customer.invoice_settings.default_payment_method;
-
+    let paymentMethodId = customer.invoice_settings?.default_payment_method;
+    // ✅ FIX : Si pas de moyen de paiement "par défaut", on liste et on prend la première carte active
+    if (!paymentMethodId) {
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: eleve.stripe_customer_id,
+        type: 'card',
+        limit: 1
+      });
+      if (paymentMethods.data.length > 0) {
+        paymentMethodId = paymentMethods.data[0].id;
+        // On en profite pour la lier par défaut pour éviter le prochain fallback
+        await stripe.customers.update(eleve.stripe_customer_id, {
+          invoice_settings: { default_payment_method: paymentMethodId }
+        });
+      }
+    }
     if (!paymentMethodId) throw new Error("Moyen de paiement par défaut manquant.");
 
     const paymentIntent = await stripe.paymentIntents.create({
@@ -227,7 +238,11 @@ return {
     // Gestion du cas SCA (Authentification requise)
     if (err.raw && err.raw.code === 'authentication_required') {
       // On récupère à nouveau les objets pour être sûr
-      const users = await db.query(`SELECT * FROM users WHERE id IN ($1, $2)`, { bind: [profId, eleveId], type: QueryTypes.SELECT });
+      // ✅ CORRECTION SQL : Syntaxe Sequelize ici aussi
+      const users = await db.query(
+        `SELECT * FROM users WHERE id IN (:profId, :eleveId)`, 
+        { replacements: { profId, eleveId }, type: QueryTypes.SELECT }
+      );
       const prof = users.find(u => u.id == profId);
       const eleve = users.find(u => u.id == eleveId);
       
@@ -287,8 +302,13 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
  */
 export async function createStudentSubscription(userId) {
   try {
-    const [user] = await db.query(`SELECT email, stripe_customer_id, currency FROM users WHERE id = $1`, { bind: [userId], type: QueryTypes.SELECT });
+    // ✅ CORRECTION SQL : Remplacement du $1 par :userId
+    const [user] = await db.query(
+      `SELECT email, stripe_customer_id, currency FROM users WHERE id = :userId`, 
+      { replacements: { userId }, type: QueryTypes.SELECT }
+    );
     
+    if (!user) throw new Error("User not found");
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: user.stripe_customer_id,

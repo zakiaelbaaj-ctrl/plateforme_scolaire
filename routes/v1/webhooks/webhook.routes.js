@@ -76,44 +76,46 @@ async function handleCheckoutSessionCompleted(session) {
   // ======================================================
   // ✅ APRÈS — met à jour has_payment_method + is_subscriber + subscription_status
 if (session.mode === 'setup') {
-    if (!customerId) {
-      logger.error("❌ CustomerId manquant pour le mode setup", { sessionId });
-      return;
-    }
-
-    try {
-      // Récupérer le rôle pour ne pas affecter prof/eleve
-      const [userRecord] = await sequelize.query(
-        `SELECT role FROM users WHERE stripe_customer_id = :customerId`,
-        { replacements: { customerId }, type: sequelize.QueryTypes.SELECT }
-      );
-
-      if (userRecord?.role === 'etudiant') {
-        // Étudiant : carte + accès matching activé
-        await sequelize.query(
-          `UPDATE users 
-           SET has_payment_method = true,
-               is_subscriber = true,
-               subscription_status = 'active'
-           WHERE stripe_customer_id = :customerId`,
-          { replacements: { customerId } }
-        );
-        logger.info("💳 Carte étudiant enregistrée + accès activé", { customerId });
-      } else {
-        // Élève / Prof : uniquement has_payment_method
-        await sequelize.query(
-          `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = :customerId`,
-          { replacements: { customerId } }
-        );
-        logger.info("💳 Carte enregistrée (Mode Setup)", { customerId });
-      }
-      return;
-    } catch (err) {
-      logger.error("❌ Erreur DB lors du setup carte", { customerId, message: err.message });
-      return;
-    }
+  if (!customerId) {
+    logger.error("❌ CustomerId manquant pour le mode setup", { sessionId });
+    return;
   }
 
+  try {
+    const setupIntent = await stripe.setupIntents.retrieve(session.setup_intent);
+    const paymentMethodId = setupIntent.payment_method;
+
+    if (paymentMethodId) {
+      await stripe.customers.update(customerId, {
+        invoice_settings: { default_payment_method: paymentMethodId }
+      });
+      logger.info("💳 Carte définie comme défaut sur Stripe", { customerId, paymentMethodId });
+    }
+
+    // Sécurité : Utiliser les métadonnées de la session si disponibles pour retrouver l'user
+    const userIdFromMeta = session.metadata?.userId;
+
+    if (userIdFromMeta) {
+      await sequelize.query(
+        `UPDATE users 
+         SET has_payment_method = true, stripe_customer_id = :customerId
+         WHERE id = :userIdFromMeta`,
+        { replacements: { customerId, userIdFromMeta: Number(userIdFromMeta) } }
+      );
+    } else {
+      await sequelize.query(
+        `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = :customerId`,
+        { replacements: { customerId } }
+      );
+    }
+    
+    logger.info("💳 Base de données synchronisée pour le moyen de paiement", { customerId });
+    return;
+  } catch (err) {
+    logger.error("❌ Erreur lors du setup carte", { customerId, message: err.message });
+    return;
+  }
+}
   // ======================================================
   // 🛡️ SÉCURITÉ POUR LES PAIEMENTS (MODE PAYMENT)
   // ======================================================
@@ -322,7 +324,8 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
       logger.warn("Duplicate visio payment blocked", { roomId, intentId });
       return;
     }
-
+    // 🧾 Génération du numéro de facture unique
+    const invoiceNumber = `INV-VISIO-${eleveId}-${Date.now()}`;
     // 💰 INSERT paiement (idempotent Stripe safe)
     await sequelize.query(
       `INSERT INTO payments 
@@ -336,7 +339,8 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
           eleveId,
           amount: paymentIntent.amount,
           currency: paymentIntent.currency || "eur",
-          intentId
+          intentId,
+          invoiceNumber
         },
         transaction: t
       }
@@ -353,11 +357,12 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
       }
     );
 
-    logger.info("✅ Paiement visio confirmé", {
+    logger.info("✅ Paiement visio confirmé et facture créée", {
       roomId,
       eleveId,
       profId,
-      amount: paymentIntent.amount
+      amount: paymentIntent.amount,
+      invoiceNumber
     });
   });
 }

@@ -203,7 +203,7 @@
       // 🌐 Détection automatique de l'environnement
 const API_URL = window.location.hostname === "localhost" 
   ? "http://localhost:4000" 
-  : "https://plateforme-scolaire-1.onrender.com"; // On retire le "/" final pour éviter les doubles slashes //
+  : "";
 
 // 🚀 On utilise la variable dynamique `${API_URL}` ici :
 const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
