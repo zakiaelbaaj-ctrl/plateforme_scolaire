@@ -207,8 +207,8 @@ export async function processSessionPayment(roomId) {
       logger.warn(`⚠️ Le professeur ID ${profId} n'a pas configuré Stripe Connect. Capture des fonds sur le compte principal.`);
     }
 
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
-    console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR/100}€`);
+    const createdIntent = await stripe.paymentIntents.create(paymentIntentParams);
+console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR/100}€`);
 
     // 👉 La génération du PDF
     const { generateInvoicePdf } = await import("./invoicePdf.js"); // Adaptez le chemin
