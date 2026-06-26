@@ -7,8 +7,7 @@ let currentRatingValue  = 0;
 
 const API_URL = window.location.hostname === "localhost"
   ? "http://localhost:4000"
-  : "https://plateforme-scolaire-1.onrender.com";
-
+  : "";
 // ======================================================
 // INIT — charge le fragment HTML puis bind les events
 // ======================================================
