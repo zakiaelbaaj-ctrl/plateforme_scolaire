@@ -101,6 +101,7 @@ export async function verifyCredentials({ email, username, password }) {
 
   // ✅ Vérification du mot de passe EN PREMIER
   const valid = await comparePassword(password, user.password);
+  console.log("🔑 comparePassword result:", valid, "| hash length:", user.password?.length);
   if (!valid) {
     logger.warn("Invalid credentials", { email, username });
     return null;
