@@ -317,7 +317,8 @@ export async function resetPasswordController(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: "Mot de passe réinitialisé avec succès"
+      message: "Mot de passe réinitialisé avec succès",
+      role: record.role
     });
 
   } catch (err) {
