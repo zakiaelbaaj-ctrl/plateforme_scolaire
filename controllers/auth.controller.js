@@ -127,12 +127,17 @@ export async function loginController(req, res) {
     // 1. Recherche de l'utilisateur
     // On passe 'true' en deuxième argument pour inclure le password via Sequelize
     let user;
-    if (email) {
-      user = await authService.findByEmail(email, true);
-    } else if (username) {
-      user = await authService.findByUsernameWithPassword(username);
-    }
-
+if (email) {
+  user = await authService.findByEmail(email, true);
+} else if (username) {
+  // ✅ Détecte si c'est un email ou un username
+  const isEmail = username.includes("@");
+  if (isEmail) {
+    user = await authService.findByEmail(username, true); // ✅ cherche par email
+  } else {
+    user = await authService.findByUsernameWithPassword(username);
+  }
+}
     // 2. Vérifications de base
     if (!user) {
       return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
@@ -148,7 +153,7 @@ export async function loginController(req, res) {
     }
 
     // 4. Comparaison du mot de passe
-    const valid = await bcrypt.compare(password, user.password);
+    const valid = await authService.comparePassword(password, user.password);
     if (!valid) {
       return res.status(401).json({ success: false, message: "Utilisateur ou mot de passe invalide" });
     }
