@@ -51,6 +51,7 @@ app.use(helmet({
         "'self'", 
         "http://localhost:4000", 
         "http://localhost:*", // Optionnel mais utile pour le debug
+        "https://urgencescolaire.com",
         "https://plateforme-scolaire-1.onrender.com", 
         "wss://*", 
         "https://*.twilio.com", 
@@ -105,7 +106,9 @@ app.use("/api/v1/ratings", ratingRoutes);
 // =======================================================
 // CORS (Correction pour PATCH)
 // =======================================================
-const allowedOrigins = ["http://localhost:4000", "https://plateforme-scolaire-1.onrender.com"];
+const allowedOrigins = ["http://localhost:4000", "https://plateforme-scolaire-1.onrender.com", "https://urgencescolaire.com",                // ✅ production
+  "https://www.urgencescolaire.com"
+  ];
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) callback(null, true);
@@ -239,33 +242,6 @@ app.get("/api", (req, res) => {
     frontendUrl: process.env.FRONTEND_URL || "http://localhost:10000",
   });
 });
-// ======================================================
-// DEBUG TEMPORAIRE — SUPPRIMER APRÈS
-// ======================================================
-app.get("/debug-users", async (req, res) => {
-  try {
-    const users = await sequelize.query(
-      `SELECT id, role, subscription_status, is_subscriber FROM users WHERE id IN (55, 56)`,
-      { type: sequelize.QueryTypes.SELECT }
-    );
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ✅ AJOUTER ICI
-app.get("/debug-activate", async (req, res) => {
-  try {
-    await sequelize.query(
-      `UPDATE users SET subscription_status = 'active', is_subscriber = true WHERE id IN (55, 56)`
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-// ======================================================
 
 app.use(errorMiddleware);
 
