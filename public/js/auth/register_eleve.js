@@ -6,7 +6,7 @@ const submitBtn = document.getElementById("submitBtn");
 // 💡 Détection dynamique de l'URL de base (Local vs Production)
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:4000" 
-  : "https://plateforme-scolaire-1.onrender.com";
+  : "";
 
 // Redirection login
 const loginLink = document.getElementById('loginLink');

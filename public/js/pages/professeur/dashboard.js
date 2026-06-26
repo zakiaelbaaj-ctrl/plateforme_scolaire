@@ -20,7 +20,7 @@ let whiteboardWrapper = null;
 let videoMiniature = null;
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:4000" 
-  : "https://plateforme-scolaire-1.onrender.com";
+  : "";
 
 const API_BASE = `${API_URL}/api/v1`;
 // ================= STRIPE ONBOARDING =================

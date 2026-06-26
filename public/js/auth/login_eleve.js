@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // 🔄 Détection dynamique de l'URL (Local vs Render)
       const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
         ? "http://localhost:4000" 
-        : "https://plateforme-scolaire-1.onrender.com";
+        : "";
 
       const response = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: "POST",

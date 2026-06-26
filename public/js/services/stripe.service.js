@@ -62,7 +62,7 @@ export async function initStripeOnboarding() {
 
   const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://localhost:4000"
-    : "https://plateforme-scolaire-1.onrender.com";
+    : "";
 
   try {
     console.log("🚀 Lancement onboarding Stripe Connect...");
@@ -108,7 +108,7 @@ export async function openSetupSession() {
   // 2. Utilisation de l'URL dynamique (indispensable pour Render/Local)
   const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://localhost:4000" 
-    : "https://plateforme-scolaire-1.onrender.com";
+    : "";
     
  console.log("✅ URL =", `${API_URL}/api/v1/stripeConnect/create-setup-session`);
   try {
@@ -173,7 +173,7 @@ export async function holdFundsForSession(prixMaxEnCentimes) {
   
   const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://localhost:4000" 
-    : "https://plateforme-scolaire-1.onrender.com";
+    : "";
 
   try {
     console.log("✅ Demande d'empreinte bancaire en cours...");
