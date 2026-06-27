@@ -26,12 +26,14 @@ class TwilioServiceClass {
         try {
             console.log(`📡 Twilio → Tentative de création de la room: ${roomId}`);
 
-            // STRATÉGIE A : Utilisation du type explicite 'peer-to-peer'
-            // (Requis par votre message d'erreur précédent)
             const room = await this.client.video.v1.rooms.create({
-                uniqueName: roomId,
-                type: "peer-to-peer" 
-            });
+    uniqueName: roomId,
+    type: "group",
+    maxParticipants: 2,
+    emptyRoomTimeout: 5,                // 5 minutes
+    unusedRoomTimeout: 5,               // 5 minutes
+    maxParticipantDuration: 4 * 60 * 60 // 4h en secondes
+});
 
             console.log(`✅ Twilio → Room créée avec succès (SID: ${room.sid})`);
             return room;
@@ -44,23 +46,15 @@ class TwilioServiceClass {
                 return { uniqueName: roomId };
             }
 
-            // CAS 2 : Erreur de type (Votre erreur précédente)
-            // On tente une STRATÉGIE B : Création sans spécifier le type (Twilio choisira le défaut)
-            console.warn(`⚠️ Twilio → Erreur type spécifique (${err.message}). Tentative de repli...`);
-            
-            try {
-                const fallbackRoom = await this.client.video.v1.rooms.create({
-                    uniqueName: roomId
-                });
-                console.log(`✅ Twilio → Room créée via repli (Type par défaut).`);
-                return fallbackRoom;
-            } catch (secondErr) {
-                // CAS 3 : Erreur fatale (Mauvaises clés API, compte suspendu, etc.)
-                console.error("❌ Twilio → ÉCHEC FATAL de création de room:", secondErr.message);
-                throw secondErr; 
-            }
+            // Type déprécié sur ce compte
+           if (err.code === 53126) {
+          console.error("❌ Twilio → Type non supporté (compte créé après oct. 2024).");
+           }
+
+        console.error("❌ Twilio → ÉCHEC FATAL:", err.code, err.message);
+        throw err;
         }
-    }
+      }
 
     /**
      * 2️⃣ SUPPRESSION DE ROOM
