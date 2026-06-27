@@ -191,10 +191,12 @@ export async function processSessionPayment(roomId) {
       payment_method: paymentMethodId,
       off_session: true, 
       confirm: true,
-      application_fee_amount: feeAmountEUR,
-      transfer_data: { destination: prof.stripe_account_id },
       description: `Session visio ${duration} min avec ${prof.is_university_prof ? 'Prof Universitaire' : 'Prof Standard'}`,
-      metadata: { roomId, profId, eleveId, studentCurrency }
+      metadata: { roomId, profId, eleveId, studentCurrency },
+      ...(prof.stripe_account_id?.trim() && {
+        transfer_data: { destination: prof.stripe_account_id },
+        application_fee_amount: feeAmountEUR,
+      }),
     });
     
     console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR/100}€`);
@@ -279,8 +281,10 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
       success_url: `${process.env.FRONT_URL}/payment-recovery-success?room=${roomId}`,
       cancel_url: `${process.env.FRONT_URL}/dashboard`,
       payment_intent_data: {
-        transfer_data: { destination: prof.stripe_account_id },
-        application_fee_amount: Math.round(totalAmount * 0.26),
+        ...(prof.stripe_account_id?.trim() && {
+          transfer_data: { destination: prof.stripe_account_id },
+          application_fee_amount: Math.round(totalAmount * 0.26),
+        }),
       },
       metadata: { roomId, type: 'recovery_payment', userId: eleve.id }
     });
@@ -297,7 +301,7 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
 }
 
 /**
- * 5. ABONNEMENT ÉTUDIANT (Entraide 20€/mois)
+ * 5. ABONNEMENT ÉTUDIANT (Entraide 20€/heure)
  */
 export async function createStudentSubscription(userId) {
   try {
