@@ -281,10 +281,10 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
       success_url: `${process.env.FRONT_URL}/payment-recovery-success?room=${roomId}`,
       cancel_url: `${process.env.FRONT_URL}/dashboard`,
       payment_intent_data: {
-        ...(prof.stripe_account_id?.trim() && {
-          transfer_data: { destination: prof.stripe_account_id },
-          application_fee_amount: Math.round(totalAmount * 0.26),
-        }),
+        ...(prof.stripe_account_id?.trim() ? {
+    transfer_data: { destination: prof.stripe_account_id.trim() },
+    application_fee_amount: feeAmountEUR,
+} : {}),
       },
       metadata: { roomId, type: 'recovery_payment', userId: eleve.id }
     });
