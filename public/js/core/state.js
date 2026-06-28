@@ -68,9 +68,14 @@ export const AppState = {
   setOnlineProfessors(profs = []) {
     if (!Array.isArray(profs)) return;
 
-    this.onlineProfessors = [...profs]; // ✅ immutabilité
+    // ✅ Ne notifie que si les données ont réellement changé
+    const newJson = JSON.stringify(profs);
+    const oldJson = JSON.stringify(this.onlineProfessors);
+    if (newJson === oldJson) return;
+
+    this.onlineProfessors = [...profs];
     this._notify("professors:update", this.onlineProfessors);
-  },
+},
 
   // ==================================================
   // CALL STATE
