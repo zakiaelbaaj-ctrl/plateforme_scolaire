@@ -548,12 +548,17 @@ if (type === "requestStudentMatch") {
       console.error("❌ Erreur notifications prof:", err.message);
     }
     return;
-  }
+     }
   // 2️⃣ CAS ÉTUDIANT
-if (ws.role === "etudiant") {
-    broadcastOnlineStudents(clients);
-    return;
-}
+    const isReconnected = clients.has(ws.userId) && clients.get(ws.userId) !== ws;
+
+    if (!isReconnected) {
+    if (ws.role === "etudiant") {
+        broadcastOnlineStudents(clients);
+    } else if (ws.role === "eleve" || ws.role === "prof") {
+        broadcastOnlineProfs(onlineProfessors, clients);
+    }
+    }
   // 3️⃣ CAS ÉLÈVE (Segmentation stricte)
   if (ws.role === "eleve") {
     console.log(`👨‍🎓 Élève enregistré: ${ws.userId}`);
