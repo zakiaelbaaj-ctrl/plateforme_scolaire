@@ -102,10 +102,11 @@ if (!hasPaymentMethod) {
     eleveName: ws.userName,
     timestamp: new Date().toISOString()
   });
-
-  // Marquer prof comme sollicité
-  prof.status = "appel_reçu";
-  broadcastOnlineProfs(onlineProfessors, clients);
+ // APRÈS — broadcast uniquement si statut change
+if (prof.status !== "appel_reçu") {
+    prof.status = "appel_reçu";
+    broadcastOnlineProfs(onlineProfessors, clients);
+}
 
   // 📲 Notifier le prof
   safeSend(prof.ws, {
@@ -189,7 +190,6 @@ if (prof.status === "en_session") {
   pendingCalls.delete(profId);
 
   console.log(`✅ Appel accepté: élève ${eleveId} ← prof ${profId}`);
-  broadcastOnlineProfs(onlineProfessors, clients);
 }
 
 // =======================================================
