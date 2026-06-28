@@ -10,7 +10,11 @@ import { initWebSocketServer } from "./socket.js";
 import { pool } from "./config/db.js";
 import { initDb } from "./config/index.js";
 import { verifyMailer } from "./services/mail.service.js";
-
+// AJOUTER après les imports
+import redis from "./config/redis.js";
+await redis.connect().catch(err => 
+    console.warn("⚠️ Redis non disponible au démarrage:", err.message)
+);
 // =======================================================
 // Initialisation DB
 // =======================================================

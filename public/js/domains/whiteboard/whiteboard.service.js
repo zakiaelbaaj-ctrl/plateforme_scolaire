@@ -137,9 +137,10 @@ handleEvent(data) {
         _cb.sync?.(_paths);
         break;
       }
-
+       case "tableauUndo":
       case WhiteboardEvents.TABLEAU_UNDO: {
-        const idx = [..._undoStack].reverse().findIndex(p => p.authorId === data.authorId);
+        const targetAuthorId = data.authorId ?? data.userId ?? data.id;
+        const idx = [..._undoStack].reverse().findIndex(p => String(p.authorId) === String(targetAuthorId));
         if (idx === -1) break;
         const path = _undoStack.splice(_undoStack.length - 1 - idx, 1)[0];
         _redoStack.push(path);
@@ -148,8 +149,9 @@ handleEvent(data) {
         this._canvas?.redraw?.(); // 🔄 Redraw nécessaire pour masquer le path annulé
         break;
       }
-
-      case WhiteboardEvents.TABLEAU_REDO: {
+       case "tableauRedo":
+       case WhiteboardEvents.TABLEAU_REDO: {
+        const targetAuthorId = data.authorId ?? data.userId ?? data.id;
         const idx = [..._redoStack].reverse().findIndex(p => p.authorId === data.authorId);
         if (idx === -1) break;
         const path = _redoStack.splice(_redoStack.length - 1 - idx, 1)[0];
@@ -274,7 +276,7 @@ handleEvent(data) {
   },
 
  undo() {
-    const idx = [..._undoStack].reverse().findIndex(p => p.authorId === _myUserId);
+    const idx = [..._undoStack].reverse().findIndex(p => String(p.authorId) === String(_myUserId));
     if (idx === -1) return;
     const path = _undoStack.splice(_undoStack.length - 1 - idx, 1)[0];
     _redoStack.push(path);

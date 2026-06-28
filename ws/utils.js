@@ -30,20 +30,52 @@ export function safeSend(ws, data) {
 // =======================================================
 // BROADCAST AUX ÉLÈVES
 // =======================================================
-export function broadcastOnlineProfs(onlineProfessors, clients) {
-  const profs = getOnlineProfessors(); // ✅ calcule disponibilite correctement
 
-  console.log(`📡 Broadcast: ${profs.length} profs envoyés aux élèves.`);
+import redis from "../config/redis.js";
 
-  for (const ws of clients.values()) {
-    if (ws.role === "eleve" && ws.readyState === 1) {
-      safeSend(ws, {
-        type: "onlineProfessors",
-        profs,
-        timestamp: new Date().toISOString()
-      });
+const BROADCAST_KEY  = "broadcast:onlineProfs";
+const BROADCAST_DELAY = 100; // ms
+
+export async function broadcastOnlineProfs(onlineProfessors, clients) {
+    try {
+        // SET NX PX = "set si absent, expire dans 100ms"
+        // Une seule instance gagne, les autres sont ignorées
+        const acquired = await redis.set(BROADCAST_KEY, "1", "PX", BROADCAST_DELAY, "NX");
+        if (!acquired) return;
+
+        setTimeout(async () => {
+            try {
+                await redis.del(BROADCAST_KEY);
+                const profs = getOnlineProfessors();
+                console.log(`📡 Broadcast: ${profs.length} profs envoyés aux élèves.`);
+                for (const ws of clients.values()) {
+                    if (ws.role === "eleve" && ws.readyState === 1) {
+                        safeSend(ws, {
+                            type: "onlineProfessors",
+                            profs,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("❌ Broadcast erreur:", err.message);
+            }
+        }, BROADCAST_DELAY);
+
+    } catch (err) {
+        // ✅ Fallback si Redis est indisponible — broadcast direct sans debounce
+        console.warn("⚠️ Redis indisponible, broadcast direct:", err.message);
+        const profs = getOnlineProfessors();
+        for (const ws of clients.values()) {
+            if (ws.role === "eleve" && ws.readyState === 1) {
+                safeSend(ws, {
+                    type: "onlineProfessors",
+                    profs,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
     }
-  }
 }
 // =======================================================
 // BROADCAST À UN RÔLE SPÉCIFIQUE

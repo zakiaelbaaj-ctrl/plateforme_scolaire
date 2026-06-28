@@ -78,19 +78,21 @@ case "chatMessage":
 
       case "tableauStroke":
       case "tableauSync":
-        case "tableauClear":
+      case "tableauClear":
+      case "tableauUndo":
+      case "tableauRedo":    
         WhiteboardService.handleEvent(data);
         break;
-  case "screenShareStarted":
+      case "screenShareStarted":
   // L'overlay est géré par Twilio directement via attachTrack
-  console.log("📺 Partage d'écran démarré par", data.userName);
-  break;
+      console.log("📺 Partage d'écran démarré par", data.userName);
+      break;
 
-case "screenShareStopped": {
-  import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {
+      case "screenShareStopped": {
+    import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {
     ScreenShareOverlay.hide();
   });
-  const btn = document.getElementById("screen-share-btn");
+     const btn = document.getElementById("screen-share-btn");
         if (btn) { 
           btn.classList.remove("active"); // 🛑 Éteint proprement le halo bleu lumineux
           btn.title = "Partager l'écran"; 

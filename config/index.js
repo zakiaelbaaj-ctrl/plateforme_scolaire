@@ -8,7 +8,10 @@ import { Sequelize } from "sequelize";
 // ✅ 1. Détecter l'environnement
 const isProduction = process.env.NODE_ENV === 'production';
 
-export const sequelize = new Sequelize(process.env.DATABASE_URL, {
+const databaseUrl = process.env.DATABASE_URL || 
+  `postgresql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+
+export const sequelize = new Sequelize(databaseUrl, {
   dialect: "postgres",
   logging: false,
   // ✅ 2. SSL dynamique : Activé sur Render (Prod), Désactivé sur ton PC (Local)

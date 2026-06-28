@@ -1011,3 +1011,21 @@ h3 {
   margin: 0 var(--space-md) var(--space-md);
   width: calc(100% - var(--space-md) * 2);
 }
+/* ============================= */
+/* WHITEBOARD FULLSCREEN CONTROLS */
+/* ============================= */
+
+#whiteboard-wrapper:fullscreen .wb-tools-group--right {
+
+    position: absolute;
+
+    left: 20px;
+    bottom: 20px;
+
+    right: auto;
+
+    z-index: 99999;
+
+    display: flex;
+    gap: 8px;
+}

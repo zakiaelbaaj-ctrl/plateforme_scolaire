@@ -40,14 +40,13 @@ class SocketService {
     WSLogger.info("WS connect", url);
     this.ws = new WebSocket(url);
     this.ws.onopen = () => {
-      WSLogger.info("WS connecté");
-      this.reconnectAttempts = 0;
-      this.manualClose = false;
-      this.startHeartbeat();
-      this.flushQueue();
-      this.emit({ type: "TRANSPORT_OPEN" });
-      this.emit({ type: "ws:status", status: "connected" });
-    };
+  this.reconnectAttempts = 0;
+  this.manualClose = false;
+  this.startHeartbeat();
+  this.emit({ type: "TRANSPORT_OPEN" });
+  this.emit({ type: "ws:status", status: "connected" }); // ← identify envoyé ici
+  this.flushQueue(); // ← après identify, pas avant
+};
 
     this.ws.onmessage = (evt) => {
       // 1. 🛡️ On intercepte le texte brut envoyé par le serveur

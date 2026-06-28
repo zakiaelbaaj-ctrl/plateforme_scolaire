@@ -106,9 +106,12 @@ case "twilioRemoteTracks":
 
         case "tableauStroke":
         case "tableauSync":
-        case "tableauClear": 
+        case "tableauClear":
+        case "tableauUndo":
+        case "tableauRedo":  
         WhiteboardService.handleEvent(data);
         break;
+        
         case "userJoined":
         case "userLeft":
      // ✔️ ignoré silencieusement (pas d'action requise)
