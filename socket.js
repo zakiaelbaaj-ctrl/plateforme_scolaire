@@ -136,12 +136,13 @@ export function initWebSocketServer(server) {
 
    // 🔒 Empêcher double connexion pour le même user
 if (clients.has(ws.userId)) {
-  console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
-  try {
-    const oldWs = clients.get(ws.userId);
-    oldWs.terminate(); // plus sûr que close()
-  } catch {}
-  clients.delete(ws.userId);
+    console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
+    try {
+        const oldWs = clients.get(ws.userId);
+        oldWs._isReplacedConnection = true; // ✅ flag anti-broadcast
+        oldWs.terminate();
+    } catch {}
+    clients.delete(ws.userId);
 }
     // -------------------------
     // 2️⃣ INIT WS STATE

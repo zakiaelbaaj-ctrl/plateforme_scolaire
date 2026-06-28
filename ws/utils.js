@@ -215,10 +215,11 @@ export function cleanupOnDisconnect(ws, deps) {
         prof.eleveId = null;
       }
     }
-    // Mettre à jour la liste des profs pour les autres élèves (car un prof s'est peut-être libéré)
-    broadcastOnlineProfs(onlineProfessors, clients);
-  }
-
+    // ✅ Ne pas broadcaster si c'est une connexion remplacée
+    if (!ws._isReplacedConnection) {
+        broadcastOnlineProfs(onlineProfessors, clients);
+    }
+}
   // -------------------------------------------------------
   // CAS 3 : L'ÉTUDIANT (PEER-TO-PEER) SE DÉCONNECTE
   // -------------------------------------------------------
