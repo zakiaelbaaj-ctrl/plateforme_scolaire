@@ -15,12 +15,13 @@ this.room = await Twilio.Video.connect(token, {
     local: 1,   // ✅ détecte la qualité réseau locale
     remote: 1   // ✅ détecte la qualité réseau distante
   },
-  bandwidthProfile: {
-  video: {
-    mode: 'collaboration',
-    clientTrackSwitchOffControl: 'auto',
-    contentPreferencesMode: 'auto'
-  }
+bandwidthProfile: {
+    video: {
+        mode: 'collaboration',
+        clientTrackSwitchOffControl: 'auto',
+        contentPreferencesMode: 'auto',
+        maxSubscriptionBitrate: 2500000  // ✅ 2.5 Mbps max pour gérer screen share + vidéo
+    }
 },
   preferredVideoCodecs: [{ codec: 'VP8', simulcast: false }],
   maxAudioBitrate: 16000
