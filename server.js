@@ -19,6 +19,33 @@ await redis.connect().catch(err =>
 // Initialisation DB
 // =======================================================
 await initDb({ syncModels: false })
+async function runMigrations() {
+    try {
+        await pool.query(`
+            DO $$ BEGIN
+                CREATE TYPE statut_notation AS ENUM ('pending', 'approved', 'rejected');
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $$;
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notations_cours (
+                id SERIAL PRIMARY KEY,
+                visio_session_id INTEGER REFERENCES visio_sessions(id) ON DELETE SET NULL,
+                eleve_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                professeur_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                note INTEGER NOT NULL CHECK (note >= 1 AND note <= 5),
+                commentaire TEXT,
+                statut statut_notation NOT NULL DEFAULT 'pending',
+                created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log("✅ Migration notations_cours OK");
+    } catch (err) {
+        console.error("❌ Migration erreur:", err.message);
+    }
+}
+
+await runMigrations();
 // =======================================================
 // PostgreSQL Pool
 // =======================================================
