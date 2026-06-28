@@ -16,14 +16,12 @@ this.room = await Twilio.Video.connect(token, {
     remote: 1   // ✅ détecte la qualité réseau distante
   },
   bandwidthProfile: {
-    video: {
-      mode: 'collaboration',  // ✅ optimisé pour 2 participants
-      maxTracks: 2,
-      renderDimensions: {
-        high: { width: 640, height: 480 }
-      }
-    }
-  },
+  video: {
+    mode: 'collaboration',
+    clientTrackSwitchOffControl: 'auto',
+    contentPreferencesMode: 'auto'
+  }
+},
   preferredVideoCodecs: [{ codec: 'VP8', simulcast: false }],
   maxAudioBitrate: 16000
 });
