@@ -34,7 +34,7 @@ export function safeSend(ws, data) {
 import redis from "../config/redis.js";
 
 const BROADCAST_KEY  = "broadcast:onlineProfs";
-const BROADCAST_DELAY = 100; // ms
+const BROADCAST_DELAY = 500; // ms
 
 export async function broadcastOnlineProfs(onlineProfessors, clients) {
     try {
