@@ -9,6 +9,58 @@ const API_URL = window.location.hostname === "localhost"
   ? "http://localhost:4000"
   : "";
 // ======================================================
+// CHARGEMENT NOTE PROFESSEUR
+// ======================================================
+
+async function loadProfessorRating(profId) {
+
+  const token = localStorage.getItem("token");
+
+  try {
+
+    const res = await fetch(
+      `${API_URL}/api/v1/ratings/prof/${profId}`,
+      {
+        headers:{
+          "Authorization": `Bearer ${token}`
+        }
+      }
+    );
+
+    if (!res.ok) {
+      console.error("Erreur chargement rating");
+      return;
+    }
+
+    const data = await res.json();
+
+    console.log("⭐ Rating professeur:", data);
+
+
+    const display =
+      document.getElementById("prof-rating-display");
+
+    if (!display) return;
+
+
+    display.innerHTML = `
+      <div class="stars-display">
+        ${"★".repeat(Math.round(Number(data.note_moyenne)))}
+      </div>
+
+      <div>
+        ${data.note_moyenne}/5
+        (${data.total_avis} avis)
+      </div>
+    `;
+
+
+  } catch(err){
+    console.error(err);
+  }
+}
+
+// ======================================================
 // INIT — charge le fragment HTML puis bind les events
 // ======================================================
 
@@ -31,8 +83,9 @@ export async function initRatingModal() {
 export function openRatingModal(profName, profId) {
   currentRatingProfId = profId  ?? null;
   currentRatingValue  = 0;
-
-  const modal     = document.getElementById("rating-modal");
+loadProfessorRating(profId);
+  
+const modal     = document.getElementById("rating-modal");
   const profNameEl = document.getElementById("rating-prof-name");
   if (!modal) return;
 
