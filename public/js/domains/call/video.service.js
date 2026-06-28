@@ -8,11 +8,24 @@ export const VideoService = {
     try {
       const { Logger } = Twilio.Video;
 Logger.setDefaultLevel("warn"); // ✅ nouvelle API
-
 this.room = await Twilio.Video.connect(token, { 
   audio: true, 
-  video: { width: 640 }
-  // ← supprimer logLevel
+  video: { width: 640 },
+  networkQuality: {
+    local: 1,   // ✅ détecte la qualité réseau locale
+    remote: 1   // ✅ détecte la qualité réseau distante
+  },
+  bandwidthProfile: {
+    video: {
+      mode: 'collaboration',  // ✅ optimisé pour 2 participants
+      maxTracks: 2,
+      renderDimensions: {
+        high: { width: 640, height: 480 }
+      }
+    }
+  },
+  preferredVideoCodecs: [{ codec: 'VP8', simulcast: false }],
+  maxAudioBitrate: 16000
 });
       this._reconnectAttempts = 0;
 
