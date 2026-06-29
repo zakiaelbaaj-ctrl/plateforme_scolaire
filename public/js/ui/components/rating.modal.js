@@ -34,7 +34,7 @@ async function loadProfessorRating(profId) {
 
     const data = await res.json();
 
-    console.log("⭐ Rating professeur:", data);
+    console.log("⭐ Rating professeur:", JSON.stringify(data));
 
 
     const display =
@@ -82,10 +82,8 @@ export async function initRatingModal() {
 export function openRatingModal(profName, profId) {
   currentRatingProfId = profId  ?? null;
   currentRatingValue  = 0;
-  console.log("⭐ Ouverture rating", profId);
-loadProfessorRating(profId);
-  
-const modal     = document.getElementById("rating-modal");
+
+  const modal     = document.getElementById("rating-modal");
   const profNameEl = document.getElementById("rating-prof-name");
   if (!modal) return;
 
@@ -104,6 +102,7 @@ const modal     = document.getElementById("rating-modal");
   if (comment) comment.value = "";
 
   modal.style.display = "flex";
+  loadProfessorRating(profId);
 }
 // ======================================================
 // CLOSE
