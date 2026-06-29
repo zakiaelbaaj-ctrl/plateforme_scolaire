@@ -205,9 +205,7 @@ ScreenShareService.onStop(() => {
     case 'ringing':  updateCallStatus('Appel entrant...'); break;
     case 'inCall':   updateCallStatus('En communication'); break;
     case 'ended':    cleanupSession('Session terminée');
-    const prof = AppState.currentSession?.prof;
-  if (prof) openRatingModal(`${prof.prenom} ${prof.nom}`, prof.id);
-   break; // ⚠️ explicite
+     break;
     case null:       cleanupSession('Session terminée'); break; // ⚠️ explicite
     // default vide  ignore les états inconnus
   }

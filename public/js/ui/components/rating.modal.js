@@ -44,15 +44,14 @@ async function loadProfessorRating(profId) {
 
 
     display.innerHTML = `
-      <div class="stars-display">
-        ${"★".repeat(Math.round(Number(data.note_moyenne)))}
-      </div>
-
-      <div>
-        ${data.note_moyenne}/5
-        (${data.total_avis} avis)
-      </div>
-    `;
+    <div class="stars-display">
+        ${"★".repeat(Math.round(Number(data.stats?.note_moyenne ?? 0)))}
+    </div>
+    <div>
+        ${data.stats?.note_moyenne ?? "—"}/5
+        (${data.stats?.total_avis ?? 0} avis)
+    </div>
+`;
 
 
   } catch(err){
@@ -83,6 +82,7 @@ export async function initRatingModal() {
 export function openRatingModal(profName, profId) {
   currentRatingProfId = profId  ?? null;
   currentRatingValue  = 0;
+  console.log("⭐ Ouverture rating", profId);
 loadProfessorRating(profId);
   
 const modal     = document.getElementById("rating-modal");
