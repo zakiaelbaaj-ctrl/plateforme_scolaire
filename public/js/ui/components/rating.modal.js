@@ -141,10 +141,11 @@ async function _submitRating() {
         "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({
-        profId:  currentRatingProfId,
-        rating:  currentRatingValue,
-        comment
-      })
+    profId:   currentRatingProfId,
+    rating:   currentRatingValue,
+    comment,
+    eleveId:  window.__APP_STATE__?.currentUser?.id  // ✅ ID élève depuis AppState
+})
     });
 
     if (!res.ok) {

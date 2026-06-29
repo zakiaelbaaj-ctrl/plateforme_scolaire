@@ -25,11 +25,14 @@ router.post("/", async (req, res) => {
       return res.status(401).json({ message: "Non authentifié" });
     }
 
+    // Priorité : eleveId du body, sinon depuis le token
+    let eleveId = req.body.eleveId;
+    if (!eleveId) {
     const token = authHeader.split(" ")[1];
     const jwt = await import("jsonwebtoken");
     const payload = jwt.default.verify(token, process.env.JWT_SECRET);
-    const eleveId = payload.userId;
-
+    eleveId = payload.userId;
+}
     // ✅ Insertion dans notations_cours
     await pool.query(
       `INSERT INTO notations_cours 
