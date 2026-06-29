@@ -88,6 +88,16 @@ case "twilioRemoteTracks":
         console.log("📥 [Élève] Session terminée par le prof");
        CallService.handleEvent(data);
        SessionService._handleWs(data);
+       // ✅ Ouvrir modal notation quand prof termine la session
+    setTimeout(() => {
+        const prof = window.__APP_STATE__?.currentSession?.prof 
+                  || window.__APP_STATE__?.onlineProfessors?.[0];
+        if (prof) {
+            import("/js/ui/components/rating.modal.js").then(({ openRatingModal }) => {
+                openRatingModal(`${prof.prenom} ${prof.nom}`, prof.id);
+            });
+        }
+    }, 500);
        break;
        
        case "startSession":
