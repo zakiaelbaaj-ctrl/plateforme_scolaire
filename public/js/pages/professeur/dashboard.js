@@ -217,9 +217,17 @@ function bindUI() {
 
   // ================= BOUTON TERMINER =================
 const endBtn = document.getElementById("end-session-btn");
-endBtn?.addEventListener("click", () => {
-  console.log("✅ Clic Terminer â roomId:", AppState.currentRoomId);
- SessionService.stopVideoCall(); // ⬅️ appelle déjà terminateCall en interne
+endBtn?.addEventListener("click", async () => {
+  if (endBtn.disabled) return;
+  endBtn.disabled = true;
+
+  console.log("✅ Clic Terminer â roomId:", AppState.currentRoomId);
+
+  try {
+    await SessionService.stopVideoCall();
+  } finally {
+    endBtn.disabled = false;
+  }
 });
   // ================= BOUTONS D'APPEL =================
   let acceptInProgress = false;
