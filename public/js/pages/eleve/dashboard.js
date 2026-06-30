@@ -21,7 +21,7 @@ import { handleAllStripeReturns, holdFundsForSession }
 from "/js/services/stripe.service.js";
 import { initStripeOnboarding } from "/js/services/stripe.service.js";
 import { openSetupSession } from "/js/services/stripe.service.js";
-import { initRatingModal, openRatingModal } from "/js/ui/components/rating.modal.js";
+import { initRatingModal, openRatingModal, loadProfessorRating } from "/js/ui/components/rating.modal.js";
 // ✅ Variables module pour la miniature
 let remoteVideoTrack = null;
 let whiteboardWrapper = null;
@@ -359,20 +359,6 @@ document.getElementById("end-session-btn")?.addEventListener("click", async () =
 
   try {
     await SessionService.stopVideoCall();
-
-    // 🔥 récupération du professeur actuel
-    const prof =
-  AppState.currentSession?.prof ||
-  AppState.professors?.find(p => p.id === AppState.currentProfId);
-    if (prof) {
-      openRatingModal(
-        `${prof.prenom} ${prof.nom}`,
-        prof.id
-      );
-    } else {
-      console.warn("⚠️ Professeur introuvable pour la notation");
-    }
-
   } finally {
     btn.disabled = false;
   }
@@ -597,13 +583,15 @@ function renderProfList(profs = []) {
   profs.forEach(prof => {
     const li = document.createElement("li");
     li.className = "prof-item";
-
+    const rating = document.createElement("div");
+    rating.className = "prof-rating";
+    rating.id = `prof-rating-${prof.id}`;
     // Nom du prof — sans XSS
     const span = document.createElement("span");
     span.className = "prof-name";
     span.textContent = `${prof.prenom} ${prof.nom}`;
-
     // Indicateur de statut visuel
+
     const badge = document.createElement("span");
     badge.className = "prof-status-badge";
 
@@ -661,8 +649,10 @@ function renderProfList(profs = []) {
 
     li.appendChild(span);
     li.appendChild(badge);
+    li.appendChild(rating);
     li.appendChild(btn);
     list.appendChild(li);
+    loadProfessorRating(prof.id);
   });
 
 }

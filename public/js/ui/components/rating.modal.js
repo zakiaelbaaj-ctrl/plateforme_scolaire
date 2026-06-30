@@ -13,7 +13,7 @@ const API_URL = window.location.hostname === "localhost"
 // CHARGEMENT NOTE PROFESSEUR
 // ======================================================
 
-async function loadProfessorRating(profId) {
+export async function loadProfessorRating(profId) {
 
   const token = localStorage.getItem("token");
 
@@ -37,12 +37,9 @@ async function loadProfessorRating(profId) {
 
     console.log("⭐ Rating professeur:", JSON.stringify(data));
 
-
-    const display =
-      document.getElementById("prof-rating-display");
+    const display = document.getElementById(`prof-rating-${profId}`);
 
     if (!display) return;
-
 
     display.innerHTML = `
     <div class="stars-display">

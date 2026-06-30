@@ -103,3 +103,34 @@
   justify-content: flex-end;
   gap: var(--space-sm);
 }
+/* ======================================================
+   AFFICHAGE NOTE PROFESSEUR
+   ====================================================== */
+
+#prof-rating-display {
+  text-align: center;
+  margin: 8px 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.stars-display {
+  font-size: 1.5rem;
+  letter-spacing: 3px;
+  color: #f5c518;
+  margin-bottom: 4px;
+}
+/* ======================================================
+   ERREUR
+   ====================================================== */
+
+.rating-error {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #e85c5c;
+  background: rgba(232, 92, 92, 0.1);
+  border: 1px solid rgba(232, 92, 92, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  margin: 0;
+}
