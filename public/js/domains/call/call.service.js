@@ -2,8 +2,8 @@ import { AppState } from "../../core/state.js";
 import { socketService } from "../../core/socket.service.js";
 import { VideoService } from "./video.service.js";
 import { CallStateMachine } from "./call.state.machine.js";
-import { SessionService } from "../../services/session.service.js";
 import { ScreenShareService } from "./screen.share.service.js";
+
 export const CallService = {
   _callbacks: {},
 
@@ -67,12 +67,7 @@ _on(event, cb) {
       case "callAccepted":
         CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
         break;
-
-      case "callEnded":
-      case "session:stop":
-        this.terminateCall();
-        break;
-    }
+        }
   },
 
   callProfessor(profId) {
@@ -99,8 +94,7 @@ _on(event, cb) {
   try {
     VideoService.disconnectSilent();
     CallStateMachine.setState(CallStateMachine.STATES.ENDED);
-    SessionService.handleCallTerminated();
-    AppState._notify("ui:closeCallOverlay");
+    AppState._notify("ui:closeCallOverlay", { roomId: savedRoomId });
   } finally {
     this._terminating = false;
   }

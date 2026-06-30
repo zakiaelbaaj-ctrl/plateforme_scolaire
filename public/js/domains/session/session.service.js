@@ -12,6 +12,11 @@ import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js"
 import { DocumentService } from "/js/domains/document/document.service.js";
 import { updateToolButtons } from "/js/domains/whiteboard/whiteboard.contract.js";
 import { CallStateMachine } from "/js/domains/call/call.state.machine.js";
+// ======================================================
+// RATING SESSION END GUARD
+// ======================================================
+
+let ratingOpenedForSession = false;
 export const SessionService = {
 
   // --------------------------------------------------
@@ -80,12 +85,34 @@ export const SessionService = {
        case "session:stop":
        case "callEnded":
       case "endSession": {
-  AppState.currentRoomId = null;
-  AppState.roomReady = false;
-  this.stopHeartbeat();
-  socketService.markSessionEnded(); // ✅ coupe le flood immédiatement
-  break;
-}
+        console.log("🏁 Session terminée:", data.type);
+        // 1) Cleanup appel (Twilio, tracks, overlay)
+        CallService.terminateCall();
+        // 2) Cleanup session métier
+        AppState.currentRoomId = null;
+        AppState.roomReady = false;
+        this.stopHeartbeat();
+        this.stopTimer();
+        CallStateMachine.reset();
+        socketService.markSessionEnded(); // ✅ coupe le flood immédiatement
+  
+      // 3) Notation — une seule fois
+        const prof =
+        AppState.currentSession?.prof ||
+         AppState.onlineProfessors?.find(
+        p => p.id === AppState.currentProfId
+      );
+       if (prof) {
+      this.openEndSessionRating(prof);
+
+
+    } else {
+       console.warn(
+        "⚠️ Prof introuvable pour la notation"
+      );
+    }
+      break;
+      }
       case "chatMessage": {
         ChatService.handleEvent(data);
         break;
@@ -168,8 +195,53 @@ export const SessionService = {
         console.log("🛑 Event non géré (SessionDomain):", data.type);
     }
   },
+// ======================================================
+  // OUVERTURE UNIQUE DE LA NOTATION FIN DE SESSION
+// ======================================================
+
+    openEndSessionRating(prof) {
+
+  if (ratingOpenedForSession) {
+
+    console.warn(
+      "⚠️ Notation déjà ouverte"
+    );
+
+    return;
+  }
 
 
+  ratingOpenedForSession = true;
+
+
+  import("/js/ui/components/rating.modal.js")
+  .then(({ openRatingModal }) => {
+
+
+      console.log(
+        "⭐ Ouverture notation session:",
+        prof.prenom,
+        prof.nom
+      );
+
+
+      openRatingModal(
+        `${prof.prenom} ${prof.nom}`,
+        prof.id
+      );
+
+
+  })
+  .catch(err => {
+
+      console.error(
+        "❌ Erreur ouverture rating modal",
+        err
+      );
+
+  });
+
+},
   // --------------------------------------------------
   // ACTIONS SORTANTES (CORRIGÉES)
   // --------------------------------------------------
@@ -188,14 +260,6 @@ requestStudentMatch(matiere) {
     matiere,
     niveau: AppState.currentUser?.niveau || ""
   });
-},
-
-// ✅ NOUVEAU — appelé uniquement par CallService.terminateCall()
-handleCallTerminated() {
-  this.stopHeartbeat();
-  this.stopTimer();
-  AppState.endSession();      // currentRoomId → null
-  CallStateMachine.reset();   // ended → idle (ici et nulle part ailleurs)
 },
 
 async stopVideoCall() {

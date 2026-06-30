@@ -16,10 +16,7 @@ class SocketHandlerEleve {
     if (!data || !data.type) return;
     WSLogger.debug("FULL DATA:", data);
     WSLogger.debug("HANDLER ELEVE RECEIVE:", data.type);
-    if (data.type.startsWith("student:")) {
-  handleStudentSocketMessage(data);
-  return;
-}
+    
     switch (data.type) {
       case "ws:status":
   AppState._notify("ws:status", data);
@@ -82,34 +79,24 @@ case "twilioRemoteTracks":
   break;
    }
   // ✔️ Ces events terminent la session ET stoppent le timer
-      case "callEnded":
-      case "session:stop":
-      case "endSession":
-        console.log("📥 [Élève] Session terminée par le prof");
-       CallService.handleEvent(data);
-       SessionService._handleWs(data);
-       // ✅ Ouvrir modal notation quand prof termine la session
-    setTimeout(() => {
-        const prof = window.__APP_STATE__?.currentSession?.prof 
-                  || window.__APP_STATE__?.onlineProfessors?.[0];
-        if (prof) {
-            import("/js/ui/components/rating.modal.js").then(({ openRatingModal }) => {
-                openRatingModal(`${prof.prenom} ${prof.nom}`, prof.id);
-            });
-        }
-    }, 500);
-       break;
+     case "callEnded":
+     case "session:stop":
+     case "endSession": {
+      console.log("📥 [Élève] Session terminée:", data.type);
+      SessionService._handleWs(data);   // seul point d'entrée
+      break;
+      }
        
        case "startSession":
        this.handleStartSession(data);
        break;
 
        case "joinedRoom": {
-  console.log("✅ [Élève] Room rejointe !");
-  const roomId = data.roomId ?? data.room;
-  if (roomId) AppState.currentRoomId = roomId;
-  break;
-}
+        console.log("✅ [Élève] Room rejointe !");
+        const roomId = data.roomId ?? data.room;
+        if (roomId) AppState.currentRoomId = roomId;
+         break;
+         }
       case "chatMessage":
         AppState.addChatMessage({ sender: data.sender, text: data.text });
         break;
