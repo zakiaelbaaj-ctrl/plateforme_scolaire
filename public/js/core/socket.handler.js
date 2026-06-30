@@ -3,7 +3,7 @@ import { AppState } from "./state.js";
 import { WSLogger } from "./ws.logger.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
 import { CallService } from "../domains/call/call.service.js";
-
+import { SessionService } from "../domains/session/session.service.js";
 class SocketHandlerProf {
   constructor() {
     this._unsubscribeSocket = socketService.onMessage((data) => this.handle(data));
@@ -36,14 +36,17 @@ const normalizedDoc = {
       break;
       }
       case "callSent":
-      case "incomingCall":
-      case "callAccepted":
-      case "callRejected":
-      case "twilioToken":
-      case "callEnded":
-      case "session:stop":
-        CallService.handleEvent(data);
-        break;
+case "incomingCall":
+case "callAccepted":
+case "callRejected":
+case "twilioToken":
+  CallService.handleEvent(data);
+  break;
+
+case "callEnded":
+case "session:stop":
+  SessionService._handleWs(data);
+  break;
 
       case "startSession": 
   this.handleStartSession(data); 
