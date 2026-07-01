@@ -1,0 +1,22 @@
+{
+  "name": "Urgence Scolaire",
+  "short_name": "US",
+  "start_url": "/pages/eleve/login.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0055ff",
+  "description": "Plateforme de soutien scolaire en ligne avec appel vidéo, documents, tableau blanc et notation.",
+  "icons": [
+    {
+      "src": "/assets/icons/icones.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icones.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

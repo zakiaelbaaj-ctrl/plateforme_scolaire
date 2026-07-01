@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Urgence Scolaire - Portail</title>
-  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Indie+Flower&display=swap" rel="stylesheet">
-  <style>
+  <link rel="stylesheet" href="/css/fonts.css">
+ 
+ <style>
     :root {
       --color-eleves: #ff6f61;
       --color-etudiants: #4caf50;
@@ -42,14 +43,23 @@
     /* Masquer le footer admin si déjà logué en élève */
     #admin-footer { margin-top: 40px; opacity: 0.6; }
   </style>
+<!-- PWA + iOS Premium -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0055ff">
+
+<!-- Icône et splash screen iOS -->
+<link rel="apple-touch-icon" href="/assets/icons/icones.png">
+<link rel="apple-touch-startup-image" href="/assets/splash/splash-iphone.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
 </head>
 <body>
 
   <header>
     <img src="images/logo.png" alt="Logo">
-    <h1>Urgence Scolaire 📚</h1>
-  </header>
-
+  <h1>Urgence Scolaire 📚</h1>
+</header>
   <div id="session-info">
     <p>👋 Session active détectée : <strong id="user-role-display"></strong></p>
     <div id="action-buttons">
@@ -134,6 +144,9 @@
       localStorage.removeItem("token");
       location.reload();
     }
+    if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js");
+  }
   </script>
-</body>
+  </body>
 </html>
