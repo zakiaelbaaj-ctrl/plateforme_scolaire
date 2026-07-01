@@ -224,7 +224,25 @@ window.addEventListener("remoteVideoTrackReady", (e) => {
     if (videoMini) _doAttachMiniature(videoMini);
   }
 });
+// ================= VIDEO =================
   AppState.on('video:connected',    ()       => updateCallStatus('En communication'));
+ // ================= DOCUMENT PREVIEW =================
+
+AppState.on("document:selected", (file) => {
+
+  console.log("📎 PREVIEW élève reçu :", file);
+
+  const preview = document.getElementById("selected-file-preview");
+
+  if (!preview) {
+    console.warn("⚠️ selected-file-preview introuvable");
+    return;
+  }
+
+  preview.innerHTML = `📎 ${file.name}`;
+
+});
+// ================= DOCUMENTS REÇUS =================
   AppState.on("documents:new", (doc) => {
   console.log("⚠️🤖 EVENT documents:new déclenché", doc);
 
@@ -234,8 +252,13 @@ window.addEventListener("remoteVideoTrackReady", (e) => {
     fileData: doc.fileData,
     url:      doc.url ?? doc.fileUrl ?? null
   });
+  AppState._notify("ui:notification", {
+    type: "success",
+    message: `📎 Le fichier "${doc.fileName ?? doc.name}" a été envoyé avec succès`
+  });
+
 });
-}
+};
 // ======================================================
 // BIND UI
 // ======================================================
@@ -341,7 +364,25 @@ function bindUI() {
     if (e.key === "Enter" && e.target.value.trim()) sendChat();
   });
 
-  document.getElementById("send-file")?.addEventListener("click", sendDocument);
+  // ================= DOCUMENTS =================
+
+const fileInput = document.getElementById("file-input");
+
+fileInput?.addEventListener("change", () => {
+
+  const file = fileInput.files[0];
+
+  if (!file) return;
+
+  console.log("📎 document choisi élève :", file.name);
+
+  AppState._notify("document:selected", file);
+
+});
+
+
+document.getElementById("send-file")
+?.addEventListener("click", sendDocument);
 
   document.getElementById("logout-btn")?.addEventListener("click", () => {
     VideoService.disconnect();

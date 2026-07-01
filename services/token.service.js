@@ -45,26 +45,31 @@ export async function generateTokens({ userId, email, role }) {
 
   try {
     const JWT_SECRET = getJwtSecret();
-    const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "30d";
-    
-    // On inclut "id" et "userId" pour être compatible avec tous les controllers
-    const payload = { id: userId, userId, email, role };
-    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
+   const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "15m";
 
-    // Génération du Refresh Token (opaque)
-    const refreshToken = crypto.randomBytes(40).toString("hex");
-    const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)); // 90 jours
+// On inclut "id" et "userId" pour être compatible avec tous les controllers
+// email retiré du payload (données personnelles inutiles dans le token)
+const payload = { id: userId, userId, role };
+const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
 
-    // Insertion PostgreSQL
-    await db.query(
-      `INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)`,
-      { 
-        bind: [refreshToken, userId, expiresAt], 
-        type: QueryTypes.INSERT 
-      }
-    );
+// expiresAt en ms pour le client (permet le refresh proactif)
+const EXPIRATION_MS = 15 * 60 * 1000; // 15 minutes
+const expiresAt = Date.now() + EXPIRATION_MS;
 
-    return { accessToken, refreshToken };
+// Génération du Refresh Token (opaque)
+const refreshToken = crypto.randomBytes(40).toString("hex");
+const refreshExpiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)); // 90 jours
+
+// Insertion PostgreSQL
+await db.query(
+  `INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)`,
+  {
+    bind: [refreshToken, userId, refreshExpiresAt],
+    type: QueryTypes.INSERT
+  }
+);
+
+return { accessToken, refreshToken, expiresAt };
   } catch (err) {
     logger.error("generateTokens error:", err);
     throw err;

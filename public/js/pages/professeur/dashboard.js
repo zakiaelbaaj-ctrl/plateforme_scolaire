@@ -148,14 +148,28 @@ function subscribeToDomains() {
   WhiteboardService.setTool(remoteTool);
 });
 // ================= DOCUMENT =================
+
+AppState.on("document:selected", (file) => {
+
+  const preview = document.getElementById("selected-file-preview");
+
+  if (!preview) return;
+
+  preview.innerHTML = `📎 ${file.name}`;
+});
+
+
 AppState.on("documents:new", (doc) => {
+
   console.log("✅ UI PROF reçoit doc:", doc);
+
   addDocument({
     id:       doc.id ?? doc.fileName,
     name:     doc.fileName ?? doc.name,
     fileData: doc.fileData,
     url:      doc.url ?? doc.fileUrl ?? null
   });
+
 });
 // ================= PARTAGE D'ÉCRAN =================
 ScreenShareService.onStart((track) => {
@@ -252,8 +266,6 @@ endBtn?.addEventListener("click", async () => {
     hideIncomingAlert();
     updateCallStatus("Appel refusé");
   });
-
-   // ================= WHITEBOARD =================
   
 // ================= WHITEBOARD =================
 
@@ -332,8 +344,24 @@ document.getElementById("screen-share-btn")?.addEventListener("click", async () 
   }
 });
   // ================= DOCUMENTS =================
-  document.getElementById("send-file")?.addEventListener("click", sendDocument);
 
+const fileInput = document.getElementById("file-input");
+
+fileInput?.addEventListener("change", () => {
+
+  const file = fileInput.files[0];
+
+  if (!file) return;
+
+  console.log("📎 document choisi :", file.name);
+
+  AppState._notify("document:selected", file);
+
+});
+
+
+document.getElementById("send-file")
+?.addEventListener("click", sendDocument);
   // ================= VISIO =================
   document.getElementById("toggle-camera-btn")?.addEventListener("click", toggleCamera);
 

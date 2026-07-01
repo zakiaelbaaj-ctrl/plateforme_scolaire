@@ -182,6 +182,12 @@ export function initializeAllDomains() {
 
 export function handleMessage(ws, data) {
   try {
+  // 1️⃣ Autoriser l'auth AVANT la vérification userId
+    if (data.type === 'identify' || data.type === 'authenticate') {
+      return HANDLERS_BY_DOMAIN['auth'](ws, data);
+    }
+    // 2️⃣ Ensuite seulement, on exige l'identification
+  
     if (!ws.userId) {
       return safeSend(ws, {
         type: 'error',
@@ -189,7 +195,10 @@ export function handleMessage(ws, data) {
         code: 'UNAUTHORIZED'
       });
     }
-
+    // 3️⃣ 🔎 Ton log remis ici (au bon endroit)
+    const messageType = data.type;
+    logInfo('Handler', `📩 ${ws.userId} (${ws.role}): ${messageType}`);
+     // 3️⃣ Validation du message
     const validation = validateMessage(data);
     if (!validation.valid) {
       return safeSend(ws, {
@@ -198,7 +207,7 @@ export function handleMessage(ws, data) {
         code: 'INVALID_MESSAGE'
       });
     }
-
+      // 4️⃣ Rate limit
     if (!NO_RATE_LIMIT_TYPES.has(data.type)) {
       if (data.type === 'chatMessage') {
         if (!chatLimiter.isAllowed(ws.userId)) {
@@ -218,9 +227,8 @@ export function handleMessage(ws, data) {
         }
       }
     }
-
-    const messageType = data.type;
-    logInfo('Handler', `📩 ${ws.userId} (${ws.role}): ${messageType}`);
+        // 5️⃣ Routage normal
+    
 
     const domain = DOMAIN_HANDLERS[messageType];
     if (!domain) {

@@ -98,7 +98,7 @@ export async function registerController(req, res) {
     });
 
     // 5. Génération des tokens et email
-    const tokens = await tokenService.generateTokens({ userId: user.id, email: user.email, role: user.role });
+    const tokens = await tokenService.generateTokens({ userId: user.id, role: user.role });
     
     // On n'attend pas l'envoi de l'email pour répondre au client
     mailService.sendWelcomeEmail(user).catch(() => {});
@@ -176,7 +176,6 @@ if (user.role === "eleve" || user.role === "etudiant") {
     // On utilise user.id et user.email directement depuis l'instance Sequelize
     const tokens = await tokenService.generateTokens({ 
       userId: user.id, 
-      email: user.email, 
       role: user.role 
     });
 
@@ -225,7 +224,7 @@ export async function refreshTokenController(req, res) {
     // Révoquer ancien refresh token
     await tokenService.revokeRefreshToken(refreshToken);
 
-    const tokens = await tokenService.generateTokens({ userId: user.id, email: user.email, role: user.role });
+    const tokens = await tokenService.generateTokens({ userId: user.id, role: user.role });
     return res.json({ success: true, ...tokens });
 
   } catch (err) {
