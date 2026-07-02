@@ -1,5 +1,4 @@
-const CACHE_NAME = "urgencescolaire-v1";
-
+const CACHE_NAME = "urgencescolaire-v2"; // ⚠️ Incrémenté pour forcer la mise à jour
 const ASSETS_TO_CACHE = [
   "/",
   "/manifest.json",
@@ -26,13 +25,20 @@ self.addEventListener("install", (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  // self.skipWaiting(); // ❌ désactivé pour éviter les reloads
+
 });
 
 // Fetch → sert les fichiers depuis le cache si disponibles
 self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
+      if (cachedResponse) return cachedResponse;
+      return fetch(event.request).catch((err) => {
+        console.warn("Fetch échoué (réseau/CSP), ignoré :", event.request.url, err.message);
+        // Ne casse plus la promesse : retourne une réponse d'erreur propre
+        return new Response("", { status: 504, statusText: "Fetch failed" });
+      });
     })
   );
 });
@@ -50,4 +56,5 @@ self.addEventListener("activate", (event) => {
       )
     )
   );
+  // self.clients.claim(); // ❌ désactivé pour éviter les reloads
 });

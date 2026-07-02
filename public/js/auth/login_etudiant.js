@@ -11,10 +11,21 @@ const API_BASE = `${API_URL}/api/v1`;
 // 🔹 Vérifier si l'étudiant est déjà connecté
 const existingToken = localStorage.getItem("token");
 if (existingToken) {
-  // ✔ Redirection relative pour le mode "double-clic" (même dossier)
-  window.location.replace("dashboard.html");
+  fetch(`${API_BASE}/etudiant/me`, {
+    headers: { Authorization: `Bearer ${existingToken}` }
+  })
+  .then(res => {
+    if (res.ok) {
+      window.location.replace("dashboard.html");
+    } else if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem("token");  // token vraiment invalide
+    }
+    // sinon (erreur serveur 500, etc.) : on ne touche pas au token
+  })
+  .catch(() => {
+    // erreur réseau : ne pas supprimer le token, l'utilisateur pourra réessayer
+  });
 }
-
 document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("loginEtudiantForm");
   const errorDiv = document.getElementById("errorDiv");

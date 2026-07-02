@@ -18,10 +18,18 @@ import { ScreenShareOverlay } from "/js/ui/components/screen.share.overlay.js";
 // // AUTH — configuré UNE SEULE FOIS, en premier
 // ======================================================
 
+function clearSession() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("currentUser");
+    AppState.resetAll?.();
+}
+
 setAuthProvider({
     getToken:   async () => localStorage.getItem("token") || null,
     onAuthFail: async () => {
         Logger.warn("⚠️ Session expirée, redirection...");
+        clearSession();
         window.location.href = "/pages/etudiant/login.html";
         return false;
     }
@@ -74,7 +82,12 @@ const UI = {
             .filter(Boolean)
             .join(", ");
         remoteLocation.textContent = lieu || "—";
-     }    
+     } 
+     // ✅ AJOUT — met à jour le badge de statut
+    const statusEl = document.getElementById('call-status');
+    if (statusEl) statusEl.textContent = "En session";
+    const statusBadge = document.getElementById('call-status-badge');
+    if (statusBadge) statusBadge.classList.add('active');   
      },
 
     onQueued(data) {
@@ -147,8 +160,9 @@ onUserLeft() {
   // 5. Reset status
   const statusEl = document.getElementById("call-status");
   if (statusEl) statusEl.textContent = "Aucune session";
+  const statusBadge = document.getElementById('call-status-badge');   // ✅ AJOUT
+  if (statusBadge) statusBadge.classList.remove('active');            // ✅ AJOUT
 },
-
     onSessionReset() {
         this.clearVideos();
         this.toggleView('home');
@@ -392,21 +406,20 @@ if (btnRejoindre) {
         // 🔐 Variable de contrôle pour bloquer l'écho réseau du message qu'ON vient d'envoyer
         let lastLocalText = "";
 
-        ChatService.onMessage((msg) => {
-            // 1. Extraction sécurisée des données
-            const sender = msg?.sender || msg?.senderName || "";
-            const text = msg?.text || msg?.message || "";
+       ChatService.onMessage((msg) => {
+    const sender = msg?.sender || msg?.senderName || "";
+    const text = msg?.text || msg?.message || "";
 
-            // 2. 🛑 FILTRE ANTI-DOUBLON RADICAL
-            // Si le message vient de moi (Sasy SOUSOU) ou s'il s'agit de l'écho exact de notre dernier message envoyé
-            if (sender === "Sasy SOUSOU" || text === lastLocalText) {
-                if (text === lastLocalText) lastLocalText = ""; // Nettoyage du tampon
-                return; 
-            }
+    const myName = `${AppState.currentUser?.prenom || ""} ${AppState.currentUser?.nom || ""}`.trim();
+    const isMine = sender === myName || sender === AppState.currentUser?.id;
 
-            // 3. 👥 Si on passe le filtre, c'est le vrai message du partenaire (Fady TOUTOUT) -> On l'affiche
-            UI.onChatMessage({ sender, text });
-        });
+    if (isMine || text === lastLocalText) {
+        if (text === lastLocalText) lastLocalText = "";
+        return;
+    }
+
+    UI.onChatMessage({ sender, text });
+});
 
         const sendMessage = () => {
             const text = inputChat.value.trim();
@@ -443,7 +456,7 @@ if (btnRejoindre) {
         });
     }
      // ✅ AJOUTER ICI — Swap vidéo locale/distante au clic
-document.querySelector('.video-block:not(.video-block--remote)')?.addEventListener('click', () => {
+    document.querySelector('.video-block:not(.video-block--remote)')?.addEventListener('click', () => {
     const localVideo  = document.getElementById('local-video');
     const remoteVideo = document.getElementById('remote-video');
     const localBlock  = document.querySelector('.video-block:not(.video-block--remote)');
@@ -500,10 +513,7 @@ if (btnFile && fileInput) {
             if (AppState.sessionInProgress) {
                 EtudiantSessionOrchestrator.leaveSession();
             }
-            AppState.resetAll();
-            localStorage.removeItem("token");
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("currentUser");
+            clearSession();
             window.location.replace("/pages/etudiant/login.html");
         });
     } else {

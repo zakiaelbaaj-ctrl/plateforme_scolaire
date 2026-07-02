@@ -5,39 +5,52 @@
 
 /* 1. CONFIGURATION DES TOKENS (Héritage de base.css) */
 :root {
-  /* On récupère la couleur du thème étudiant depuis base.css */
-  --p-green:           var(--etudiant-color, #4caf50); 
+  --p-green:           var(--etudiant-color, #4caf50);
+  --p-green-light:     #e8f5e9;
   --p-green-dim:       rgba(76, 175, 80, 0.12);
   --p-green-glow:      rgba(76, 175, 80, 0.25);
   --p-hover:           #43a047;
 
-  /* Neutres Académiques */
-  --bg-app:            #f5f0e8; /* Papier recyclé très clair */
+  --bg-app:            #f5f0e8;
   --bg-card:           #ffffff;
+  --bg-soft:           #faf7f2;
+
   --text-main:         #1a2e1a;
   --text-muted:        #6b7c6b;
+  --text-soft:         #9aa89a;
+
   --border-light:      #dde8dd;
-  
-  /* Typographies */
-  --font-fancy:        'Indie Flower', cursive; /* Style écriture manuscrite */
-  --font-main:         'Inter', sans-serif;      /* Lisibilité maximale */
-  
-  /* Élévation & Courbes */
+  --border-medium:     #cdd8cd;
+
+  --font-fancy:        'Indie Flower', cursive;
+  --font-main:         'Inter', sans-serif;
+
+  --radius-xl:         22px;
   --radius-lg:         18px;
   --radius-md:         12px;
   --radius-sm:         8px;
-  --shadow-soft:       0 4px 12px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.02);
+
+  --shadow-soft:       0 4px 12px rgba(0,0,0,0.05);
+  --shadow-hover:      0 6px 18px rgba(0,0,0,0.08);
+
   --transition-fast:   all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  --header-h:          64px;
+  --transition-slow:   all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+
+  --header-h:          76px;
 }
 
 /* 2. LAYOUT & SCROLLBAR */
 body {
   font-family: var(--font-main);
-  background-color: var(--bg-app);
+  background: var(--bg-app);
   color: var(--text-main);
   overflow-x: hidden;
+}
+
+.dashboard-etudiant {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -49,23 +62,27 @@ body {
 .top-bar {
   position: sticky;
   top: 0;
-  z-index: 1000;
-  height: var(--header-h);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
+  min-height: var(--header-h);
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(10px);
   border-bottom: 2px solid var(--p-green);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 8px 28px;
   box-shadow: var(--shadow-soft);
 }
 
 .user-info h1 {
   font-family: var(--font-fancy);
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   color: var(--p-green);
-  line-height: 1;
+  letter-spacing: 0.5px;
+}
+
+.user-info small {
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 #call-status {
@@ -74,57 +91,54 @@ body {
   text-transform: uppercase;
   background: var(--p-green-dim);
   color: var(--p-green);
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 99px;
   border: 1px solid var(--p-green);
+  box-shadow: 0 0 8px var(--p-green-glow);
 }
 
 /* 4. ÉTUDIANTS DISPONIBLES (HORIZ BAR) */
 .etudiant-bar {
-  background: #fff;
+  box-shadow: var(--shadow-soft);
+  background: var(--bg-card);
   border-bottom: 1px solid var(--border-light);
-  padding: 10px 24px;
+  padding: 14px 28px;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 18px;
 }
 
 .etudiant-bar__label {
   font-family: var(--font-fancy);
-  font-weight: bold;
+  font-size: 1.2rem;
   color: var(--text-muted);
-  white-space: nowrap;
 }
 
 .etudiant-list {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  list-style: none;
+  gap: 14px;
   overflow-x: auto;
+  list-style: none;
   padding: 8px 0;
-  scrollbar-width: none; /* Firefox */
 }
-.etudiant-list::-webkit-scrollbar {
-  display: none;
-}
+
 .etudiant-list li {
-  background: var(--bg-app);
+  background: var(--bg-soft);
   border: 1px solid var(--border-light);
   border-radius: 99px;
-  padding: 6px 14px;
+  padding: 8px 18px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   transition: var(--transition-fast);
-  white-space: nowrap;
   box-shadow: var(--shadow-soft);
 }
 
-.etudiant-list li:hover:not(.empty) {
+.etudiant-list li:hover {
   border-color: var(--p-green);
-  background: #fff;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-hover);
 }
 
 .status-indicator {
@@ -166,6 +180,30 @@ body {
     font-size: 0.9rem;
 }
 /* ------------------------- */
+.btn {
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  color: white;
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-video,
+.btn-join {
+  background: linear-gradient(135deg, var(--p-green), var(--p-hover));
+}
+
+.btn-end {
+  background: linear-gradient(135deg, #e53935, #b71c1c);
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
 
 .btn-match-invite {
   background: var(--p-green);
@@ -186,16 +224,16 @@ body {
 
 /* 5. DASHBOARD GRID SYSTEM */
 .dashboard-layout {
-  display: grid;
-  grid-template-columns: 1fr 340px;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   padding: 20px 24px;
-  max-width: 1600px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
 .col-main { display: flex; flex-direction: column; gap: 20px; }
-.side-panel { display: flex; flex-direction: column; gap: 20px; position: sticky; top: 84px; height: fit-content; }
+.side-panel { display: flex; flex-direction: column; gap: 20px; position: sticky; top: 76px; height: fit-content; }
 
 /* 6. CARTES (CARDS) */
 .card {
@@ -205,11 +243,13 @@ body {
   box-shadow: var(--shadow-soft);
   overflow: hidden;
   transition: var(--transition-fast);
+  animation: fade-up 0.35s ease both;
 }
+
 
 .card__header {
   padding: 12px 20px;
-  background: var(--bg-muted);
+  background: var(--bg-soft);
   border-bottom: 1px solid var(--border-light);
   display: flex;
   justify-content: space-between;
@@ -230,6 +270,16 @@ body {
   flex-direction: column;
   gap: 15px;
 }
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+
+
 /* 7. VIDÉO & TABLEAU BLANC (ZONE DE COLLABORATION) */
 
 /* Conteneur principal (Masqué au départ via JS) */
@@ -246,19 +296,52 @@ body {
 
 /* VIDÉO DISTANTE — occupe tout l'espace */
 .videos {
-    display: block;
-    position: relative;
-    padding: 0;
-    background: #1a1a1a;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    aspect-ratio: 16/9;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #111;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
 }
 
-.video-block--remote {
-    width: 100%;
-    height: 100%;
+.video-block--remote video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
+
+.video-block--local {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
+  width: 180px;
+  height: 100px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.4);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  cursor: pointer;
+  transition: var(--transition-slow);
+}
+
+.video-block--local:hover {
+  border-color: var(--p-green);
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 12px var(--p-green-glow);
+}
+
+.video-label {
+  position: absolute;
+  bottom: 6px;
+  left: 8px;
+  font-size: 0.75rem;
+  color: white;
+  background: rgba(0,0,0,0.55);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
 
 #remoteVideoContainer {
     width: 100%;
@@ -271,47 +354,17 @@ body {
     object-fit: cover;
 }
 
-/* VIDÉO LOCALE — petite fenêtre flottante */
-.video-block:not(.video-block--remote) {
-    position: absolute;
-    bottom: 16px;
-    right: 16px;
-    width: 160px;
-    height: 90px;
-    z-index: 10;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    border: 2px solid rgba(255,255,255,0.3);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.video-block:not(.video-block--remote):hover {
-    border-color: var(--p-green);
-    transform: scale(1.03);
-}
-
-.video-label {
-    position: absolute;
-    bottom: 6px;
-    left: 8px;
-    font-size: 0.7rem;
-    color: white;
-    background: rgba(0,0,0,0.5);
-    padding: 2px 6px;
-    border-radius: 4px;
-    z-index: 11;
-}
-
 /* Zone du Canvas (Ton ID HTML correspond à cet élément) */
 .whiteboard-canvas-wrapper {
-    position: relative;
-    width: 100%;
-    height: 600px; /* ✅ Hauteur fixe indispensable pour le dessin */
-    background: #fdfdfd;
+  
+  width: 100%;
+  height: 600px;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--border-medium);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
 }
-
 #whiteboard-canvas {
     cursor: crosshair;
     display: block;
@@ -324,43 +377,124 @@ body {
 
 /* Barre d'outils (Pinceaux, Couleurs, etc.) */
 .whiteboard-tools {
-    padding: 12px;
-    background: #f8faf8;
-    display: flex;
-    flex-direction: row;    /* ✅ horizontal */
-    flex-wrap: wrap;        /* ✅ retour à la ligne si trop étroit */
-    align-items: center;
-    gap: 10px;
-    justify-content: center;
-    border-top: 1px solid var(--border-light);
+  padding: 14px;
+  background: var(--bg-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  border-top: 1px solid var(--border-light);
 }
 
 /* ✅ AJOUTER — groupe d'outils aussi en ligne */
+.wb-tool {
+  background: #fff;
+  border: 1px solid var(--border-light);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.wb-tool:hover {
+background: var(--p-green-light);
+}
+
+.wb-tool.active {
+  background: var(--p-green-dim);
+  border-color: var(--p-green);
+  color: var(--p-green);
+  transform: translateY(-2px);
+}
 .wb-tools-group {
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 6px;
 }
-
-/* ✅ AJOUTER — séparateur visuel entre groupes */
 .wb-tools-group + .wb-tools-group {
     padding-left: 10px;
     border-left: 1px solid var(--border-light);
 }
 /* 8. CHAT & DOCUMENTS */
-.card--chat { height: 400px; display: flex; flex-direction: column; }
-.chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-.chat-box span {
-  background: var(--bg-app);
-  padding: 8px 12px;
-  border-radius: 0 12px 12px 12px;
-  font-size: 0.9rem;
-  max-width: 85%;
-  border: 1px solid var(--border-light);
+.card--chat {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
 }
 
-.chat-input-row { padding: 12px; border-top: 1px solid var(--border-light); display: flex; gap: 8px; }
+.chat-box {
+  flex: 1;
+  padding: 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-box span {
+  background: var(--bg-soft);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  max-width: 85%;
+  font-size: 0.95rem;
+}
+
+.chat-input-row {
+  padding: 14px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  gap: 10px;
+  background: var(--bg-card);
+}
+
+.chat-input-row input {
+  flex: 1;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+.file-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 24px;
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+ .file-drop-zone:hover {
+  background: var(--p-green-light);
+  border-color: var(--p-green);
+  box-shadow: var(--shadow-hover);
+  
+}
+.file-input-hidden {
+  display: none;
+}
+.chat-box .me {
+  align-self: flex-end;
+  background: var(--p-green-light);
+  border-color: var(--p-green);
+}
+
+
+.doc-list {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 
 /* 9. BOUTONS UNIVERSELS */
 .btn {
@@ -442,18 +576,18 @@ body {
     opacity: 0.6;
     animation: none;
 }
+@media (max-width: 480px) {
+  .btn {
+    width: 100%;
+  }
 
-/* 10. RESPONSIVE DESIGN */
-@media (max-width: 1024px) {
-  .dashboard-layout { grid-template-columns: 1fr; }
-  .side-panel { position: static; }
 }
-
 @media (max-width: 600px) {
-  .videos { grid-template-columns: 1fr; }
+  .videos { aspect-ratio: auto; }
   .top-bar { padding: 0 12px; }
-  .user-info h1 { font-size: 1.1rem; }
+  .user-info h1 { font-size: 1.2rem; }
 }
+
 /* ======================================================
    11. COMPLÉMENTS TECHNIQUES & ÉTATS DYNAMIQUES
    ====================================================== */
@@ -618,6 +752,8 @@ body {
 }
 /* --- TOOLTIPS (Pour les boutons d'icônes) --- */
 [title]:hover::after {
+   opacity: 1;
+    transition: opacity 0.2s ease;
     content: attr(title);
     position: absolute;
     bottom: -30px;

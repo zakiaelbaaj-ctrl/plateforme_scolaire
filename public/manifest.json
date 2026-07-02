@@ -1,6 +1,6 @@
 {
   "name": "Urgence Scolaire",
-  "short_name": "US",
+  "short_name": "Urgence Scolaire",
   "start_url": "/pages/eleve/login.html",
   "scope": "/",
   "display": "standalone",

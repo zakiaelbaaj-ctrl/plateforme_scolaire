@@ -55,7 +55,9 @@ app.use(helmet({
         "https://plateforme-scolaire-1.onrender.com", 
         "wss://*", 
         "https://*.twilio.com", 
-        "wss://*.twilio.com"
+        "wss://*.twilio.com",
+        "https://fonts.googleapis.com",
+        "https://fonts.gstatic.com"
       ],
       "script-src": [
         "'self'", 
@@ -124,7 +126,6 @@ app.options("*", cors());
 // =======================================================
 // VUES & STATIQUE
 // =======================================================
-app.get("/favicon.ico", (req, res) => res.status(204).send());
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
