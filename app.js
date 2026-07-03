@@ -52,6 +52,7 @@ app.use(helmet({
         "http://localhost:4000", 
         "http://localhost:*", // Optionnel mais utile pour le debug
         "https://urgencescolaire.com",
+        "https://www.urgencescolaire.com",
         "https://plateforme-scolaire-1.onrender.com", 
         "wss://*", 
         "https://*.twilio.com", 
@@ -72,6 +73,22 @@ app.use(helmet({
   },
   xssFilter: false,
 }));
+// =======================================================
+// CORS (Correction pour PATCH)
+// =======================================================
+const allowedOrigins = ["http://localhost:4000", "https://plateforme-scolaire-1.onrender.com", "https://urgencescolaire.com",                // ✅ production
+  "https://www.urgencescolaire.com"
+  ];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error("Accès refusé par CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+app.options("*", cors()); 
 // ✅ AJOUTE CETTE ROUTE juste après tes middlewares pour supprimer les 404 polluants
 // 1. logs
 app.use((req, res, next) => {
@@ -105,22 +122,7 @@ app.use("/api/v1/etudiant", etudiantRoutes);
 app.use("/api/v1/webrtc", webrtcRoutes);
 app.use("/api/v1/appels", appelsRoutes);
 app.use("/api/v1/ratings", ratingRoutes);
-// =======================================================
-// CORS (Correction pour PATCH)
-// =======================================================
-const allowedOrigins = ["http://localhost:4000", "https://plateforme-scolaire-1.onrender.com", "https://urgencescolaire.com",                // ✅ production
-  "https://www.urgencescolaire.com"
-  ];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-    else callback(new Error("Accès refusé par CORS"));
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
-}));
-app.options("*", cors()); 
+
 
 
 // =======================================================
