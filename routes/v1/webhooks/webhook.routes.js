@@ -94,7 +94,26 @@ if (session.mode === 'setup') {
 
     // Sécurité : Utiliser les métadonnées de la session si disponibles pour retrouver l'user
     const userIdFromMeta = session.metadata?.userId;
-
+    const setupType = session.metadata?.type;
+    // ✅ Si c'est un setup de carte pour démarrer l'essai gratuit étudiant,
+    // on active aussi la période d'essai.
+    if (setupType === "student_free_trial_setup" && userIdFromMeta) {
+      await sequelize.query(
+        `UPDATE users 
+         SET has_payment_method = true,
+             stripe_customer_id = :customerId,
+             is_subscriber = true,
+             subscription_status = 'trial',
+             free_trial_end = NOW() + INTERVAL '7 days'
+         WHERE id = :userIdFromMeta`,
+        { replacements: { customerId, userIdFromMeta: Number(userIdFromMeta) } }
+      );
+      logger.info("🎓 Période d'essai gratuite activée", {
+        userId: userIdFromMeta,
+        customerId
+      });
+      return;
+    }
     if (userIdFromMeta) {
       await sequelize.query(
         `UPDATE users 
