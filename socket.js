@@ -120,14 +120,21 @@ export function initWebSocketServer(server) {
     if (ws.role === "etudiant" || ws.role === "eleve") {
       try {
         const [user] = await db.query(
-          `SELECT subscription_status, subscription_end_date FROM users WHERE id = :userId`,
+          `SELECT subscription_status, subscription_end_date, free_trial_end FROM users WHERE id = :userId`,
           { replacements: { userId: ws.userId }, type: db.QueryTypes.SELECT }
         );
         if (user) {
-          const isExpired =
+          const now = new Date();
+          const isSubscriptionExpired =
             user.subscription_end_date &&
-            new Date(user.subscription_end_date) < new Date();
-          ws.subscriptionStatus = isExpired ? "expired" : (user.subscription_status || null);
+            new Date(user.subscription_end_date) < now;
+          const isTrialExpired =
+            user.subscription_status === "trial" &&
+            user.free_trial_end &&
+            new Date(user.free_trial_end) < now;
+
+          ws.subscriptionStatus =
+            (isSubscriptionExpired || isTrialExpired) ? "expired" : (user.subscription_status || null);
         }
       } catch (err) {
         console.error("❌ Erreur chargement subscriptionStatus:", err.message);

@@ -36,10 +36,12 @@ class _StudentMatchService {
         message: "Action non autorisée."
       });
     }
+// 🔴 abonnement requis (actif OU période d'essai valide), désactivable via env
+const SKIP_SUBSCRIPTION_CHECK = process.env.SKIP_SUBSCRIPTION_CHECK === "true";
+const hasValidAccess =
+  ws.subscriptionStatus === "active" || ws.subscriptionStatus === "trial";
 
-    // 🔴 abonnement requis
-const DEV_FORCE_SUBSCRIPTION = true; // ← mettre false en prod
-if (!DEV_FORCE_SUBSCRIPTION && ws.subscriptionStatus !== "active") {
+if (!SKIP_SUBSCRIPTION_CHECK && !hasValidAccess) {
   return safeSend(ws, {
     type: "error",
     code: "NO_SUBSCRIPTION",

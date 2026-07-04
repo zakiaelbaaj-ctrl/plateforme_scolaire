@@ -90,12 +90,6 @@ case "student:match-found":
   });
   break;
 
-case "student:session-ready":
-case "student:sessionReady":
-  // Ignoré — WebRTC déjà lancé depuis matchFound
-  Logger.log("📡 sessionReady ignoré — WebRTC déjà initié");
-  break;
-
     // ==================================================
     // 🔒 SESSION
     // ==================================================

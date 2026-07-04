@@ -88,7 +88,7 @@ router.get("/status", requireAuth, async (req, res) => {
     try {
        const userId = req.user.userId || req.user.id;
         const [statusUser] = await sequelize.query(
-           `SELECT is_subscriber, subscription_status FROM users WHERE id = :userId`,
+           `SELECT is_subscriber, subscription_status, subscription_end_date, plan_type, free_trial_end FROM users WHERE id = :userId`,
       { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
         );
 
@@ -96,21 +96,27 @@ router.get("/status", requireAuth, async (req, res) => {
         // Gestion propre de l'expiration avec garde-fou
     let currentStatus = statusUser.subscription_status || "none";
     let isSubscriber = statusUser.is_subscriber ?? false;
-        // Expiration automatique si la date est dépassée mais le statut pas encore mis à jour
-        const isExpired =
-            statusUser.subscription_end_date &&
-            new Date(statusUser.subscription_end_date) < new Date();
 
-        if (isExpired && statusUser.subscription_status === "active") {
-            await sequelize.query(
-                `UPDATE users
-                 SET subscription_status = 'expired', is_subscriber = false
-                 WHERE id = :userId`,
-                { replacements: { userId } }
-            );
-            currentStatus = "expired";
-            isSubscriber = false;
-        }
+    const now = new Date();
+    const isSubscriptionExpired =
+        statusUser.subscription_end_date &&
+        new Date(statusUser.subscription_end_date) < now;
+    const isTrialExpired =
+        statusUser.subscription_status === "trial" &&
+        statusUser.free_trial_end &&
+        new Date(statusUser.free_trial_end) < now;
+
+    if ((isSubscriptionExpired || isTrialExpired) &&
+        (statusUser.subscription_status === "active" || statusUser.subscription_status === "trial")) {
+        await sequelize.query(
+            `UPDATE users
+             SET subscription_status = 'expired', is_subscriber = false
+             WHERE id = :userId`,
+            { replacements: { userId } }
+        );
+        currentStatus = "expired";
+        isSubscriber = false;
+    }
             return res.json({
             status:       currentStatus, 
         planType:     statusUser.plan_type || "none",

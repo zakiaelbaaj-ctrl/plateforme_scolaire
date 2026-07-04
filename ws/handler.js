@@ -162,7 +162,6 @@ export function initializeAllDomains() {
   try {
     initAppel(wsContext);
     initAuth(wsContext);
-    initChat(wsContext);
     initFils(wsContext);
     initMatieres(wsContext);
     initSignaling(wsContext);

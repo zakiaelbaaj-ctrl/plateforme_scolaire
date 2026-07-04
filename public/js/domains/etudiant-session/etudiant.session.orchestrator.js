@@ -6,7 +6,7 @@ import { AppState }         from "/js/core/state.js";
 import { eventBus }          from "/js/core/eventBus.js";
 import { Logger as logger } from "/js/lib/logger.js";
 import { socketService }     from "/js/core/socket.service.js";
-
+import { refreshAccessToken } from "/js/lib/auth.refresh.js";
 import { handleStudentSocketMessage } from "/js/core/socket.handler.etudiant.js";
 import { initEtudiantSessionEvents }  from "./etudiant.session.events.js";
 import { EtudiantSessionService }     from "./etudiant.session.service.js";
@@ -37,6 +37,14 @@ init(uiInterface = null) {
     logger.log("🧠 Orchestrator étudiant initialisé");
     EtudiantSessionService.init();
     EtudiantMatchingService.init();
+    socketService.setAuthExpiredHandler(async () => {
+  const ok = await refreshAccessToken();
+  if (!ok) return null;
+
+  const token = localStorage.getItem("token");
+  const protocol = location.protocol === "https:" ? "wss" : "ws";
+  return `${protocol}://${location.host}/ws?token=${token}`;
+});
 
     socketService.onMessage(handleStudentSocketMessage);
 
@@ -207,19 +215,31 @@ eventBus.on("invite:found", ({ invitant }) => {
     peer = new PeerConnection({ config });
     peer.create();
 
-    // Handler peer.onTrack
+   // Handler peer.onTrack
+    let hasTriggeredPrimaryStream = false; // Variable locale au scope pour flagguer le premier stream principal
+
     peer.onTrack((stream, track) => {
       const videoReceivers = peer.getPC()
         .getReceivers()
         .filter(r => r.track?.kind === "video" && r.track.readyState === "live");
 
-      logger.log(`🧠 Flux distant reçu — videoReceivers: ${videoReceivers.length}`);
+      logger.log(`🧠 Flux distant reçu (${track.kind}) — videoReceivers: ${videoReceivers.length}`);
 
       if (videoReceivers.length > 1) {
         logger.log("📺 Track écran partagé reçue");
         eventBus.emit("screenshare:remote-stream", stream);
       } else {
-        eventBus.emit("media:remote-stream", stream);
+        // 🛡️ SÉCURITÉ ANTI-DOUBLON : On ne laisse passer que la piste vidéo principale.
+        // Si c'est la piste audio qui arrive en premier ou en second, elle est ignorée ici
+        // car l'objet 'stream' contient déjà l'audio et la vidéo regroupés.
+        if (track.kind === "video") {
+          if (hasTriggeredPrimaryStream) {
+            logger.log("📡 Flux vidéo principal déjà reçu, événement ignoré pour éviter les doublons UI.");
+            return;
+          }
+          hasTriggeredPrimaryStream = true;
+          eventBus.emit("media:remote-stream", stream);
+        }
       }
     });
 

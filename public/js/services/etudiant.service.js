@@ -68,16 +68,15 @@ throw error;
     try {
         // 1. On appelle ton API (qui interroge PostgreSQL)
         const res = await http.get("v1/stripe-student/status");
+        // ✅ Déballage de l'enveloppe {success, data} comme dans getProfile()
+        const payload = res.data || res;
+        AppState.isSubscribed = payload.isSubscriber;
         
-        // 2. On met à jour l'état global dynamiquement avec la VRAIE réponse du serveur
-        AppState.isSubscribed = res.isSubscriber; 
-        
-        // 3. On renvoie les vraies données (status: "active", "inactive", "none", etc.)
-        return { 
-            isSubscriber: res.isSubscriber, 
-            status: res.status,
-            endDate: res.endDate,
-            planType: res.planType
+       return {
+            isSubscriber: payload.isSubscriber,
+            status:       payload.status,
+            endDate:      payload.endDate,
+            planType:     payload.planType
         };
     } catch (err) {
         // En cas d'erreur réseau, on passe l'état à faux par sécurité

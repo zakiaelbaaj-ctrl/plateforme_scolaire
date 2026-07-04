@@ -14,6 +14,7 @@ import { WhiteboardService }           from "/js/domains/whiteboard/whiteboard.s
 import { ChatService }                 from "/js/domains/chat/chat.service.js";
 import { startSessionTimer, stopSessionTimer } from "/js/pages/etudiant/session.timer.js";
 import { ScreenShareOverlay } from "/js/ui/components/screen.share.overlay.js";
+import { refreshAccessToken } from "/js/lib/auth.refresh.js";
 // ======================================================
 // // AUTH — configuré UNE SEULE FOIS, en premier
 // ======================================================
@@ -24,10 +25,12 @@ function clearSession() {
     localStorage.removeItem("currentUser");
     AppState.resetAll?.();
 }
-
 setAuthProvider({
     getToken:   async () => localStorage.getItem("token") || null,
     onAuthFail: async () => {
+        const ok = await refreshAccessToken();
+        if (ok) return true; // ✅ http.js retente automatiquement avec le nouveau token
+
         Logger.warn("⚠️ Session expirée, redirection...");
         clearSession();
         window.location.href = "/pages/etudiant/login.html";

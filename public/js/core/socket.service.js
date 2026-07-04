@@ -71,20 +71,34 @@ class SocketService {
       this.emit(data);
     };
 
-    this.ws.onclose = (evt) => {
-      WSLogger.warn("WS fermé", evt.code);
-      this.stopHeartbeat();
-      this.emit({
-        type: "TRANSPORT_CLOSED",
-        code: evt.code,
-      });
-      if (!this.manualClose && evt.code !== 1000) {
-        this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts }); // ✅ AJOUTER
-    
-        this.scheduleReconnect();
-        } else {
+    this.ws.onclose = async (evt) => {
+  WSLogger.warn("WS fermé", evt.code);
+  this.stopHeartbeat();
+  this.emit({ type: "TRANSPORT_CLOSED", code: evt.code });
+
+  if (this.manualClose || evt.code === 1000) {
     this.emit({ type: "ws:status", status: "disconnected" });
+    return;
   }
+
+  // ✅ Code 1008 = auth invalide/expirée → refresh silencieux avant reconnexion
+  if (evt.code === 1008 && this.onAuthExpired) {
+    this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
+
+    const newUrl = await this.onAuthExpired();
+    if (newUrl) {
+      this.currentUrl = newUrl;
+      this.reconnectAttempts = 0;
+      this.connect(newUrl);
+    } else {
+      WSLogger.warn("WS auth définitivement invalide — abandon reconnexion");
+      this.emit({ type: "ws:status", status: "auth-failed" });
+    }
+    return;
+  }
+
+  this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
+  this.scheduleReconnect();
 };
     this.ws.onerror = (err) => {
       WSLogger.error("WS erreur", err);
@@ -189,6 +203,12 @@ class SocketService {
 
   markSessionActive() {
     this._sessionEnded = false;
+  }
+  /* ======================================================
+     AUTH EXPIRED HANDLER (injecté depuis l'extérieur)
+  ====================================================== */
+  setAuthExpiredHandler(fn) {
+    this.onAuthExpired = fn; // fn: async () => newWsUrlString | null
   }
   /* ======================================================
      CLOSE MANUAL

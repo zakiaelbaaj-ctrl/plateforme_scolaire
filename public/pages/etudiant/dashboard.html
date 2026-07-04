@@ -180,17 +180,28 @@
         <ul id="doc-list" class="doc-list"></ul>
       </div>
 
-     <!-- STRIPE payement -->
+    <!-- STRIPE payement -->
         <div id="user-info"></div> <!-- ✅ ICI -->
       <div class="card card--stripe-payment">
       <div class="card__header">
-      <h3 class="card__title">💳 Mode de paiement</h3>
+      <h3 class="card__title">💳 Abonnement</h3>
       </div>
        <div class="card__body">
       <div id="stripe-status" style="margin-bottom: 15px; font-weight: bold;"></div>
 
-     <button id="stripe-setup-btn" type="button" class="btn btn--primary full-width">
-      Ajouter une carte bancaire
+     <button id="stripe-setup-btn" type="button" class="btn btn--primary full-width" style="margin-bottom: 10px;">
+      🎁 Essai gratuit (7 jours)
+      </button>
+
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <select id="plan-select" class="btn full-width" style="text-align:left;">
+          <option value="monthly">Mensuel — 10€/mois</option>
+          <option value="yearly">Annuel — 96€/an</option>
+        </select>
+      </div>
+
+      <button id="stripe-subscribe-btn" type="button" class="btn btn--primary full-width">
+      💳 S'abonner
       </button>
          </div>
          </div>
@@ -210,7 +221,7 @@ const API_URL = window.location.hostname === "localhost"
           ? "http://localhost:4000"
           : "https://plateforme-scolaire-1.onrender.com";
 
-          async function parseJsonSafe(response) {
+async function parseJsonSafe(response) {
     const text = await response.text();
     if (!text) {
         throw new Error(
@@ -224,22 +235,27 @@ const API_URL = window.location.hostname === "localhost"
         throw new Error(
             `Réponse invalide du serveur (statut ${response.status}) : ${text.slice(0, 200)}`
         );
-        }
+    }
 }
-// 2. Logique du bouton d'ajout de carte
-const stripeBtn = document.getElementById("stripe-setup-btn"); 
+
+function getToken() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("Vous devez être connecté pour accéder au paiement.");
+        return null;
+    }
+    return token;
+}
+
+// 2. Bouton "Essai gratuit" (enregistrement de carte, mode setup)
+const stripeBtn = document.getElementById("stripe-setup-btn");
 if (stripeBtn) {
-  // 1. On ajoute "e" (l'événement) ici 👇
    stripeBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            alert("Vous devez être connecté pour ajouter une carte bancaire.");
-            return;
-        }
+        const token = getToken();
+        if (!token) return;
 
-        // ✅ Vérifie d'abord le statut
         const statusRes = await fetch(`${API_URL}/api/v1/stripe-student/status`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
@@ -250,14 +266,12 @@ if (stripeBtn) {
             return;
         }
 
-        // Sinon procède à l'enregistrement
         const res = await fetch(`${API_URL}/api/v1/stripe-student/subscribe`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ planType: "monthly" })
+            }
         });
 
         const data = await parseJsonSafe(res);
@@ -270,7 +284,41 @@ if (stripeBtn) {
         console.error("Erreur Stripe :", err);
         alert("Erreur lors de la connexion à Stripe : " + err.message);
     }
-});
+   });
+}
+
+// 3. Bouton "S'abonner" (abonnement payant réel, mensuel/annuel)
+const subscribeBtn = document.getElementById("stripe-subscribe-btn");
+const planSelect    = document.getElementById("plan-select");
+if (subscribeBtn) {
+   subscribeBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    try {
+        const token = getToken();
+        if (!token) return;
+
+        const planType = planSelect?.value || "monthly";
+
+        const res = await fetch(`${API_URL}/api/v1/stripe-student/subscribe-student`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ planType })
+        });
+
+        const data = await parseJsonSafe(res);
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            alert("Erreur : " + (data.error || "Impossible d'accéder au paiement."));
+        }
+    } catch (err) {
+        console.error("Erreur Stripe :", err);
+        alert("Erreur lors de la connexion à Stripe : " + err.message);
+    }
+   });
 }
 </script>
 </body>

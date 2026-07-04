@@ -1,6 +1,7 @@
 const CACHE_NAME = "urgencescolaire-v2"; // ⚠️ Incrémenté pour forcer la mise à jour
 const ASSETS_TO_CACHE = [
   "/",
+  "/index.html",
   "/manifest.json",
   "/assets/icons/icones.png",
   "/pages/eleve/login.html",
