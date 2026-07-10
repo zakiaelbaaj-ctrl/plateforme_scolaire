@@ -13,13 +13,14 @@ export const DataChannelService = (() => {
     chat: null,
     draw: null,
   };
+  let currentSendHandlers = {};
 
   // ====================================================
   // INIT
   // ====================================================
 
   function init(peerConnection, isInitiator, handlers = {}) {
-
+   currentSendHandlers = handlers;   // 🆕 sans cette ligne, currentSendHandlers reste toujours {}
     if (isInitiator) {
   channels.chat = peerConnection.createDataChannel("chat", { ordered: true });
   channels.draw = peerConnection.createDataChannel("draw", {
@@ -237,8 +238,14 @@ fileTransfer.sendFile(file, ch, (progress) => { // ← fileTransfer local, pas w
   if (rounded !== lastProgress) {
     lastProgress = rounded;
     console.log("📤 progress :", rounded);
-  }
-});
+
+     // 🆕 Détection de la fin d'envoi
+      if (rounded >= 100) {
+        Logger.log("✅ Fichier envoyé avec succès :", file.name);
+        currentSendHandlers?.onFileSent?.({ name: file.name, size: file.size });
+      }
+    }
+  });
 }
   // ====================================================
   // CLEANUP

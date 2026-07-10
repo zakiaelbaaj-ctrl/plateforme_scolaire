@@ -116,7 +116,6 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // 5. autres routes
-app.use("/api/v1/stripeConnect", stripeStudentRoutes);
 app.use("/api/v1/stripe-student", stripeStudentRoutes);
 app.use("/api/v1/etudiant", etudiantRoutes);
 app.use("/api/v1/webrtc", webrtcRoutes);
@@ -236,7 +235,6 @@ app.use("/api/v1/twilio", twilioRoutes);
 app.use("/api/v1/twilio", twilioStudentRoute);
 app.use("/api/v1/turn", turnRoutes);
 app.use("/api/v1/users/profile", profileRoutes);
-app.use("/api/v1/stripeConnect", stripeConnectRoutes);
 app.use("/api/whiteboard", whiteboardRoutes);
 
 app.get("/api", (req, res) => {

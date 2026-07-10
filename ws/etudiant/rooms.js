@@ -8,6 +8,11 @@ const rooms = new Map(); // roomId -> { members: ws[], memberSet: Set }
 // =======================================================
 // JOIN ROOM
 // =======================================================
+// Fonction utilitaire à ajouter en haut du fichier
+function getDisplayName(ws) {
+  const full = `${ws.prenom || ""} ${ws.nom || ""}`.trim();
+  return full || `Étudiant #${ws.userId}`;
+}
 export async function joinRoom(ws, { roomId }) {
     console.log("🚪 [étudiant] joinRoom:", ws.userId, "→", roomId);
 
@@ -39,13 +44,13 @@ if (!DEV_FORCE_SUBSCRIPTION && ws.subscriptionStatus !== "active")
     room.memberSet.add(ws);
     ws.studentRoomId = roomId;
 
-    broadcastRoom(roomId, {
-        type:      "student:userJoined",
-        userId:    ws.userId,
-        userName:  `${ws.prenom} ${ws.nom}`,
-        roomId,
-        timestamp: new Date().toISOString()
-    }, ws);
+   broadcastRoom(roomId, {
+    type:      "student:userJoined",
+    userId:    ws.userId,
+    userName:  getDisplayName(ws),   // ✅ plus de "null null"
+    roomId,
+    timestamp: new Date().toISOString()
+}, ws);
 
     safeSend(ws, { type: "student:joinedRoom", roomId });
 
@@ -76,13 +81,13 @@ export async function leaveRoom(ws) {
         room.members = room.members.filter(m => m !== ws);
         room.memberSet.delete(ws);
 
-        console.log(`👤 [étudiant] ${ws.prenom} a quitté ${roomId}`);
+        console.log(`👤 [étudiant] ${getDisplayName(ws)} a quitté ${roomId}`);
 
         broadcastRoom(roomId, {
-            type:     "student:userLeft",
-            userId:   ws.userId,
-            userName: `${ws.prenom} ${ws.nom}`
-        });
+    type:     "student:userLeft",
+    userId:   ws.userId,
+    userName: getDisplayName(ws)     // ✅ plus de "null null"
+});
 
         if (room.members.length === 0) {
             rooms.delete(roomId);

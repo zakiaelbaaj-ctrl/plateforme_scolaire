@@ -3,7 +3,6 @@
 // Exporté vers ws/etudiant/init.js qui l'écoute via wss.emit("ws:message")
 
 import { joinRoom, leaveRoom }  from "./rooms.js";
-import { chatMessage }          from "./chat.js";
 import { documentShare }        from "./documents.js";
 import { handleSignal }         from "./video.js";
 import { StudentMatchService }  from "./match.service.js";
@@ -66,25 +65,45 @@ export async function handleStudentMessage(ws, msg) {
         // --------------------------------------------------
         // CHAT
         // --------------------------------------------------
-        case "student:chatMessage": {
-      const { text, roomId } = msg;
-      if (!text) {
-        return safeSend(ws, { type: "error", message: "Message vide" });
-      }
+       case "student:chatMessage": {
+  const { text, roomId } = msg;
+  if (!text) {
+    return safeSend(ws, { type: "error", message: "Message vide" });
+  }
 
-      clients.forEach(client => {
-        if (client.readyState === 1 && client.role === "etudiant") {
-          client.send(JSON.stringify({
-            type: "student:chatMessage",
-            sender: ws.userName,
-            text,
-            roomId: roomId || "general",
-            timestamp: new Date().toISOString()
-          }));
-        }
-      });
-      break;
+  const activeRoomId = roomId || ws.studentRoomId;
+  if (!activeRoomId) {
+    return safeSend(ws, { type: "error", message: "Aucune room active" });
+  }
+
+  // 🛡️ Fallback robuste : userName peut être undefined si identify()
+  // n'a pas encore été traité côté serveur pour ce socket.
+  const senderName =
+    ws.userName ||
+    `${ws.prenom || ""} ${ws.nom || ""}`.trim() ||
+    `Étudiant #${ws.userId}`;
+
+  const payload = {
+    type: "student:chatMessage",
+    userId: ws.userId,      // 👈 identifiant stable, toujours présent (jamais undefined)
+    sender: senderName,     // 👈 ne peut plus jamais être undefined → jamais supprimé du JSON
+    text,
+    roomId: activeRoomId,
+    timestamp: new Date().toISOString(),
+  };
+
+  // 🛡️ Diffusion restreinte aux membres de LA room, pas à tous les étudiants en ligne
+  clients.forEach(client => {
+    if (
+      client.readyState === 1 &&
+      client.role === "etudiant" &&
+      client.studentRoomId === activeRoomId
+    ) {
+      client.send(JSON.stringify(payload));
     }
+  });
+  break;
+}
 
         // --------------------------------------------------
         // DOCUMENTS

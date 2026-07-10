@@ -99,6 +99,8 @@
           <h3 class="card__title">🖊 Tableau blanc</h3>
           <div class="wb-header-actions">
             <button id="wb-fullscreen-btn" class="btn btn--icon" title="Plein écran">⛶</button>
+             <button id="wb-exit-fullscreen-btn" class="btn btn--icon btn--danger-ghost" title="Quitter le plein écran" style="display:none;">✕ Quitter</button>
+         
           </div>
         </div>
 
@@ -176,6 +178,9 @@
           <span>Glisser un fichier ici</span>
         </label>
         <input type="file" id="file-input" class="file-input-hidden" />
+        <div id="attachment-preview" class="attachment-preview">
+        Aucune pièce jointe sélectionnée
+       </div>
         <button id="send-file" class="btn btn--primary full-width">Envoyer le document</button>
         <ul id="doc-list" class="doc-list"></ul>
       </div>
@@ -211,7 +216,6 @@
 <!-- ================= JS ================= -->
 <!-- Ajoute type="module" à TOUTES les balises -->
 <script type="module" src="/js/lib/logger.js"></script>
-<script type="module" src="/js/domains/etudiant-session/etudiant.session.orchestrator.js"></script>
 <script type="module" src="/js/pages/etudiant/dashboard.js"></script>
 
 <!-- ================= STRIPE ================= -->

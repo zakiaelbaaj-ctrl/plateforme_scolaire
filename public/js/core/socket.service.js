@@ -40,6 +40,7 @@ class SocketService {
     WSLogger.info("WS connect", url);
     this.ws = new WebSocket(url);
     this.ws.onopen = () => {
+      console.log("A - onopen");
   this.reconnectAttempts = 0;
   this.manualClose = false;
   this.startHeartbeat();

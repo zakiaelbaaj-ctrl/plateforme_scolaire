@@ -23,30 +23,34 @@ import { loadWebRTCConfig }   from "/js/webrtc/webrtc.config.js";
 let peer           = null;
 let localStream    = null;
 let pendingSignals = [];
-
-// ======================================================
-// ORCHESTRATOR
-// ======================================================
+let isInitialized  = false; 
+let unsubscribeMessage = null;
+let canvasResizeInterval = null;
 
 export const EtudiantSessionOrchestrator = {
 
-  // ====================================================
-  // INIT
-  // ====================================================
-init(uiInterface = null) {
+  init(uiInterface = null) {
+    if (isInitialized) {
+      logger.warn("⚠️ Orchestrator déjà initialisé — appel ignoré");
+      return;
+    }
+    isInitialized = true;
+
     logger.log("🧠 Orchestrator étudiant initialisé");
     EtudiantSessionService.init();
     EtudiantMatchingService.init();
+
     socketService.setAuthExpiredHandler(async () => {
-  const ok = await refreshAccessToken();
-  if (!ok) return null;
+      const ok = await refreshAccessToken();
+      if (!ok) return null;
+      const token = localStorage.getItem("token");
+      const protocol = location.protocol === "https:" ? "wss" : "ws";
+      return `${protocol}://${location.host}/ws?token=${token}`;
+    });
 
-  const token = localStorage.getItem("token");
-  const protocol = location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${location.host}/ws?token=${token}`;
-});
-
-    socketService.onMessage(handleStudentSocketMessage);
+    // 👈 on garde la référence de désinscription, comme le fait déjà socket.handler.eleve.js
+    if (unsubscribeMessage) unsubscribeMessage();
+    unsubscribeMessage = socketService.onMessage(handleStudentSocketMessage);
 
     initEtudiantSessionEvents({
       matchingService: EtudiantMatchingService,
@@ -57,113 +61,124 @@ init(uiInterface = null) {
 
     this._bindEvents();
 
-    // ✅ AJOUT : Connexion WebSocket centralisée ici
     const token = AppState.token || localStorage.getItem("token");
     if (token) {
       const protocol = location.protocol === "https:" ? "wss" : "ws";
       const wsUrl = `${protocol}://${location.host}/ws?token=${token}`;
-      socketService.connect(wsUrl);
+      socketService.connect(wsUrl); // déjà protégé côté socket.service (readyState check)
       logger.log("🔌 WebSocket connecté depuis l'orchestrateur");
     } else {
       logger.warn("⚠️ Pas de token — WebSocket non connecté");
     }
-},
+  },
+  // ====================================================
+  // DESTROY  👈 NOUVELLE MÉTHODE — collée ici
+  // ====================================================
+  destroy() {
+    logger.log("🧹 Destruction orchestrator étudiant");
+    if (unsubscribeMessage) {
+      unsubscribeMessage();
+      unsubscribeMessage = null;
+    }
+    this._cleanup({ reason: "destroy" });
+    isInitialized      = false;
+    this._eventsBound  = false;
+    // Note: eventBus.on() n'a pas d'unsubscribe stocké ici —
+    // si un vrai destroy/reinit doit être supporté, il faudra
+    // migrer vers eventBus.on() avec off() explicite.
+  },
   // ====================================================
   // EVENTS
   // ====================================================
-  _bindEvents() {
+ _bindEvents() {
+    if (this._eventsBound) {
+      logger.warn("⚠️ _bindEvents déjà appelée — ignorée");
+      return;
+    }
+    this._eventsBound = true;
 
-    // 🎯 MATCH TROUVÉ : SÉQUENCE UNIQUE ET CENTRALISÉE
-    eventBus.on("student:match-found", async ({ roomId, initiator }) => {
-      logger.log(`🎯 Match trouvé ! Initialisation séquentielle de la room : ${roomId}`);
-      
-      // 1️⃣ ALERTER L'ÉTAT GLOBAL & DÉMARRER LES TIMERS
-      AppState.startSession({ roomId });
+// 1️⃣ MATCH TROUVÉ → démarre la session (état) + demande le join room.
+//    Ne connaît pas encore le rôle d'initiateur : ce n'est pas sa responsabilité.
+eventBus.on("student:match-found", ({ roomId }) => {
+  logger.log(`🎯 Match trouvé ! Initialisation de la room : ${roomId}`);
 
-      // 2️⃣ EMISSION DU JOINROOM AU SERVEUR VIA LE SOCKET
-      socketService.send({ type: "student:joinRoom", roomId });
-      logger.log("🚪 Signal student:joinRoom envoyé de manière centralisée");
+  AppState.startSession({ roomId });
 
-      // 3️⃣ LANCEMENT DE WEBRTC IMMÉDIAT (Plus besoin d'attendre un second event volatile)
-      logger.log(`🧠 Lancement de WebRTC (Initiateur: ${initiator})`);
-      await EtudiantSessionOrchestrator._startWebRTC(initiator);
+  socketService.send({ type: "student:joinRoom", roomId });
+  logger.log("🚪 Signal student:joinRoom envoyé de manière centralisée");
+   
+  // Sécurité : On nettoie un éventuel intervalle précédent
+      if (canvasResizeInterval) clearInterval(canvasResizeInterval);
+  // Le canvas peut être dimensionné dès que la vue session s'affiche,
+  // indépendamment de l'état de la connexion WebRTC.
+  let attempts = 0;
+  const resizeInterval = setInterval(() => {
+    const canvas = document.getElementById("whiteboard-canvas");
+    const wrapper = document.getElementById("whiteboard-wrapper");
 
-      // 👇 Ajustement en boucle (Polling) pour la taille du canvas
-      let attempts = 0;
-      const resizeInterval = setInterval(() => {
-        const canvas = document.getElementById("whiteboard-canvas");
-        const wrapper = document.getElementById("whiteboard-wrapper");
-        
-        if (canvas && wrapper) {
-          const w = wrapper.offsetWidth || wrapper.parentElement?.offsetWidth || 0;
-          const h = wrapper.offsetHeight || wrapper.parentElement?.offsetHeight || 0;
-          
-          if (w > 50 && h > 50) { 
-            canvas.width = w;
-            canvas.height = h;
-            logger.log(`🎯 Taille du tableau ajustée : ${w}x${h}`);
-            
-            if (window.WhiteboardService && window.WhiteboardService._canvas) {
-              window.WhiteboardService._canvas.redraw();
-            }
-            
-            clearInterval(resizeInterval); 
-          }
+    if (canvas && wrapper) {
+      const w = wrapper.offsetWidth || wrapper.parentElement?.offsetWidth || 0;
+      const h = wrapper.offsetHeight || wrapper.parentElement?.offsetHeight || 0;
+
+      if (w > 50 && h > 50) {
+        canvas.width = w;
+        canvas.height = h;
+        logger.log(`🎯 Taille du tableau ajustée : ${w}x${h}`);
+
+        if (window.WhiteboardService && window.WhiteboardService._canvas) {
+          window.WhiteboardService._canvas.redraw();
         }
-        
-        attempts++;
-        if (attempts > 50) { 
-          clearInterval(resizeInterval);
-          logger.warn("⚠️ Impossible de mesurer la vue, fallback appliqué.");
-          if (canvas) { canvas.width = 800; canvas.height = 600; }
-        }
-      }, 100);
-    });
-    eventBus.on("student:invited", ({ fromId, fromName, matiere }) => {
-    logger.log("🔗 Invitation reçue de :", fromName);
-    socketService.send({
-        type:    "student:enqueue",
-        matiere: matiere || "Général",
-        sujet:   "",
-    });
+
+        clearInterval(resizeInterval);
+        canvasResizeInterval = null;
+      }
+    }
+
+    attempts++;
+    if (attempts > 50) {
+      clearInterval(canvasResizeInterval);
+      canvasResizeInterval = null;
+      logger.warn("⚠️ Impossible de mesurer la vue, fallback appliqué.");
+      if (canvas) { canvas.width = 800; canvas.height = 600; }
+    }
+  }, 100);
 });
-    eventBus.on("socket:open", () => {
-    const user = AppState.currentUser;
-    // ✅ Délai pour s'assurer que le socket est prêt
-     setTimeout(() => {
-    console.log("IDENTIFY DEBUG USER =", user);
-    console.log("VILLE DEBUG =", user?.ville);
-   console.log("PAYS DEBUG  =", user?.pays);
-   console.log("DEBUG CURRENT USER FULL =", AppState.currentUser);
-    socketService.send({
-        type:    "identify",
-        prenom:  user?.prenom  || "",
-        nom:     user?.nom     || "",
-        ville:   user?.ville   || "",
-        pays:    user?.pays    || "",
-        niveau:  user?.niveau  || null,
-        matiere: user?.matiere || "Général",
-    });
-    logger.log("🪪 Identify envoyé au serveur");
-    }, 300);
+
+// 2️⃣ SESSION PRÊTE (confirmée serveur) → seule source de vérité pour l'initiateur,
+//    seule responsable du démarrage effectif de WebRTC.
+eventBus.on("student:session-ready", async ({ initiator }) => {
+  logger.log(`🧠 Session confirmée par le serveur, lancement WebRTC (Initiateur: ${initiator})`);
+  await EtudiantSessionOrchestrator._startWebRTC(initiator);
 });
+
+// 3️⃣ IDENTIFY → envoyé dès l'ouverture du socket, sans délai artificiel,
+//    pour minimiser la fenêtre de course avec un enqueue prématuré.
+eventBus.on("socket:open", () => {
+  console.log("C - socket:open");
+  const user = AppState.currentUser;
+  
+  socketService.send({
+    type:    "identify",
+    prenom:  user?.prenom  || "",
+    nom:     user?.nom     || "",
+    ville:   user?.ville   || "",
+    pays:    user?.pays    || "",
+    niveau:  user?.niveau  || null,
+    matiere: user?.matiere || "Général",
+  });
+  logger.log("🪪 Identify envoyé au serveur");
+});
+    
 // ✅ COLLER ICI — Détecter si l'étudiant arrive via un lien d'invitation
 const params = new URLSearchParams(window.location.search);
 const inviteId = params.get("invite");
-console.log("🔗 URL complète :", window.location.href);
-console.log("🔗 inviteId détecté :", inviteId);
-if (inviteId) {
-    logger.log("🔗 Invitation détectée — userId invitant :", inviteId);
-    AppState.pendingInviteId = inviteId;
-}
 
 if (inviteId) {
     logger.log("🔗 Invitation détectée — userId invitant :", inviteId);
     AppState.pendingInviteId = inviteId;
-    
-    // ✅ Nettoyer l'URL sans recharger la page
     const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
+        window.history.replaceState({}, document.title, cleanUrl);
+    
 }
 // ✅ Lancement matching automatique quand l'invitant est trouvé en ligne
 eventBus.on("invite:found", ({ invitant }) => {
@@ -288,6 +303,7 @@ eventBus.on("invite:found", ({ invitant }) => {
       onText:         (text)           => eventBus.emit("whiteboard:text",   text),
       onClear:        ()               => eventBus.emit("whiteboard:clear"),
       onFileComplete: (file)           => eventBus.emit("file:received",     file),
+      onFileSent: (fileInfo) => eventBus.emit("file:sent", fileInfo),
       onFileProgress: (id, progress)   => eventBus.emit("file:progress",     { id, progress }),
       onFileMeta:     (meta)           => eventBus.emit("file:meta",         meta),
       onFileEnd:      (meta)           => eventBus.emit("file:end",          meta),
@@ -463,29 +479,29 @@ eventBus.on("invite:found", ({ invitant }) => {
   // CLEANUP
   // ====================================================
 
-  _cleanup(reason = "") {
+  _cleanup({ reason } = {}) {
     logger.log("🧹 Cleanup orchestrator :", reason);
 
     this._cleanupScreenShare?.();
 
     if (peer) {
-      peer.destroy();
-      peer = null;
+        peer.destroy();
+        peer = null;
     }
 
     pendingSignals = [];
 
     if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
-      localStream = null;
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
     }
 
     DataChannelService.reset();
 
-    AppState.currentRoomId     = null;
+    AppState.currentRoomId = null;
     AppState.sessionInProgress = false;
 
     eventBus.emit("screenshare:stopped");
     eventBus.emit("session:reset", { reason });
-  }
+}
 };

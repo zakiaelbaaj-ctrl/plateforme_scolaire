@@ -66,15 +66,18 @@ export function initEtudiantSessionEvents({
   });
 
   // 🎯 MATCH TROUVÉ : Rôle 100% Passif / UI pour ce fichier
-  eventBus.on("student:match-found", (data) => {
-    Logger.log("📥 UI Events : Match détecté, ordre d'affichage envoyé à l'UI.");
-    
-    // L'UI bascule l'affichage en mode session (affiche le tableau blanc, coupe le loader)
-    uiService?.onMatchFound?.(data); 
-    
-    // 🛑 SUPPRESSION DES APPELS LOGIQUES : L'orchestrateur s'est déjà abonné 
-    // en direct à cet événement pour lancer le joinRoom et le WebRTC.
-  });
+  // APRÈS — inchangé pour match-found, on ajoute session-ready
+eventBus.on("student:match-found", (data) => {
+  Logger.log("📥 UI Events : Match détecté, ordre d'affichage envoyé à l'UI.");
+  uiService?.onMatchFound?.(data);
+});
+
+// 🎯 SESSION PRÊTE : rôle 100% passif ici aussi.
+// L'orchestrateur écoute directement cet event pour démarrer WebRTC.
+eventBus.on("student:session-ready", (data) => {
+  Logger.log("📥 UI Events : Session prête reçue, transfert informatif à l'UI.");
+  uiService?.onSessionReady?.(data);
+});
 
   // ====================================================
   // 📦 SESSION ROOM

@@ -165,7 +165,11 @@ export function cleanupOnDisconnect(ws, deps) {
   const { userId, role } = ws;
 
   if (!userId) return; // Sécurité si déconnexion avant identification
-
+  
+  // ✅ Ne supprimer de la Map que si c'est bien LA connexion actuellement active
+  if (clients.get(userId) === ws) {
+    clients.delete(userId);
+  }
   console.log(`❌ WS fermé: ${userId} (Rôle: ${role})`);
 
   // 1. Suppression systématique de la Map globale
@@ -190,10 +194,12 @@ export function cleanupOnDisconnect(ws, deps) {
     }
 
     // Retirer de la Map des profs et notifier TOUS les élèves
+    
     onlineProfessors.delete(userId);
+    if (!ws._isReplacedConnection) {
     broadcastOnlineProfs(onlineProfessors, clients);
   }
-
+    }
   // -------------------------------------------------------
   // CAS 2 : L'ÉLÈVE SE DÉCONNECTE
   // -------------------------------------------------------
@@ -224,9 +230,11 @@ export function cleanupOnDisconnect(ws, deps) {
   // CAS 3 : L'ÉTUDIANT (PEER-TO-PEER) SE DÉCONNECTE
   // -------------------------------------------------------
   else if (role === "etudiant") {
+    // ✅ Harmonisation avec la branche "eleve"
+    if (!ws._isReplacedConnection) {
     // Notifier immédiatement les autres étudiants pour qu'il disparaisse de leur liste
     broadcastOnlineStudents(clients);
-    
+    }
     // Si l'étudiant était dans une room P2P, le partenaire sera notifié via la section Rooms ci-dessous
   }
 
@@ -439,26 +447,36 @@ export function getRealOnlineStudents(clientsMap) {
  * - Les "prof" ne reçoivent personne
  */
 export function broadcastOnlineStudents(clientsMap) {
-
-  // 1. Construire la liste : etudiant + eleve (pas les profs)
+ console.log("=== BROADCAST ONLINE STUDENTS ===");
+console.log("Clients:", [...clientsMap.keys()]);
+// Construire la liste
   const studentsList = [];
+
   for (const client of clientsMap.values()) {
     if (
       client.role === "etudiant" &&
       client.readyState === 1 &&
-      client.prenom // identifié (identify reçu)
+      client.identified
     ) {
       studentsList.push({
-        id:      client.userId,
-        prenom:  client.prenom  || "Étudiant",
-        nom:     client.nom     || "",
+        id: client.userId,
+        prenom: client.prenom || "Étudiant",
+        nom: client.nom || "",
         matiere: client.matiere || "Général",
-        niveau:  client.niveau  || "",
-        role:    client.role
+         niveau: client.niveau || "",
+        role: client.role
       });
     }
   }
-
+// Maintenant seulement on peut l'afficher
+console.log(
+  "Liste:",
+  studentsList.map(s => ({
+    id: s.id,
+    prenom: s.prenom
+  }))
+);
+  
   // ✅ type préfixé "student:" pour être capté par SessionServiceEtudiant._handleWs
   const payload = JSON.stringify({
     type:     "student:onlineStudents",
@@ -467,11 +485,12 @@ export function broadcastOnlineStudents(clientsMap) {
 
   // 2. On envoie cette liste UNIQUEMENT aux "etudiants"
   clientsMap.forEach(ws => {
-    if (ws.readyState === 1 && ws.role === "etudiant") {
-      console.log(`📡 Envoi student:onlineStudents à ${ws.userId} (${ws.role})`);
-      ws.send(payload);
-    }
-  });
+  if (ws.readyState === 1 && ws.role === "etudiant") {
 
-  console.log(`📡 P2P Broadcast: ${studentsList.length} étudiants envoyés aux pairs.`);
+    console.log(`📡 Envoi à ${ws.userId}`);
+      ws.send(payload);
+  }
+});
+
+console.log(`📡 P2P Broadcast: ${studentsList.length} étudiants envoyés aux pairs.`);
 }

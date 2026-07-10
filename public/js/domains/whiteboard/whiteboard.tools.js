@@ -316,8 +316,13 @@ onPointerUp(pos) {
 
   input.focus();
   this._textInput = input;
+  
+  let committed = false;
 
   const commit = () => {
+    if (committed) return;      // 👈 AJOUT : bloque tout appel ultérieur
+    committed = true;           // 👈 AJOUT
+
     const text = input.value.trim();
     this._removeTextInput();
     if (!text) return;
@@ -338,8 +343,14 @@ onPointerUp(pos) {
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter")  { e.preventDefault(); commit(); }
-    if (e.key === "Escape") { this._removeTextInput(); }
+    if (e.key === "Escape") {
+  
+
+  committed = true;         // 👈 AJOUT : empêche un blur de commit() après Escape aussi
+      this._removeTextInput();
+    }
   });
+
 
   input.addEventListener("blur", commit);
 }

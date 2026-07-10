@@ -133,5 +133,89 @@ router.get("/status", requireAuth, async (req, res) => {
     return res.status(500).json({ error: "Erreur serveur statut abonnement" });
   }
 });
+  // ============================================================
+// POST /api/v1/stripe-student/subscribe-student
+// Crée une Checkout Session pour l'abonnement étudiant payant
+// Plans disponibles : mensuel (10€) ou annuel (96€)
+// Body attendu : { planType: "monthly" | "yearly" }
+// ============================================================
+router.post("/subscribe-student", requireAuth, async (req, res) => {
+    try {
+        const userId  = req.user.userId;
+        const { planType } = req.body;
 
+        if (!["monthly", "yearly"].includes(planType)) {
+            return res.status(400).json({ error: "planType doit être 'monthly' ou 'yearly'" });
+        }
+
+        const [subStudent] = await sequelize.query(
+            `SELECT stripe_customer_id, email, prenom, nom, role, subscription_status
+             FROM users WHERE id = :userId`,
+            { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
+        );
+
+        if (!subStudent) {
+            return res.status(404).json({ error: "Utilisateur introuvable" });
+        }
+
+        if (subStudent.role === "prof" || subStudent.role === "admin") {
+            return res.status(403).json({ error: "Action non autorisée." });
+        }
+
+        if (subStudent.subscription_status === "active") {
+            return res.status(409).json({ error: "Vous avez déjà un abonnement actif." });
+        }
+
+        let customerId = subStudent.stripe_customer_id;
+
+        if (!customerId) {
+            const customer = await stripe.customers.create({
+                email: subStudent.email,
+                name:  `${subStudent.prenom} ${subStudent.nom}`,
+                metadata: { userId: String(userId) },
+            });
+            customerId = customer.id;
+
+            await sequelize.query(
+                `UPDATE users SET stripe_customer_id = :customerId WHERE id = :userId`,
+                { replacements: { customerId, userId } }
+            );
+        }
+
+        const plans = {
+            monthly: { amount: 1000, label: "Abonnement Entraide Étudiante — Mensuel" },
+            yearly:  { amount: 9600, label: "Abonnement Entraide Étudiante — Annuel" },
+        };
+
+        const plan = plans[planType];
+
+        const session = await stripe.checkout.sessions.create({
+            mode:                 "payment",
+            customer:             customerId,
+            payment_method_types: ["card"],
+            line_items: [{
+                price_data: {
+                    currency:     "eur",
+                    unit_amount:  plan.amount,
+                    product_data: { name: plan.label },
+                },
+                quantity: 1,
+            }],
+            success_url: `${process.env.FRONTEND_URL}/pages/etudiant/dashboard.html?subscription=success`,
+            cancel_url:  `${process.env.FRONTEND_URL}/pages/etudiant/dashboard.html?subscription=cancel`,
+            metadata: {
+                userId:   String(userId),
+                planType,
+                type:     "student_subscription",
+            },
+        });
+
+        logger.info("💳 Checkout Session abonnement étudiant créée", { userId, planType });
+        res.json({ url: session.url });
+
+    } catch (err) {
+        logger.error("❌ Erreur création abonnement étudiant", { message: err.message });
+        res.status(500).json({ error: "Erreur serveur Stripe" });
+    }
+});
 export default router;

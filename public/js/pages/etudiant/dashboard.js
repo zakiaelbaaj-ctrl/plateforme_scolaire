@@ -166,12 +166,45 @@ onUserLeft() {
   const statusBadge = document.getElementById('call-status-badge');   // ✅ AJOUT
   if (statusBadge) statusBadge.classList.remove('active');            // ✅ AJOUT
 },
-    onSessionReset() {
-        this.clearVideos();
-        this.toggleView('home');
-        const remoteInfo = document.getElementById('remote-etudiant-info');
-        if (remoteInfo) remoteInfo.textContent = "—";
-    },
+   onSessionReset() {
+    // 1. Nettoyage vidéos
+    this.clearVideos();
+
+    // 2. Masquer le tableau blanc
+    const wrapper = document.getElementById("whiteboard-wrapper");
+    if (wrapper) wrapper.style.display = "none";
+
+    // 3. Vider le champ du chat
+    const inputChat = document.getElementById("chat-input");
+    if (inputChat) inputChat.value = "";
+
+    // 4. Réinitialiser le bouton de partage d'écran
+    const btnScreen = document.getElementById("screen-share-btn");
+    if (btnScreen) {
+        btnScreen.textContent = "🖥️";
+        btnScreen.title = "Partager l'écran";
+    }
+     const btnFile = document.getElementById("send-file");
+    if (btnFile) {
+        btnFile.disabled = true;
+        btnFile.title = "En attente de connexion...";
+    }
+    
+    const statusEl = document.getElementById("call-status");
+    if (statusEl) statusEl.textContent = "Aucune session";
+
+    const statusBadge = document.getElementById("call-status-badge");
+    if (statusBadge) statusBadge.classList.remove("active");
+    
+    const remoteInfo = document.getElementById("remote-etudiant-info");
+    if (remoteInfo) remoteInfo.textContent = "—";
+
+    const remoteLocation = document.getElementById("remote-etudiant-location");
+    if (remoteLocation) remoteLocation.textContent = "—";
+
+    // 6. Retour à l'accueil
+    this.toggleView("home");
+},
 
     onSubscriptionRequired() {
         Logger.warn("⚠️ Abonnement requis");
@@ -478,6 +511,26 @@ if (btnRejoindre) {
     // 5. Bouton "Envoyer un fichier"
 const btnFile   = document.getElementById('send-file');
 const fileInput = document.getElementById('file-input');
+// Zone d’affichage de la pièce jointe
+const attachmentPreview = document.getElementById("attachment-preview");
+
+if (fileInput && attachmentPreview) {
+    fileInput.addEventListener("change", () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+
+        attachmentPreview.innerHTML = `
+            <div class="attachment-item">
+                📎 ${file.name}
+            </div>
+        `;
+
+        attachmentPreview.classList.add("has-file");
+
+        Logger.log(`📎 Fichier prêt : ${file.name}`);
+    });
+}
+
 
 if (btnFile && fileInput) {
     // ✅ Désactivé par défaut — le channel draw n'est pas encore ouvert
@@ -491,11 +544,6 @@ if (btnFile && fileInput) {
         Logger.log("✅ Bouton fichier activé — channel prêt");
     });
 
-    // ✅ Désactivé quand la session se termine
-    eventBus.on("session:reset", () => {
-        btnFile.disabled = true;
-        btnFile.title = "En attente de connexion...";
-    });
 
     btnFile.addEventListener('click', () => {
         const file = fileInput.files?.[0];
@@ -505,8 +553,24 @@ if (btnFile && fileInput) {
             return;
         }
         Logger.log(`📎 Envoi fichier : ${file.name}`);
+        // 🆕 Retour visuel immédiat pour l'expéditeur
+    if (attachmentPreview) {
+        attachmentPreview.innerHTML = `<div class="attachment-item">📤 Envoi en cours : ${file.name}...</div>`;
+    }
+    btnFile.disabled = true;
         EtudiantSessionOrchestrator.sendFile(file);
     });
+    // 🆕 Confirmation de fin d'envoi (si l'orchestrateur/DataChannelService émet un événement de complétion pour l'expéditeur)
+    eventBus.on("file:sent", ({ name }) => {
+    const attachmentPreview = document.getElementById("attachment-preview");
+    if (attachmentPreview) {
+        attachmentPreview.innerHTML = `<div class="attachment-item">✅ Fichier envoyé : ${name}</div>`;
+    }
+    const btnFile = document.getElementById('send-file');
+    if (btnFile) btnFile.disabled = false;
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) fileInput.value = "";
+});
 }
     // 6. Bouton "Déconnexion"
     const btnLogout = document.getElementById('logout-btn');
@@ -562,27 +626,7 @@ if (btnFile && fileInput) {
     document.getElementById("textToolBtn")?.addEventListener("click", () => {
         setWbTool("textToolBtn", () => WhiteboardService.setTool("text"));
     });
-   document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
-    const card = document.querySelector(".card--whiteboard");
-    const wbBtn = document.getElementById("wb-fullscreen-btn");
-    const isFullscreen = card?.classList.toggle("whiteboard-fullscreen");
-    if (isFullscreen) {
-        wbBtn.textContent = "✕ Quitter";
-        wbBtn.title = "Quitter le plein écran";
-    } else {
-        wbBtn.textContent = "⛶";
-        wbBtn.title = "Plein écran";
-    }
-    setTimeout(() => {
-        const canvas = document.getElementById("whiteboard-canvas");
-        const wrapper = document.getElementById("whiteboard-wrapper");
-        if (canvas && wrapper) {
-            canvas.width  = wrapper.offsetWidth;
-            canvas.height = wrapper.offsetHeight;
-        }
-        WhiteboardService.resizeCanvas?.();
-    }, 50);
-});
+   
     // ================= PARTAGE D'ÉCRAN =================
 document.getElementById("screen-share-btn")?.addEventListener("click", async () => {
   const btn = document.getElementById("screen-share-btn");
@@ -604,22 +648,6 @@ document.getElementById("screen-share-btn")?.addEventListener("click", async () 
     }
 }
 });
-// ✅ ÉTAPE 4 : Nettoyage automatique de l'interface en fin de session
-    eventBus.on("session:reset", () => {
-        // 1. On masque le tableau blanc pour le prochain cours
-        const wrapper = document.getElementById('whiteboard-wrapper');
-        if (wrapper) wrapper.style.display = 'none';
-
-        // 2. On vide le champ de saisie du chat pour éviter les restes de texte
-        if (inputChat) inputChat.value = "";
-
-        // 3. On remet l'icône du bouton de partage d'écran à son état initial
-        const btnScreen = document.getElementById("screen-share-btn");
-        if (btnScreen) {
-            btnScreen.textContent = "🖥️";
-            btnScreen.title = "Partager l'écran";
-        }
-    });
 }
 function setWbTool(activeId, callback) {
     document.querySelectorAll(".wb-tool").forEach(btn => btn.classList.remove("active"));
@@ -660,23 +688,123 @@ function renderProfile() {
 document.addEventListener("DOMContentLoaded", async () => {
     Logger.log("🚀 Initialisation du Dashboard Étudiant");
 
+    // 1. Charger les données de l'utilisateur — échec non bloquant
     try {
-        // 1. Charger les données de l'utilisateur
         await EtudiantService.getProfile();
         renderProfile();
-        
-        // 2. Vérifier son statut Stripe / Abonnement
-        await EtudiantService.getSubscriptionStatus();
+    } catch (err) {
+        Logger.error("❌ Échec chargement profil (poursuite quand même) :", err);
+    }
 
-        // 3. INITIALISATION SYNC DE L'ORCHESTRATEUR (Toujours en premier pour lier l'UI)
+    // 2. Vérifier le statut Stripe / Abonnement — échec non bloquant
+    try {
+        await EtudiantService.getSubscriptionStatus();
+    } catch (err) {
+        Logger.warn("⚠️ Échec vérification abonnement (mode dégradé) :", err);
+    }
+    // 3. INITIALISATION SYNC DE L'ORCHESTRATEUR — toujours exécutée,
+    //    indépendamment du succès des étapes 1 et 2 ci-dessus.
+    try {
         Logger.log("🎨 Liaison de l'UI à l'orchestrateur...");
         EtudiantSessionOrchestrator.init(UI);
         setupInteractions();
+        
+         // === Gestion du plein écran du tableau blanc ===
+// === Gestion du plein écran du tableau blanc ===
+const wbFullscreenBtn = document.getElementById("wb-fullscreen-btn");
+const wbExitFullscreenBtn = document.getElementById("wb-exit-fullscreen-btn");
+const whiteboardCard = document.querySelector(".card--whiteboard");
+console.log({
+    wbFullscreenBtn,
+    wbExitFullscreenBtn,
+    whiteboardCard
+});
+if (wbFullscreenBtn && wbExitFullscreenBtn && whiteboardCard) {
 
+    // Fonction pour synchroniser l'affichage des boutons selon l'état réel
+    const syncButtons = () => {
+        const isFullscreen = whiteboardCard.classList.contains("whiteboard-fullscreen");
+        
+        if (isFullscreen) {
+            wbFullscreenBtn.style.display = "none";
+            wbExitFullscreenBtn.style.display = "inline-block"; // Force l'affichage
+        } else {
+            wbFullscreenBtn.style.display = "inline-block";
+            wbExitFullscreenBtn.style.display = "none";
+        }
+    };
+
+    // Un observateur qui surveille si un script tente de modifier le style du bouton Quitter
+    const observer = new MutationObserver(() => {
+        const isFullscreen = whiteboardCard.classList.contains("whiteboard-fullscreen");
+        // Si on est en plein écran et que le bouton s'est fait masquer, on le remet
+        if (isFullscreen && wbExitFullscreenBtn.style.display === "none") {
+            wbExitFullscreenBtn.style.display = "inline-block";
+        }
+    });
+
+    // On commence à surveiller les changements de style sur le bouton Quitter
+    observer.observe(wbExitFullscreenBtn, { attributes: true, attributeFilter: ["style"] });
+
+   // Référence pour remettre la vidéo distante à sa place initiale
+    const remoteBlock = document.getElementById("remoteBlock");
+    let remoteBlockOriginalParent      = remoteBlock?.parentElement || null;
+    let remoteBlockOriginalNextSibling = remoteBlock?.nextElementSibling || null;
+
+    // Activer le plein écran
+    wbFullscreenBtn.addEventListener("click", () => {
+        whiteboardCard.classList.add("whiteboard-fullscreen");
+        syncButtons();
+
+        // ✅ Déplace la vidéo du partenaire À L'INTÉRIEUR de la carte tableau blanc
+        // (obligatoire : l'API Fullscreen native n'affiche que l'élément
+        // demandé et ses descendants, rien en dehors n'est visible)
+        if (remoteBlock) {
+            whiteboardCard.appendChild(remoteBlock);
+        }
+
+        // ✅ Vrai plein écran natif
+        if (whiteboardCard.requestFullscreen) {
+            whiteboardCard.requestFullscreen();
+        } else if (whiteboardCard.webkitRequestFullscreen) {
+            whiteboardCard.webkitRequestFullscreen();
+        }
+
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 0);
+    });
+
+    // Quitter le plein écran
+    wbExitFullscreenBtn.addEventListener("click", () => {
+        whiteboardCard.classList.remove("whiteboard-fullscreen");
+        syncButtons();
+
+        // ✅ Remet la vidéo distante à sa place d'origine dans le DOM
+        if (remoteBlock && remoteBlockOriginalParent) {
+            if (remoteBlockOriginalNextSibling) {
+                remoteBlockOriginalParent.insertBefore(remoteBlock, remoteBlockOriginalNextSibling);
+            } else {
+                remoteBlockOriginalParent.appendChild(remoteBlock);
+            }
+        }
+
+        // ✅ Quitter le vrai plein écran natif
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else if (document.webkitFullscreenElement) {
+            document.webkitExitFullscreen();
+        }
+
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 0);
+    });
+}
         // 4. 🟢 CONNEXION AU SOCKET (Le déclencheur indispensable)
         // On initie la connexion WS pour recevoir la liste des étudiants en ligne, abonnés ou non
         Logger.log("🔌 Tentative de connexion au serveur WebSocket...");
-       Logger.log("🔌 WebSocket géré par l'orchestrateur.");
+        Logger.log("🔌 WebSocket géré par l'orchestrateur.");
 
         // 5. Restriction visuelle si non abonné (Sans bloquer le Socket)
         if (!AppState.isSubscribed) {

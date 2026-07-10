@@ -19,7 +19,7 @@ export const EtudiantMatchingService = (() => {
 
   let isQueueing = false;
   let lastMatiere = null;
-
+  let lastSujet = "";
   // ====================================================
   // INIT
   // ====================================================
@@ -45,6 +45,7 @@ return;
     }
 
     lastMatiere = matiere;
+    lastSujet   = sujet;
     isQueueing   = true;
 
     socketService.send({
@@ -89,9 +90,17 @@ return;
 
     logger.log("🔄 Requeue :", lastMatiere);
 
-    enqueue(lastMatiere);
+    enqueue(lastMatiere, lastSujet);
   }
 
+  eventBus.on("matching:retry-enqueue", () => {
+  if (!lastMatiere) {
+    logger.warn("⚠️ Retry enqueue demandé mais aucune matière mémorisée — abandon");
+    return;
+  }
+  logger.log("🔄 Nouvelle tentative d'enqueue après NOT_IDENTIFIED");
+  setTimeout(() => enqueue(lastMatiere, lastSujet), 500);
+});
   // ====================================================
   // // 📡 EVENTS SOCKET → MATCH RESULT
   // ====================================================
@@ -99,9 +108,10 @@ return;
   function handleMatchFound(data) {
     isQueueing = false;
     AppState.isQueueing = false;
-    AppState.startSession({ roomId: data.roomId });
+    
    logger.log("🎯 Match reçu (matching service)");
     logger.log("🔍 Match trouvé :", data.roomId);
+    AppState.startSession({ roomId: data.roomId });
   }
 
   function handleQueueStatus(data) {
@@ -119,6 +129,7 @@ return;
     return {
       isQueueing,
       lastMatiere,
+      lastSujet,
     };
   }
 

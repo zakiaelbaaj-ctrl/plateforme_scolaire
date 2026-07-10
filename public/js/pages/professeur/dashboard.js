@@ -61,7 +61,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (audio) { audio.muted = false; audio.play().catch(() => {}); }
   }, { once: true });
 
-  // 👇 ICI EXACTEMENT (juste après les autres whiteboard handlers)
   const userData = await getUserProfile();
   if (!userData) {
     window.location.replace("/pages/professeur/login.html"); // redirection si pas connecté

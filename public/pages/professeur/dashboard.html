@@ -97,43 +97,36 @@
     <button id="rectToolBtn"    class="btn btn--icon wb-tool" title="Rectangle">▭</button>
     <button id="circleToolBtn"  class="btn btn--icon wb-tool" title="Cercle">⭕</button>  <!-- ✅ -->
     <button id="textToolBtn"    class="btn btn--icon wb-tool" title="Texte">🔤</button>
-    <div class="wb-tools-group wb-tools-group--right">
+        <div class="wb-tools-group">
+      <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
+      <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
+    </div>
+           <div class="wb-tools-group wb-tools-group--right">
             <button id="undoWhiteboardBtn"     class="btn btn--icon" title="Annuler">↩</button>
             <button id="clearWhiteboardBtn"    class="btn btn--icon btn--danger-ghost" title="Effacer">🗑️</button>
             <button id="downloadWhiteboardBtn" class="btn btn--icon" title="Télécharger">⬇️</button>
           </div>
   </div>
   <!-- Canvas -->
-    <canvas id="whiteboard-canvas"></canvas>
-
-  <!-- Vidéo miniature flottante -->
-  <div class="video-miniature" style="display:none;">
-    <video id="remote-video-mini" autoplay playsinline></video>
-  </div>
-</div>
-          <div class="wb-tools-group">
-            <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
-            <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
-          </div>
-
-          
+         <canvas id="whiteboard-canvas"></canvas>
+         <!-- Vidéo miniature flottante -->
+          <div class="video-miniature" style="display:none;">
+              <video id="remote-video-mini" autoplay playsinline></video>
+           </div>
+           </div>    
        </section>
-
-      </div>
+       </div>
     <!-- ================= SIDE PANEL ================= -->
     <aside class="side-panel">
-
       <!-- APPELS ENTRANTS -->
       <div class="card card--calls">
         <div class="card__header">
           <h3 class="card__title">📞 Appels entrants</h3>
         </div>
-
         <div id="no-call" class="no-call-msg">
           <span class="no-call-icon">◎</span>
           Aucun appel en cours
         </div>
-
         <div id="incoming-call-box" class="incoming-call" style="display:none;">
           <div class="incoming-call__ring">
             <span class="ring-pulse"></span>

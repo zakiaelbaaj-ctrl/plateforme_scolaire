@@ -151,9 +151,7 @@ AppState.on("ws:status", (data) => {
   updateWsStatus(data?.status, data?.attempt);
   if (data?.status === "connected" && AppState.currentUser?.id) {
     console.log("🚀 ENVOI IDENTIFY", AppState.currentUser);
-
-    socketService.send({ type: "identify", ...AppState.currentUser });
-  }
+}
 });
 
   // ================= SESSION =================

@@ -6,6 +6,12 @@
 import { safeSend } from "../utils.js";          // ✅ était "../ws/utils.js" → incorrect
 import { MatchRegistry } from "./match.registry.js";
 import { clients } from "../../socket.js";
+// 🛡️ Nom d'affichage sûr : évite "null null" si prenom/nom sont null,
+// et donne un fallback lisible plutôt qu'une chaîne vide.
+function getDisplayName(ws) {
+  const full = `${ws.prenom || ""} ${ws.nom || ""}`.trim();
+  return full || `Étudiant #${ws.userId}`;
+}
 // ======================================================
 // CLASSE (nom interne _StudentMatchService)
 // pour éviter le conflit avec l'export const StudentMatchService
@@ -36,6 +42,17 @@ class _StudentMatchService {
         message: "Action non autorisée."
       });
     }
+    // Ajouter en haut de enqueueStudent(), après les vérifications role/admin existantes
+
+// 🔴 identification incomplète : le client n'a pas encore envoyé/traité "identify"
+if (!ws.prenom || !ws.nom) {
+  console.warn(`⚠️ enqueueStudent refusé pour ${ws.userId} : identify incomplet (prenom="${ws.prenom}", nom="${ws.nom}")`);
+  return safeSend(ws, {
+    type: "error",
+    code: "NOT_IDENTIFIED",
+    message: "Profil non encore synchronisé. Réessayez dans un instant."
+  });
+}
 // 🔴 abonnement requis (actif OU période d'essai valide), désactivable via env
 const SKIP_SUBSCRIPTION_CHECK = process.env.SKIP_SUBSCRIPTION_CHECK === "true";
 const hasValidAccess =
@@ -86,7 +103,7 @@ if (!SKIP_SUBSCRIPTION_CHECK && !hasValidAccess) {
             safeSend(invitant, {
                 type:        "student:invited",
                 fromId:      ws.userId,
-                fromName:    `${ws.prenom} ${ws.nom}`,
+                fromName: getDisplayName(ws),
                 matiere,
             });
         }
@@ -113,7 +130,7 @@ if (!SKIP_SUBSCRIPTION_CHECK && !hasValidAccess) {
             safeSend(invitant, {
                 type:     "student:invited",
                 fromId:   ws.userId,
-                fromName: `${ws.prenom} ${ws.nom}`,
+                fromName: getDisplayName(ws),
                 matiere:  matiere || "Général",
             });
         }
@@ -188,7 +205,7 @@ if (!SKIP_SUBSCRIPTION_CHECK && !hasValidAccess) {
 safeSend(bestPair.a.ws, {
     type: "student:matchFound",
     roomId,
-    partnerName: `${bestPair.b.ws.prenom} ${bestPair.b.ws.nom}`,
+    partnerName: getDisplayName(bestPair.b.ws),   // ✅ plus de "null null"
     partnerVille: bestPair.b.ws.ville || "",
     partnerPays:  bestPair.b.ws.pays  || "",
     initiator: true
@@ -197,11 +214,11 @@ safeSend(bestPair.a.ws, {
 safeSend(bestPair.b.ws, {
     type: "student:matchFound",
     roomId,
-    partnerName: `${bestPair.a.ws.prenom} ${bestPair.a.ws.nom}`,
+    partnerName: getDisplayName(bestPair.a.ws),   // ✅ plus de "null null"
     partnerVille: bestPair.a.ville || "",
     partnerPays:  bestPair.a.pays  || "",
     initiator: false
-   });
+});
    } 
   // ======================================================
   // 5️⃣ REMOVE QUEUE

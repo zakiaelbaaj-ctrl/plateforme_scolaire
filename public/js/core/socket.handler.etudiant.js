@@ -28,6 +28,7 @@ export function handleStudentSocketMessage(data) {
     // ==================================================
 
     case "TRANSPORT_OPEN":
+      
      eventBus.emit("socket:open");
      eventBus.emit("ws:status", { status: "connected" }); // ✅ AJOUTER
      break;
@@ -77,13 +78,13 @@ case "student:onlineStudents":
       break;
 
       
-  case "student:matchFound":
+ // APRÈS — matchFound ne porte plus "initiator" comme donnée exploitée
+case "student:matchFound":
 case "student:match-found":
   AppState.isQueueing = false;
   AppState.partnerName = data.partnerName || "Partenaire";
   eventBus.emit("student:match-found", {
     roomId:    data.roomId,
-    initiator: data.initiator,
     partnerName: data.partnerName,
     partnerVille: data.partnerVille || "",
     partnerPays:  data.partnerPays  || "",
@@ -118,16 +119,14 @@ case "student:userLeft":
   });
   break;
 
-    case "student:session-ready":
-    case "student:sessionReady":
+    // APRÈS — événement dédié, toujours émis, aucune garde fragile
+case "student:session-ready":
+case "student:sessionReady":
   Logger.log("📡 Sockets : Session prête, initiateur :", data.initiator);
-  if (!AppState.sessionInProgress) {
-    eventBus.emit("student:match-found", {
-      roomId:    data.roomId,
-      initiator: data.initiator,
-      partnerName: data.partnerName,
-    });
-  }
+  eventBus.emit("student:session-ready", {
+    roomId:    data.roomId,
+    initiator: data.initiator,
+  });
   break
 
     // ==================================================
@@ -141,31 +140,41 @@ case "student:userLeft":
     // ==================================================
     // 🔒 CHAT (fallback serveur)
     // ==================================================
+case "student:chatMessage": {
+  const monId = AppState.currentUser?.id;
+  const monNomComplet = `${AppState.currentUser?.prenom || ""} ${AppState.currentUser?.nom || ""}`.trim();
 
-   case "student:chatMessage": {
-      // 1. Récupération de l'utilisateur connecté actuellement sur CE navigateur
-      const monId = AppState.currentUser?.id;
-      const monNomComplet = `${AppState.currentUser?.prenom || ""} ${AppState.currentUser?.nom || ""}`.trim();
+  // 🛡️ Filtre anti-écho : ne peut fonctionner que si le serveur fournit
+  // un identifiant fiable (userId ou sender). Si les deux sont absents,
+  // on ne peut pas déterminer l'origine du message avec certitude —
+  // on logue un avertissement pour signaler ce cas côté backend.
+  const hasIdentity = Boolean(data.userId) || Boolean(data.sender);
+  if (!hasIdentity) {
+    Logger.warn("⚠️ student:chatMessage reçu sans sender/userId — impossible de filtrer l'écho de façon fiable. Le backend doit fournir un identifiant.");
+  }
 
-      // 2. 🛑 FILTRE D'AUTORÉCEPTION : On ne bloque QUE si le message vient de nous-mêmes
-      const vientDeMoi = (data.userId && data.userId === monId) || 
-                         (data.sender === monNomComplet);
+  const vientDeMoi = hasIdentity && (
+    (data.userId && data.userId === monId) ||
+    (data.sender === monNomComplet)
+  );
 
-      if (vientDeMoi) {
-        // C'est mon propre message qui revient du serveur.
-        // Si l'UI l'affiche déjà localement, on l'ignore pour éviter le doublon.
-        Logger.log("🚫 Mon propre message est revenu du serveur (Ignoré pour éviter le doublon)");
-        break; 
-      }
+  if (vientDeMoi) {
+    Logger.log("🚫 Mon propre message est revenu du serveur (Ignoré pour éviter le doublon)");
+    break;
+  }
 
-      // 3. Si le message vient du partenaire (ex: Sasy pour Fady, ou Fady pour Sasy), on transmet !
-      Logger.log(`✏️ Message reçu de l'autre utilisateur (${data.sender}), affichage à l'écran.`);
-      eventBus.emit("chat:message", {
-        sender: data.sender,
-        text:   data.text,
-      });
-      break;
-    }
+  // 🛡️ Fallback d'affichage : si le serveur n'a pas transmis de nom,
+  // on utilise le nom du partenaire déjà connu côté client (matchFound/sessionReady)
+  // plutôt que d'afficher "undefined".
+  const displayName = data.sender || data.userName || AppState.partnerName || "Partenaire";
+
+  Logger.log(`✏️ Message reçu de l'autre utilisateur (${displayName}), affichage à l'écran.`);
+  eventBus.emit("chat:message", {
+    sender: displayName,
+    text:   data.text,
+  });
+  break;
+}
     // ==================================================
     // 🔒 DOCUMENT (fallback serveur)
     // ==================================================
@@ -211,6 +220,11 @@ case "student:invited":
 // ==================================================
 
 case "error":
+  if (data.code === "NOT_IDENTIFIED") {
+    Logger.warn("⚠️ Identify pas encore traité côté serveur, nouvelle tentative dans 500ms");
+    eventBus.emit("matching:retry-enqueue");
+    break;
+  }
   Logger.warn("📩 Erreur serveur :", data.code, data.message);
   eventBus.emit("server:error", {
     code:    data.code,

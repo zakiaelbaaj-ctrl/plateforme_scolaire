@@ -1,4 +1,4 @@
-const CACHE_NAME = "urgencescolaire-v2"; // ⚠️ Incrémenté pour forcer la mise à jour
+const CACHE_NAME = "urgencescolaire-v4"; // ⚠️ Incrémenté pour forcer la mise à jour
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -26,18 +26,29 @@ self.addEventListener("install", (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  // self.skipWaiting(); // ❌ désactivé pour éviter les reloads
+   self.skipWaiting();
 
 });
 
 // Fetch → sert les fichiers depuis le cache si disponibles
 self.addEventListener("fetch", (event) => {
+  const isAppJs = event.request.url.includes("/js/");
+
+  if (isAppJs) {
+    // Network-first : le code applicatif est toujours pris depuis le réseau en priorité,
+    // pour que les mises à jour de code soient visibles sans attendre un changement de CACHE_NAME.
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first pour le reste (fonts, CSS, images, pages statiques)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
       return fetch(event.request).catch((err) => {
         console.warn("Fetch échoué (réseau/CSP), ignoré :", event.request.url, err.message);
-        // Ne casse plus la promesse : retourne une réponse d'erreur propre
         return new Response("", { status: 504, statusText: "Fetch failed" });
       });
     })
@@ -55,7 +66,9 @@ self.addEventListener("activate", (event) => {
           }
         })
       )
-    )
-  );
+    
+  
+  ).then(() => self.clients.claim())
   // self.clients.claim(); // ❌ désactivé pour éviter les reloads
+);
 });

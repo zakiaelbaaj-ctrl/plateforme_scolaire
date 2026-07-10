@@ -113,10 +113,55 @@ export function initWebSocketServer(server) {
     }
 
     console.log(`✅ Authentification réussie: ${ws.userId} (${ws.role})`);
-
-    // ✅ AJOUT 1 : Charger subscriptionStatus depuis la DB (élèves/étudiants uniquement)
-    // Non bloquant : si la DB échoue, la connexion continue avec null
+    // -------------------------
+    // 2️⃣ INIT WS STATE
+    // -------------------------
+    ws.roomId = null;
+    ws.studentRoomId = null; // ✅ AJOUT 2 : room peer étudiant séparée
+    ws.status = "idle";
+    ws.prenom = null;
+    ws.nom = null;
+    ws.ville = null;
+    ws.pays = null;
+    ws.lastActiveAt = new Date().toISOString();
+    ws.isAlive = true; // ✅ CORRECTION 2 — isAlive initialisé
     ws.subscriptionStatus = null;
+    
+
+    // -------------------------
+    // 3️⃣ EVENTS
+    // -------------------------
+   ws.on("pong", () => {
+   ws.isAlive = true;
+   ws.lastActiveAt = new Date().toISOString();
+
+  if (ws.role === "prof") {
+    const prof = onlineProfessors.get(ws.userId);
+    if (prof) {
+      prof.lastActiveAt = ws.lastActiveAt;
+      onlineProfessors.set(ws.userId, prof);
+    }
+  }
+});
+    ws.on("message", raw => onMessage(ws, raw));
+    ws.on("close", () => handleDisconnect(ws));
+    ws.on("error", err => console.error("❌ Erreur WS:", err));
+  
+     // 🔒 Empêcher double connexion pour le même user
+if (clients.has(ws.userId)) {
+    console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
+    try {
+        const oldWs = clients.get(ws.userId);
+        oldWs._isReplacedConnection = true; // ✅ flag anti-broadcast
+        oldWs.terminate();
+    } catch {}
+    clients.delete(ws.userId);
+   }
+    clients.set(ws.userId, ws);
+
+// ✅ AJOUT 1 : Charger subscriptionStatus depuis la DB (élèves/étudiants uniquement)
+    // Non bloquant : si la DB échoue, la connexion continue avec null
+   
     if (ws.role === "etudiant" || ws.role === "eleve") {
       try {
         const [user] = await db.query(
@@ -140,52 +185,7 @@ export function initWebSocketServer(server) {
         console.error("❌ Erreur chargement subscriptionStatus:", err.message);
       }
     }
-
-   // 🔒 Empêcher double connexion pour le même user
-if (clients.has(ws.userId)) {
-    console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
-    try {
-        const oldWs = clients.get(ws.userId);
-        oldWs._isReplacedConnection = true; // ✅ flag anti-broadcast
-        oldWs.terminate();
-    } catch {}
-    clients.delete(ws.userId);
-}
-    // -------------------------
-    // 2️⃣ INIT WS STATE
-    // -------------------------
-    ws.roomId = null;
-    ws.studentRoomId = null; // ✅ AJOUT 2 : room peer étudiant séparée
-    ws.status = "idle";
-    ws.prenom = null;
-    ws.nom = null;
-    ws.ville = null;
-    ws.pays = null;
-    ws.lastActiveAt = new Date().toISOString();
-    ws.isAlive = true; // ✅ CORRECTION 2 — isAlive initialisé
-
-    clients.set(ws.userId, ws);
-
-    // -------------------------
-    // 3️⃣ EVENTS
-    // -------------------------
-   ws.on("pong", () => {
-  ws.isAlive = true;
-  ws.lastActiveAt = new Date().toISOString();
-
-  if (ws.role === "prof") {
-    const prof = onlineProfessors.get(ws.userId);
-    if (prof) {
-      prof.lastActiveAt = ws.lastActiveAt;
-      onlineProfessors.set(ws.userId, prof);
-    }
-  }
-});
-    ws.on("message", raw => onMessage(ws, raw));
-    ws.on("close", () => handleDisconnect(ws));
-    ws.on("error", err => console.error("❌ Erreur WS:", err));
-  }); // ← ferme wss.on("connection")
-
+     }); // ← ferme wss.on("connection")
   // =======================
   // PING / PONG (Keep-Alive)
   // =======================
@@ -516,7 +516,7 @@ if (type === "requestStudentMatch") {
   ws.userName = `${ws.prenom || ""} ${ws.nom || ""}`.trim() || ws.userId;
   ws.ville = ville || "";
   ws.pays = pays || "";
-  
+  ws.identified = true;
   console.log(`🆔 Identify: ${ws.userId} (${ws.role}) → ${ws.prenom} ${ws.nom}`);
 
   // 1️⃣ CAS PROFESSEUR
@@ -561,7 +561,12 @@ if (type === "requestStudentMatch") {
 
     if (!isReconnected) {
     if (ws.role === "etudiant") {
+        console.log("=== HANDLE IDENTIFY ===");
+        console.log("user:", ws.userId);
+
+        console.log("Avant broadcast");
         broadcastOnlineStudents(clients);
+        console.log("Après broadcast");
     } else if (ws.role === "eleve" || ws.role === "prof") {
         broadcastOnlineProfs(onlineProfessors, clients);
     }
@@ -631,17 +636,10 @@ async function handleDisconnect(ws) {
   // 4️⃣ SUPPRESSION DE LA MAP (Indispensable avant le broadcast)
   clients.delete(ws.userId);
 
-  // 5️⃣ BROADCAST CIBLÉ (Selon tes règles strictes)
-  if (ws.role === "etudiant") {
-    // Seuls les étudiants sont notifiés du départ d'un étudiant
-    broadcastOnlineStudents(clients);
-  } else {
-    // Si c'est un prof ou un élève, on rafraîchit la liste des profs (vue par les élèves)
-    broadcastOnlineProfs(onlineProfessors, clients);
-  }
+// 5️⃣ (supprimé) — cleanupOnDisconnect (étape 3️⃣) gère déjà les broadcasts
+// pour les 3 rôles (etudiant, prof, eleve). Ce bloc dupliquait l'envoi.
 
-  console.log(`✅ Nettoyage complet effectué pour: ${ws.userId}`);
-}
+   }
 // =======================================================
 // EXPORTS
 // =======================================================

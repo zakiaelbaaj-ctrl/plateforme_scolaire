@@ -13,7 +13,7 @@ export class FileTransferManager {
   }
 
   // ====================================================
-  // Ã°ÂÂÂ SEND FILE
+  // 🚀 SEND FILE
   // ====================================================
 
   async sendFile(file, channel, onProgress) {
@@ -22,7 +22,7 @@ export class FileTransferManager {
 
     const fileId = crypto.randomUUID();
 
-    Logger.log("Ã°ÂÂÂ¤ Envoi fichier :", file.name);
+    Logger.log("🚀 Envoi fichier :", file.name);
 
     // META
     channel.send(JSON.stringify({
@@ -64,12 +64,12 @@ export class FileTransferManager {
           id: fileId,
         }));
 
-        Logger.log("Ã¢ÂÂ Fichier envoyÃÂ© :", file.name);
+        Logger.log("🚀 Fichier envoyé :", file.name);
       }
     };
 
     reader.onerror = () => {
-      Logger.error("Ã¢ÂÂ File read error:", reader.error);
+      Logger.error("❌ Error reading file:", reader.error);
     };
 
     const readSlice = (o) => {
@@ -81,7 +81,7 @@ export class FileTransferManager {
   }
 
   // ====================================================
-  // Ã°ÂÂÂ¥ HANDLE MESSAGE
+  // 📥 HANDLE MESSAGE
   // ====================================================
 
   handleMessage(msg, onComplete, onProgress) {
@@ -98,7 +98,7 @@ export class FileTransferManager {
           expectingChunk: false,
         };
 
-        Logger.log("Ã°ÂÂÂ¦ RÃÂ©ception fichier :", msg.name);
+        Logger.log("📥 Réception fichier :", msg.name);
         break;
 
       case "file-chunk":
@@ -114,7 +114,7 @@ export class FileTransferManager {
   }
 
   // ====================================================
-  // Ã°ÂÂÂ¦ HANDLE BINARY
+  // 📤 HANDLE BINARY
   // ====================================================
 
   handleChunk(buffer, onProgress) {
@@ -123,7 +123,7 @@ export class FileTransferManager {
       .find(t => t.expectingChunk);
 
     if (!transfer) {
-      Logger.warn("Ã¢ÂÂ Ã¯Â¸Â Chunk sans contexte");
+      Logger.warn("⚠️ Chunk sans contexte");
       return;
     }
 
@@ -139,7 +139,7 @@ export class FileTransferManager {
   }
 
   // ====================================================
-  // Ã°ÂÂÂ¦ ASSEMBLE
+  // 📤 ASSEMBLE
   // ====================================================
 
   _assemble(id, onComplete) {
@@ -150,7 +150,7 @@ export class FileTransferManager {
     const blob = new Blob(t.chunks);
     const url  = URL.createObjectURL(blob);
 
-    Logger.log("Ã°ÂÂÂ¥ Fichier complet :", t.name);
+    Logger.log("📦 Fichier complet :", t.name);
 
     onComplete?.({
       id: t.id,

@@ -1,12 +1,11 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import Stripe from "stripe";
-// Imports de tes configurations et services (via alias #)
 import logger from "#config/logger.js";
 import * as authService from "#services/auth.service.js";
 import * as tokenService from "#services/token.service.js";
 import * as mailService from "#services/mail.service.js"; // Gardé une seule fois ici
-
+import { validationResult } from "express-validator";
 // Initialisation de Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // Filtre pour ne jamais exposer mot de passe ou tokens
@@ -35,6 +34,11 @@ function sanitizeUser(user) {
 // ---------------- REGISTER ----------------
 export async function registerController(req, res) {
   try {
+    // 1. Validation express-validator (déclarée dans auth.routes.js)
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
     const { username, prenom, nom, email, telephone, pays, ville, password, role, matiere, 
       langue_matiere } = req.body;
 

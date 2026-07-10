@@ -22,10 +22,10 @@ class SocketHandlerEleve {
   AppState._notify("ws:status", data);
   break;
       case "TRANSPORT_OPEN": this.onTransportOpen(); break;
-      case "onlineProfessors":
-      case "professorsList":
-        AppState.setOnlineProfessors(data.profs ?? data.professors ?? []);
-        break;
+     case "onlineProfessors":
+case "professorsList":
+  AppState.setOnlineProfessors(data.profs ?? data.professors ?? []);
+  break;
        case "document":
        case "documentReceived":
        case "newDocument": {
