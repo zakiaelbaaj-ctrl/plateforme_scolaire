@@ -249,3 +249,35 @@ export async function checkDocColumns(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
+// --------------------------------------------------
+// 🔧 TEMPORAIRE — ajoute les colonnes manquantes
+// Protégée par secret manuel (pas requireAuth, cassé tant que
+// la migration n'a pas été exécutée — voir adminRoutes.js)
+// ⚠️ À SUPPRIMER après exécution réussie de la migration.
+// --------------------------------------------------
+export async function runMigrationAddDocColumns(req, res) {
+    try {
+        const providedSecret = req.headers["x-migration-secret"];
+        if (!providedSecret || providedSecret !== process.env.MIGRATION_SECRET) {
+            return res.status(403).json({ success: false, message: "Accès refusé." });
+        }
+
+        const { sequelize } = await import("#config/index.js");
+        await sequelize.query(`
+            ALTER TABLE users
+              ADD COLUMN IF NOT EXISTS diplome_url TEXT,
+              ADD COLUMN IF NOT EXISTS piece_identite_url TEXT,
+              ADD COLUMN IF NOT EXISTS photo_identite_url TEXT;
+        `);
+
+        logger.info("✅ Migration exécutée : colonnes diplome_url / piece_identite_url / photo_identite_url");
+
+        return res.status(200).json({
+            success: true,
+            message: "Migration exécutée avec succès. Colonnes ajoutées (ou déjà existantes)."
+        });
+    } catch (err) {
+        logger.error("❌ Erreur migration runMigrationAddDocColumns", { message: err.message });
+        return res.status(500).json({ success: false, message: err.message });
+    }
+}

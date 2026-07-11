@@ -10,7 +10,19 @@ import * as adminController from "#controllers/adminController.js";
 const router = express.Router();
 
 // --------------------------------------------------
-// Middlewares globaux pour toutes les routes admin
+// 🔧 TEMPORAIRE — Route de migration DB
+// Placée AVANT requireAuth/requireAdmin car requireAuth
+// dépend lui-même des colonnes que cette migration doit créer
+// (paradoxe : requireAuth charge l'utilisateur via le modèle Sequelize,
+// qui référence déjà piece_identite_url / photo_identite_url,
+// colonnes qui n'existent pas encore tant que la migration n'a pas tourné).
+// Protégée par un secret manuel (header x-migration-secret), pas par requireAuth.
+// ⚠️ À SUPPRIMER après exécution de la migration.
+// --------------------------------------------------
+router.post("/migrate-doc-columns", adminController.runMigrationAddDocColumns);
+
+// --------------------------------------------------
+// Middlewares globaux pour toutes les routes admin (ci-dessous)
 // --------------------------------------------------
 router.use(requireAuth);
 router.use(requireAdmin);
@@ -31,7 +43,7 @@ router.patch("/users/:id", adminController.updateUser);
 
 // --------------------------------------------------
 // PUT /admin/users/:id/status
-// Modifier le statut d’un utilisateur
+// Modifier le statut d'un utilisateur
 // -------------------------------------------------
 router.put("/users/:id/status", adminController.updateStatus);
 // --------------------------------------------------
