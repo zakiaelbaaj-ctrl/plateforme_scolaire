@@ -224,3 +224,28 @@ export const getFacturation = async (req, res) => {
         res.status(500).json({ success: false, message: "Erreur lors de la récupération des données financières" });
     }
 };
+// --------------------------------------------------
+// 🔧 TEMPORAIRE — vérifie l'existence des colonnes documents
+// --------------------------------------------------
+export async function checkDocColumns(req, res) {
+    try {
+        const { sequelize } = await import("#config/index.js");
+        const [results] = await sequelize.query(`
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name = 'users'
+              AND column_name IN ('diplome_url', 'piece_identite_url', 'photo_identite_url')
+            ORDER BY column_name;
+        `);
+
+        return res.status(200).json({
+            success: true,
+            columns_found: results,
+            missing: ['diplome_url', 'piece_identite_url', 'photo_identite_url']
+                .filter(col => !results.some(r => r.column_name === col))
+        });
+    } catch (err) {
+        logger.error("❌ Erreur checkDocColumns", { message: err.message });
+        return res.status(500).json({ success: false, message: err.message });
+    }
+}

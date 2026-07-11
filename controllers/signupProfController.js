@@ -5,7 +5,8 @@ import * as usersService from "#services/usersService.js";
 import logger from "#config/logger.js";
 
 /**
- * Gère l'inscription d'un nouveau professeur avec son diplôme
+ * Gère l'inscription d'un nouveau professeur avec ses documents
+ * (diplôme, pièce d'identité, photo d'identité)
  */
 export async function signupProfController(req, res) {
   try {
@@ -23,14 +24,16 @@ export async function signupProfController(req, res) {
       matiere 
     } = req.body;
 
-    // 2. Récupération du fichier via Multer (req.file)
-    const diplomeFile = req.file;
+    // 2. Récupération des fichiers via Multer (req.files, pluriel avec .fields())
+    const diplomeFile       = req.files?.diplome?.[0];
+    const pieceIdentiteFile = req.files?.piece_identite?.[0];
+    const photoIdentiteFile = req.files?.photo_identite?.[0];
 
-    // Validation minimale
-    if (!diplomeFile) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Le téléchargement du diplôme est obligatoire pour les professeurs." 
+    // Validation minimale — les 3 documents sont obligatoires
+    if (!diplomeFile || !pieceIdentiteFile || !photoIdentiteFile) {
+      return res.status(400).json({
+        success: false,
+        message: "Le diplôme, la pièce d'identité et la photo d'identité sont tous obligatoires."
       });
     }
 
@@ -54,7 +57,9 @@ export async function signupProfController(req, res) {
       password,
       role: "prof",
       statut: "pending", // L'admin devra valider ce compte
-      diplome_url: diplomeFile.path // On stocke le chemin local du fichier
+      diplome_url: diplomeFile.path,
+      piece_identite_url: pieceIdentiteFile.path,
+      photo_identite_url: photoIdentiteFile.path
     });
 
     logger.info(`✨ Nouveau professeur inscrit (en attente) : ${email}`);

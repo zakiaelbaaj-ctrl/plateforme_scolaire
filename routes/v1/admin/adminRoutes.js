@@ -23,7 +23,8 @@ router.get("/facturation", adminController.getFacturation);
 router.get("/users", adminController.getUsers);
 // 2. AJOUTER : Récupérer un utilisateur spécifique par ID (évite le 404 en GET)
 router.get("/users/:id", adminController.getUserById);
-
+// 🔧 TEMPORAIRE — vérification colonnes DB
+router.get("/check-doc-columns", adminController.checkDocColumns);
 // 3. AJOUTER : Validation/Mise à jour (PATCH) utilisée par ton admin_inscriptions.html
 // Cette route répondra à api/v1/admin/users/40
 router.patch("/users/:id", adminController.updateUser); 

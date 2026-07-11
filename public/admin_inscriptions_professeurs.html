@@ -39,6 +39,8 @@
           <th>Nom / Prénom</th>
           <th>Email / Tel</th>
           <th>Diplôme</th>
+          <th>Pièce d'identité</th>
+          <th>Photo d'identité</th>
           <th>Heures</th>
           <th>Inscription</th> 
           <th>Statut</th>
@@ -85,7 +87,7 @@ if (currentUser.role !== 'admin') {
 ----------------------------- */
 async function chargerProfesseurs() {
   const tbody = document.querySelector("#profTable tbody");
-  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem;">⌛ Chargement des données...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 2rem;">⌛ Chargement des données...</td></tr>`;
 
   try {
     const token = localStorage.getItem("token");
@@ -112,7 +114,7 @@ async function chargerProfesseurs() {
     appliquerFiltres();
 
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8" style="color:red; text-align:center; padding: 2rem;">❌ ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="color:red; text-align:center; padding: 2rem;">❌ ${err.message}</td></tr>`;
   }
 }
 
@@ -139,11 +141,13 @@ function afficherProfesseurs() {
     const nomComplet = `<strong>${(p.nom || 'N/A').toUpperCase()}</strong><br>${p.prenom || ''}`;
 
     const tr = document.createElement("tr");
-    tr.innerHTML = `
+  tr.innerHTML = `
       <td>${i + 1}</td>
       <td>${nomComplet}</td>
       <td><span style="font-size:12px;">${p.email}</span><br><small style="color:gray;">${p.telephone || '—'}</small></td>
       <td>${p.diplome_url ? `<a href="${p.diplome_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">📄 Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
+      <td>${p.piece_identite_url ? `<a href="${p.piece_identite_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">🪪 Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
+      <td>${p.photo_identite_url ? `<a href="${p.photo_identite_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">🖼️ Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
       <td>${p.heures_mois || 0} h</td>
       <td><span style="font-size:11px;">${dateInsc}</span></td>
       <td><span class="status ${statusClass}">${statusText}</span></td>

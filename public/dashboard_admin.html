@@ -4,47 +4,6 @@
   <meta charset="UTF-8" />
   <title>Tableau de bord administrateur</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-<h2 class="section-title">Inscriptions</h2>
-<div class="grid">
-
-  <!-- PROFESSEURS : validation obligatoire par l'admin -->
-  <div class="nav-card" data-route="admin_inscriptions_professeurs.html">
-    <div class="nav-card-title">Inscriptions professeurs</div>
-    <div class="nav-card-desc">
-      Validation obligatoire par l’administrateur. Documents requis : CV, diplômes.
-    </div>
-    <span class="tag tag-critical">Validation manuelle</span>
-  </div>
-
-  <!-- ÉLÈVES : validation automatique si parents OK -->
-   <div class="nav-card" data-route="admin_inscriptions_eleves.html">
-
-    <div class="nav-card-title">Inscriptions élèves</div>
-    <div class="nav-card-desc">
-      Activation automatique après accord parental. Suivi des parents en attente.
-    </div>
-    <span class="tag">Automatique</span>
-  </div>
-
-  <!-- ÉTUDIANTS : même logique que les élèves si mineurs -->
-  <div class="nav-card" data-route="admin_inscriptions_etudiants.html">
-    <div class="nav-card-title">Inscriptions étudiants</div>
-    <div class="nav-card-desc">
-      Automatique si accord parental (mineurs). Validation directe pour majeurs.
-    </div>
-    <span class="tag">Automatique / Majeurs</span>
-  </div>
-
-  <!-- PARENTS : doivent valider les comptes enfants -->
-  <div class="nav-card" data-route="admin_inscriptions_parents.html">
-    <div class="nav-card-title">Inscriptions parents</div>
-    <div class="nav-card-desc">
-      Gestion des responsables légaux. Accord parental obligatoire pour activer un élève.
-    </div>
-    <span class="tag">Parents</span>
-  </div>
-
-</div>
 
   <style>
     :root {
@@ -61,10 +20,10 @@
 
     * { box-sizing: border-box; }
 
-    html, body {
+   html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
+      min-height: 100%;
       font-family: var(--font-sans);
       background: radial-gradient(circle at top, #1f2937 0, #020617 55%);
       color: var(--text);
@@ -75,6 +34,8 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
+      overflow-y: auto;
+      min-height: 100vh;
     }
 
     .shell {
@@ -116,6 +77,47 @@
       color: var(--text-muted);
       font-size: 13px;
       margin-bottom: 10px;
+    }
+    .header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .logout-btn {
+      flex: none;
+      background: radial-gradient(circle at 30% 30%, #f87171, #dc2626 70%);
+      color: #fff;
+      border: 2px solid #7f1d1d;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 4px 10px rgba(0, 0, 0, 0.5),
+        inset 0 1px 2px rgba(255, 255, 255, 0.4),
+        inset 0 -3px 4px rgba(0, 0, 0, 0.3);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .logout-btn:hover {
+      background: radial-gradient(circle at 30% 30%, #fca5a5, #ef4444 70%);
+      box-shadow:
+        0 5px 14px rgba(0, 0, 0, 0.55),
+        inset 0 1px 2px rgba(255, 255, 255, 0.5),
+        inset 0 -3px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .logout-btn:active {
+      transform: translateY(2px);
+      box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.5),
+        inset 0 2px 5px rgba(0, 0, 0, 0.5);
     }
 
     .section-title {
@@ -216,10 +218,15 @@
          ============================ -->
     <section class="shell-left">
 
-      <h1>Tableau de bord Administrateur</h1>
-      <p class="subtitle">
-        Gestion complète de la plateforme scolaire virtuelle : utilisateurs, inscriptions, communication, facturation.
-      </p>
+      <div class="header-top">
+        <div>
+          <h1>Tableau de bord Administrateur</h1>
+          <p class="subtitle">
+            Gestion complète de la plateforme scolaire virtuelle : utilisateurs, inscriptions, communication, facturation.
+          </p>
+        </div>
+        <button id="logout-btn" class="logout-btn" type="button" title="Déconnexion">⏻</button>
+      </div>
 
       <!-- ============================
            INSCRIPTIONS
@@ -498,6 +505,12 @@
         const route = card.getAttribute("data-route");
         if (route) window.location.href = "/" + route;
       });
+    });
+
+    // ✅ Déconnexion admin
+    document.getElementById("logout-btn")?.addEventListener("click", () => {
+      localStorage.clear();
+      window.location.replace("/login_admin.html");
     });
   </script>
 </body>

@@ -43,6 +43,9 @@ const User = sequelize.define("User", {
   has_payment_method: { type: DataTypes.BOOLEAN, defaultValue: false },
   stripe_customer_id: { type: DataTypes.TEXT },
   stripe_account_id: { type: DataTypes.TEXT },
+  diplome_url: { type: DataTypes.TEXT },
+  piece_identite_url: { type: DataTypes.TEXT },
+  photo_identite_url: { type: DataTypes.TEXT },
   date_inscription: { 
     type: DataTypes.DATE, 
     defaultValue: DataTypes.NOW 

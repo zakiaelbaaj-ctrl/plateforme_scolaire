@@ -23,8 +23,10 @@
         <li>Secondaire : Bac +4 minimum</li>
         <li>Supérieur : Bac +6 minimum</li>
       </ul>
-      📎 Copie du diplôme obligatoire.<br>
-      ⏳ Compte activé uniquement après validation administrateur.
+       📎copie de la pièce d'identité.<br>
+       📎 Copie du diplôme obligatoire.<br>
+       📎 photo d'identité.<br>
+       ⏳ Compte activé uniquement après validation administrateur.
     </div>
 
     <form id="registerForm" enctype="multipart/form-data">
@@ -60,34 +62,201 @@
       </div>
 
       <div class="form-group">
-        <label>Niveau enseigné</label>
-        <select id="niveau" name="niveau" required>
-          <option value="">-- Choisir --</option>
-          <option value="primaire">Primaire</option>
-          <option value="secondaire">Secondaire</option>
-          <option value="superieur">Supérieur</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>Matière</label>
+        <label for="matiere">Matière enseignée</label>
         <select id="matiere" name="matiere" required>
-          <option value="">-- Choisir --</option>
-          <option value="Mathématiques">Mathématiques</option>
-          <option value="Français">Français</option>
-          <option value="Anglais">Anglais</option>
-          <option value="Physique">Physique</option>
-          <option value="Chimie">Chimie</option>
-          <option value="Biologie">Biologie</option>
-          <option value="Histoire-Géographie">Histoire-Géographie</option>
-          <option value="Informatique">Informatique</option>
+          <option value="">-- Choisir une matière --</option>
+
+          <optgroup label="Général">
+            <option value="Mathématiques">Mathématiques</option>
+            <option value="Français">Français</option>
+            <option value="Anglais">Anglais</option>
+            <option value="Histoire-Géographie">Histoire-Géographie</option>
+            <option value="Philosophie">Philosophie</option>
+            <option value="Économie">Économie</option>
+            <option value="Droit">Droit</option>
+          </optgroup>
+
+          <optgroup label="Sciences">
+            <option value="Physique-Chimie">Physique-Chimie</option>
+            <option value="SVT">SVT</option>
+            <option value="Biologie">Biologie</option>
+            <option value="Chimie">Chimie</option>
+            <option value="Médecine">Médecine</option>
+          </optgroup>
+
+          <optgroup label="Techniques & Informatique">
+            <option value="Modélisation 3D">Modélisation 3D</option>
+            <option value="Informatique">Informatique</option>
+            <option value="Informatique - Programmation">Informatique - Programmation</option>
+            <option value="Réseaux & Systèmes">Réseaux & Systèmes</option>
+          </optgroup>
+          <optgroup label="Religion">
+            <option value="Religion Islamique">Religion Islamique</option>
+            <option value="Lecture Coranique">Lecture Coranique</option>
+            <option value="Religion Catholique">Religion Catholique</option>
+            <option value="Religion Protestante">Religion Protestante</option>
+            <option value="Religion Juive">Religion Juive</option>
+          </optgroup>
+          <optgroup label="Commerce & Gestion">
+            <option value="Économie-Gestion">Économie-Gestion</option>
+            <option value="Comptabilité">Comptabilité</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Sciences Politiques">Sciences Politiques</option>
+          </optgroup>
+           <optgroup label="Gastronomie"></optgroup>
+           <option value="Patisserie">Patisserie</option>
+            <option value="Biscuiterie">Biscuiterie</option>
+            <option value="Cuisine">Cuisine</option>
+          <optgroup label="Arts">
+            <option value="Musique">Musique</option>
+            <option value="Arts plastiques">Arts plastiques</option>
+          </optgroup>
+
+          <optgroup label="Autres">
+            <option value="Formation professionnelle">Formation professionnelle</option>
+          </optgroup>
+
         </select>
       </div>
 
       <div class="form-group">
-        <label>📎 Diplôme (PDF ou image)</label>
-        <input type="file" id="diplome" name="diplome" accept=".pdf,.jpg,.jpeg,.png" required>
+        <label for="niveau">Niveau enseigné</label>
+        <select id="niveau" name="niveau" required>
+          <option value="">-- Choisir un niveau --</option>
+
+          <optgroup label="Éducation nationale">
+            <option value="Primaire">Primaire</option>
+            <option value="Collège">Collège</option>
+            <option value="Lycée">Lycée</option>
+            <option value="Supérieur">Supérieur</option>
+          </optgroup>
+
+          <optgroup label="Post-bac">
+            <option value="BTS">BTS</option>
+            <option value="BUT">BUT</option>
+            <option value="Prépa CPGE">Prépa CPGE</option>
+          </optgroup>
+
+          <optgroup label="Université">
+            <option value="Licence 1">Licence 1</option>
+            <option value="Licence 2">Licence 2</option>
+            <option value="Licence 3">Licence 3</option>
+            <option value="Master 1">Master 1</option>
+            <option value="Master 2">Master 2</option>
+            <option value="Doctorat">Doctorat</option>
+          </optgroup>
+
+          <optgroup label="Autres formations">
+            <option value="Formation professionnelle">Formation professionnelle</option>
+          </optgroup>
+
+        </select>
       </div>
+      <div class="form-group">
+  <label>📎 Diplôme (PDF ou image)</label>
+  <input type="file" id="diplome" name="diplome" accept=".pdf,.jpg,.jpeg,.png" required>
+  <div class="file-preview" id="diplome-preview" style="display:none;">
+    <span class="file-preview__name"></span>
+    <button type="button" class="file-preview__remove" data-target="diplome">✕</button>
+  </div>
+</div>
+
+<div class="form-group">
+  <label>📎 Pièce d'identité (PDF ou image)</label>
+  <input type="file" id="piece-identite" name="piece_identite" accept=".pdf,.jpg,.jpeg,.png" required>
+  <div class="file-preview" id="piece-identite-preview" style="display:none;">
+    <span class="file-preview__name"></span>
+    <button type="button" class="file-preview__remove" data-target="piece-identite">✕</button>
+  </div>
+</div>
+
+<div class="form-group">
+  <label>📎 Photo d'identité (PDF ou image)</label>
+  <input type="file" id="photo-identite" name="photo_identite" accept=".pdf,.jpg,.jpeg,.png" required>
+  <div class="file-preview" id="photo-identite-preview" style="display:none;">
+    <span class="file-preview__name"></span>
+    <button type="button" class="file-preview__remove" data-target="photo-identite">✕</button>
+  </div>
+</div>
+
+<style>
+.file-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  background: #f0f8f0;
+  border: 1px solid #a5d6a7;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.file-preview__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.file-preview__remove {
+  all: unset;               /* réinitialise tout style global hérité */
+  flex: none;                /* empêche l'étirement */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #555;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.file-preview__remove:hover {
+  background: #e53935;
+  color: #fff;
+}
+</style>
+
+<script>
+  function setupFileRemovable(inputId) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(`${inputId}-preview`);
+    if (!input || !preview) return;
+
+    const nameEl = preview.querySelector('.file-preview__name');
+    const removeBtn = preview.querySelector('.file-preview__remove');
+
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (file) {
+        nameEl.textContent = file.name;
+        preview.style.display = 'flex';
+        input.style.display = 'none';
+      } else {
+        preview.style.display = 'none';
+        input.style.display = 'block';
+      }
+    });
+
+    removeBtn.addEventListener('click', () => {
+      input.value = '';               // vide le champ pour permettre un nouveau choix
+      preview.style.display = 'none';
+      input.style.display = 'block';
+      input.focus();
+    });
+  }
+
+  ['diplome', 'piece-identite', 'photo-identite'].forEach(setupFileRemovable);
+</script>
       
       <div class="form-group">
         <label>Email professionnel</label>
