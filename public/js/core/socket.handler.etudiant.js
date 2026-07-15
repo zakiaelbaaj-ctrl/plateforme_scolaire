@@ -7,6 +7,8 @@ import { AppState } from "/js/core/state.js";
 import { eventBus } from "/js/core/eventBus.js";
 import { Logger }   from "/js/lib/logger.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
+import { StudentSessionStorage } from "/js/domains/etudiant-session/student.session.storage.js";
+
 // ======================================================
 // HANDLER PRINCIPAL
 // ======================================================
@@ -28,14 +30,22 @@ export function handleStudentSocketMessage(data) {
     // ==================================================
 
     case "TRANSPORT_OPEN":
-      
+      console.log("B - TRANSPORT_OPEN");
      eventBus.emit("socket:open");
      eventBus.emit("ws:status", { status: "connected" }); // ✅ AJOUTER
+     {
+     const pendingRoomId = StudentSessionStorage.get();
+        if (pendingRoomId) {
+           const partner = StudentSessionStorage.getPartner();
+          Logger.log("🔄 Room active détectée, tentative de reconnexion:", pendingRoomId);
+          eventBus.emit("student:attempt-reconnect", { roomId: pendingRoomId, partner });
+        }
+      }
      break;
 
     case "TRANSPORT_CLOSED":
   eventBus.emit("socket:close");
-  eventBus.emit("ws:status", { status: "reconnecting" }); // ✅ AJOUTER
+  eventBus.emit("ws:status", { status: "reconnecting" });
   break;
 
   case "ws:status":
@@ -83,6 +93,11 @@ case "student:matchFound":
 case "student:match-found":
   AppState.isQueueing = false;
   AppState.partnerName = data.partnerName || "Partenaire";
+  StudentSessionStorage.savePartner({
+    partnerName: data.partnerName,
+    partnerVille: data.partnerVille || "",
+    partnerPays:  data.partnerPays  || "",
+  });
   eventBus.emit("student:match-found", {
     roomId:    data.roomId,
     partnerName: data.partnerName,
@@ -95,10 +110,12 @@ case "student:match-found":
     // 🔒 SESSION
     // ==================================================
 
-    case "student:joined-room":
+      case "student:joined-room":
       case "student:joinedRoom":
+      StudentSessionStorage.save(data.roomId);
       eventBus.emit("student:joined-room", {
         roomId: data.roomId,
+        reconnected: data.reconnected || false,
       });
       break;
      case "student:userJoined":
@@ -110,22 +127,45 @@ case "student:match-found":
       break;
 
    case "student:user-left":
-case "student:userLeft":
-  Logger.log("📡 Le partenaire a quitté, notification envoyée à l'orchestrateur pour cleanup...");
-  
+   case "student:userLeft":
+    Logger.log("📡 Le partenaire a quitté — cleanup session étudiant");
+    StudentSessionStorage.clear();
+
+      AppState.endSession();
+      AppState.partnerName = null;
+      AppState.currentCall = null;
   // Repasse uniquement le bébé à l'orchestrateur via l'eventBus
-  eventBus.emit("student:user-left", {
-    userId: data.userId,
-  });
-  break;
+      eventBus.emit("ui:callState", { state: "idle" });
+       
+       eventBus.emit("student:user-left", {
+        userId: data.userId,
+        reason: data.reason || null,
+      });
+     break;
+     case "student:peerDisconnected":
+      Logger.log("⏳ Partenaire déconnecté, grâce de reconnexion en cours...");
+      eventBus.emit("student:peer-disconnected", {
+        userId: data.userId,
+        userName: data.userName,
+        graceSeconds: data.graceSeconds,
+      });
+      break;
+      case "student:peerReconnected":
+      Logger.log("✅ Partenaire reconnecté !");
+      eventBus.emit("student:peer-reconnected", {
+        userId: data.userId,
+        userName: data.userName,
+      });
+      break;
 
     // APRÈS — événement dédié, toujours émis, aucune garde fragile
-case "student:session-ready":
-case "student:sessionReady":
+     case "student:session-ready":
+     case "student:sessionReady":
   Logger.log("📡 Sockets : Session prête, initiateur :", data.initiator);
   eventBus.emit("student:session-ready", {
     roomId:    data.roomId,
     initiator: data.initiator,
+    renegotiate: data.renegotiate || false,
   });
   break
 
@@ -203,11 +243,11 @@ case "student:chatMessage": {
 // "👨‍🏫 PROFESSEURS EN LIGNE"
 // ==================================================
 
-case "onlineProfessors":
-  AppState.onlineProfessors = data.professors || [];
-  eventBus.emit("professors:online", data.professors || []);
-  break;
-case "student:invited":
+      case "onlineProfessors":
+     AppState.onlineProfessors = data.professors || [];
+     eventBus.emit("professors:online", data.professors || []);
+      break;
+     case "student:invited":
     Logger.log("🔗 Invitation reçue de :", data.fromName);
     eventBus.emit("student:invited", {
         fromId:   data.fromId,

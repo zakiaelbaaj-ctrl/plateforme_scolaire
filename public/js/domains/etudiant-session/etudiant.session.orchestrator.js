@@ -11,7 +11,7 @@ import { handleStudentSocketMessage } from "/js/core/socket.handler.etudiant.js"
 import { initEtudiantSessionEvents }  from "./etudiant.session.events.js";
 import { EtudiantSessionService }     from "./etudiant.session.service.js";
 import { EtudiantMatchingService }    from "./etudiant.matching.service.js";
-
+import { StudentSessionStorage } from "/js/domains/etudiant-session/student.session.storage.js";
 import { PeerConnection }     from "/js/webrtc/peer.connection.js";
 import { DataChannelService } from "/js/domains/webrtc/datachannel.service.js";
 import { loadWebRTCConfig }   from "/js/webrtc/webrtc.config.js";
@@ -22,7 +22,10 @@ import { loadWebRTCConfig }   from "/js/webrtc/webrtc.config.js";
 
 let peer           = null;
 let localStream    = null;
+let iceRestartTimeout = null;
+let pendingReconnectPartner = null;
 let pendingSignals = [];
+let iceQueue       = [];
 let isInitialized  = false; 
 let unsubscribeMessage = null;
 let canvasResizeInterval = null;
@@ -103,8 +106,7 @@ eventBus.on("student:match-found", ({ roomId }) => {
   logger.log(`🎯 Match trouvé ! Initialisation de la room : ${roomId}`);
 
   AppState.startSession({ roomId });
-
-  socketService.send({ type: "student:joinRoom", roomId });
+  EtudiantSessionService.joinRoom(roomId); // 🟡 MODIFIÉ (au lieu de socketService.send direct)
   logger.log("🚪 Signal student:joinRoom envoyé de manière centralisée");
    
   // Sécurité : On nettoie un éventuel intervalle précédent
@@ -191,6 +193,7 @@ eventBus.on("invite:found", ({ invitant }) => {
     });
     logger.log("🔗 Enqueue automatique vers :", invitant.prenom);
 });
+
     // 📡 SIGNAL WEBRTC 🕒 mise en queue si peer pas encore prêt
     eventBus.on("webrtc:signal", async (signal) => {
       if (!peer) {
@@ -210,12 +213,50 @@ eventBus.on("invite:found", ({ invitant }) => {
     eventBus.on("session:end", () => {
       this._cleanup({ reason: "ended" });
     });
+     
+    // 🟢 AJOUT — Reconnexion : notre propre client revient après une coupure
+  eventBus.on("student:attempt-reconnect", ({ roomId, partner }) => {
+  logger.log("🔄 Tentative de reconnexion à la room :", roomId);
+  pendingReconnectPartner = partner || null;
+  AppState.startSession({ roomId });
+  EtudiantSessionService.joinRoom(roomId);
+});
 
+eventBus.on("file:error", ({ name }) => {
+    const attachmentPreview = document.getElementById("attachment-preview");
+    if (attachmentPreview) {
+        attachmentPreview.innerHTML = `<div class="attachment-item">❌ Échec de l'envoi : ${name} — réessayez</div>`;
+    }
+});
+// 🟢 AJOUT — Le PARTENAIRE vient de se déconnecter (grâce en cours côté serveur)
+eventBus.on("student:peer-disconnected", ({ userName, graceSeconds }) => {
+  logger.log(`⏳ Partenaire déconnecté (${userName}) — grâce ${graceSeconds}s`);
+  eventBus.emit("ui:callState", { state: "reconnecting", graceSeconds });
+});
+
+// 🟢 AJOUT — Le partenaire est revenu à temps
+eventBus.on("student:peer-reconnected", ({ userName }) => {
+  logger.log(`✅ Partenaire reconnecté (${userName})`);
+  eventBus.emit("ui:callState", { state: "inCall" });
+});
     // 💬 ÉCOUTEUR D'ENVOI DU CHAT LOCAL VIA WEBRTC
     eventBus.on("chat:send-local", (text) => {
       logger.log("🧠 Orchestrator : Envoi du message via DataChannel");
       this.sendChat(text); 
     });
+    // 🟢 AJOUT — restaure l'UI (vue session, tableau blanc, badge) après un rechargement
+eventBus.on("student:joined-room", ({ roomId, reconnected }) => {
+  if (reconnected && pendingReconnectPartner) {
+    logger.log("🎨 Restauration UI après reconnexion (partenaire :", pendingReconnectPartner.partnerName, ")");
+    eventBus.emit("student:session-restored", {
+      roomId,
+      partnerName: pendingReconnectPartner.partnerName,
+      partnerVille: pendingReconnectPartner.partnerVille,
+      partnerPays: pendingReconnectPartner.partnerPays,
+    });
+    pendingReconnectPartner = null; // consommé, on nettoie
+  }
+});
   },
 
   // ====================================================
@@ -266,12 +307,29 @@ eventBus.on("invite:found", ({ invitant }) => {
     });
 
     peer.onStateChange((state) => {
-      logger.log("🧠 WebRTC state :", state);
-      eventBus.emit("webrtc:state", state);
-      if (state === "failed" || state === "disconnected") {
-        this._cleanup({ reason: "failed" });
-      }
-    });
+  logger.log("🧠 WebRTC state :", state);
+  eventBus.emit("webrtc:state", state);
+
+  if (state === "disconnected") {
+    // 🟢 AJOUT — tentative de récupération légère avant de tout démonter
+    logger.log("⚠️ ICE déconnecté — tentative d'ICE restart avant abandon complet");
+    EtudiantSessionOrchestrator._tryIceRestart();
+  }
+
+  if (state === "failed") {
+    // Échec net et confirmé → pas la peine d'attendre, on démonte direct
+    logger.log("❌ Connexion définitivement échouée — démontage du peer");
+    clearTimeout(iceRestartTimeout);
+    this._teardownPeer();
+    eventBus.emit("ui:callState", { state: "reconnecting" });
+  }
+
+  if (state === "connected") {
+    // 🟢 AJOUT — la connexion est rétablie (via ICE restart ou normalement) :
+    // annule tout timeout de fallback en attente
+    clearTimeout(iceRestartTimeout);
+  }
+  });
 
     // MEDIA LOCAL
     try {
@@ -307,10 +365,23 @@ eventBus.on("invite:found", ({ invitant }) => {
       onFileProgress: (id, progress)   => eventBus.emit("file:progress",     { id, progress }),
       onFileMeta:     (meta)           => eventBus.emit("file:meta",         meta),
       onFileEnd:      (meta)           => eventBus.emit("file:end",          meta),
+     onFileError: ({ name, reason }) => eventBus.emit("file:error", { name, reason }),
       onDrawReady: () => {
         logger.log("✅ Channel draw prêt ― envoi fichier autorisé");
         eventBus.emit("file:channel-ready");
       },
+      onDrawClosed: () => {                                   // 🟢 AJOUT
+  logger.log("⚠️ Channel draw fermé ― envoi fichier bloqué");
+  eventBus.emit("file:channel-closed");
+},
+      onChatReady: () => {                                    // 🟢 AJOUT
+    logger.log("✅ Channel chat prêt ― chat autorisé");
+    eventBus.emit("chat:channel-ready");
+  },
+  onChatClosed: () => {                                   // 🟢 AJOUT
+  logger.log("⚠️ Channel chat fermé ― chat bloqué");
+  eventBus.emit("chat:channel-closed");
+},
     });
 
     // FLUSH signaux en attente
@@ -379,7 +450,27 @@ eventBus.on("invite:found", ({ invitant }) => {
 
   sendChat(text) {
     if (!AppState.sessionInProgress) return;
-    DataChannelService.sendChat(text);
+    
+    // Essayer d'abord d'envoyer par le DataChannel RTC
+    const dcReady = DataChannelService.isChatReady?.() || false; // Vérifie la dispo réelle
+    
+    if (dcReady) {
+      logger.log("💬 Envoi du message via WebRTC DataChannel");
+      DataChannelService.sendChat(text);
+    } else {
+      // Fallback sécurisé par WebSocket (notre socketService gère déjà le JSON.stringify !)
+      logger.log("📡 WebRTC non dispo, envoi du message via WebSocket (Fallback)");
+      const roomId = AppState.currentRoomId;
+      if (roomId) {
+        socketService.send({
+          type: "student:chatMessage",
+          text: text,
+          roomId: roomId
+        });
+      } else {
+        logger.warn("⚠️ Impossible d'envoyer le message : aucune room active");
+      }
+    }
   },
 
   sendStroke(stroke) {
@@ -411,9 +502,22 @@ eventBus.on("invite:found", ({ invitant }) => {
   _screenTrack:  null,
   _screenSender: null,
 
-  async startScreenShare() {
+ async startScreenShare() {
     if (this._screenStream) return; 
-    if (!peer) { logger.warn("⚠️ Pas de peer actif"); return; }
+    if (!peer) { 
+      logger.warn("⚠️ Pas de peer actif"); 
+      return; 
+    }
+    if (AppState.whiteboardOnly) {
+      logger.warn("⚠️ Mode tableau blanc seul ― partage d'écran désactivé (pas de renégociation).");
+      return;
+    }
+
+    const pc = peer.getPC();
+    if (!pc || pc.signalingState !== "stable") {
+      logger.warn("⚠️ Renégociation déjà en cours — partage d'écran annulé, réessayez dans un instant.");
+      return;
+    }
 
     try {
       this._screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -448,14 +552,14 @@ eventBus.on("invite:found", ({ invitant }) => {
   async stopScreenShare() {
     if (!this._screenStream) return;
 
-    if (peer && this._screenSender) {
-      try { peer.getPC().removeTrack(this._screenSender); } catch {}
-    }
-    if (peer) {
-      try {
-        const offer = await peer.createOffer();
-        EtudiantSessionService.sendSignal({ type: "offer", sdp: offer.sdp });
-      } catch {}
+    if (AppState.whiteboardOnly) {
+      logger.log("ℹ️ Mode tableau blanc seul ― arrêt écran sans renégociation.");
+    } else {
+      const pc = peer?.getPC();
+if (!pc || pc.signalingState !== "stable") {
+  logger.warn("⚠️ Renégociation ignorée — SDP instable.");
+  return;
+}
     }
 
     eventBus.emit("screenshare:stopped");
@@ -474,7 +578,69 @@ eventBus.on("invite:found", ({ invitant }) => {
   isScreenSharing() {
     return !!this._screenStream;
   },
+   // ====================================================
+// 🟢 AJOUT — ICE RESTART (récupération légère avant teardown complet)
+// Sur un simple "disconnected" (souvent transitoire), on tente d'abord
+// de relancer la négociation ICE sans détruire le peer ni les DataChannels.
+// Si ça n'aboutit pas dans le délai, on bascule sur le teardown complet
+// (qui déclenchera la grâce serveur classique).
+// ====================================================
+async _tryIceRestart() {
+  if (!peer) return;
+  if (AppState.whiteboardOnly) {
+    logger.log("ℹ️ ICE restart ignoré en mode tableau blanc seul (pas de renégociation).");
+    return;
+  }
+  clearTimeout(iceRestartTimeout);
 
+  try {
+    // >>> REMPLACER LE BLOC DE TRY PAR CELUI-CI <<<
+    if (peer && typeof peer.restartIce === "function") {
+      const offer = await peer.restartIce();
+      if (offer) {
+        EtudiantSessionService.sendSignal({ type: "offer", sdp: offer.sdp });
+        logger.log("🔄 Offer de renégociation ICE envoyée");
+      }
+    }
+  } catch (err) {
+    logger.error("❌ Échec ICE restart :", err);
+  }
+
+  // Filet de sécurité : si l'état n'est pas redevenu "connected" dans
+  // ce délai, on abandonne l'ICE restart et on passe au teardown complet.
+  iceRestartTimeout = setTimeout(() => {
+    if (peer && peer.getState() !== "connected") {
+      logger.warn("⏱️ ICE restart sans succès après délai — démontage complet");
+      this._teardownPeer();
+      eventBus.emit("ui:callState", { state: "reconnecting" });
+    }
+  }, 5000); // 🟢 5 secondes de tolérance, ajustable
+},
+  // ====================================================
+// 🟢 AJOUT — TEARDOWN LÉGER (reconnexion possible)
+// Contrairement à _cleanup(), ne touche PAS à AppState.currentRoomId
+// ni à StudentSessionStorage : la session reste "vivante" en attente
+// d'une reconnexion (soit la nôtre, soit celle du partenaire).
+// ====================================================
+_teardownPeer() {
+  logger.log("🔌 Démontage du peer WebRTC (reconnexion possible)");
+ clearTimeout(iceRestartTimeout);
+  if (peer) {
+    peer.destroy();
+    peer = null;
+  }
+
+  pendingSignals = [];
+
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+
+  DataChannelService.reset();
+
+  eventBus.emit("media:local-stream", null); // coupe l'aperçu vidéo local côté UI
+},
   // ====================================================
   // CLEANUP
   // ====================================================
@@ -483,6 +649,11 @@ eventBus.on("invite:found", ({ invitant }) => {
     logger.log("🧹 Cleanup orchestrator :", reason);
 
     this._cleanupScreenShare?.();
+
+    if (canvasResizeInterval) {
+    clearInterval(canvasResizeInterval);
+    canvasResizeInterval = null;
+  }
 
     if (peer) {
         peer.destroy();
@@ -498,9 +669,15 @@ eventBus.on("invite:found", ({ invitant }) => {
 
     DataChannelService.reset();
 
-    AppState.currentRoomId = null;
-    AppState.sessionInProgress = false;
+    StudentSessionStorage.clear(); // 🟢 AJOUT : fin définitive → plus rien à reconnecter
 
+    // 🟢 AJOUT : cleanup AppState
+  AppState.endSession();          // remet sessionInProgress=false + currentRoomId=null
+  AppState.partnerName = null;    // supprime le partenaire affiché
+  AppState.currentCall = null;    // débloque le bouton d’appel
+
+  // 🟢 UI → retour à l’état normal
+    eventBus.emit("ui:callState", { state: "idle" });
     eventBus.emit("screenshare:stopped");
     eventBus.emit("session:reset", { reason });
 }

@@ -71,6 +71,8 @@ _on(event, cb) {
   },
 
   callProfessor(profId) {
+    socketService.markSessionActive(); // 🟢 lève le verrou socket
+    CallStateMachine.reset();          // 🟢 remet la state machine à idle
     socketService.send({ type: "callProfessor", profId: parseInt(profId) });
   },
 
@@ -97,6 +99,7 @@ _on(event, cb) {
     AppState._notify("ui:closeCallOverlay", { roomId: savedRoomId });
   } finally {
     this._terminating = false;
+    CallStateMachine.reset();
   }
 },
 // ❌ handleSessionEnded() supprimé — plus appelé nulle part

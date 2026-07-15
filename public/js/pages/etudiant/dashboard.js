@@ -12,7 +12,7 @@ import { EtudiantSessionOrchestrator } from "/js/domains/etudiant-session/etudia
 import { EtudiantMatchingService }     from "/js/domains/etudiant-session/etudiant.matching.service.js";
 import { WhiteboardService }           from "/js/domains/whiteboard/whiteboard.service.js";
 import { ChatService }                 from "/js/domains/chat/chat.service.js";
-import { startSessionTimer, stopSessionTimer } from "/js/pages/etudiant/session.timer.js";
+import { startSessionTimer, stopSessionTimer, pauseSessionTimer, resumeSessionTimer } from "/js/pages/etudiant/session.timer.js";
 import { ScreenShareOverlay } from "/js/ui/components/screen.share.overlay.js";
 import { refreshAccessToken } from "/js/lib/auth.refresh.js";
 // ======================================================
@@ -44,6 +44,15 @@ setAuthProvider({
 
 const UI = {
 
+     _matchSound: new Audio("/assets/sounds/call.mp3"),
+
+     _playMatchSound() {
+        this._matchSound.currentTime = 0;
+        this._matchSound.play().catch(err => {
+            Logger.warn("⚠️ Impossible de jouer le son de notification :", err.message);
+        });
+    },
+
     toggleView(view, data = {}) {
         Logger.log(`⚠️ Vue : ${view}`);
         document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
@@ -72,15 +81,16 @@ const UI = {
         alert(msg);
     },
         onMatchFound(data) {
-    this.toggleView('session');
-    const wrapper = document.getElementById('whiteboard-wrapper');
-    if (wrapper) wrapper.style.display = 'block';
-    WhiteboardService.initSession();
-    WhiteboardService.initCanvas("whiteboard-canvas");
-     const remoteInfo = document.getElementById('remote-etudiant-info');
-    if (remoteInfo) remoteInfo.textContent = data?.partnerName || "—";
-     const remoteLocation = document.getElementById('remote-etudiant-location');
-    if (remoteLocation) {
+         this._playMatchSound();
+         this.toggleView('session');
+         const wrapper = document.getElementById('whiteboard-wrapper');
+         if (wrapper) wrapper.style.display = 'block';
+         WhiteboardService.initSession();
+         WhiteboardService.initCanvas("whiteboard-canvas");
+        const remoteInfo = document.getElementById('remote-etudiant-info');
+        if (remoteInfo) remoteInfo.textContent = data?.partnerName || "—";
+        const remoteLocation = document.getElementById('remote-etudiant-location');
+        if (remoteLocation) {
         const lieu = [data?.partnerVille, data?.partnerPays]
             .filter(Boolean)
             .join(", ");
@@ -165,6 +175,109 @@ onUserLeft() {
   if (statusEl) statusEl.textContent = "Aucune session";
   const statusBadge = document.getElementById('call-status-badge');   // ✅ AJOUT
   if (statusBadge) statusBadge.classList.remove('active');            // ✅ AJOUT
+},
+// ====================================================
+// 🟢 AJOUT — RECONNEXION PARTENAIRE (grâce après coupure)
+// ====================================================
+
+_reconnectCountdownInterval: null,
+
+onPeerDisconnected({ userName, graceSeconds }) {
+    const statusEl = document.getElementById('call-status');
+    if (statusEl) statusEl.textContent = `⏳ ${userName} déconnecté — reconnexion en cours...`;
+    const statusBadge = document.getElementById('call-status-badge');
+    if (statusBadge) statusBadge.classList.remove('active');
+     
+    pauseSessionTimer(); // 🟢 AJOUT
+
+     // 🟢 AJOUT — le DataChannel va être détruit (_teardownPeer), le fichier
+    // ne peut plus être envoyé tant que le channel n'est pas recréé.
+    const btnFile = document.getElementById('send-file');
+    if (btnFile) {
+        btnFile.disabled = true;
+        btnFile.title = "Connexion interrompue — en attente de reconnexion...";
+    }
+
+    // 🟢 AJOUT — chat désactivé, le DataChannel est mort
+    const inputChat = document.getElementById('chat-input');
+    const btnSend = document.getElementById('send-msg');
+    if (inputChat) {
+        inputChat.disabled = true;
+        inputChat.placeholder = "En attente de reconnexion...";
+    }
+    if (btnSend) btnSend.disabled = true;
+    this._showReconnectBanner(userName, graceSeconds);
+},
+
+onPeerReconnected({ userName }) {
+    const statusEl = document.getElementById('call-status');
+    if (statusEl) statusEl.textContent = "En session";
+    const statusBadge = document.getElementById('call-status-badge');
+    if (statusBadge) statusBadge.classList.add('active');
+
+    resumeSessionTimer(); // 🟢 AJOUT
+
+    this._hideReconnectBanner();
+
+    const toast = document.createElement("div");
+    toast.textContent = `✅ ${userName} est de retour.`;
+    toast.style.cssText = `
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        background: #4CAF50; color: white; padding: 12px 24px;
+        border-radius: 8px; z-index: 9999; font-size: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+},
+
+onCallStateChange({ state }) {
+    // Ne gère QUE l'affichage du statut local (notre propre connexion WebRTC).
+    // Le timer est piloté exclusivement par onPeerDisconnected/onPeerReconnected,
+    // seule source fiable côté serveur pour savoir si le partenaire est vraiment absent.
+    if (state === "reconnecting") {
+        const statusEl = document.getElementById('call-status');
+        if (statusEl) statusEl.textContent = "⏳ Reconnexion en cours...";
+    } else if (state === "inCall") {
+        const statusEl = document.getElementById('call-status');
+        if (statusEl) statusEl.textContent = "En session";
+    } else if (state === "idle") {
+        const statusEl = document.getElementById('call-status');
+        if (statusEl) statusEl.textContent = "Aucune session";
+    }
+},
+
+_showReconnectBanner(userName, graceSeconds) {
+    this._hideReconnectBanner();
+
+    let remaining = graceSeconds;
+    const banner = document.createElement("div");
+    banner.id = "peer-reconnect-banner";
+    banner.style.cssText = `
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        background: #FF9800; color: white; padding: 12px 24px;
+        border-radius: 8px; z-index: 9999; font-size: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    banner.textContent = `⏳ ${userName} s'est déconnecté — en attente de reconnexion (${remaining}s)`;
+    document.body.appendChild(banner);
+
+    this._reconnectCountdownInterval = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+            this._hideReconnectBanner();
+            return;
+        }
+        banner.textContent = `⏳ ${userName} s'est déconnecté — en attente de reconnexion (${remaining}s)`;
+    }, 1000);
+},
+
+_hideReconnectBanner() {
+    if (this._reconnectCountdownInterval) {
+        clearInterval(this._reconnectCountdownInterval);
+        this._reconnectCountdownInterval = null;
+    }
+    document.getElementById("peer-reconnect-banner")?.remove();
 },
    onSessionReset() {
     // 1. Nettoyage vidéos
@@ -526,7 +639,13 @@ if (fileInput && attachmentPreview) {
         `;
 
         attachmentPreview.classList.add("has-file");
-
+        // 🟢 AJOUT — réactive le bouton pour ce nouveau fichier,
+        // uniquement si le channel draw est toujours ouvert
+        if (btnFile) {
+            const drawReady = window.DataChannelService?.isDrawReady?.() ?? true;
+            btnFile.disabled = !drawReady;
+            btnFile.title = drawReady ? "" : "En attente de connexion...";
+        }
         Logger.log(`📎 Fichier prêt : ${file.name}`);
     });
 }
@@ -539,11 +658,30 @@ if (btnFile && fileInput) {
 
     // ✅ Activé quand le channel draw est prêt
     eventBus.on("file:channel-ready", () => {
+        delete btnFile.dataset.channelClosed; // 🟢 AJOUT
         btnFile.disabled = false;
         btnFile.title = "";
         Logger.log("✅ Bouton fichier activé — channel prêt");
     });
+   eventBus.on("file:channel-closed", () => {
+    const btnFile = document.getElementById('send-file');
+    if (btnFile) {
+        btnFile.dataset.channelClosed = "true"; // 🟢 AJOUT
+        btnFile.disabled = true;
+        btnFile.title = "Connexion interrompue — en attente de reconnexion...";
+    }
+});
 
+eventBus.on("chat:channel-closed", () => {
+    const inputChat = document.getElementById('chat-input');
+    const btnSend = document.getElementById('send-msg');
+    if (inputChat) {
+        inputChat.disabled = false;
+        inputChat.placeholder = "Écrire un message (mode secours)...";
+    }
+    if (btnSend) btnSend.disabled = false; // On le garde actif !
+    Logger.log("⚠️ Chat DataChannel fermé - Bascule transparente sur le mode secours (WS).");
+});
 
     btnFile.addEventListener('click', () => {
         const file = fileInput.files?.[0];
@@ -560,6 +698,17 @@ if (btnFile && fileInput) {
     btnFile.disabled = true;
         EtudiantSessionOrchestrator.sendFile(file);
     });
+    // dans setupInteractions(), à côté du listener existant file:channel-ready
+eventBus.on("chat:channel-ready", () => {
+    const inputChat = document.getElementById('chat-input');
+    const btnSend = document.getElementById('send-msg');
+    if (inputChat) {
+        inputChat.disabled = false;
+        inputChat.placeholder = "";
+    }
+    if (btnSend) btnSend.disabled = false;
+    Logger.log("✅ Chat activé — channel prêt");
+});
     // 🆕 Confirmation de fin d'envoi (si l'orchestrateur/DataChannelService émet un événement de complétion pour l'expéditeur)
     eventBus.on("file:sent", ({ name }) => {
     const attachmentPreview = document.getElementById("attachment-preview");
@@ -567,7 +716,7 @@ if (btnFile && fileInput) {
         attachmentPreview.innerHTML = `<div class="attachment-item">✅ Fichier envoyé : ${name}</div>`;
     }
     const btnFile = document.getElementById('send-file');
-    if (btnFile) btnFile.disabled = false;
+    if (btnFile) btnFile.disabled = true; // On désactive le bouton jusqu'à ce que l'utilisateur sélectionne un nouveau fichier
     const fileInput = document.getElementById('file-input');
     if (fileInput) fileInput.value = "";
 });

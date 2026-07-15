@@ -20,33 +20,38 @@ export const DataChannelService = (() => {
   // ====================================================
 
   function init(peerConnection, isInitiator, handlers = {}) {
-   currentSendHandlers = handlers;   // 🆕 sans cette ligne, currentSendHandlers reste toujours {}
-    if (isInitiator) {
-  channels.chat = peerConnection.createDataChannel("chat", { ordered: true });
+  currentSendHandlers = handlers;   // 🆕 sans cette ligne, currentSendHandlers reste toujours {}
+
+  // 🟢 MODE NÉGOCIÉ + ID FIXE
+  // Les deux pairs créent EUX-MÊMES leurs canaux, avec le même id.
+  // Comme ils ne dépendent plus de l'échange SDP (négociation "in-band"
+  // classique), ils survivent à toute renégociation ultérieure
+  // (partage d'écran, ICE restart, etc.) — plus de fermeture intempestive.
+  channels.chat = peerConnection.createDataChannel("chat", {
+    ordered: true,
+    negotiated: true,
+    id: 1,
+  });
   channels.draw = peerConnection.createDataChannel("draw", {
     ordered: false,
-    maxRetransmits: 0,
+    maxRetransmits: 10,
+    negotiated: true,
+    id: 2,
   });
 
   setup(channels.chat, handlers);
   setup(channels.draw, handlers);
+
+  // Plus besoin de ondatachannel pour chat/draw : les deux côtés les créent
+  // localement avec le même id. On garde le handler pour d'éventuels
+  // futurs canaux créés dynamiquement par l'autre pair.
+  peerConnection.ondatachannel = (event) => {
+    const channel = event.channel;
+    if (channels[channel.label]) return; // déjà géré ci-dessus, on ignore le doublon
+    channels[channel.label] = channel;
+    setup(channel, handlers);
+  };
 }
-
-peerConnection.ondatachannel = (event) => {
-  const channel = event.channel;
-  channels[channel.label] = channel;
-
-  // ✅ onDrawReady côté non-initiateur (ton cas dans les logs)
-  if (channel.label === "draw") {
-    channel.onopen = () => {
-      Logger.log("✅ DC open: draw");
-      handlers.onDrawReady?.();
-    };
-  }
-
-  setup(channel, handlers);
-};
-  }
 
   // ====================================================
   // SETUP CHANNEL
@@ -59,20 +64,26 @@ peerConnection.ondatachannel = (event) => {
     if (channel.label === "draw") {
       handlers.onDrawReady?.();
     }
+    if (channel.label === "chat") {           // 🟢 AJOUT
+      handlers.onChatReady?.();
+    }
     };
 
-    channel.onclose = () => {
-      Logger.log("❌ DC closed:", channel.label);
-    };
+   channel.onclose = () => {
+  Logger.log("❌ DC closed:", channel.label);
 
-    // ❌ Avant — log toutes les erreurs
-channel.onerror = (err) => {
-  Logger.error("❌ DC error:", channel.label, err);
+  if (channel.label === "draw") {
+    handlers.onDrawClosed?.();
+  }
+  if (channel.label === "chat") {
+    handlers.onChatClosed?.();
+  }
 };
 
-// ✅ Après — ignorer les erreurs de fermeture volontaire
+// Gestion propre des erreurs
 channel.onerror = (err) => {
   const reason = err?.error?.message ?? "";
+
   if (
     reason.includes("User-Initiated Abort") ||
     reason.includes("Close called") ||
@@ -81,8 +92,10 @@ channel.onerror = (err) => {
     Logger.log(`ℹ️ DC ${channel.label} fermé proprement`);
     return;
   }
+
   Logger.error("❌ DC error:", channel.label, err);
 };
+
 
     channel.onmessage = (event) => {
 
@@ -222,11 +235,13 @@ case "redo":
 
 if (!ch) {
   Logger.warn("⚠️ channel draw inexistant ou non initialisé");
-  return;
+   currentSendHandlers?.onFileError?.({ name: file.name, reason: "no-channel" }); // 🟢 AJOUT
+    return;
 }
 
 if (ch.readyState !== "open") {
   Logger.warn("⚠️ channel non prêt, état :", ch.readyState);
+  currentSendHandlers?.onFileError?.({ name: file.name, reason: ch.readyState }); // 🟢 AJOUT manquant
   return;
 }
 

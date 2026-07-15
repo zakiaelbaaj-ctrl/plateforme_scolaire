@@ -61,7 +61,7 @@ import {
 } from "./ws/utils.js";
 
 // ✅ AJOUT 2 : Système étudiant-étudiant
-import { handleStudentMessage, handleStudentDisconnect } from "./ws/etudiant/index.js";
+import { handleStudentMessage, handleStudentDisconnect, cleanupStudentRoom } from "./ws/etudiant/index.js";
 
 // ✅ AJOUT 2 (suite) : préfixes réservés aux messages étudiant
 const STUDENT_TYPES = new Set([
@@ -593,9 +593,16 @@ if (type === "requestStudentMatch") {
 // =======================================================
 async function handleDisconnect(ws) {
   console.log(`❌ Déconnexion: ${ws.userId} (${ws.role})`);
-
+  // ✅ On capture AVANT toute action : est-ce que `ws` est bien la connexion
+  // actuellement enregistrée pour cet userId ? Si non, c'est un socket "zombie"
+  // déjà remplacé par une reconnexion plus récente — on ignore tout nettoyage
+  // d'état applicatif (la nouvelle connexion a déjà pris le relais proprement).
+  // Ce cas est distinct d'une vraie déconnexion : lors d'une vraie déconnexion,
+  // personne n'a pris la place de `ws` dans `clients`, donc la condition reste vraie.
+  const isActiveConnection = clients.get(ws.userId) === ws;
   // 1️⃣ LOGIQUE POUR LES PROFESSEURS
   if (ws.role === "prof") {
+    if (isActiveConnection) {
     updateStatus(ws.userId, "offline");
     const prof = onlineProfessors.get(ws.userId);
     const eleveIdSnapshot = prof?.eleveId ?? null;
@@ -606,10 +613,13 @@ async function handleDisconnect(ws) {
     }
     removeProfessor(ws.userId);
     clearPendingCall(ws.userId);
+  }else {
+      console.log(`🔕 Déconnexion ignorée (socket zombie) pour prof ${ws.userId} — reconnexion déjà en place`);
+    }
   }
-
   // 2️⃣ LOGIQUE POUR LES ÉLÈVES ET ÉTUDIANTS
   if (ws.role === "eleve" || ws.role === "etudiant") {
+    if (isActiveConnection) {
     // Libérer le prof si l'utilisateur était en session avec lui
     for (const prof of onlineProfessors.values()) {
       if (prof.eleveId === ws.userId) {
@@ -623,10 +633,20 @@ async function handleDisconnect(ws) {
       MatchService.removeStudent(ws.userId);
     }
     await handleStudentDisconnect(ws);
+  } else {
+      console.log(`🔕 Déconnexion ignorée (socket zombie) pour ${ws.role} ${ws.userId} — reconnexion déjà en place`);
+   // 🟢 AJOUT : même pour un socket zombie, si ce ws était encore accroché à une room
+        // étudiant (cas d'une reconnexion pendant une session active), il faut le
+        // détacher pour ne pas laisser un membre fantôme bloquer la room.
+        if (ws.role === "etudiant") {
+            cleanupStudentRoom(ws);
+    }
   }
-
+  }
   // 3️⃣ NETTOYAGE SYSTÈME (Rooms & State)
+  if (isActiveConnection) {
   leaveRoom(ws);
+  }
   cleanupOnDisconnect(ws, {
     clients,
     onlineProfessors,
@@ -634,8 +654,9 @@ async function handleDisconnect(ws) {
   });
 
   // 4️⃣ SUPPRESSION DE LA MAP (Indispensable avant le broadcast)
+  if (isActiveConnection) {
   clients.delete(ws.userId);
-
+  }
 // 5️⃣ (supprimé) — cleanupOnDisconnect (étape 3️⃣) gère déjà les broadcasts
 // pour les 3 rôles (etudiant, prof, eleve). Ce bloc dupliquait l'envoi.
 

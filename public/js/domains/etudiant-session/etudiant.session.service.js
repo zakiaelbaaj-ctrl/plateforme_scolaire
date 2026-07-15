@@ -17,6 +17,15 @@ export const EtudiantSessionService = {
     logger.log("📦 EtudiantSessionService initialisé");
   },
 
+       // 🟢 AJOUT — factorisé : utilisé pour le 1er join ET la reconnexion
+  joinRoom(roomId) {
+    if (!roomId) {
+      logger.warn("⚠️ joinRoom appelé sans roomId");
+      return;
+    }
+    logger.log(`🚪 Envoi student:joinRoom pour la room : ${roomId}`);
+    socketService.send({ type: "student:joinRoom", roomId });
+  },
   // ====================================================
   // ACTIONS DE SIGNALING (WebRTC)
   // ====================================================

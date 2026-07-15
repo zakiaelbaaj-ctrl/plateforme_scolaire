@@ -10,18 +10,6 @@ import * as adminController from "#controllers/adminController.js";
 const router = express.Router();
 
 // --------------------------------------------------
-// 🔧 TEMPORAIRE — Route de migration DB
-// Placée AVANT requireAuth/requireAdmin car requireAuth
-// dépend lui-même des colonnes que cette migration doit créer
-// (paradoxe : requireAuth charge l'utilisateur via le modèle Sequelize,
-// qui référence déjà piece_identite_url / photo_identite_url,
-// colonnes qui n'existent pas encore tant que la migration n'a pas tourné).
-// Protégée par un secret manuel (header x-migration-secret), pas par requireAuth.
-// ⚠️ À SUPPRIMER après exécution de la migration.
-// --------------------------------------------------
-router.post("/migrate-doc-columns", adminController.runMigrationAddDocColumns);
-
-// --------------------------------------------------
 // Middlewares globaux pour toutes les routes admin (ci-dessous)
 // --------------------------------------------------
 router.use(requireAuth);
@@ -35,8 +23,6 @@ router.get("/facturation", adminController.getFacturation);
 router.get("/users", adminController.getUsers);
 // 2. AJOUTER : Récupérer un utilisateur spécifique par ID (évite le 404 en GET)
 router.get("/users/:id", adminController.getUserById);
-// 🔧 TEMPORAIRE — vérification colonnes DB
-router.get("/check-doc-columns", adminController.checkDocColumns);
 // 3. AJOUTER : Validation/Mise à jour (PATCH) utilisée par ton admin_inscriptions.html
 // Cette route répondra à api/v1/admin/users/40
 router.patch("/users/:id", adminController.updateUser); 

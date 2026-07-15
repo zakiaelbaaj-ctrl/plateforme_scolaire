@@ -106,12 +106,36 @@ eventBus.on("student:session-ready", (data) => {
   });
 
   // ====================================================
+  // 🟢 AJOUT — RECONNEXION (grâce après déconnexion d'un partenaire)
+  // ====================================================
+
+  eventBus.on("student:peer-disconnected", (data) => {
+    Logger.warn(`⏳ UI Events : Partenaire déconnecté (${data.userName}) — grâce ${data.graceSeconds}s`);
+    uiService?.onPeerDisconnected?.(data);
+  });
+
+  eventBus.on("student:peer-reconnected", (data) => {
+    Logger.log(`✅ UI Events : Partenaire reconnecté (${data.userName})`);
+    uiService?.onPeerReconnected?.(data);
+  });
+
+  eventBus.on("ui:callState", (data) => {
+    Logger.log("📺 UI Events : Changement d'état d'appel :", data.state);
+    uiService?.onCallStateChange?.(data);
+  });
+
+  // ====================================================
   // 🕒 WEBRTC SIGNALING (Passerelle directe vers l'orchestrateur)
   // ====================================================
 
   eventBus.on("webrtc:signal", (signal) => {
     webrtcService?.handleSignal?.(signal);
   });
+  // 🟢 AJOUT — reconnexion après rechargement : réutilise la même logique visuelle que onMatchFound
+eventBus.on("student:session-restored", (data) => {
+  Logger.log("🎨 UI Events : Restauration de session après reconnexion.");
+  uiService?.onMatchFound?.(data);
+});
 
   // ====================================================
   // 📮 CHAT & DOCUMENTS (Routage passif vers l'UI)

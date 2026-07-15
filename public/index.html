@@ -25,20 +25,6 @@
     .eleves { background: var(--color-eleves); }
     .etudiants { background: var(--color-etudiants); }
     .professeurs { background: var(--color-professeurs); }
-
-    /* Zone de session active */
-    #session-info {
-      display: none; 
-      background: #fff;
-      border: 2px solid #3b82f6;
-      border-radius: 12px;
-      margin: 20px auto;
-      padding: 15px;
-      max-width: 400px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-    .btn-resume { background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 10px; }
-    .btn-logout { background: #ef4444; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
     
     /* Masquer le footer admin si déjà logué en élève */
     #admin-footer { margin-top: 40px; opacity: 0.6; }
@@ -63,17 +49,10 @@
     <img src="images/logo.png" alt="Logo">
   <h1>Urgence Scolaire 📚</h1>
 </header>
-  <div id="session-info">
-    <p>👋 Session active détectée : <strong id="user-role-display"></strong></p>
-    <div id="action-buttons">
-        <button onclick="redirectionManuelle()" class="btn-resume">Aller à mon tableau de bord</button>
-        <button onclick="deconnexion()" class="btn-logout">Déconnexion</button>
-    </div>
-  </div>
 
-  <main>
-    <div class="ligne">
-      <a href="pages/eleve/login.html" class="carte eleves">
+        <main>
+        <div class="ligne">
+       <a href="pages/eleve/login.html" class="carte eleves">
         <h2>👦 Élèves</h2>
         <p>Accédez à vos cours et sessions.</p>
         <span class="btn-entrer">Entrer</span>
@@ -100,23 +79,7 @@
     let globalUser = null;
 
     try {
-        if (userDataRaw) {
-            globalUser = JSON.parse(userDataRaw);
-            
-            // On vérifie si l'utilisateur est vraiment logué
-            if (globalUser && (globalUser.isLoggedIn || globalUser.token)) {
-                const role = (globalUser.role || "").toLowerCase();
-                
-                // 1. Afficher le bandeau
-                document.getElementById('session-info').style.display = 'block';
-                document.getElementById('user-role-display').innerText = role;
-
-                // 2. Si un utilisateur normal est connecté, on cache le lien "Accès Admin" du footer
-                if (role !== "admin") {
-                    document.getElementById('admin-footer').style.display = 'none';
-                }
-            }
-        }
+        
     } catch (e) { 
         console.error("Erreur de parsing session", e);
         localStorage.removeItem("currentUser"); 
@@ -139,13 +102,6 @@
         alert("Rôle non reconnu, veuillez vous reconnecter.");
         deconnexion();
       }
-    }
-
-    function deconnexion() {
-      localStorage.removeItem("currentUser");
-      // Optionnel : supprimer aussi le token si tu en utilises un séparé
-      localStorage.removeItem("token");
-      location.reload();
     }
     if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js");

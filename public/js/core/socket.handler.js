@@ -4,6 +4,7 @@ import { WSLogger } from "./ws.logger.js";
 import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js";
 import { CallService } from "../domains/call/call.service.js";
 import { SessionService } from "../domains/session/session.service.js";
+import { CallStateMachine } from "../domains/call/call.state.machine.js";
 class SocketHandlerProf {
   constructor() {
     this._unsubscribeSocket = socketService.onMessage((data) => this.handle(data));
@@ -46,6 +47,16 @@ case "twilioToken":
 case "callEnded":
 case "session:stop":
   SessionService._handleWs(data);
+
+  // 🟢 Correction : réinitialisation de l’état du prof
+  AppState.endSession();                     // Le prof n’est plus en session
+  AppState.currentIncomingCallEleveId = null; // Le prof n’a plus d’appel en cours
+   
+  CallStateMachine.reset();          // 🟢 AJOUT
+  socketService.markSessionActive(); // 🟢 AJOUT
+ 
+  // 🟢 Nettoyage de l’UI (si tu utilises un état d’appel)
+  AppState._notify("ui:callState", { state: "idle" });
   break;
 
       case "startSession": 

@@ -79,13 +79,30 @@ case "twilioRemoteTracks":
   break;
    }
   // ✔️ Ces events terminent la session ET stoppent le timer
-     case "callEnded":
-     case "session:stop":
-     case "endSession": {
-      console.log("📥 [Élève] Session terminée:", data.type);
-      SessionService._handleWs(data);   // seul point d'entrée
-      break;
-      }
+    case "callEnded":
+    case "session:stop":
+    case "endSession": {
+  console.log("📥 [Élève] Session terminée:", data.type);
+
+  // 1. Traitement interne (timer, Twilio, cleanup)
+  SessionService._handleWs(data);
+
+  // 2. 🟢 Correction : réinitialisation de l’état de l’élève
+  AppState.endSession();            // L’élève n’est plus en session
+  AppState.currentCall = null;      // Plus d’appel en cours
+  AppState.currentRoomId = null;    // Plus de room active
+  
+  // 🟢 AJOUT : débloque la state machine (ended → idle)
+  CallStateMachine.reset();          // 🟢 débloque la state machine
+  socketService.markSessionActive(); // 🟢 débloque l'envoi socket
+
+  // 3. 🟢 Réinitialisation de l’UI
+  AppState._notify("ui:callState", { state: "idle" });
+
+  break;
+}
+
+
        
        case "startSession":
        this.handleStartSession(data);

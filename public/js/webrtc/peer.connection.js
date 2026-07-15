@@ -80,7 +80,9 @@ export class PeerConnection {
         this.onStateCallback(state);
       }
     };
-
+      this.pc.oniceconnectionstatechange = () => {
+     Logger.log("🧊 ICE connection state:", this.pc.iceConnectionState);
+};
     return this.pc;
   }
 
@@ -119,7 +121,22 @@ export class PeerConnection {
 
     return answer;
   }
+   // ====================================================
+  // 🟢 AJOUT — ICE RESTART (récupération légère, sans recréer le peer)
+  // ====================================================
 
+  async restartIce() {
+    if (!this.pc) return null;
+    try {
+      const offer = await this.pc.createOffer({ iceRestart: true });
+      await this.pc.setLocalDescription(offer);
+      Logger.log("🔄 ICE restart : offer créée");
+      return offer;
+    } catch (err) {
+      Logger.error("❌ Erreur ICE restart :", err);
+      return null;
+    }
+  }
   async setRemoteDescription(desc) {
     await this.pc.setRemoteDescription(desc);
 

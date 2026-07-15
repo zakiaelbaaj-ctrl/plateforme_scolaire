@@ -1,8 +1,7 @@
 // ws/etudiant/index.js
 // Routeur principal des messages WebSocket côté étudiant-étudiant
-// Exporté vers ws/etudiant/init.js qui l'écoute via wss.emit("ws:message")
-
-import { joinRoom, leaveRoom }  from "./rooms.js";
+// Exporté vers ws/etudiant/init.js qui l'écoute via wss.emit("ws:message", ws, msg)
+import { joinRoom, leaveRoom, handleUnexpectedDisconnect } from "./rooms.js";
 import { documentShare }        from "./documents.js";
 import { handleSignal }         from "./video.js";
 import { StudentMatchService }  from "./match.service.js";
@@ -131,6 +130,18 @@ export async function handleStudentDisconnect(ws) {
 
     // Quitter la room peer si en session
     if (ws.studentRoomId) {
-        await leaveRoom(ws);
+        handleUnexpectedDisconnect(ws); // 🟢 grâce, pas suppression immédiate
+    
+    }
+}
+// =======================================================
+// 🟢 NOUVEAU : nettoyage de room INCONDITIONNEL — à appeler pour TOUT ws
+// qui se ferme et qui a un studentRoomId, actif ou zombie.
+// Contrairement à handleStudentDisconnect, ne touche pas au matching queue
+// (un zombie n'a plus rien à faire là de toute façon, removeStudent est idempotent).
+// =======================================================
+export function cleanupStudentRoom(ws) {
+    if (ws.studentRoomId) {
+        handleUnexpectedDisconnect(ws);
     }
 }

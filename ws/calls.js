@@ -1,5 +1,5 @@
 // =======================================================
-// WS.CALLS.JS – Gestion des appels
+// WS.CALLS.JS – Gestion des appel
 // Séparation des responsabilités
 // =======================================================
 import { safeSend, broadcastOnlineProfs } from "./utils.js";
@@ -7,6 +7,8 @@ import { handleStartSession } from "./visio.js";
 import { pool } from "../config/db.js";
 import * as onlineProfessorsModule from "./state/onlineProfessors.js";
 import { processSessionPayment } from "../services/payment.service.js";
+import { closeRoom } from "./rooms.js"; // 🟢 AJOUT import en haut du fichier
+
 // État des appels en attente (SERVEUR UNIQUEMENT)
 const pendingCalls = new Map();  // profId -> {eleveId, timestamp}
 
@@ -337,8 +339,11 @@ export async function endSessionForDisconnect(profId, eleveId, onlineProfessors,
   if (profWs?.readyState === 1)  safeSend(profWs,  payload);
   if (eleveWs?.readyState === 1) safeSend(eleveWs, payload);
 
+  // 🟢 AJOUT : libère la room pour permettre un futur rappel (notify:false car déjà notifié ci-dessus)
+  closeRoom(roomId, { notify: false });
+
   console.log(`📴 Session terminée: prof ${profId} ↔ élève ${eleveId}`);
-}
+  }
 // =======================================================
 // UTILITAIRES
 // =======================================================

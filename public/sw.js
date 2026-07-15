@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
   "/css/base.css",
   "/css/dashboard_eleve.css",
   "/css/components/rating.modal.css",
+
   // FONTS
   "/assets/fonts/DMSans-300.woff2",
   "/assets/fonts/DMSans-400.woff2",
@@ -19,56 +20,67 @@ const ASSETS_TO_CACHE = [
   "/assets/fonts/Pacifico-Regular.woff2"
 ];
 
-// Install SW → mise en cache des fichiers statiques
+// ---------------------------------------------------------
+// INSTALL → Mise en cache des fichiers statiques
+// ---------------------------------------------------------
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
-   self.skipWaiting();
 
+  // Permet au nouveau SW de s'activer immédiatement
+  self.skipWaiting();
 });
 
-// Fetch → sert les fichiers depuis le cache si disponibles
+// ---------------------------------------------------------
+// FETCH → Cache-first sauf pour les fichiers JS (network-first)
+// ---------------------------------------------------------
 self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
   const isAppJs = event.request.url.includes("/js/");
-
+   // 🔒 Ne jamais intercepter la page WebRTC Étudiant
+  if (url.pathname.includes("/pages/etudiant/dashboard.html")) {
+    // On laisse le navigateur gérer cette requête normalement
+    return;
+  }
   if (isAppJs) {
-    // Network-first : le code applicatif est toujours pris depuis le réseau en priorité,
-    // pour que les mises à jour de code soient visibles sans attendre un changement de CACHE_NAME.
+    // JS toujours pris depuis le réseau → évite les vieilles versions
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Cache-first pour le reste (fonts, CSS, images, pages statiques)
+  // Cache-first pour le reste
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
+
       return fetch(event.request).catch((err) => {
-        console.warn("Fetch échoué (réseau/CSP), ignoré :", event.request.url, err.message);
+        console.warn("Fetch échoué :", event.request.url, err.message);
         return new Response("", { status: 504, statusText: "Fetch failed" });
       });
     })
   );
 });
 
-// Activate → nettoyage des anciens caches
+// ---------------------------------------------------------
+// ACTIVATE → Suppression des anciens caches
+// ---------------------------------------------------------
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log("🗑 Suppression ancien cache :", key);
             return caches.delete(key);
           }
         })
       )
-    
-  
-  ).then(() => self.clients.claim())
-  // self.clients.claim(); // ❌ désactivé pour éviter les reloads
-);
+    )
+  );
+
+  // Le SW prend immédiatement le contrôle des pages ouvertes
+  self.clients.claim();
 });

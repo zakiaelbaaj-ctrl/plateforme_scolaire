@@ -34,6 +34,35 @@ export function stopSessionTimer() {
     console.log("⏱️ Compteur arrêté");
 }
 
+// ======================================================
+// 🟢 AJOUT — PAUSE / REPRISE (période de grâce reconnexion)
+// Contrairement à stop/start, ne réinitialise PAS sessionSeconds :
+// le compteur reprend exactement où il s'était arrêté.
+// ======================================================
+
+export function pauseSessionTimer() {
+    if (sessionTimer) {
+        clearInterval(sessionTimer);
+        sessionTimer = null;
+    }
+    console.log("⏸️ Compteur en pause à", sessionSeconds, "s");
+}
+
+export function resumeSessionTimer() {
+    // ⏱️ Ne redémarre pas si déjà en cours (ex: double appel)
+    if (sessionTimer) return;
+
+    sessionTimer = setInterval(() => {
+        sessionSeconds++;
+        const m = String(Math.floor(sessionSeconds / 60)).padStart(2, "0");
+        const s = String(sessionSeconds % 60).padStart(2, "0");
+        const display = document.getElementById('call-time');
+        if (display) display.textContent = `${m}:${s}`;
+    }, 1000);
+
+    console.log("▶️ Compteur repris à", sessionSeconds, "s");
+}
+
 export function getSessionDuration() {
     return sessionSeconds;
 }

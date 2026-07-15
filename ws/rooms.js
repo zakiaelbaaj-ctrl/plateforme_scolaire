@@ -135,16 +135,17 @@ export async function leaveRoom(ws) {
 // =======================================================
 // ⚡ FIX : FORCE CLOSE ROOM (Avec avertissement aux clients)
 // =======================================================
-export function closeRoom(roomId) {
+export function closeRoom(roomId, { notify = true } = {}) {
     if (!roomId) return;
     
     const room = rooms.get(roomId);
     if (room) {
         console.log(`🗑️ Fermeture et nettoyage forcé de la room : ${roomId}`);
         
-        // 📣 FIX CRUCIAL : On prévient l'élève et le prof de couper la visio IMMEDIATEMENT
+        // 📣 On prévient l'élève et le prof de couper la visio IMMEDIATEMENT
+        // (sauf si notify=false, car l'appelant a déjà envoyé son propre session:stop)
         for (const client of room) {
-            if (client.readyState === 1) {
+            if (notify && client.readyState === 1) {
                 safeSend(client, { 
                     type: "session:stop", 
                     roomId 
