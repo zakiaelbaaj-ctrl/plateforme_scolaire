@@ -228,7 +228,6 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/eleves", elevesRoutes);
 app.use("/api/v1/professeurs", professeursRoutes);
 app.use("/api/v1/admin", adminRoutes);
-app.use("/api/v1/admin", migrationRoutes);
 app.use("/api/v1/admin/users", adminUsersRoutes);
 // (Car tes routes /users sont déjà gérées à l'intérieur de adminRoutes.js)
 app.use("/api/v1/twilio", twilioRoutes);
