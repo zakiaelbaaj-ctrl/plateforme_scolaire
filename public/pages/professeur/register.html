@@ -26,8 +26,12 @@
        📎copie de la pièce d'identité.<br>
        📎 Copie du diplôme obligatoire.<br>
        📎 photo d'identité.<br>
+       📎 Curriculum Vitae (CV).<br>
+       📎 Lettre de motivation.<br>
        ⏳ Compte activé uniquement après validation administrateur.
-    </div>
+        🔒 En vous inscrivant, vous confirmez avoir lu et accepté notre
+       <a href="/pages/charte-securite.html" target="_blank" rel="noopener">charte de sécurité</a>
+      </div>
 
     <form id="registerForm" enctype="multipart/form-data">
 
@@ -243,6 +247,31 @@
   background: #e53935;
   color: #fff;
 }
+.form-group--checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.charte-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.charte-checkbox-label input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.charte-checkbox-label a {
+  color: #1976d2;
+  text-decoration: underline;
+}
 </style>
 
 <script>
@@ -285,6 +314,13 @@
       <div class="form-group">
         <label>Mot de passe</label>
         <input type="password" id="password" name="password" required autocomplete="new-password">
+      </div>
+
+      <div class="form-group form-group--checkbox">
+        <label class="charte-checkbox-label">
+          <input type="checkbox" id="accept-charte" name="accept_charte" required>
+          J'ai lu et j'accepte la <a href="/pages/charte-securite.html" target="_blank" rel="noopener">charte de sécurité</a>.
+        </label>
       </div>
 
       <button type="submit" class="professeurs" id="submitBtn">📤 Envoyer ma demande</button>

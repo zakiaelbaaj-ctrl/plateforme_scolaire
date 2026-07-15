@@ -21,8 +21,17 @@ export async function signupProfController(req, res) {
       pays, 
       ville, 
       niveau, 
-      matiere 
+      matiere,
+      accept_charte          // 🟢 AJOUT
     } = req.body;
+
+    // 🟢 AJOUT — Vérification de l'acceptation de la charte de sécurité
+    if (!accept_charte) {
+      return res.status(400).json({
+        success: false,
+        message: "Vous devez accepter la charte de sécurité pour vous inscrire."
+      });
+    }
 
     // 2. Récupération des fichiers via Multer (req.files, pluriel avec .fields())
     const diplomeFile       = req.files?.diplome?.[0];
