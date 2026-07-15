@@ -36,11 +36,9 @@ import stripeConnectRoutes from "./routes/v1/stripeConnect.routes.js";
 import whiteboardRoutes from "./routes/whiteboard.routes.js"; 
 import stripeStudentRoutes from "./routes/v1/stripe/stripe.student.routes.js";
 import ratingRoutes from "./routes/v1/eleves/ratings.routes.js";
-import migrationRoutes from "./routes/v1/admin/migration.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-app.use("/api/v1/admin", migrationRoutes);
 // =======================================================
 // SÉCURITÉ & CSP (Helmet)
 // =======================================================
