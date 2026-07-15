@@ -103,10 +103,11 @@
             <option value="Marketing">Marketing</option>
             <option value="Sciences Politiques">Sciences Politiques</option>
           </optgroup>
-           <optgroup label="Gastronomie"></optgroup>
+           <optgroup label="Gastronomie">
            <option value="Patisserie">Patisserie</option>
             <option value="Biscuiterie">Biscuiterie</option>
             <option value="Cuisine">Cuisine</option>
+          </optgroup>
           <optgroup label="Arts">
             <option value="Musique">Musique</option>
             <option value="Arts plastiques">Arts plastiques</option>
@@ -158,6 +159,24 @@
   <div class="file-preview" id="diplome-preview" style="display:none;">
     <span class="file-preview__name"></span>
     <button type="button" class="file-preview__remove" data-target="diplome">✕</button>
+  </div>
+</div>
+
+<div class="form-group">
+  <label>📎 lettre de motivation (PDF ou image)</label>
+  <input type="file" id="lettre-motivation" name="lettre_motivation" accept=".pdf,.jpg,.jpeg,.png" required>
+  <div class="file-preview" id="lettre-motivation-preview" style="display:none;">
+    <span class="file-preview__name"></span>
+    <button type="button" class="file-preview__remove" data-target="lettre-motivation">✕</button>
+  </div>
+</div>
+
+<div class="form-group">
+  <label>📎 Curriculum Vitae (PDF ou image)</label>
+  <input type="file" id="curriculum-vitae" name="curriculum_vitae" accept=".pdf,.jpg,.jpeg,.png" required>
+  <div class="file-preview" id="curriculum-vitae-preview" style="display:none;">
+    <span class="file-preview__name"></span>
+    <button type="button" class="file-preview__remove" data-target="curriculum-vitae">✕</button>
   </div>
 </div>
 
@@ -255,7 +274,7 @@
     });
   }
 
-  ['diplome', 'piece-identite', 'photo-identite'].forEach(setupFileRemovable);
+  ['diplome', 'piece-identite', 'photo-identite', 'curriculum-vitae', 'lettre-motivation'].forEach(setupFileRemovable);
 </script>
       
       <div class="form-group">

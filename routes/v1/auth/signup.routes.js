@@ -29,6 +29,8 @@ router.post(
     { name: "diplome", maxCount: 1 },
     { name: "piece_identite", maxCount: 1 },
     { name: "photo_identite", maxCount: 1 },
+    { name: "curriculum_vitae", maxCount: 1 },
+    { name: "lettre_motivation", maxCount: 1 }, 
   ]),
   signupProfController
 );

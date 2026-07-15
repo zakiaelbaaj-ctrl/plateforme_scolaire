@@ -65,7 +65,7 @@ if (form) {
       }
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = "📥 Envoyer ma demande";
+      submitBtn.textContent = "📤 Envoyer ma demande";
     }
   });
 }

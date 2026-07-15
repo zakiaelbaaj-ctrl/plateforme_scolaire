@@ -28,12 +28,13 @@ export async function signupProfController(req, res) {
     const diplomeFile       = req.files?.diplome?.[0];
     const pieceIdentiteFile = req.files?.piece_identite?.[0];
     const photoIdentiteFile = req.files?.photo_identite?.[0];
-
-    // Validation minimale — les 3 documents sont obligatoires
-    if (!diplomeFile || !pieceIdentiteFile || !photoIdentiteFile) {
+    const curriculumVitaeFile   = req.files?.curriculum_vitae?.[0];
+    const lettreMotivationFile  = req.files?.lettre_motivation?.[0];
+    // Validation minimale — les documents sont obligatoires
+    if (!diplomeFile || !pieceIdentiteFile || !photoIdentiteFile || !curriculumVitaeFile || !lettreMotivationFile) {
       return res.status(400).json({
         success: false,
-        message: "Le diplôme, la pièce d'identité et la photo d'identité sont tous obligatoires."
+        message: "Tous les documents sont obligatoires."
       });
     }
 
@@ -59,7 +60,9 @@ export async function signupProfController(req, res) {
       statut: "pending", // L'admin devra valider ce compte
       diplome_url: diplomeFile.path,
       piece_identite_url: pieceIdentiteFile.path,
-      photo_identite_url: photoIdentiteFile.path
+      photo_identite_url: photoIdentiteFile.path,
+      curriculum_vitae_url: curriculumVitaeFile.path,
+      lettre_motivation_url: lettreMotivationFile.path,
     });
 
     logger.info(`✨ Nouveau professeur inscrit (en attente) : ${email}`);
