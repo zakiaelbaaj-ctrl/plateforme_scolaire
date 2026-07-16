@@ -195,6 +195,59 @@ export async function sendProfPaymentEmail(email, { invoiceNumber, amount, durat
     `
   });
 }
+// ------------------------------------------------------
+// Email activation compte professeur
+// ------------------------------------------------------
+export async function sendProfActivatedEmail(user) {
+  const displayName = getDisplayName(user);
+  const FRONTEND_URL = process.env.FRONTEND_URL || "https://urgencescolaire.com";
+  const loginUrl = `${FRONTEND_URL}/pages/professeur/login.html`;
+  const stripeSetupUrl = `${FRONTEND_URL}/pages/professeur/dashboard.html?stripe=setup`;
+
+  return sendEmail({
+    to: user.email,
+    subject: "✅ Votre compte professeur a été activé !",
+    text: `Bonjour ${displayName}, votre compte a été validé par notre équipe. Connectez-vous dès maintenant pour apparaître dans la liste des professeurs disponibles et recevoir des appels d'élèves. N'oubliez pas de configurer votre compte Stripe pour recevoir vos paiements : ${stripeSetupUrl}. Connexion : ${loginUrl}`,
+    html: `
+      <div style="font-family: sans-serif; color: #333; line-height: 1.6;">
+        <h2 style="color: #2e7d32;">🎉 Votre compte a été activé !</h2>
+        <p>Bonjour <strong>${displayName}</strong>,</p>
+        <p>Bonne nouvelle : votre dossier a été examiné et validé par notre équipe. Vous pouvez désormais accéder à votre espace professeur.</p>
+
+        <h3 style="margin-top: 24px;">📋 Comment ça marche ?</h3>
+        <ol>
+          <li>Connectez-vous à votre espace professeur.</li>
+          <li>Une fois connecté, vous apparaissez automatiquement dans la liste des professeurs disponibles.</li>
+          <li>Un élève peut alors vous appeler à tout moment.</li>
+          <li>Répondez à l'appel pour démarrer la séance de cours.</li>
+        </ol>
+
+        <div style="margin: 25px 0;">
+          <a href="${loginUrl}"
+             style="background-color: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+             Me connecter
+          </a>
+        </div>
+
+        <h3 style="margin-top: 24px; color: #e65100;">💳 Étape indispensable : configurer votre compte Stripe</h3>
+        <p>
+          Pour recevoir le paiement de vos séances, vous devez impérativement configurer votre compte
+          Stripe depuis votre tableau de bord. Sans cette étape, vous ne pourrez pas percevoir votre salaire.
+        </p>
+        <div style="margin: 25px 0;">
+          <a href="${stripeSetupUrl}"
+             style="background-color: #635bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+             Configurer mon compte Stripe
+          </a>
+        </div>
+
+        <p style="font-size: 0.85em; color: #666; margin-top: 30px;">
+          Si vous avez la moindre question, n'hésitez pas à contacter notre équipe support.
+        </p>
+      </div>
+    `
+  });
+}
 
 export async function verifyMailer() {
   if (!process.env.RESEND_API_KEY) {

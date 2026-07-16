@@ -4,7 +4,7 @@
 
 import * as usersService from "#services/usersService.js";
 import logger from "#config/logger.js";
-
+import { sendProfActivatedEmail } from "#services/mail.service.js";
 /**
  * Helper interne pour nettoyer les données sensibles avant envoi au frontend
  */
@@ -66,11 +66,25 @@ export async function updateUser(req, res) {
         const userId = req.params.id;
         const updates = req.body; 
 
+        // 🟢 AJOUT — on récupère l'état AVANT modification pour détecter la transition
+        const before = await usersService.findById(userId);
+
         // On délègue la mise à jour au service
         const updated = await usersService.updateUser(userId, updates);
 
         if (!updated) {
             return res.status(404).json({ success: false, message: "Utilisateur introuvable" });
+        }
+
+         // 🟢 AJOUT — Email d'activation, uniquement pour un prof qui vient de passer à "active"
+        const wasNotActive = before && before.statut !== "active";
+        const isNowActive = updated.statut === "active";
+        const isProf = updated.role === "prof";
+
+        if (isProf && wasNotActive && isNowActive) {
+            sendProfActivatedEmail(updated).catch(err => {
+                logger.warn("⚠️ Échec envoi email activation prof", { message: err.message, userId });
+            });
         }
 
         return res.status(200).json({
