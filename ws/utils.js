@@ -20,7 +20,7 @@ export function safeSend(ws, data) {
 
   try {
     ws.send(JSON.stringify(data));
-    console.log("📤 safeSend SUCCESS:", data.type, "to user:", ws.userId);
+console.log("📤 safeSend SUCCESS:", data.type, "to user:", ws.userId, data.type === "error" ? `— message: "${data.message}"` : "");
     return true; // ✅ important
   } catch (err) {
     console.error("❌ safeSend ERROR:", err.message);
