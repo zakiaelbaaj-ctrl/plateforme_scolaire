@@ -45,6 +45,7 @@
     "sequelize": "^6.37.7",
     "stripe": "^22.1.0",
     "twilio": "^5.11.2",
+    "web-push": "^3.6.7",
     "ws": "^8.14.2"
   },
   "devDependencies": {

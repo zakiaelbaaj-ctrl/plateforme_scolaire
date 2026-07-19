@@ -23,6 +23,58 @@ const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   : "";
 
 const API_BASE = `${API_URL}/api/v1`;
+// ======================================================
+// NOTIFICATIONS PUSH — "Un élève vous appelle"
+// ======================================================
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+async function initPushNotifications() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    console.warn("⚠️ Notifications push non supportées sur ce navigateur");
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("⚠️ Permission de notification refusée par le prof");
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      // API_URL est déjà défini en haut du fichier (module scope), pas besoin de le redéclarer
+      const keyRes = await fetch(`${API_URL}/api/v1/push/vapid-public-key`);
+      const { publicKey } = await keyRes.json();
+
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+    }
+
+    await fetch(`${API_URL}/api/v1/push/subscribe`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("token")}`
+      },
+      body: JSON.stringify(subscription)
+    });
+
+    console.log("✅ Abonnement push enregistré côté serveur");
+
+  } catch (err) {
+    console.error("❌ Erreur initPushNotifications:", err);
+  }
+}
 // ================= STRIPE ONBOARDING =================
 async function initStripeOnboarding() {
   try {
@@ -69,7 +121,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
  AppState.setCurrentUser(userData);
 AppState.token = localStorage.getItem("token"); // OK pour token (mais idéalement setter)
-  renderCurrentUserInfo(userData);
+ renderCurrentUserInfo(userData);
+initPushNotifications();
 
   // // 🔴 Si c'est un professeur, init Stripe onboarding
 if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboarding_complete) {

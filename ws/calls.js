@@ -153,13 +153,14 @@ export function acceptCall(ws, onlineProfessors, clients) {
   const { eleveId } = pendingCall;
   const eleveWs = clients.get(eleveId);
 
-  // Vérifications
-  if (!eleveWs || eleveWs.readyState !== 1) {
-    return safeSend(ws, {
-      type: "error",
-      message: "Élève indisponible"
-    });
-  }
+  // Vérification
+if (!eleveWs || eleveWs.readyState !== 1) {
+  console.log(`🔍 DIAGNOSTIC acceptCall: eleveWs existe=${!!eleveWs}, readyState=${eleveWs?.readyState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
+  return safeSend(ws, {
+    type: "error",
+    message: "Élève indisponible"
+  });
+}
 
   const prof = onlineProfessors.get(profId);
   if (!prof) {

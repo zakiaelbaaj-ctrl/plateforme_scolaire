@@ -50,6 +50,7 @@ const User = sequelize.define("User", {
   diplome_url: { type: DataTypes.TEXT },
   piece_identite_url: { type: DataTypes.TEXT },
   photo_identite_url: { type: DataTypes.TEXT },
+  push_subscription: { type: DataTypes.JSON, allowNull: true },
   curriculum_vitae_url: { type: DataTypes.TEXT },
   lettre_motivation_url: { type: DataTypes.TEXT },
   date_inscription: { 

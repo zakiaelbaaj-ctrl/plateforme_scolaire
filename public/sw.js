@@ -1,4 +1,4 @@
-const CACHE_NAME = "urgencescolaire-v4"; // ⚠️ Incrémenté pour forcer la mise à jour
+const CACHE_NAME = "urgencescolaire-v5"; // ⚠️ Incrémenté pour forcer la mise à jour
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -83,4 +83,48 @@ self.addEventListener("activate", (event) => {
 
   // Le SW prend immédiatement le contrôle des pages ouvertes
   self.clients.claim();
+});
+// ---------------------------------------------------------
+// PUSH → Réception d'une notification push (ex: appel entrant)
+// ---------------------------------------------------------
+self.addEventListener("push", (event) => {
+  let payload = { title: "Notification", body: "" };
+  try {
+    payload = event.data ? event.data.json() : payload;
+  } catch {
+    payload.body = event.data ? event.data.text() : "";
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "Urgence Scolaire", {
+      body: payload.body || "",
+      icon: "/assets/icons/icones.png",
+      badge: "/assets/icons/icones.png",
+      tag: payload.tag || "default",
+      renotify: true,
+      requireInteraction: true,
+      data: payload.url || "/"
+    })
+  );
+});
+
+// ---------------------------------------------------------
+// NOTIFICATIONCLICK → Ramène l'utilisateur au premier plan
+// ---------------------------------------------------------
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data || "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(targetUrl) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
 });
