@@ -30,7 +30,6 @@ function sanitizeUser(user) {
   
   return safe;
 }
-
 // ---------------- REGISTER ----------------
 export async function registerController(req, res) {
   try {
@@ -39,7 +38,7 @@ export async function registerController(req, res) {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
-    const { username, prenom, nom, email, telephone, pays, ville, password, role, matiere, 
+    const { username, prenom, nom, email, telephone, pays, ville, password, role, matiere,
       langue_matiere } = req.body;
 
     // 1. Validation des champs
@@ -103,15 +102,15 @@ export async function registerController(req, res) {
 
     // 5. Génération des tokens et email
     const tokens = await tokenService.generateTokens({ userId: user.id, role: user.role });
-    
+
     // On n'attend pas l'envoi de l'email pour répondre au client
     mailService.sendWelcomeEmail(user).catch(() => {});
 
-    return res.status(201).json({ 
-      success: true, 
+    return res.status(201).json({
+      success: true,
       message: role === "prof" ? "Inscription réussie, en attente de validation admin." : "Inscription réussie",
-      user: sanitizeUser(user), 
-      ...tokens 
+      user: sanitizeUser(user),
+      ...tokens
     });
 
   } catch (err) {
@@ -119,6 +118,7 @@ export async function registerController(req, res) {
     return res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 }
+
 // ---------------- LOGIN ----------------
 export async function loginController(req, res) {
   try {

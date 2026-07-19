@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Professeurs en ligne</title>
+
+  <!-- On réutilise les tokens de couleur du dashboard (--ink, --accent, etc.)
+       plutôt qu'un fichier eleve_dark.css dont l'existence n'est pas confirmée -->
+  <link rel="stylesheet" href="/css/dashboard_eleve.css">
+
+  <style>
+    body {
+      padding: 2rem;
+      background: var(--ink);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+    }
+
+    h1 {
+      font-family: var(--font-display);
+    }
+
+    .prof-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .prof-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    .prof-card {
+      background: var(--ink-soft);
+      padding: 20px;
+      border-radius: 12px;
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      border: 1px solid var(--border);
+      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+
+    .prof-card--clickable {
+      cursor: pointer;
+    }
+
+    .prof-card--clickable:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card);
+    }
+
+    .prof-card--disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .prof-card__hint {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .prof-photo {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 12px;
+      border: 2px solid var(--border-light);
+      background: var(--ink-muted);
+    }
+
+    .prof-photo-fallback {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      margin-bottom: 12px;
+      border: 2px solid var(--border-light);
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+      font-family: var(--font-display);
+    }
+
+    .prof-name {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .prof-matiere {
+      font-size: 14px;
+      background: var(--accent);
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .prof-location {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .prof-status {
+      font-size: 13px;
+      margin-top: 10px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-weight: 600;
+    }
+
+    .status-disponible { background: var(--success); color: #06301f; }
+    .status-en_session  { background: #f59e0b; color: #3a2600; }
+    .status-offline     { background: var(--danger); color: #380011; }
+
+    .prof-connected-since {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .payment-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: var(--danger-soft, rgba(255, 79, 106, 0.12));
+      border: 1px solid var(--danger);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 20px;
+    }
+
+    .payment-banner__text strong {
+      display: block;
+      color: var(--text-primary);
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+
+    .payment-banner__text span {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .payment-banner__btn {
+      flex-shrink: 0;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-body);
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .payment-banner__btn:hover { background: var(--accent-hover); }
+    .payment-banner__btn:disabled { opacity: 0.6; cursor: wait; }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .my-space-link {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--ink-soft);
+      border: 1px solid var(--border-light);
+      color: var(--text-primary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .my-space-link:hover {
+      border-color: var(--accent);
+      background: var(--ink-muted);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-header">
+    <div>
+      <h1>📡 Professeurs en ligne</h1>
+      <p>Liste mise à jour en temps réel</p>
+    </div>
+    <a href="/pages/eleve/dashboard.html" class="my-space-link">🏠 Accéder à mon espace</a>
+  </div>
+
+  <div id="paymentBanner"></div>
+
+  <div id="profList" class="prof-grid">
+    <p class="prof-empty">Chargement…</p>
+  </div>
+
+  <!--
+    CORRECTIONS PAR RAPPORT À LA VERSION PRÉCÉDENTE :
+
+    1. Les fichiers /js/state.js, /js/socket.service.js, /js/appstate.js
+       n'existent pas. Les vrais fichiers sont des modules ES sous
+       /js/core/. On les importe avec `import`, pas avec <script src>.
+
+    2. SocketService.init() n'existe pas -> la vraie méthode est
+       socketService.connect(url), avec un token dans l'URL.
+
+    3. Aucune authentification n'était faite -> on récupère l'utilisateur
+       via getUserProfile() (même pattern que dashboard.js élève),
+       et on redirige vers le login si la session a expiré.
+
+    4. Aucun "identify" n'était envoyé -> on réutilise
+       socketHandlerEleve.init() qui gère déjà cet envoi (c'est le
+       même mécanisme que dashboard.js élève, pas de duplication).
+
+    5. p.tempsDepuisActiviteFormaté n'existe pas côté backend -> remplacé
+       par un calcul simple à partir de p.connectedAt (qui, lui, existe
+       bien -> voir addProfessor() dans socket.js).
+  -->
+  <script type="module">
+    import { AppState } from "/js/core/state.js";
+    import { socketService } from "/js/core/socket.service.js";
+    import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
+    import { getUserProfile } from "/js/services/user.service.js";
+    import { openSetupSession } from "/js/services/stripe.service.js";
+
+    // Statuts réellement utilisés côté backend (voir ws/visio.js) :
+    // "disponible", "appel_recu", "en_appel", "en_session", "occupe", "absent", "pending"
+    const STATUS_CLASS = {
+      disponible: "status-disponible",
+      appel_recu: "status-en_session",
+      en_appel:   "status-en_session",
+      en_session: "status-en_session",
+      occupe:     "status-en_session",
+      absent:     "status-offline",
+      pending:    "status-offline"
+    };
+
+    const STATUS_LABEL = {
+      disponible: "Disponible",
+      appel_recu: "Appel entrant",
+      en_appel:   "En appel",
+      en_session: "En session",
+      occupe:     "Occupé",
+      absent:     "Absent",
+      pending:    "En attente"
+    };
+
+    // Rempli dans init(), utilisé par renderProfList() pour savoir si un
+    // clic doit être autorisé (même règle que canCall dans dashboard.js)
+    let currentUserData = null;
+
+    function renderPaymentBanner() {
+      const el = document.getElementById("paymentBanner");
+      if (!el) return;
+
+      if (currentUserData?.has_payment_method) {
+        el.innerHTML = "";
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="payment-banner">
+          <div class="payment-banner__text">
+            <strong>💳 Carte bancaire requise</strong>
+            <span>Ajoutez une carte pour pouvoir appeler un professeur.</span>
+          </div>
+          <button id="paymentBannerBtn" class="payment-banner__btn">Ajouter une carte</button>
+        </div>
+      `;
+
+      document.getElementById("paymentBannerBtn")?.addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Connexion sécurisée...";
+
+        try {
+          await openSetupSession(); // redirige vers Stripe, même fonction que dashboard.js
+        } catch (err) {
+          console.error("Erreur Stripe:", err);
+          btn.textContent = "Erreur, réessayer";
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = originalText; }, 3000);
+        }
+      });
+    }
+
+    function connectedSinceLabel(connectedAt) {
+      if (!connectedAt) return "";
+      const date = new Date(connectedAt);
+      if (Number.isNaN(date.getTime())) return "";
+      return `Connecté depuis ${date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+    }
+
+    function renderProfList(profs = []) {
+      const container = document.getElementById("profList");
+      container.innerHTML = "";
+
+      if (!profs.length) {
+        container.innerHTML = `<p class="prof-empty">Aucun professeur en ligne pour le moment.</p>`;
+        return;
+      }
+
+      profs.forEach((p) => {
+        const statusClass = STATUS_CLASS[p.status] || "status-offline";
+        const statusLabel = STATUS_LABEL[p.status] || p.status || "—";
+        const nom = `${p.prenom ?? ""} ${p.nom ?? ""}`.trim() || "Professeur";
+        const initiale = nom.charAt(0).toUpperCase();
+
+        // Repli en initiales (cohérent avec .prof-item du dashboard) plutôt
+        // qu'une image /img/default-avatar.png qui n'existe pas sur le disque.
+        const photoHtml = p.photo_identite_url
+          ? `<img
+               src="${p.photo_identite_url}"
+               class="prof-photo"
+               alt="Photo de ${nom}"
+               onerror="this.replaceWith(Object.assign(document.createElement('div'), { className: 'prof-photo-fallback', textContent: '${initiale}' }));"
+             >`
+          : `<div class="prof-photo-fallback">${initiale}</div>`;
+
+        // Même règle que canCall dans dashboard.js : il faut que le prof
+        // soit marqué disponible ET que l'élève ait une carte enregistrée.
+        const canCall = !!p.disponibilite && !!currentUserData?.has_payment_method;
+
+        const card = document.createElement("div");
+        card.className = `prof-card ${canCall ? "prof-card--clickable" : "prof-card--disabled"}`;
+        card.innerHTML = `
+          ${photoHtml}
+          <div class="prof-name">${nom}</div>
+          <div class="prof-matiere">${p.matiere || "—"}</div>
+          <div class="prof-location">${[p.ville, p.pays].filter(Boolean).join(", ")}</div>
+          <div class="prof-status ${statusClass}">${statusLabel}</div>
+          <div class="prof-connected-since">${connectedSinceLabel(p.connectedAt)}</div>
+          ${canCall
+            ? `<div class="prof-card__hint">Cliquer pour appeler</div>`
+            : (!currentUserData?.has_payment_method
+                ? `<div class="prof-card__hint" style="color: var(--danger);">Carte bancaire requise</div>`
+                : "")
+          }
+        `;
+
+        if (canCall) {
+          card.addEventListener("click", () => {
+            // Ouvre le dashboard avec ce prof -> dashboard.js déclenchera
+            // automatiquement l'appel au chargement (voir étape suivante).
+            window.location.href = `/pages/eleve/dashboard.html?callProfId=${p.id}`;
+          });
+        }
+
+        container.appendChild(card);
+      });
+    }
+
+    async function init() {
+      const userData = await getUserProfile();
+
+      if (!userData) {
+        window.location.replace("/pages/eleve/login.html");
+        return;
+      }
+
+      currentUserData = userData;
+
+      AppState.setCurrentUser(userData);
+      AppState.token = localStorage.getItem("token");
+
+      renderPaymentBanner();
+
+      // Envoie déjà "identify" en interne au bon moment (TRANSPORT_OPEN) -
+      // même logique que dashboard.js élève, pas de duplication de code.
+      socketHandlerEleve.init();
+
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      socketService.connect(`${wsProtocol}//${window.location.host}?token=${AppState.token}`);
+
+      // Affiche immédiatement si des profs sont déjà connus, puis reste réactif
+      renderProfList(AppState.onlineProfessors);
+      AppState.on("professors:update", renderProfList);
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

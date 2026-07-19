@@ -71,28 +71,16 @@ export async function getUserById(req, res) {
  * Crée un nouvel utilisateur. Le service gère hash/password et validations.
  */
 export async function createUser(req, res) {
-  const t = await sequelize.transaction();
-  try {
-    const payload = req.body || {};
-    if (!payload.email || !payload.prenom || !payload.nom) {
-      await t.rollback();
-      return res.status(400).json({ ok: false, message: "prenom, nom et email requis" });
-    }
-
-    const user = await userService.createUser(payload, { transaction: t });
-    await t.commit();
-
-    logger.info("Nouvel utilisateur créé", { id: user.id, email: user.email });
-    return res.status(201).json({ ok: true, data: sanitizeUser(user) });
-  } catch (err) {
-    await t.rollback();
-    logger.error("createUser error:", err);
-    const status = err?.statusCode || 500;
-    const message = process.env.NODE_ENV === "production" ? "Erreur serveur" : err?.message || "Erreur interne";
-    return res.status(status).json({ ok: false, message });
-  }
+  logger.warn("⚠️ createUser (user.controller.js) appelée — considérée comme morte, à investiguer avant réactivation ou suppression", {
+    ip: req.ip,
+    userAgent: req.get?.("user-agent"),
+    body: req.body
+  });
+  return res.status(410).json({
+    ok: false,
+    message: "Cette route n'est plus disponible. Utilisez /signup-eleve ou /signup-prof."
+  });
 }
-
 /**
  * PUT /api/users/:id
  * Body: champs modifiables (prenom, nom, email, role, actif)

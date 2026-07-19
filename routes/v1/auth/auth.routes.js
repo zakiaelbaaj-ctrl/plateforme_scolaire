@@ -17,6 +17,7 @@ import {
 import { requireAuth } from "#middlewares/requireAuth.js";
 import authOptional from "#middlewares/authOptional.js";
 import { onlineProfessors } from "../../../ws/state/onlineProfessors.js";
+import logger from "#config/logger.js";
 console.log("Chemin OK : onlineProfessors importé !");
 
 const router = express.Router();
@@ -24,19 +25,17 @@ const router = express.Router();
 // --------------------------------------------------
 // REGISTER
 // --------------------------------------------------
-router.post(
-  "/register",
-  [
-    body("email").isEmail().withMessage("Email invalide"),
-    body("password").isLength({ min: 6 }).withMessage("Mot de passe trop court (min 6 caractères)"),
-    body("prenom").trim().notEmpty().withMessage("Prénom requis"),
-    body("nom").trim().notEmpty().withMessage("Nom requis"),
-    body("ville").trim().notEmpty().withMessage("Ville requise"),
-    body("pays").trim().notEmpty().withMessage("Pays requis")
-  ],
-  registerController
-);
-
+router.post("/register", (req, res) => {
+  logger.warn("⚠️ Route /register appelée — considérée comme morte, à investiguer avant réactivation ou suppression", {
+    ip: req.ip,
+    userAgent: req.get("user-agent"),
+    body: req.body
+  });
+  return res.status(410).json({
+    success: false,
+    message: "Cette route n'est plus disponible. Utilisez /signup-eleve ou /signup-prof."
+  });
+});
 // --------------------------------------------------
 // LOGIN (email OU username)
 // --------------------------------------------------

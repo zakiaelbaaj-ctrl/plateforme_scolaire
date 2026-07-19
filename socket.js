@@ -123,6 +123,7 @@ export function initWebSocketServer(server) {
     ws.nom = null;
     ws.ville = null;
     ws.pays = null;
+    ws.photo_identite_url = null;
     ws.lastActiveAt = new Date().toISOString();
     ws.isAlive = true; // ✅ CORRECTION 2 — isAlive initialisé
     ws.subscriptionStatus = null;
@@ -507,8 +508,7 @@ if (type === "requestStudentMatch") {
 // =======================================================
   async function handleIdentify(ws, data) {
   console.log("📋 Identify reçu pour:", ws.userId, "role:", ws.role, "prenom:", data.prenom);
-
-  const { prenom, nom, ville, pays, niveau, matiere } = data;
+  const { prenom, nom, ville, pays, niveau, matiere, photo_identite_url } = data;
   ws.prenom = prenom || "";
   ws.nom = nom || "";
   ws.matiere = matiere || null;
@@ -516,6 +516,7 @@ if (type === "requestStudentMatch") {
   ws.userName = `${ws.prenom || ""} ${ws.nom || ""}`.trim() || ws.userId;
   ws.ville = ville || "";
   ws.pays = pays || "";
+  ws.photo_identite_url = photo_identite_url || null;
   ws.identified = true;
   console.log(`🆔 Identify: ${ws.userId} (${ws.role}) → ${ws.prenom} ${ws.nom}`);
 
@@ -523,11 +524,13 @@ if (type === "requestStudentMatch") {
   if (ws.role === "prof") {
     addProfessor({
       id: ws.userId,
+      role: ws.role,
       prenom: ws.prenom,
       nom: ws.nom,
       ville: ws.ville,
       pays: ws.pays,
       matiere: ws.matiere || null,
+      photo_identite_url: ws.photo_identite_url,
       connectedAt: new Date().toISOString(),
       sessionStartedAt: null,
       eleveId: null,

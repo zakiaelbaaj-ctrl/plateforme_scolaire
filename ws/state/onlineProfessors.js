@@ -109,6 +109,7 @@ export function getOnlineProfessors() {
       ville: prof.ville,
       pays: prof.pays,
       matiere: prof.matiere || null,
+      photo_identite_url: prof.photo_identite_url,
       status: prof.status,
       disponibilite: disponibiliteReelle,
       connectedAt: prof.connectedAt,

@@ -38,6 +38,10 @@
           <th>#</th>
           <th>Nom / Prénom</th>
           <th>Email / Tel</th>
+          <th>Niveau</th>
+          <th>Matière</th>
+          <th>Ville</th>
+          <th>Pays</th>
           <th>Diplôme</th>
           <th>Pièce d'identité</th>
           <th>Photo d'identité</th>
@@ -79,7 +83,8 @@ let pendingAction = null;
 // ✅ SÉCURITÉ : Vérification immédiate du rôle
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
 if (currentUser.role !== 'admin') {
-    window.location.replace("/login.html");
+   window.location.replace("/pages/professeur/login.html");
+
 }
 
 /* -----------------------------
@@ -145,13 +150,21 @@ function afficherProfesseurs() {
       <td>${i + 1}</td>
       <td>${nomComplet}</td>
       <td><span style="font-size:12px;">${p.email}</span><br><small style="color:gray;">${p.telephone || '—'}</small></td>
+      <td>${Array.isArray(p.niveau) ? p.niveau.join(", ") : p.niveau || "—"}</td>
+      <td>${p.matiere || "—"}</td>
+      <td>${p.ville || "—"}</td>
+      <td>${p.pays || "—"}</td>
       <td>${p.diplome_url ? `<a href="${p.diplome_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">📄 Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
       <td>${p.piece_identite_url ? `<a href="${p.piece_identite_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">🪪 Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
       <td>${p.photo_identite_url ? `<a href="${p.photo_identite_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">🖼️ Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
       <td>${p.heures_mois || 0} h</td>
       <td><span style="font-size:11px;">${dateInsc}</span></td>
       <td><span class="status ${statusClass}">${statusText}</span></td>
-      
+      <td>
+      <button class="validate-btn" onclick="voirDossier(${i})" style="background:#2563eb;">
+       📁 Voir dossier
+      </button>
+      <th>Dossier</th>
      <td class="actions">
     ${p.statut !== 'active' ? `<button class="validate-btn" onclick="changerStatut(${i}, 'active')">Valider</button>` : ''}
     ${p.statut !== 'rejected' ? `<button class="delete-btn" onclick="changerStatut(${i}, 'rejected')" style="background:#dc2626">Rejeter</button>` : ''}
@@ -254,6 +267,15 @@ function closeModal() {
 window.onclick = function(event) {
   const modal = document.getElementById("confirmModal");
   if (event.target == modal) closeModal();
+}
+function voirDossier(index) {
+  const prof = filteredProfs[index];
+
+  // On stocke l'utilisateur sélectionné pour la page de détails
+  localStorage.setItem("selectedProf", JSON.stringify(prof));
+
+  // Redirection vers la page dossier
+  window.location.href = "admin_professeur_dossier.html";
 }
 
 document.addEventListener("DOMContentLoaded", chargerProfesseurs);

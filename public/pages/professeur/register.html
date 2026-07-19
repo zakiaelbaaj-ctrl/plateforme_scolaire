@@ -125,10 +125,9 @@
       </div>
 
       <div class="form-group">
-        <label for="niveau">Niveau enseigné</label>
-        <select id="niveau" name="niveau" required>
-          <option value="">-- Choisir un niveau --</option>
-
+         <label for="niveau">Niveau enseigné<span class="required">*</span></label>
+         <select id="niveau" name="niveau[]" multiple required>
+          
           <optgroup label="Éducation nationale">
             <option value="Primaire">Primaire</option>
             <option value="Collège">Collège</option>
@@ -156,9 +155,11 @@
           </optgroup>
 
         </select>
+         <small style="color:#555;">Maintenez CTRL (Windows) ou CMD (Mac) pour sélectionner plusieurs niveaux.</small>
       </div>
       <div class="form-group">
-  <label>📎 Diplôme (PDF ou image)</label>
+  <label>📎 Diplôme (PDF ou image)<span class="required">*</span></label>
+
   <input type="file" id="diplome" name="diplome" accept=".pdf,.jpg,.jpeg,.png" required>
   <div class="file-preview" id="diplome-preview" style="display:none;">
     <span class="file-preview__name"></span>
@@ -167,7 +168,8 @@
 </div>
 
 <div class="form-group">
-  <label>📎 lettre de motivation (PDF ou image)</label>
+  <label>📎 lettre de motivation (PDF ou image)<span class="required">*</span></label>
+
   <input type="file" id="lettre-motivation" name="lettre_motivation" accept=".pdf,.jpg,.jpeg,.png" required>
   <div class="file-preview" id="lettre-motivation-preview" style="display:none;">
     <span class="file-preview__name"></span>
@@ -176,7 +178,7 @@
 </div>
 
 <div class="form-group">
-  <label>📎 Curriculum Vitae (PDF ou image)</label>
+  <label>📎 Curriculum Vitae (PDF ou image)<span class="required">*</span></label>
   <input type="file" id="curriculum-vitae" name="curriculum_vitae" accept=".pdf,.jpg,.jpeg,.png" required>
   <div class="file-preview" id="curriculum-vitae-preview" style="display:none;">
     <span class="file-preview__name"></span>
@@ -185,7 +187,7 @@
 </div>
 
 <div class="form-group">
-  <label>📎 Pièce d'identité (PDF ou image)</label>
+  <label>📎 Pièce d'identité (PDF ou image)<span class="required">*</span></label>
   <input type="file" id="piece-identite" name="piece_identite" accept=".pdf,.jpg,.jpeg,.png" required>
   <div class="file-preview" id="piece-identite-preview" style="display:none;">
     <span class="file-preview__name"></span>
@@ -194,7 +196,7 @@
 </div>
 
 <div class="form-group">
-  <label>📎 Photo d'identité (PDF ou image)</label>
+  <label>📎 Photo d'identité (PDF ou image)<span class="required">*</span></label>
   <input type="file" id="photo-identite" name="photo_identite" accept=".pdf,.jpg,.jpeg,.png" required>
   <div class="file-preview" id="photo-identite-preview" style="display:none;">
     <span class="file-preview__name"></span>
@@ -203,6 +205,13 @@
 </div>
 
 <style>
+  .required {
+    color: red;
+    margin-left: 4px;
+    font-weight: bold;
+  }
+
+
 .file-preview {
   display: flex;
   align-items: center;

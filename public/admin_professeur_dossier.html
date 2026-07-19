@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dossier Professeur – Administration</title>
+  <link rel="stylesheet" href="/css/admin_dark.css">
+
+  <style>
+    /* Badges colorés pour les matières */
+.badge-matiere {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-right: 6px;
+  color: white;
+}
+
+.badge-maths { background: #2563eb; }        /* Bleu vif */
+.badge-francais { background: #dc2626; }     /* Rouge */
+.badge-anglais { background: #10b981; }      /* Vert */
+.badge-histoire { background: #f59e0b; }     /* Orange */
+.badge-geographie { background: #8b5cf6; }   /* Violet */
+.badge-svt { background: #059669; }          /* Vert foncé */
+.badge-physique { background: #4f46e5; }     /* Indigo */
+.badge-chimie { background: #d946ef; }       /* Rose */
+.badge-philosophie { background: #6b7280; }  /* Gris */
+.badge-autre { background: #374151; }        /* Gris foncé */
+
+    /* Badges colorés pour les niveaux */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 6px;
+      color: white;
+    }
+
+    .badge-primaire { background: #3b82f6; }     /* Bleu */
+    .badge-college { background: #10b981; }      /* Vert */
+    .badge-lycee { background: #f59e0b; }        /* Orange */
+    .badge-universite { background: #8b5cf6; }   /* Violet */
+    .badge-autre { background: #6b7280; }        /* Gris */
+  </style>
+</head>
+
+<body class="admin-page">
+
+<header class="page-header">
+  <div class="container">
+    <h1>📁 Dossier Professeur</h1>
+    <p class="meta">Informations détaillées du compte</p>
+  </div>
+</header>
+
+<main class="container">
+
+  <a href="admin_inscriptions_professeurs.html" class="back-home" style="margin-bottom:20px; display:inline-block;">
+    ⬅️ Retour
+  </a>
+
+  <section id="profDetails" class="details-card">
+    <p style="text-align:center; padding:2rem;">Chargement du dossier...</p>
+  </section>
+
+  <section class="actions-section">
+    <h3>Actions administrateur</h3>
+    <button id="btnValider" class="validate-btn" style="background:#16a34a;">✔ Valider</button>
+    <button id="btnRejeter" class="delete-btn" style="background:#dc2626;">⛔ Rejeter</button>
+    <button id="btnAttente" class="btn-cancel" style="background:#4b5563;">⏳ Mettre en attente</button>
+     <button id="btnDownloadAll" class="validate-btn" style="background:#1d4ed8;">
+  📦 Télécharger tous les documents
+</button>
+
+  </section>
+
+</main>
+<script src="/js/jszip.min.js"></script>
+<script src="/js/FileSaver.min.js"></script>
+
+<script>
+const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "http://localhost:4000" 
+  : "https://plateforme-scolaire-1.onrender.com";
+
+// Vérification admin
+const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+if (currentUser.role !== "admin") {
+  window.location.replace("/login.html");
+}
+
+// Récupération du professeur sélectionné
+const prof = JSON.parse(localStorage.getItem("selectedProf") || "{}");
+
+function badgeForMatiere(matiere) {
+  if (!matiere) return `<span class="badge-matiere badge-autre">—</span>`;
+
+  const m = matiere.toLowerCase();
+
+  if (m.includes("math")) return `<span class="badge-matiere badge-maths">${matiere}</span>`;
+  if (m.includes("fran")) return `<span class="badge-matiere badge-francais">${matiere}</span>`;
+  if (m.includes("angl")) return `<span class="badge-matiere badge-anglais">${matiere}</span>`;
+  if (m.includes("hist")) return `<span class="badge-matiere badge-histoire">${matiere}</span>`;
+  if (m.includes("géo") || m.includes("geo")) return `<span class="badge-matiere badge-geographie">${matiere}</span>`;
+  if (m.includes("svt")) return `<span class="badge-matiere badge-svt">${matiere}</span>`;
+  if (m.includes("phys")) return `<span class="badge-matiere badge-physique">${matiere}</span>`;
+  if (m.includes("chim")) return `<span class="badge-matiere badge-chimie">${matiere}</span>`;
+  if (m.includes("philo")) return `<span class="badge-matiere badge-philosophie">${matiere}</span>`;
+
+  return `<span class="badge-matiere badge-autre">${matiere}</span>`;
+}
+
+/* -------------------------
+   BADGES COLORES NIVEAUX
+------------------------- */
+function badgeForLevel(level) {
+  const l = level.toLowerCase();
+
+  if (l.includes("cp") || l.includes("cm") || l.includes("primaire"))
+    return `<span class="badge badge-primaire">${level}</span>`;
+
+  if (l.includes("6") || l.includes("5") || l.includes("4") || l.includes("3") || l.includes("collège"))
+    return `<span class="badge badge-college">${level}</span>`;
+
+  if (l.includes("2nde") || l.includes("1ère") || l.includes("terminale") || l.includes("lycée"))
+    return `<span class="badge badge-lycee">${level}</span>`;
+
+  if (l.includes("université") || l.includes("licence") || l.includes("master") || l.includes("bac+"))
+    return `<span class="badge badge-universite">${level}</span>`;
+
+  return `<span class="badge badge-autre">${level}</span>`;
+}
+
+function renderBadges(niveau) {
+  if (!niveau) return "—";
+
+  if (Array.isArray(niveau)) {
+    return niveau.map(n => badgeForLevel(n)).join(" ");
+  }
+
+  return badgeForLevel(niveau);
+}
+
+/* -------------------------
+   AFFICHAGE DU DOSSIER
+------------------------- */
+function afficherDossier() {
+  const container = document.getElementById("profDetails");
+
+  if (!prof || !prof.id) {
+    container.innerHTML = "<h2 style='color:red;'>❌ Aucun professeur sélectionné.</h2>";
+    return;
+  }
+
+  container.innerHTML = `
+    <h2>${(prof.nom || "").toUpperCase()} ${prof.prenom || ""}</h2>
+
+    <div class="detail-row"><strong>Email :</strong> ${prof.email}</div>
+    <div class="detail-row"><strong>Téléphone :</strong> ${prof.telephone || "—"}</div>
+
+    <div class="detail-row">
+  <strong>Matière :</strong> 
+  ${badgeForMatiere(prof.matiere)}
+</div>
+
+    <div class="detail-row">
+      <strong>Niveau :</strong> 
+      ${renderBadges(prof.niveau)}
+    </div>
+
+    <div class="detail-row"><strong>Ville :</strong> ${prof.ville || "—"}</div>
+    <div class="detail-row"><strong>Pays :</strong> ${prof.pays || "—"}</div>
+
+    <div class="detail-row"><strong>Statut :</strong> ${prof.statut}</div>
+
+    <div class="detail-row"><strong>Date d'inscription :</strong> 
+      ${prof.created_at ? new Date(prof.created_at).toLocaleDateString("fr-FR") : "—"}
+    </div>
+
+    <h3>📄 Documents</h3>
+
+    <div class="detail-row">
+      <strong>Diplôme :</strong>
+      ${prof.diplome_url 
+        ? `<a href="${prof.diplome_url}" target="_blank" class="back-home">📄 Voir</a>`
+        : "Aucun"}
+    </div>
+
+    <div class="detail-row">
+      <strong>Pièce d'identité :</strong>
+      ${prof.piece_identite_url 
+        ? `<a href="${prof.piece_identite_url}" target="_blank" class="back-home">🪪 Voir</a>`
+        : "Aucun"}
+    </div>
+
+    <div class="detail-row">
+      <strong>Photo d'identité :</strong>
+      ${prof.photo_identite_url 
+        ? `<a href="${prof.photo_identite_url}" target="_blank" class="back-home">🖼️ Voir</a>`
+        : "Aucun"}
+    </div>
+
+    <div class="detail-row">
+      <strong>CV :</strong>
+      ${prof.curriculum_vitae_url 
+        ? `<a href="${prof.curriculum_vitae_url}" target="_blank" class="back-home">📘 Voir</a>`
+        : "Aucun"}
+    </div>
+
+    <div class="detail-row">
+      <strong>Lettre de motivation :</strong>
+      ${prof.lettre_motivation_url 
+        ? `<a href="${prof.lettre_motivation_url}" target="_blank" class="back-home">✉️ Voir</a>`
+        : "Aucun"}
+    </div>
+  `;
+}
+
+/* -------------------------
+   ACTIONS ADMIN
+------------------------- */
+async function updateStatut(statut) {
+  const token = localStorage.getItem("token");
+  if (!token) return alert("❌ Token manquant");
+
+  try {
+    const res = await fetch(`${API_URL}/api/v1/admin/users/${prof.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ statut, is_active: statut === "active" })
+    });
+
+    if (!res.ok) throw new Error("Erreur mise à jour");
+
+    alert("✔ Statut mis à jour");
+    prof.statut = statut;
+    afficherDossier();
+
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
+async function telechargerTousLesDocuments() {
+  const zip = new JSZip();
+  const dossier = zip.folder(`${prof.nom}_${prof.prenom}_documents`);
+
+  const fichiers = [
+    { url: prof.diplome_url, nom: "diplome.pdf" },
+    { url: prof.piece_identite_url, nom: "piece_identite.pdf" },
+    { url: prof.photo_identite_url, nom: "photo_identite.jpg" },
+    { url: prof.curriculum_vitae_url, nom: "cv.pdf" },
+    { url: prof.lettre_motivation_url, nom: "lettre_motivation.pdf" }
+  ];
+
+  for (const fichier of fichiers) {
+    if (!fichier.url) continue;
+
+    try {
+      const response = await fetch(fichier.url);
+      const blob = await response.blob();
+      dossier.file(fichier.nom, blob);
+    } catch (err) {
+      console.warn("Impossible de télécharger :", fichier.url);
+    }
+  }
+
+  const contenu = await zip.generateAsync({ type: "blob" });
+  saveAs(contenu, `${prof.nom}_${prof.prenom}_documents.zip`);
+}
+
+document.getElementById("btnValider").onclick = () => updateStatut("active");
+document.getElementById("btnRejeter").onclick = () => updateStatut("rejected");
+document.getElementById("btnAttente").onclick = () => updateStatut("pending");
+document.getElementById("btnDownloadAll").onclick = telechargerTousLesDocuments;
+
+document.addEventListener("DOMContentLoaded", afficherDossier);
+</script>
+
+</body>
+</html>

@@ -28,32 +28,12 @@ export async function comparePassword(password, hash) {
 // CREATE USER (Version Sequelize)
 // ------------------------------
 export async function createUser(userData) {
-  try {
-    const normalizedEmail = normalizeEmail(userData.email);
-    
-    // On laisse le modèle gérer le hachage (via beforeCreate)
-    // Seul le statut est géré ici manuellement pour la logique métier
-    const isStudent = (userData.role === "eleve" || userData.role === "etudiant");
-
-    const user = await User.create({
-      ...userData,
-      email: normalizedEmail,
-      statut: isStudent ? 'active' : 'pending',
-      is_active: isStudent
-    });
-
-    logger.info("Utilisateur créé avec succès", { userId: user.id, role: user.role });
-    return user.toJSON(); // .toJSON() retire automatiquement le password (voir modèle)
-
-  } catch (err) {
-    if (err.name === 'SequelizeUniqueConstraintError') {
-      throw new Error("Email ou nom d'utilisateur déjà utilisé");
-    }
-    logger.error("createUser error:", err);
-    throw err;
-  }
+  logger.warn("⚠️ authService.createUser appelée — considérée comme morte, à investiguer avant réactivation ou suppression", {
+    email: userData?.email,
+    role: userData?.role
+  });
+  throw new Error("authService.createUser est désactivée. Utilisez usersService.createUser à la place.");
 }
-
 // ------------------------------
 // FIND BY EMAIL (Modifié pour fusionner les deux besoins)
 // ------------------------------

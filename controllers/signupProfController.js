@@ -22,8 +22,15 @@ export async function signupProfController(req, res) {
       ville, 
       niveau, 
       matiere,
-      accept_charte          // 🟢 AJOUT
+      accept_charte
     } = req.body;
+    // Conversion du niveau en tableau (multi-sélection)
+    let niveaux = niveau;
+    if (!Array.isArray(niveaux)) {
+      niveaux = [niveaux];
+    }
+    console.log("Niveaux reçus :", niveaux);
+
 
     // 🟢 AJOUT — Vérification de l'acceptation de la charte de sécurité
     if (!accept_charte) {
@@ -67,6 +74,8 @@ export async function signupProfController(req, res) {
       password,
       role: "prof",
       statut: "pending", // L'admin devra valider ce compte
+      niveau: niveaux,
+      matiere: matiere,
       diplome_url: diplomeFile.path,
       piece_identite_url: pieceIdentiteFile.path,
       photo_identite_url: photoIdentiteFile.path,

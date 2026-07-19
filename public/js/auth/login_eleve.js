@@ -15,7 +15,7 @@ try {
 if (existingToken && currentUser) {
     if (currentUser.role === "eleve") {
         // ✔ C'est un élève déjà connecté, on l'envoie sur son dashboard
-        window.location.replace("../../pages/eleve/dashboard.html");
+        window.location.replace("../../pages/eleve/profs_en_ligne.html");
     } else {
         // 🚨 Un professeur (ou autre) arrive sur le login élève !
         // On détruit sa session prof pour éviter les bugs et le laisser se connecter en élève.
@@ -100,9 +100,9 @@ if (data.accessToken) {
         const userRole = data.user.role;
 
 if (userRole === "eleve") {
-  window.location.replace("../../pages/eleve/dashboard.html");
+  window.location.replace("../../pages/eleve/profs_en_ligne.html");
 } else if (userRole === "etudiant") {
-  window.location.replace("../../pages/etudiant/dashboard.html");
+  window.location.replace("../../pages/etudiant/dashboarhtml");
 } else if (userRole === "prof") {
   window.location.replace("../../pages/professeur/dashboard.html");
 } else if (userRole === "admin") {

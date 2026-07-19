@@ -91,6 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindUI();
   initUIRenderers();
   subscribeToDomains();
+  initAutoCallFromUrl();
   console.log("⚠️🤖 Dashboard prêt");
 });
 
@@ -107,6 +108,96 @@ function saveAndRenderUser(user) {
 // Optionnel : met à jour le bouton Rejoindre si présent
   if (typeof updateJoinButton === 'function') updateJoinButton(user);
 }
+  // ======================================================
+// APPEL D'UN PROFESSEUR — logique centralisée
+// ======================================================
+function attemptCallToProfessor(prof) {
+  const user = AppState.currentUser;
+  const canCall = !!prof?.disponibilite && !!user?.has_payment_method;
+
+  if (!canCall) {
+    return {
+      ok: false,
+      reason: !user?.has_payment_method ? "no-card" : "unavailable"
+    };
+  }
+
+  AppState.currentProfId = prof.id;
+  AppState.currentSession = {
+    prof,
+    startedAt: Date.now(),
+    roomId: AppState.currentRoomId
+  };
+  SessionService.callProfessor(prof.id);
+
+  return { ok: true };
+}
+// ======================================================
+// AUTO-CALL DEPUIS profs_en_ligne.html (?callProfId=ID)
+// ======================================================
+//
+// Quand l'élève clique sur un prof dans profs_en_ligne.html, il est
+// redirigé ici avec ?callProfId=ID. Cette fonction attend que ce prof
+// apparaisse dans AppState.onlineProfessors (le WS + l'identify prennent
+// un instant après le chargement de la page), vérifie qu'il est bien
+// appelable, puis déclenche l'appel — même logique que le clic sur le
+// bouton "Appeler" dans renderProfList().
+function initAutoCallFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const rawId = params.get("callProfId");
+  if (!rawId) return;
+
+  const targetProfId = Number(rawId);
+  if (Number.isNaN(targetProfId)) return;
+
+  // Nettoie l'URL tout de suite : évite un ré-appel si l'élève rafraîchit
+  // la page ou revient en arrière après la session.
+  window.history.replaceState({}, "", window.location.pathname);
+
+  let settled = false;
+
+  const timeoutId = setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    unsubscribe();
+    console.warn("⚠️ Auto-appel annulé : professeur introuvable après délai", targetProfId);
+    AppState._notify("ui:notification", {
+      type: "error",
+      title: "Professeur indisponible",
+      message: "Ce professeur n'est plus en ligne."
+    });
+  }, 8000);
+
+  function tryCall(profs = []) {
+    if (settled) return;
+
+    const prof = profs.find((p) => p.id === targetProfId);
+    if (!prof) return; // pas encore reçu, on attend la prochaine mise à jour
+
+    settled = true;
+    clearTimeout(timeoutId);
+    unsubscribe();
+
+    const result = attemptCallToProfessor(prof);
+
+if (!result.ok) {
+  console.warn("⚠️ Auto-appel annulé :", result.reason, prof);
+  AppState._notify("ui:notification", {
+    type: "error",
+    title: "Appel impossible",
+    message: result.reason === "no-card"
+      ? "Ajoutez une carte bancaire pour appeler un professeur."
+      : "Ce professeur n'est pas disponible pour le moment."
+  });
+}
+  }
+
+  const unsubscribe = AppState.on("professors:update", tryCall);
+  // Au cas où la liste serait déjà disponible au moment de l'exécution
+  tryCall(AppState.onlineProfessors);
+}
+
+
 function _doAttachMiniature(videoMini) {
   if (!remoteVideoTrack || !videoMini) return;
   remoteVideoTrack.detach(videoMini);
@@ -166,6 +257,9 @@ AppState.on("ws:status", (data) => {
      });
 // ================= PROFESSEURS EN LIGNE =================  ← AJOUTER ICI
   AppState.on("professors:update", (profs) => {
+    console.log("📸 Liste des profs :", profs);
+    console.log("📸 photo_identite_url du premier prof :", profs[0]?.photo_identite_url);
+
     renderProfList(profs);
   });
 
@@ -567,29 +661,46 @@ document.getElementById("prof-scroll-down")?.addEventListener("click", () => {
 } // ← fermeture de bindUI()
 function updateWsStatus(status, attempt = 0) {
   const badge = document.getElementById("ws-status-badge");
-  if (!badge) return;
 
   switch (status) {
     case "connected":
-      badge.textContent = "🟢 Connecté";
-      badge.style.color = "#4CAF50";
-      badge.title = "";
+      if (badge) {
+        badge.textContent = "🟢 Connecté";
+        badge.style.color = "#4CAF50";
+        badge.title = "";
+      }
       break;
 
     case "reconnecting":
-      badge.textContent = `🟡 Reconnexion... (${attempt})`;
-      badge.style.color = "#FF9800";
-      badge.title = `Tentative ${attempt}`;
+      if (badge) {
+        badge.textContent = `🟡 Reconnexion... (${attempt})`;
+        badge.style.color = "#FF9800";
+        badge.title = `Tentative ${attempt}`;
+      }
       break;
 
     case "disconnected":
-      badge.textContent = "🔴 Hors ligne";
-      badge.style.color = "#f44336";
-      badge.title = "Connexion perdue";
+      if (badge) {
+        badge.textContent = "🔴 Hors ligne";
+        badge.style.color = "#f44336";
+        badge.title = "Connexion perdue";
+      }
+      break;
+
+    case "auth-failed":
+      // Le refresh token est lui aussi invalide/expiré (setAuthExpiredHandler
+      // dans socketHandlerEleve a échoué) — pas la peine d'insister,
+      // on renvoie proprement l'élève se reconnecter.
+      if (badge) {
+        badge.textContent = "🔴 Session expirée";
+        badge.style.color = "#f44336";
+        badge.title = "Reconnexion requise";
+      }
+      localStorage.clear();
+      window.location.replace("/pages/eleve/login.html?reason=session_expired");
       break;
   }
 }
-
 // ======================================================
 // CHAT
 // ======================================================
@@ -643,28 +754,17 @@ function renderProfList(profs = []) {
      * 1. Il est marqué comme disponible (prof.disponibilite)
      * 2. L'élève a enregistré une carte (user.has_payment_method)
      */
-    const canCall = prof.disponibilite && user?.has_payment_method;
+const canCall = prof.disponibilite && user?.has_payment_method;
 
-    if (canCall) {
-      // --- État : DISPONIBLE ---
-      badge.textContent = "⚠️ Disponible";
-      badge.style.color = "#3b6d11";
-      btn.textContent = "Appeler";
-      btn.disabled = false;
-      btn.style.opacity = "1";
-      btn.style.cursor = "pointer";
-      btn.onclick = () => {
-      AppState.currentProfId = prof.id;
-
-       AppState.currentSession = {
-       prof,
-       startedAt: Date.now(),
-       roomId: AppState.currentRoomId
-       };
-
-       SessionService.callProfessor(prof.id);
-      };
-     } else {
+if (canCall) {
+  badge.textContent = "⚠️ Disponible";
+  badge.style.color = "#3b6d11";
+  btn.textContent = "Appeler";
+  btn.disabled = false;
+  btn.style.opacity = "1";
+  btn.style.cursor = "pointer";
+  btn.onclick = () => attemptCallToProfessor(prof);   // ← simplifié
+} else {
       // --- État : INDISPONIBLE (ou carte manquante) ---
       let statusLabel = "Indisponible";
       
@@ -696,36 +796,6 @@ function renderProfList(profs = []) {
 
 }
 window.renderProfList = renderProfList;
-// ======================================================
-// LISTE PROFESSEURS BARRE DU HAUT
-// ======================================================
-
-function renderProfScrollList(profs = []) {
-
-  const list = document.getElementById("prof-scroll-list");
-  if (!list) return;
-
-  list.innerHTML = "";
-
-  profs.forEach(prof => {
-
-    const item = document.createElement("div");
-    item.className = "prof-scroll-item";
-
-    item.innerHTML = `
-      <span class="dot"></span>
-      <span>${prof.prenom} ${prof.nom}</span>
-      <button>Appeler</button>
-    `;
-
-    item.querySelector("button").onclick = () => {
-      SessionService.callProfessor(prof.id);
-    };
-
-    list.appendChild(item);
-
-  });
-}
 // ======================================================
 // DOCUMENT
 // ======================================================
