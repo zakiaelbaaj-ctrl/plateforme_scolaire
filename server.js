@@ -17,7 +17,20 @@ await redis.connect().catch(err =>
 // =======================================================
 // Initialisation DB
 // =======================================================
+// APRÈS
 await initDb({ syncModels: false })
+
+// Migration ponctuelle : ajoute push_subscription si absente.
+// Idempotent (IF NOT EXISTS) — sans danger de le laisser tourner
+// à chaque démarrage. À retirer une fois confirmé que la colonne
+// existe bien en production (garder le fichier scripts/ pour trace).
+try {
+  const { sequelize } = await import("./config/db.js");
+  await sequelize.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS push_subscription JSON;`);
+  console.log("✅ Colonne push_subscription vérifiée/créée");
+} catch (err) {
+  console.error("❌ Erreur migration push_subscription:", err.message);
+}
 // =======================================================
 // PostgreSQL Pool
 // =======================================================
