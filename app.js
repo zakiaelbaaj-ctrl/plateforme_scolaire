@@ -17,7 +17,6 @@ import { requireAuth } from "./middlewares/requireAuth.js";
 import { requireRole } from "./middlewares/requireRole.js"; // ✅ RÉAJOUTÉ
 // DEBUG TEMPORAIRE — SUPPRIMER APRÈS
 import { sequelize } from "./config/db.js"; // ← ajoute cet import EN HAUT du fichier avec les autres imports
-// Imports des routes
 import signupRoutes from "./routes/v1/auth/signup.routes.js";
 import webhookRoutes from "./routes/v1/webhooks/webhook.routes.js";
 import authRoutes from "./routes/v1/auth/auth.routes.js";
@@ -163,18 +162,6 @@ app.use("/uploads/diplomes", express.static(uploadDir));
 // =======================================================
 // PAGES FRONTEND PROTÉGÉES
 // =======================================================
-app.get("/etudiant/dashboard", requireAuth, (req, res) => {
-  res.sendFile(path.join(publicPath, "pages/etudiant/dashboard.html"));
-});
-// =======================================================
-// ROUTE GÉNÉRIQUE POUR LES PAGES ADMIN
-// (Remplace ta route spécifique /admin_inscriptions_professeurs.html)
-// =======================================================
-// =======================================================
-// PAGES FRONTEND PROTÉGÉES
-// =======================================================
-
-// 1. Dashboard Étudiant
 app.get("/etudiant/dashboard", requireAuth, (req, res) => {
   res.sendFile(path.join(publicPath, "pages/etudiant/dashboard.html"));
 });
