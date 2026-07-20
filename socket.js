@@ -144,21 +144,24 @@ export function initWebSocketServer(server) {
     }
   }
 });
+    // 🔑 Génération d'un identifiant d'instance unique pour différencier les sockets d'un même userId
+    ws.socketUniqueId = Math.random().toString(36).substring(2, 9) + "-" + Date.now();
+
+    // 🔒 Empêcher double connexion pour le même user (Exécuté AVANT d'attacher le handleDisconnect)
+    if (clients.has(ws.userId)) {
+        console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
+        try {
+            const oldWs = clients.get(ws.userId);
+            oldWs._isReplacedConnection = true; 
+            oldWs.terminate(); // Déclenchera le close de l'ancienne socket de manière isolée
+        } catch {}
+    }
+    // On enregistre immédiatement la nouvelle socket comme étant l'officielle
+    clients.set(ws.userId, ws);
+
     ws.on("message", raw => onMessage(ws, raw));
     ws.on("close", () => handleDisconnect(ws));
     ws.on("error", err => console.error("❌ Erreur WS:", err));
-  
-     // 🔒 Empêcher double connexion pour le même user
-if (clients.has(ws.userId)) {
-    console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
-    try {
-        const oldWs = clients.get(ws.userId);
-        oldWs._isReplacedConnection = true; // ✅ flag anti-broadcast
-        oldWs.terminate();
-    } catch {}
-    clients.delete(ws.userId);
-   }
-    clients.set(ws.userId, ws);
 
 // ✅ AJOUT 1 : Charger subscriptionStatus depuis la DB (élèves/étudiants uniquement)
     // Non bloquant : si la DB échoue, la connexion continue avec null
@@ -596,13 +599,10 @@ if (type === "requestStudentMatch") {
 // =======================================================
 async function handleDisconnect(ws) {
   console.log(`❌ Déconnexion: ${ws.userId} (${ws.role})`);
-  // ✅ On capture AVANT toute action : est-ce que `ws` est bien la connexion
-  // actuellement enregistrée pour cet userId ? Si non, c'est un socket "zombie"
-  // déjà remplacé par une reconnexion plus récente — on ignore tout nettoyage
-  // d'état applicatif (la nouvelle connexion a déjà pris le relais proprement).
-  // Ce cas est distinct d'une vraie déconnexion : lors d'une vraie déconnexion,
-  // personne n'a pris la place de `ws` dans `clients`, donc la condition reste vraie.
-  const isActiveConnection = clients.get(ws.userId) === ws;
+  
+  // ✅ CORRECTION CRITIQUE : On compare l'instance unique de la socket
+  const activeWs = clients.get(ws.userId);
+  const isActiveConnection = activeWs && activeWs.socketUniqueId === ws.socketUniqueId;
   // 1️⃣ LOGIQUE POUR LES PROFESSEURS
   if (ws.role === "prof") {
     if (isActiveConnection) {

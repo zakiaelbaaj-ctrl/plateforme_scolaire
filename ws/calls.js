@@ -130,7 +130,7 @@ if (!hasPaymentMethod) {
 // =======================================================
 // ACCEPTER L'APPEL (depuis prof)
 // =======================================================
-export function acceptCall(ws, onlineProfessors, clients) {
+export async function acceptCall(ws, onlineProfessors, clients) { // 🌟 Ajout de "async" ici
   console.log("✅ acceptCall appelé avec clients:", typeof clients);
   // 🔒 Sécurité
   if (ws.role !== "prof") {
@@ -151,16 +151,39 @@ export function acceptCall(ws, onlineProfessors, clients) {
   }
 
   const { eleveId } = pendingCall;
-  const eleveWs = clients.get(eleveId);
+  let eleveWs = clients.get(eleveId); // 🌟 Changement de const à let
+   const roomId = `room_${profId}_${eleveId}`;
+  // 🌟 CORRECTION CRITIQUE : Si l'élève subit une micro-coupure (rechargement de page), 
+  // on attend 1.2s qu'il se ré-enregistre avant de déclarer l'échec.
+  if (!eleveWs || eleveWs.readyState !== 1) {
+    console.log(`🔍 Élève ${eleveId} instable ou indisponible immédiatement. Attente d'une reconnexion active...`);
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    eleveWs = clients.get(eleveId); // Deuxième essai après la pause
+  }
 
-  // Vérification
-if (!eleveWs || eleveWs.readyState !== 1) {
-  console.log(`🔍 DIAGNOSTIC acceptCall: eleveWs existe=${!!eleveWs}, readyState=${eleveWs?.readyState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
-  return safeSend(ws, {
-    type: "error",
-    message: "Élève indisponible"
-  });
-}
+  // Vérification définitive
+  if (!eleveWs || eleveWs.readyState !== 1) {
+    console.log(`🔍 DIAGNOSTIC acceptCall final : Échec reconnexion élève ${eleveId}`);
+   
+   // 🗑️ NETTOYAGE DB ANTI-BLOCAGE : L'élève a crashé, on libère le canal en DB
+    try {
+      await pool.query(`DELETE FROM rooms WHERE room_name = $1`, [roomId]);
+      console.log(`🗑️ DB Room nettoyée (Élève injoignable) : ${roomId}`);
+    } catch (dbErr) {
+      console.error("❌ Erreur lors du nettoyage de la room en DB (échec reconnexion):", dbErr.message);
+    }
+   
+   // Réinitialiser le statut du prof pour qu'il redevienne disponible
+    const prof = onlineProfessors.get(profId);
+    if (prof) prof.status = "disponible";
+    pendingCalls.delete(profId);
+    broadcastOnlineProfs(onlineProfessors, clients);
+   
+    return safeSend(ws, {
+      type: "error",
+      message: "Élève indisponible"
+    });
+  }
 
   const prof = onlineProfessors.get(profId);
   if (!prof) {
@@ -170,20 +193,13 @@ if (!eleveWs || eleveWs.readyState !== 1) {
     });
   }
 
-  if (prof.sessionStartedAt) {
+  if (prof.sessionStartedAt || prof.status === "en_session") {
     return safeSend(ws, {
       type: "error",
-      message: "Vous êtes déjà en session"
+      message: "Vous êtes déjà en session",
+      code: "PROF_UNAVAILABLE"
     });
   }
- // Autoriser acceptation si le prof est en état "appel_reçu"
-if (prof.status === "en_session") {
-  return safeSend(ws, {
-    type: "error",
-    message: "Vous êtes déjà en session",
-    code: "PROF_UNAVAILABLE"
-  });
-}
 
   // ✅ DÉMARRER LA SESSION (SERVEUR ONLY)
   startSession(profId, eleveId, onlineProfessors, ws, eleveWs, clients);
@@ -198,7 +214,7 @@ if (prof.status === "en_session") {
 // =======================================================
 // REJETER L'APPEL (depuis prof)
 // =======================================================
-export function rejectCall(ws, onlineProfessors, clients) {
+export async function rejectCall(ws, onlineProfessors, clients) {
   if (ws.role !== "prof") return;
 
   const profId = ws.userId;
@@ -208,6 +224,7 @@ export function rejectCall(ws, onlineProfessors, clients) {
 
   const { eleveId } = pendingCall;
   const eleveWs = clients.get(eleveId);
+  const roomId = `room_${profId}_${eleveId}`;
 
   // Notifier l'élève
   if (eleveWs?.readyState === 1) {
@@ -218,11 +235,24 @@ export function rejectCall(ws, onlineProfessors, clients) {
     });
   }
 
+  // 🗑️ NETTOYAGE DB ANTI-BLOCAGE
+  try {
+    await pool.query(`DELETE FROM rooms WHERE room_name = $1`, [roomId]);
+    console.log(`🗑️ DB Room nettoyée (Appel rejeté par le prof) : ${roomId}`);
+  } catch (dbErr) {
+    console.error("❌ Erreur lors du nettoyage de la room en DB (rejet):", dbErr.message);
+  }
+
+  // Rétablir le statut du prof
+  const prof = onlineProfessors.get(profId);
+  if (prof) prof.status = "disponible";
+
   pendingCalls.delete(profId);
 
   console.log(`❌ Appel rejeté: élève ${eleveId} ← prof ${profId}`);
   broadcastOnlineProfs(onlineProfessors, clients);
 }
+
 
 // =======================================================
 // DÉMARRER SESSION (INTERNE SERVEUR UNIQUEMENT)
