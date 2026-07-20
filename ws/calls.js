@@ -150,41 +150,57 @@ export async function acceptCall(ws, onlineProfessors, clients) { // 🌟 Ajout 
     });
   }
 
-  const { eleveId } = pendingCall;
-  let eleveWs = clients.get(eleveId); // 🌟 Changement de const à let
-   const roomId = `room_${profId}_${eleveId}`;
-  // 🌟 CORRECTION CRITIQUE : Si l'élève subit une micro-coupure (rechargement de page), 
-  // on attend 1.2s qu'il se ré-enregistre avant de déclarer l'échec.
+ const { eleveId } = pendingCall;
+  let eleveWs = clients.get(eleveId);
+  const roomId = `room_${profId}_${eleveId}`;
+
+  // 🌟 CORRECTION : polling au lieu d'une attente unique.
+  // Une vraie reconnexion réseau (TCP + TLS + WS upgrade + JWT + identify)
+  // peut facilement dépasser 1.2s sur Render, surtout si le client a eu
+  // une vraie coupure (pas juste un aller-retour local comme en dev).
+  // On vérifie toutes les 500ms, jusqu'à 6 secondes au total.
   if (!eleveWs || eleveWs.readyState !== 1) {
     console.log(`🔍 Élève ${eleveId} instable ou indisponible immédiatement. Attente d'une reconnexion active...`);
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    eleveWs = clients.get(eleveId); // Deuxième essai après la pause
+
+    const maxAttempts = 12; // 12 x 500ms = 6s au total
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      eleveWs = clients.get(eleveId);
+
+      if (eleveWs && eleveWs.readyState === 1) {
+        console.log(`✅ Élève ${eleveId} reconnecté après ${attempt * 500}ms`);
+        break;
+      }
+    }
   }
 
-  // Vérification définitive
+  // ⚠️ IMPORTANT : ce check est un NOUVEAU `if`, séparé du précédent.
+  // Il ne s'exécute QUE si, après la boucle de polling (ou sans même
+  // être entré dedans), la connexion élève n'est toujours pas valide.
+  // C'est ce qui manquait : avant, le nettoyage/échec s'exécutait
+  // systématiquement après la boucle, même en cas de reconnexion réussie.
   if (!eleveWs || eleveWs.readyState !== 1) {
     console.log(`🔍 DIAGNOSTIC acceptCall final : Échec reconnexion élève ${eleveId}`);
-   
-   // 🗑️ NETTOYAGE DB ANTI-BLOCAGE : L'élève a crashé, on libère le canal en DB
+
+    // 🗑️ NETTOYAGE DB ANTI-BLOCAGE : L'élève a crashé, on libère le canal en DB
     try {
       await pool.query(`DELETE FROM rooms WHERE room_name = $1`, [roomId]);
       console.log(`🗑️ DB Room nettoyée (Élève injoignable) : ${roomId}`);
     } catch (dbErr) {
       console.error("❌ Erreur lors du nettoyage de la room en DB (échec reconnexion):", dbErr.message);
     }
-   
-   // Réinitialiser le statut du prof pour qu'il redevienne disponible
+
+    // Réinitialiser le statut du prof pour qu'il redevienne disponible
     const prof = onlineProfessors.get(profId);
     if (prof) prof.status = "disponible";
     pendingCalls.delete(profId);
     broadcastOnlineProfs(onlineProfessors, clients);
-   
+
     return safeSend(ws, {
       type: "error",
       message: "Élève indisponible"
     });
   }
-
   const prof = onlineProfessors.get(profId);
   if (!prof) {
     return safeSend(ws, {
