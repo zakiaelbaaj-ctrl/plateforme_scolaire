@@ -27,16 +27,13 @@ import webrtcRoutes from "./routes/v1/webrtc.routes.js"; // Ton code actuel
 import appelsRoutes from "./routes/v1/appels/appels.routes.js";
 import adminRoutes from "./routes/v1/admin/adminRoutes.js";
 import adminUsersRoutes from "./routes/v1/admin/users.js";
-import twilioRoutes from "./routes/v1/twilio/twilio.routes.js";
-import twilioStudentRoute from "./routes/v1/twilio/twilio.student.routes.js";
-import turnRoutes from "./routes/v1/turn/turn.routes.js";
 import profileRoutes from "./routes/v1/users/profile.routes.js";
 import stripeConnectRoutes from "./routes/v1/stripeConnect.routes.js";
 import whiteboardRoutes from "./routes/whiteboard.routes.js"; 
 import stripeStudentRoutes from "./routes/v1/stripe/stripe.student.routes.js";
 import ratingRoutes from "./routes/v1/eleves/ratings.routes.js";
 import pushRoutes from "./routes/v1/push/push.routes.js";
-
+import tempMigrationRoutes from "./routes/v1/admin/temp-migration.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -54,16 +51,14 @@ app.use(helmet({
         "https://urgencescolaire.com",
         "https://www.urgencescolaire.com",
         "https://plateforme-scolaire-1.onrender.com", 
-        "wss://*", 
-        "https://*.twilio.com", 
-        "wss://*.twilio.com",
         "https://fonts.googleapis.com",
-        "https://fonts.gstatic.com"
+        "https://fonts.gstatic.com",
+         "https://*.livekit.cloud",   
+         "wss://*.livekit.cloud" 
       ],
       "script-src": [
         "'self'", 
         "'unsafe-inline'", 
-        "https://sdk.twilio.com"
       ],
       "script-src-attr": ["'unsafe-inline'"],
       "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
@@ -117,12 +112,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // 5. autres routes
 app.use("/api/v1/stripe-student", stripeStudentRoutes);
+app.use("/api/v1/stripeConnect", stripeConnectRoutes);
 app.use("/api/v1/etudiant", etudiantRoutes);
 app.use("/api/v1/webrtc", webrtcRoutes);
 app.use("/api/v1/appels", appelsRoutes);
 app.use("/api/v1/ratings", ratingRoutes);
 app.use("/api/v1/push", pushRoutes);
-
+app.use("/api/v1/admin", tempMigrationRoutes);
 
 
 // =======================================================
@@ -220,9 +216,6 @@ app.use("/api/v1/professeurs", professeursRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/admin/users", adminUsersRoutes);
 // (Car tes routes /users sont déjà gérées à l'intérieur de adminRoutes.js)
-app.use("/api/v1/twilio", twilioRoutes);
-app.use("/api/v1/twilio", twilioStudentRoute);
-app.use("/api/v1/turn", turnRoutes);
 app.use("/api/v1/users/profile", profileRoutes);
 app.use("/api/whiteboard", whiteboardRoutes);
 
