@@ -1,8 +1,14 @@
 // public/js/lib/auth.refresh.js
 // Rafraîchit le token JWT via le refresh token stocké en localStorage.
 // Utilisé à la fois par http.js (401 sur requêtes REST) et socket.service.js (WS fermé code 1008).
+let refreshInFlight = null;
 
 export async function refreshAccessToken() {
+     if (refreshInFlight) {
+        // Un refresh est déjà en cours : on attend son résultat au lieu d'en lancer un second
+        return refreshInFlight;
+    }
+    refreshInFlight = (async () => {
     const refreshToken = localStorage.getItem("refreshToken");
     if (!refreshToken) return false;
 
@@ -24,6 +30,10 @@ export async function refreshAccessToken() {
         }
         return true;
     } catch {
-        return false;
-    }
+     return false;
+        } finally {
+            refreshInFlight = null; // ✅ libère la garde une fois terminé
+        }
+    })();
+    return refreshInFlight;
 }

@@ -55,9 +55,9 @@ _on(event, cb) {
         }
         break;
       }
-      case "twilioToken":
-        if (data.token) VideoService.connect(data.token);
-        break;
+      case "livekitToken":
+  if (data.token) VideoService.connect(data.token, data.url);
+  break;
 
       case "incomingCall":
         AppState.setIncomingCallEleveId(data.eleveId);
@@ -104,7 +104,7 @@ _on(event, cb) {
 },
 // ❌ handleSessionEnded() supprimé — plus appelé nulle part
 
-disconnectTwilio() {
+  disconnectVideo() {
   VideoService.disconnectSilent();
 }
 };

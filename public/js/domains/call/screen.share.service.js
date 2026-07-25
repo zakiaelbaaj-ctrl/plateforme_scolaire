@@ -7,52 +7,47 @@ import { AppState }      from "/js/core/state.js";
 
 export const ScreenShareService = {
 
-  _track:     null, // LocalVideoTrack Twilio
-  _stream:    null, // MediaStream natif
-  _sharing:   false,
-  _callbacks: { onStart: null, onStop: null },
+  _publication: null, // LocalTrackPublication LiveKit
+  _sharing:     false,
+  _callbacks:   { onStart: null, onStop: null },
 
   onStart(cb) { this._callbacks.onStart = cb; },
   onStop(cb)  { this._callbacks.onStop  = cb; },
 
   isSharing() { return this._sharing; },
 
-  async start(twilioRoom) {
+  async start(room) {
     if (this._sharing) return;
-    if (!twilioRoom) {
-      console.warn("⚠️ ScreenShare: pas de room Twilio active");
+    if (!room) {
+      console.warn("⚠️ ScreenShare: pas de room LiveKit active");
       return;
     }
 
     try {
-      // 1. Capturer l'écran
-      this._stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: "always" },
+      // LiveKit gère nativement capture + création + publication du track
+      this._publication = await room.localParticipant.setScreenShareEnabled(true, {
         audio: false
       });
 
-      const videoTrack = this._stream.getVideoTracks()[0];
-      if (!videoTrack) throw new Error("Pas de piste vidéo");
+      if (!this._publication?.track) {
+        throw new Error("Échec de la publication du partage d'écran");
+      }
 
-      // 2. Créer une LocalVideoTrack Twilio
-      const { LocalVideoTrack } = Twilio.Video;
-      this._track = new LocalVideoTrack(videoTrack, { name: "screen" });
-
-      // 3. Publier dans la room Twilio
-      await twilioRoom.localParticipant.publishTrack(this._track);
-
-      // 4. Notifier le serveur
+      // Notifier le serveur
       socketService.send({
         type:     "screenShareStart",
         roomId:   AppState.currentRoomId,
-        streamId: this._track.name
+        streamId: this._publication.trackSid
       });
 
       this._sharing = true;
-      this._callbacks.onStart?.(this._track);
+      this._callbacks.onStart?.(this._publication.track);
 
-      // 5. Arrêt automatique si l'utilisateur ferme le partage via le navigateur
-      videoTrack.onended = () => this.stop(twilioRoom);
+      // Arrêt automatique si l'utilisateur ferme le partage via le navigateur
+      const mediaTrack = this._publication.track.mediaStreamTrack;
+      if (mediaTrack) {
+        mediaTrack.onended = () => this.stop(room);
+      }
 
       console.log("📺 Partage d'écran démarré");
 
@@ -60,21 +55,21 @@ export const ScreenShareService = {
       if (err.name !== "NotAllowedError") {
         console.error("❌ ScreenShare error:", err);
       }
-      this._cleanup();
+      this._cleanup(room);
     }
   },
 
-  async stop(twilioRoom) {
+  async stop(room) {
     if (!this._sharing) return;
 
-    // 1. Dépublier de Twilio
-    if (twilioRoom && this._track) {
+    // Dépublier de LiveKit (setScreenShareEnabled(false) coupe la capture + dépublie)
+    if (room) {
       try {
-        await twilioRoom.localParticipant.unpublishTrack(this._track);
+        await room.localParticipant.setScreenShareEnabled(false);
       } catch {}
     }
 
-    // 2. Notifier le serveur
+    // Notifier le serveur
     socketService.send({
       type:   "screenShareStop",
       roomId: AppState.currentRoomId
@@ -86,10 +81,7 @@ export const ScreenShareService = {
   },
 
   _cleanup() {
-    this._track?.stop?.();
-    this._stream?.getTracks().forEach(t => t.stop());
-    this._track   = null;
-    this._stream  = null;
+    this._publication = null;
     this._sharing = false;
   }
 };

@@ -35,7 +35,7 @@ const User = sequelize.define("User", {
   matiere: { type: DataTypes.STRING(100) },
   niveau: {
   type: DataTypes.JSON,
-  allowNull: false
+  allowNull: true
 },
   langue_matiere: { type: DataTypes.STRING(50) },
   tarif_horaire: { type: DataTypes.DECIMAL(10, 2) },

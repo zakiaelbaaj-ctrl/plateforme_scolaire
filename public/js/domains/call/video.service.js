@@ -1,155 +1,154 @@
+import { Room, RoomEvent, Track } from "livekit-client";
 import { CallStateMachine } from "./call.state.machine.js";
 import { AppState } from "/js/core/state.js";
-import { socketService } from "/js/core/socket.service.js"; 
+import { socketService } from "/js/core/socket.service.js";
+
 export const VideoService = {
   room: null,
+  _reconnectAttempts: 0,
+  _silentDisconnect: false,
 
- async connect(token) {
+  // ⚠️ Signature changée : LiveKit a besoin de l'URL du serveur, pas seulement du token
+  async connect(token, url) {
     try {
-      const { Logger } = Twilio.Video;
-Logger.setDefaultLevel("warn"); // ✅ nouvelle API
-this.room = await Twilio.Video.connect(token, { 
-  audio: true, 
-  video: { width: 640 },
-  networkQuality: {
-    local: 1,   // ✅ détecte la qualité réseau locale
-    remote: 1   // ✅ détecte la qualité réseau distante
-  },
-bandwidthProfile: {
-    video: {
-        mode: 'collaboration',
-        clientTrackSwitchOffControl: 'auto',
-        contentPreferencesMode: 'auto',
-        maxSubscriptionBitrate: 2500000  // ✅ 2.5 Mbps max pour gérer screen share + vidéo
-    }
-},
-  preferredVideoCodecs: [{ codec: 'VP8', simulcast: false }],
-  maxAudioBitrate: 16000
-});
+      this.room = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        videoCaptureDefaults: { resolution: { width: 640, height: 480 } },
+      });
+
+      // 1️⃣ Écouteurs AVANT connexion (recommandé par LiveKit)
+      this.room
+        .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          this.attachTrack(track, "remote");
+        })
+        .on(RoomEvent.LocalTrackPublished, (publication) => {
+          if (publication.track) this.attachTrack(publication.track, "local");
+        })
+        .on(RoomEvent.Disconnected, (reason) => {
+          if (this._silentDisconnect) {
+            this._silentDisconnect = false;
+            return;
+          }
+
+          // reason "ROOM_DELETED" / "PARTICIPANT_REMOVED" ≈ ton ancien code Twilio 53001
+          if (reason === "ROOM_DELETED" || reason === "PARTICIPANT_REMOVED") {
+            CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+            return;
+          }
+
+          console.warn("⚠️ LiveKit déconnecté inopinément, demande de reconnexion...");
+          this._requestNewToken();
+        });
+
+      // 2️⃣ Connexion (LiveKit gère la reconnexion réseau automatiquement en interne)
+      await this.room.connect(url, token);
+
+      // 3️⃣ Acquisition + publication caméra/micro avec secours audio-only
+      try {
+        await this.room.localParticipant.enableCameraAndMicrophone();
+      } catch (mediaError) {
+        console.warn("⚠️ Échec Caméra + Micro. Tentative Audio uniquement...", mediaError);
+        try {
+          await this.room.localParticipant.setMicrophoneEnabled(true);
+        } catch (audioError) {
+          console.error("❌ Échec total de la capture média local :", audioError);
+        }
+      }
+
       this._reconnectAttempts = 0;
 
-      this.room.localParticipant.tracks.forEach(pub => {
-        if (pub.track) this.attachTrack(pub.track, "local");
-      });
-
-      this.room.participants.forEach(participant => {
-        participant.tracks.forEach(pub => {
+      // 4️⃣ Participants déjà présents dans la room au moment du join
+      this.room.remoteParticipants.forEach((participant) => {
+        participant.trackPublications.forEach((pub) => {
           if (pub.isSubscribed && pub.track) this.attachTrack(pub.track, "remote");
         });
-        participant.on("trackSubscribed", track => this.attachTrack(track, "remote"));
       });
 
-      this.room.on("participantConnected", p => {
-        p.on("trackSubscribed", track => this.attachTrack(track, "remote"));
-      });
-
-      // ✅ Twilio déclenche "disconnected" → on setState ended UNE SEULE FOIS
-      // mais seulement si ce n'est pas nous qui avons initié la déconnexion
-     this.room.on("disconnected", (room, error) => {
-  if (this._silentDisconnect) {
-    this._silentDisconnect = false;
-    return; // déconnexion volontaire → on ne fait rien
-  }
-
-  // Coupure réseau temporaire → on tente de reconnecter
-  if (error && error.code === 53001) {
-    // 53001 = Room not found (token expiré ou room fermée côté serveur)
-    // → pas de reconnect possible, on termine
-    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
-    return;
-  }
-    // Autre coupure (réseau, ERR_CONNECTION_RESET) → demander un nouveau token
-  console.warn("⚠️ Twilio déconnecté inopinément, demande de reconnexion...");
-  this._requestNewToken();
-}); 
     } catch (e) {
       console.error("❌ Erreur VideoService:", e);
     }
   },
-  // Demande un nouveau token au serveur et reconnecte
-_requestNewToken() {
-  if (!AppState.currentRoomId) {
-    console.warn("⚠️ Pas de roomId, reconnexion Twilio annulée");
-    return;
-  }
 
-  // Limite : pas plus de 3 tentatives
-  this._reconnectAttempts = (this._reconnectAttempts ?? 0) + 1;
-  if (this._reconnectAttempts > 3) {
-    console.error("❌ Trop de tentatives Twilio, on termine l'appel");
-    this._reconnectAttempts = 0;
-    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
-    return;
-  }
+  _requestNewToken() {
+    if (!AppState.currentRoomId) {
+      console.warn("⚠️ Pas de roomId, reconnexion LiveKit annulée");
+      return;
+    }
 
-  console.log(`🔄 Tentative Twilio #${this._reconnectAttempts}...`);
+    this._reconnectAttempts = (this._reconnectAttempts ?? 0) + 1;
+    if (this._reconnectAttempts > 3) {
+      console.error("❌ Trop de tentatives LiveKit, on termine l'appel");
+      this._reconnectAttempts = 0;
+      CallStateMachine.setState(CallStateMachine.STATES.ENDED);
+      return;
+    }
 
-  // Demander un nouveau token via WS → le serveur répondra avec "twilioToken"
-  // → CallService.handleEvent("twilioToken") → VideoService.connect(newToken)
-  socketService.send({
-    type: "requestTwilioToken",
-    roomId: AppState.currentRoomId
-  });
-},
-  // ✅ Déconnexion normale (déclenche l'event "disconnected" → setState ended)
+    console.log(`🔄 Tentative LiveKit #${this._reconnectAttempts}...`);
+
+    socketService.send({
+      type: "requestLiveKitToken", // ⚠️ à renommer aussi côté serveur si utilisé
+      roomId: AppState.currentRoomId
+    });
+  },
+
   disconnect() {
     if (!this.room) return;
     this._stopLocalTracks();
-    this.room.disconnect(); // → déclenche "disconnected" → CallStateMachine.setState(ENDED)
+    this.room.disconnect();
     this.room = null;
+    CallStateMachine.setState(CallStateMachine.STATES.ENDED);
   },
 
-  // ✅ Déconnexion silencieuse : n'appelle PAS setState (appelée par terminateCall)
   disconnectSilent() {
     if (!this.room) return;
-    this._silentDisconnect = true; // flag pour bloquer le handler "disconnected"
+    this._silentDisconnect = true;
     this._stopLocalTracks();
     this.room.disconnect();
     this.room = null;
   },
 
- // ✅ Après
-_stopLocalTracks() {
-  this.room?.localParticipant?.tracks?.forEach(pub => {
-    pub.track?.stop();
-    pub.unpublish?.();
+  _stopLocalTracks() {
+    this.room?.localParticipant?.trackPublications?.forEach((pub) => {
+      pub.track?.stop();
+      this.room.localParticipant.unpublishTrack(pub.track);
 
-    // ✅ Détache tous les éléments DOM liés à ce track
-    pub.track?.detach?.().forEach(el => {
-      el.srcObject = null;
-      el.remove();
+      pub.track?.detach?.().forEach((el) => {
+        el.srcObject = null;
+        el.remove();
+      });
     });
-  });
 
-  // ✅ Vide aussi les containers vidéo directement
-  ["localVideo", "localVideoContainer"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el?.tagName === "VIDEO") {
-      el.srcObject = null;
-      el.pause?.();
-    }
-  });
+    ["localVideo", "localVideoContainer"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el?.tagName === "VIDEO") {
+        el.srcObject = null;
+        el.pause?.();
+      }
+    });
 
-  ["remoteVideo", "remoteVideoContainer"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el?.tagName === "VIDEO") {
-      el.srcObject = null;
-      el.pause?.();
-    }
-  });
-},
+    ["remoteVideo", "remoteVideoContainer"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el?.tagName === "VIDEO") {
+        el.srcObject = null;
+        el.pause?.();
+      }
+    });
+  },
 
   attachTrack(track, side, attempts = 0) {
-    if (track.kind !== "video" && track.kind !== "audio") return;
-   // ✅ Track d'écran partagé → fenêtre flottante
-  if (track.name === "screen" && side === "remote") {
-    import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {
-      ScreenShareOverlay.show(track);
-      // Fermer overlay quand la track s'arrête
-      track.on?.("stopped", () => ScreenShareOverlay.hide());
-    });
-    return;
-  }
+    if (track.kind !== Track.Kind.Video && track.kind !== Track.Kind.Audio) return;
+
+    // ⚠️ Différence clé vs Twilio : la détection "écran partagé" se fait via track.source,
+    // pas via track.name === "screen"
+    if (track.source === Track.Source.ScreenShare && side === "remote") {
+      import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {
+        ScreenShareOverlay.show(track);
+        track.on?.("ended", () => ScreenShareOverlay.hide());
+      });
+      return;
+    }
+
     const containerId = side === "local"
       ? (document.getElementById("localVideoContainer") ? "localVideoContainer" : "localVideo")
       : (document.getElementById("remoteVideoContainer") ? "remoteVideoContainer" : "remoteVideo");
@@ -161,16 +160,19 @@ _stopLocalTracks() {
       return;
     }
 
-    if (track.kind === "audio") {
-      const el = track.attach();
-      el.autoplay = true;
-      document.body.appendChild(el);
+    if (track.kind === Track.Kind.Audio) {
+      if (side === "remote") {
+        const el = track.attach();
+        el.autoplay = true;
+        document.body.appendChild(el);
+      }
       return;
     }
 
     if (container.tagName === "VIDEO") {
       const el = track.attach();
-      el.autoplay = true; el.playsInline = true;
+      el.autoplay = true;
+      el.playsInline = true;
       el.muted = (side === "local");
       el.style.cssText = "width:100%;height:100%;object-fit:cover;";
       container.replaceWith(el);
@@ -178,16 +180,17 @@ _stopLocalTracks() {
     } else {
       container.querySelector("video")?.remove();
       const el = track.attach();
-      el.autoplay = true; el.playsInline = true;
+      el.autoplay = true;
+      el.playsInline = true;
       el.muted = (side === "local");
       el.style.cssText = "width:100%;height:100%;object-fit:cover;";
       container.appendChild(el);
     }
-    // ✅ AJOUT ICI — émettre le track vers dashboard.js
-    if (side === "remote" && track.kind === "video") {
+
+    if (side === "remote" && track.kind === Track.Kind.Video) {
       AppState._notify("video:remoteTracks", [track]);
     }
-    if (side === "local" && track.kind === "video") {
+    if (side === "local" && track.kind === Track.Kind.Video) {
       AppState._notify("video:localTrack", [track]);
     }
   }

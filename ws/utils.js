@@ -1,96 +1,86 @@
 // =======================================================
-// WS.UTILS.JS – Utilitaires WebSocket (OPTIMISÉ)
-// Fonctions partagées et sécurité
+// WS.UTILS.JS – Utilitaires WebSocket (CORRIGÉ & SÉCURISÉ)
 // =======================================================
 
 import { getOnlineProfessors } from './state/onlineProfessors.js';
-import jwt from 'jsonwebtoken';  // ✅ Import au top plutôt que dans la fonction
+import jwt from 'jsonwebtoken';
+import redis from "../config/redis.js";
+
+const BROADCAST_KEY = "broadcast:onlineProfs";
+const BROADCAST_DELAY = 500; // ms
 
 // =======================================================
 // SAFE SEND
 // =======================================================
 export function safeSend(ws, data) {
   if (!ws || ws.readyState !== 1) {
-    console.error("❌ safeSend FAILED - ws invalid or closed:", {
-      wsExists: !!ws,
-      readyState: ws?.readyState
-    });
-    return false; // ✅ important
+    return false;
   }
 
   try {
-    ws.send(JSON.stringify(data));
-console.log("📤 safeSend SUCCESS:", data.type, "to user:", ws.userId, data.type === "error" ? `— message: "${data.message}"` : "");
-    return true; // ✅ important
+    // Éviter les objets circulaires s'il y a un champ ws
+    const cleanData = typeof data === 'object' && data !== null ? { ...data } : data;
+    if (cleanData.ws) delete cleanData.ws;
+
+    ws.send(JSON.stringify(cleanData));
+    console.log("📤 safeSend SUCCESS:", cleanData.type, "to user:", ws.userId, cleanData.type === "error" ? `— message: "${cleanData.message}"` : "");
+    return true;
   } catch (err) {
     console.error("❌ safeSend ERROR:", err.message);
     return false;
   }
 }
+
 // =======================================================
-// BROADCAST AUX ÉLÈVES
+// BROADCAST AUX ÉLÈVES (AVEC REDIS OU FALLBACK)
 // =======================================================
+// ✅ On accepte (onlineProfessors, clients) OU (clients) de manière flexible
+export async function broadcastOnlineProfs(arg1, arg2) {
+  // Rétro-compatibilité : Si 2 arguments sont passés (onlineProfessors, clients)
+  const clients = arg2 || arg1;
 
-import redis from "../config/redis.js";
-
-const BROADCAST_KEY  = "broadcast:onlineProfs";
-const BROADCAST_DELAY = 500; // ms
-
-export async function broadcastOnlineProfs(onlineProfessors, clients) {
-    try {
-        // SET NX PX = "set si absent, expire dans 100ms"
-        // Une seule instance gagne, les autres sont ignorées
-        const acquired = await redis.set(BROADCAST_KEY, "1", "PX", BROADCAST_DELAY, "NX");
-        if (!acquired) return;
-
-        setTimeout(async () => {
-            try {
-                await redis.del(BROADCAST_KEY);
-                const profs = getOnlineProfessors();
-                console.log(`📡 Broadcast: ${profs.length} profs envoyés aux élèves.`);
-                for (const ws of clients.values()) {
-                    if (ws.role === "eleve" && ws.readyState === 1) {
-                        safeSend(ws, {
-                            type: "onlineProfessors",
-                            profs,
-                            timestamp: new Date().toISOString()
-                        });
-                    }
-                }
-            } catch (err) {
-                console.error("❌ Broadcast erreur:", err.message);
-            }
-        }, BROADCAST_DELAY);
-
-    } catch (err) {
-        // ✅ Fallback si Redis est indisponible — broadcast direct sans debounce
-        console.warn("⚠️ Redis indisponible, broadcast direct:", err.message);
-        const profs = getOnlineProfessors();
-        for (const ws of clients.values()) {
-            if (ws.role === "eleve" && ws.readyState === 1) {
-                safeSend(ws, {
-                    type: "onlineProfessors",
-                    profs,
-                    timestamp: new Date().toISOString()
-                });
-            }
-        }
+  const sendToEleves = () => {
+    const profs = getOnlineProfessors();
+    console.log(`📡 Broadcast: ${profs.length} profs envoyés aux élèves.`);
+    const payload = {
+      type: "onlineProfessors",
+      profs,
+      timestamp: new Date().toISOString()
+    };
+    for (const ws of clients.values()) {
+      if (ws.role === "eleve" && ws.readyState === 1) {
+        safeSend(ws, payload);
+      }
     }
+  };
+
+  try {
+    const acquired = await redis.set(BROADCAST_KEY, "1", "PX", BROADCAST_DELAY, "NX");
+    if (!acquired) return;
+
+    setTimeout(() => {
+      try {
+        sendToEleves();
+        } catch (err) {
+        console.error("❌ Broadcast erreur:", err.message);
+      }
+    }, BROADCAST_DELAY);
+
+  } catch (err) {
+    console.warn("⚠️ Redis indisponible, broadcast direct:", err.message);
+    sendToEleves();
+  }
 }
 // =======================================================
 // BROADCAST À UN RÔLE SPÉCIFIQUE
 // =======================================================
 export function broadcastToRole(clients, role, payload) {
   let count = 0;
-
   for (const ws of clients.values()) {
     if (ws.role === role && ws.readyState === 1) {
-      if (safeSend(ws, payload)) {
-        count++;
-      }
+      if (safeSend(ws, payload)) count++;
     }
   }
-
   console.log(`📡 Message envoyé à ${count} ${role}s`);
   return count;
 }
@@ -100,21 +90,18 @@ export function broadcastToRole(clients, role, payload) {
 // =======================================================
 export function sendToUser(clients, userId, payload) {
   const ws = clients.get(userId);
-  
   if (!ws) {
     console.warn(`⚠️ User ${userId} non connecté`);
     return false;
   }
-
   return safeSend(ws, payload);
 }
 
 // =======================================================
-// ESCAPE HTML (XSS prevention)
+// ESCAPE HTML & VALIDATE
 // =======================================================
 export function escapeHtml(text) {
   if (!text) return "";
-  
   const map = {
     '&': '&amp;',
     '<': '&lt;',
@@ -122,31 +109,21 @@ export function escapeHtml(text) {
     '"': '&quot;',
     "'": '&#039;'
   };
-  
   return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// =======================================================
-// VALIDATE MESSAGE
-// =======================================================
 export function validateMessage(data) {
   if (!data || typeof data !== 'object') {
     return { valid: false, error: "Message invalide" };
   }
-
   if (!data.type || typeof data.type !== 'string') {
     return { valid: false, error: "Type manquant" };
   }
-
   return { valid: true };
 }
 
-// =======================================================
-// PARSE JWT (OPTIMISÉ)
-// =======================================================
 export function parseToken(token, secret) {
   try {
-    // ✅ jwt importé en haut
     return jwt.verify(token, secret);
   } catch (err) {
     console.warn("⚠️ Token invalide:", err.message);
@@ -155,33 +132,26 @@ export function parseToken(token, secret) {
 }
 
 // =======================================================
-// CLEANUP DISCONNECT (OPTIMISÉ)
+// CLEANUP DISCONNECT (CORRIGÉ & PROTÉGÉ)
 // =======================================================
 // =======================================================
-// CLEANUP DISCONNECT — VERSION SENIOR (3 RÔLES)
+// CLEANUP DISCONNECT (BUG 2 CORRIGÉ)
 // =======================================================
 export function cleanupOnDisconnect(ws, deps) {
   const { clients, onlineProfessors, rooms } = deps;
   const { userId, role } = ws;
 
-  if (!userId) return; // Sécurité si déconnexion avant identification
-  
-  // ✅ Ne supprimer de la Map que si c'est bien LA connexion actuellement active
-  if (clients.get(userId) === ws) {
+  if (!userId) return;
+
+  // ✅ Ne supprimer de clients que si cette instance est bien la socket active
+  const isActive = clients.get(userId) === ws;
+  if (isActive) {
     clients.delete(userId);
   }
   console.log(`❌ WS fermé: ${userId} (Rôle: ${role})`);
-
-  // 1. Suppression systématique de la Map globale
-  clients.delete(userId);
-
-  // -------------------------------------------------------
-  // CAS 1 : LE PROFESSEUR SE DÉCONNECTE
-  // -------------------------------------------------------
+  // 1. PROFESSEUR
   if (role === "prof") {
     const prof = onlineProfessors.get(userId);
-
-    // Prévenir l'élève s'ils étaient en cours d'appel
     if (prof?.eleveId) {
       const studentWs = clients.get(prof.eleveId);
       if (studentWs?.readyState === 1) {
@@ -192,22 +162,18 @@ export function cleanupOnDisconnect(ws, deps) {
         });
       }
     }
-
-    // Retirer de la Map des profs et notifier TOUS les élèves
-    
-    onlineProfessors.delete(userId);
+    // ✅ CORRECTION BUG 2 : Ne supprimer le prof que s'il ne s'agit PAS d'une reconnexion (socket remplacée)
     if (!ws._isReplacedConnection) {
-    broadcastOnlineProfs(onlineProfessors, clients);
-  }
+      onlineProfessors.delete(userId);
+      broadcastOnlineProfs(onlineProfessors, clients);
+    } else {
+      console.log(`🔕 Suppression de onlineProfessors ignorée pour prof ${userId} (reconnexion active)`);
     }
-  // -------------------------------------------------------
-  // CAS 2 : L'ÉLÈVE SE DÉCONNECTE
-  // -------------------------------------------------------
+  }
+  // 2. ÉLÈVE
   else if (role === "eleve") {
-    // Chercher si cet élève était en session avec un prof
     for (const prof of onlineProfessors.values()) {
       if (prof.eleveId === userId) {
-        // Prévenir le prof
         const profWs = clients.get(prof.id);
         if (profWs?.readyState === 1) {
           safeSend(profWs, {
@@ -216,39 +182,29 @@ export function cleanupOnDisconnect(ws, deps) {
             timestamp: new Date().toISOString()
           });
         }
-        // Libérer le statut du prof
         prof.status = "disponible";
         prof.eleveId = null;
       }
     }
-    // ✅ Ne pas broadcaster si c'est une connexion remplacée
     if (!ws._isReplacedConnection) {
-        broadcastOnlineProfs(onlineProfessors, clients);
-    }
-}
-  // -------------------------------------------------------
-  // CAS 3 : L'ÉTUDIANT (PEER-TO-PEER) SE DÉCONNECTE
-  // -------------------------------------------------------
+      broadcastOnlineProfs(onlineProfessors, clients);
+      }
+  }
+ // 3. ÉTUDIANT
   else if (role === "etudiant") {
-    // ✅ Harmonisation avec la branche "eleve"
     if (!ws._isReplacedConnection) {
-    // Notifier immédiatement les autres étudiants pour qu'il disparaisse de leur liste
-    broadcastOnlineStudents(clients);
+      broadcastOnlineStudents(clients);
     }
-    // Si l'étudiant était dans une room P2P, le partenaire sera notifié via la section Rooms ci-dessous
   }
 
-  // -------------------------------------------------------
-  // GESTION DES ROOMS (COMMUN AUX 3 RÔLES)
-  // -------------------------------------------------------
+  // 4. ROOMS
   if (ws.roomId && rooms.has(ws.roomId)) {
     const room = rooms.get(ws.roomId);
     
-    // Notifier les autres membres de la room que l'utilisateur est parti
     room.forEach(client => {
       if (client !== ws && client.readyState === 1) {
         safeSend(client, {
-          type: "userLeftRoom", // Message générique pour chat/video/whiteboard
+          type: "userLeftRoom",
           userId: userId,
           role: role
         });
@@ -256,8 +212,6 @@ export function cleanupOnDisconnect(ws, deps) {
     });
 
     room.delete(ws);
-
-    // Supprimer la room si elle est vide
     if (room.size === 0) {
       rooms.delete(ws.roomId);
       console.log(`🏠 Room ${ws.roomId} supprimée (vide)`);
@@ -267,26 +221,7 @@ export function cleanupOnDisconnect(ws, deps) {
   console.log(`✅ Nettoyage complet effectué pour ${userId}`);
 }
 // =======================================================
-// LOGGER UTILS
-// =======================================================
-export function logError(context, err) {
-  console.error(`❌ [${context}]`, err.message || err);
-}
-
-export function logInfo(context, msg) {
-  console.log(`ℹ️  [${context}]`, msg);
-}
-
-export function logSuccess(context, msg) {
-  console.log(`✅ [${context}]`, msg);
-}
-
-export function logWarning(context, msg) {
-  console.warn(`⚠️  [${context}]`, msg);
-}
-
-// =======================================================
-// RATE LIMITING (SIMPLE MAIS EFFICACE)
+// RATE LIMITER
 // =======================================================
 export class RateLimiter {
   constructor(maxRequests = 10, windowMs = 1000) {
@@ -295,202 +230,74 @@ export class RateLimiter {
     this.requests = new Map();
   }
 
-  /**
-   * Vérifier si une requête est autorisée
-   * @param {number} userId - ID de l'utilisateur
-   * @returns {boolean} true si autorisé, false si rate limited
-   */
   isAllowed(userId) {
     const now = Date.now();
     const userRequests = this.requests.get(userId) || [];
 
-    // Nettoyer les old requests (hors de la fenêtre)
-    const recentRequests = userRequests.filter(
-      time => now - time < this.windowMs
-    );
+    const recentRequests = userRequests.filter(time => now - time < this.windowMs);
 
     if (recentRequests.length >= this.maxRequests) {
-      logWarning("RateLimit", `Utilisateur ${userId} rate limited`);
+      console.warn("⚠️ RateLimit", `Utilisateur ${userId} rate limited`);
       return false;
     }
 
     recentRequests.push(now);
     this.requests.set(userId, recentRequests);
-
     return true;
   }
 
-  /**
-   * Réinitialiser le rate limit pour un utilisateur
-   * @param {number} userId - ID de l'utilisateur
-   */
   reset(userId) {
     this.requests.delete(userId);
   }
 
-  /**
-   * Vider tous les rate limits
-   */
   resetAll() {
     this.requests.clear();
   }
-
-  /**
-   * Obtenir le statut du rate limit pour un utilisateur
-   * @param {number} userId - ID de l'utilisateur
-   * @returns {Object} {requests: count, allowed: boolean, resetIn: ms}
-   */
-  getStatus(userId) {
-    const now = Date.now();
-    const userRequests = this.requests.get(userId) || [];
-
-    const recentRequests = userRequests.filter(
-      time => now - time < this.windowMs
-    );
-
-    const oldestRequest = recentRequests[0];
-    const resetIn = oldestRequest ? Math.max(0, this.windowMs - (now - oldestRequest)) : 0;
-
-    return {
-      requests: recentRequests.length,
-      allowed: recentRequests.length < this.maxRequests,
-      resetIn
-    };
-  }
 }
 
 // =======================================================
-// GENERATE ROOM ID
+// BROADCAST ÉTUDIANTS (SÉCURISÉ AVEC SAFESEND)
 // =======================================================
-export function generateRoomId(profId, eleveId) {
-  return `room_${profId}_${eleveId}`;
-}
-
-// =======================================================
-// PARSE ROOM ID
-// =======================================================
-export function parseRoomId(roomId) {
-  if (!roomId?.startsWith('room_')) return null;
-
-  const parts = roomId.split('_');
-  if (parts.length !== 3) return null;
-
-  const profId = parseInt(parts[1], 10);
-  const eleveId = parseInt(parts[2], 10);
-
-  if (isNaN(profId) || isNaN(eleveId)) return null;
-
-  return { profId, eleveId };
-}
-
-// =======================================================
-// FORMAT DURATION
-// =======================================================
-export function formatDuration(seconds) {
-  if (!seconds || seconds <= 0) return "0s";
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  const parts = [];
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
-  if (secs > 0) parts.push(`${secs}s`);
-
-  return parts.join(" ");
-}
-
-// =======================================================
-// VALIDATE USER ID
-// =======================================================
-export function validateUserId(id) {
-  const userId = parseInt(id, 10);
-  return isNaN(userId) || userId <= 0 ? null : userId;
-}
-
-// =======================================================
-// VALIDATE WEBSOCKET
-// =======================================================
-export function validateWebSocket(ws) {
-  return ws && 
-         ws.readyState === 1 &&
-         ws.userId &&
-         ws.role;
-}
-// =======================================================
-// GESTION DES ÉTUDIANTS EN LIGNE
-// =======================================================
-
-export function getRealOnlineStudents(clientsMap) {
-  const students = [];
-  for (const client of clientsMap.values()) {
-    // On prend les élèves/étudiants qui ne sont pas dans une room (roomId === null)
-    if ((client.role === "etudiant" || client.role === "eleve") && !client.roomId) {
-      students.push({
-        id: client.userId,
-        prenom: client.prenom,
-        nom: client.nom,
-        matiere: client.matiere,
-        niveau: client.niveau
-      });
-    }
-  }
-  return students;
-}
-/**
- * ✅ DIFFUSION PEER-TO-PEER (Étudiant à Étudiant)
- * - La liste contient : rôle "etudiant" ET rôle "eleve"
- *   (les étudiants peuvent travailler avec des élèves avancés)
- * - La liste est envoyée UNIQUEMENT aux "etudiant"
- * - Les "eleve" reçoivent la liste des profs (broadcastOnlineProfs)
- * - Les "prof" ne reçoivent personne
- */
 export function broadcastOnlineStudents(clientsMap) {
- console.log("=== BROADCAST ONLINE STUDENTS ===");
-console.log("Clients:", [...clientsMap.keys()]);
-// Construire la liste
   const studentsList = [];
 
   for (const client of clientsMap.values()) {
-    if (
-      client.role === "etudiant" &&
-      client.readyState === 1 &&
-      client.identified
-    ) {
+    if (client.role === "etudiant" && client.readyState === 1 && client.identified) {
       studentsList.push({
         id: client.userId,
         prenom: client.prenom || "Étudiant",
         nom: client.nom || "",
         matiere: client.matiere || "Général",
-         niveau: client.niveau || "",
+        niveau: client.niveau || "",
         role: client.role
       });
     }
   }
-// Maintenant seulement on peut l'afficher
-console.log(
-  "Liste:",
-  studentsList.map(s => ({
-    id: s.id,
-    prenom: s.prenom
-  }))
-);
-  
-  // ✅ type préfixé "student:" pour être capté par SessionServiceEtudiant._handleWs
-  const payload = JSON.stringify({
-    type:     "student:onlineStudents",
+
+  const payload = {
+    type: "student:onlineStudents",
     students: studentsList
+  };
+
+  clientsMap.forEach(ws => {
+    if (ws.readyState === 1 && ws.role === "etudiant") {
+      safeSend(ws, payload); // ✅ Corrigé : utilise safeSend au lieu de ws.send
+    }
   });
 
-  // 2. On envoie cette liste UNIQUEMENT aux "etudiants"
-  clientsMap.forEach(ws => {
-  if (ws.readyState === 1 && ws.role === "etudiant") {
+  console.log(`📡 P2P Broadcast: ${studentsList.length} étudiants envoyés aux pairs.`);
+}
 
-    console.log(`📡 Envoi à ${ws.userId}`);
-      ws.send(payload);
-  }
-});
+export function generateRoomId(profId, eleveId) {
+  return `room_${profId}_${eleveId}`;
+}
 
-console.log(`📡 P2P Broadcast: ${studentsList.length} étudiants envoyés aux pairs.`);
+export function parseRoomId(roomId) {
+  if (!roomId?.startsWith('room_')) return null;
+  const parts = roomId.split('_');
+  if (parts.length !== 3) return null;
+  const profId = parseInt(parts[1], 10);
+  const eleveId = parseInt(parts[2], 10);
+  if (isNaN(profId) || isNaN(eleveId)) return null;
+  return { profId, eleveId };
 }

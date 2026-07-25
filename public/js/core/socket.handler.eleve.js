@@ -7,7 +7,6 @@ import { CallStateMachine } from "../domains/call/call.state.machine.js";
 import { CallService } from "../domains/call/call.service.js";
 import { refreshAccessToken } from "../lib/auth.refresh.js";
 
-// APRÈS
 class SocketHandlerEleve {
   constructor() {
     this._unsubscribeSocket = socketService.onMessage((data) => this.handle(data));
@@ -24,8 +23,11 @@ class SocketHandlerEleve {
       }
 
       const newToken = localStorage.getItem("token");
+      if (!newToken) { 
+        WSLogger.error("Refresh signalé OK mais aucun token trouvé — abandon");
+    return null;
+  }
       AppState.token = newToken;
-
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       return `${wsProtocol}//${window.location.host}?token=${newToken}`;
     });
@@ -66,16 +68,14 @@ case "professorsList":
   CallService.handleEvent(data);
   break;
 
-case "twilioToken":
-  AppState.startTimer(); // ✔️ Timer démarre uniquement quand Twilio confirme
+case "livekitToken":
+  AppState.startTimer(); // ✔️ Timer démarre uniquement quand LiveKit confirme
   CallService.handleEvent(data);
   break;
 
 case "incomingCall":
 case "callAccepted":
 case "callRejected":
-case "twilioLocalTrack":
-case "twilioRemoteTracks":
   CallService.handleEvent(data);
   break;
       case "invoice:ready": {
@@ -151,7 +151,7 @@ case "twilioRemoteTracks":
         break;
        
         case "screenShareStarted":
-  // L'overlay est géré par Twilio directement via attachTrack
+  // L'overlay est géré par LiveKit directement via attachTrack
   console.log("📺 Partage d'écran démarré par", data.userName);
   break;
 

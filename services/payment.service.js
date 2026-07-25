@@ -210,16 +210,19 @@ export async function processSessionPayment(roomId) {
         invoiceNumber,
         date: new Date()
     });
-
-// ✅ AJOUT : Envoi de la facture par email
-// ✅ Email à l'élève
-await mailService.sendInvoiceEmail(eleve.email, {
-    invoiceNumber,
-    amount: totalAmountEUR / 100,
-    duration,
-    fileName,
-    displayName: eleve.username || eleve.email
-});
+    // ✅ Emails isolés — un échec d'envoi ne doit JAMAIS empêcher le retour du succès du paiement
+try {
+  await mailService.sendInvoiceEmail(eleve.email, {
+      invoiceNumber,
+      amount: totalAmountEUR / 100,
+      duration,
+      fileName,
+      displayName: eleve.username || eleve.email
+  });
+} catch (emailErr) {
+  logger.error("⚠️ Échec envoi email facture élève (non bloquant):", { message: emailErr.message });
+}
+try {
 // ✅ AJOUT : Email au prof
 await mailService.sendProfPaymentEmail(prof.email, {
   invoiceNumber,
@@ -227,6 +230,9 @@ await mailService.sendProfPaymentEmail(prof.email, {
   duration,
   displayName: prof.username || prof.email
 })
+} catch (emailErr) {
+  logger.error("⚠️ Échec envoi email paiement prof (non bloquant):", { message: emailErr.message });
+}
 
 return { 
     status: 'succeeded', 
@@ -284,16 +290,23 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
         ...(prof.stripe_account_id?.trim() ? {
     transfer_data: { destination: prof.stripe_account_id.trim() },
     application_fee_amount: feeAmountEUR,
+    
 } : {}),
       },
+      
       metadata: { roomId, type: 'recovery_payment', userId: eleve.id }
     });
+    // ✅ Email isolé — un échec d'envoi ne doit pas empêcher le retour de l'URL de paiement
+    try {
     await mailService.sendPaymentActionRequiredEmail(eleve.email, {
   amount: totalAmount / 100,
   paymentUrl: session.url,
   duration: duration
 });
-    return session.url;
+  } catch (emailErr) {
+    logger.error("⚠️ Échec envoi email régularisation (non bloquant):", { message: emailErr.message });
+    }
+     return session.url;
   } catch (error) {
     logger.error("❌ Erreur handleAuthenticationRequired:", error.message);
     throw error;

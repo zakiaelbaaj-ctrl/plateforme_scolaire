@@ -14,6 +14,7 @@ import { DocumentService } from "/js/domains/document/document.service.js";
 import { addDocument } from "/js/ui/components/document.view.js";
 import { ScreenShareService } from "/js/domains/call/screen.share.service.js";
 import { ScreenShareOverlay }  from "/js/ui/components/screen.share.overlay.js";
+import "/js/eleve.init.js";
 import { initUIRenderers } from "/js/modules/ui/uiRenderers.js";
 import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
 import { getUserProfile } from "../../services/user.service.js";
@@ -82,8 +83,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }, 2500); // 2.5 secondes entre chaque vérification
   }
-  // Lancer les WebSockets
-  socketHandlerEleve.init();
   const _wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   socketService.connect(`${_wsProtocol}//${window.location.host}?token=${AppState.token}`);
 

@@ -38,22 +38,27 @@ self.addEventListener("install", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   const isAppJs = event.request.url.includes("/js/");
-   // 🔒 Ne jamais intercepter la page WebRTC Étudiant
-  if (url.pathname.includes("/pages/etudiant/dashboard.html")) {
-    // On laisse le navigateur gérer cette requête normalement
+
+  // 🔒 Ne jamais intercepter les dashboards WebRTC (Étudiant & Élève)
+  if (
+    url.pathname.includes("/pages/etudiant/dashboard.html") ||
+    url.pathname.includes("/pages/eleve/dashboard.html")
+  ) {
+    // On laisse le navigateur gérer ces requêtes normalement
     return;
   }
+
+  // 🔄 Fichiers JS : Réseau d'abord, secours en cache
   if (isAppJs) {
-    // JS toujours pris depuis le réseau → évite les vieilles versions
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request).catch(() => caches.match(event.request, { ignoreSearch: true }))
     );
     return;
   }
 
-  // Cache-first pour le reste
+  // 📦 Cache-first pour le reste
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).catch((err) => {
@@ -63,7 +68,6 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
-
 // ---------------------------------------------------------
 // ACTIVATE → Suppression des anciens caches
 // ---------------------------------------------------------

@@ -245,7 +245,14 @@
        par un calcul simple à partir de p.connectedAt (qui, lui, existe
        bien -> voir addProfessor() dans socket.js).
   -->
-  <script type="module">
+    <script type="importmap">
+{
+  "imports": {
+    "livekit-client": "/js/lib/livekit-client.esm.mjs"
+  }
+}
+</script>
+<script type="module">
     import { AppState } from "/js/core/state.js";
     import { socketService } from "/js/core/socket.service.js";
     import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
@@ -397,7 +404,7 @@
 
       // Envoie déjà "identify" en interne au bon moment (TRANSPORT_OPEN) -
       // même logique que dashboard.js élève, pas de duplication de code.
-      socketHandlerEleve.init();
+      
 
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       socketService.connect(`${wsProtocol}//${window.location.host}?token=${AppState.token}`);
@@ -409,5 +416,7 @@
 
     document.addEventListener("DOMContentLoaded", init);
   </script>
+  <!-- 🔥 Initialisation WS élève (unique, global, sécurisé) -->
+  <script type="module" src="/js/eleve.init.js"></script>
 </body>
 </html>

@@ -638,12 +638,12 @@ function syncMiniatureStream() {
   _doAttachMiniature(videoMini);
 }
 
-function toggleVideo() {
-  AppState.twilioRoom?.localParticipant?.videoTracks?.forEach(pub => pub.track.isEnabled ? pub.track.disable() : pub.track.enable());
-}
+async function toggleCamera() {
+  const localParticipant = VideoService.room?.localParticipant;
+  if (!localParticipant) return;
 
-function toggleCamera() {
-  AppState.twilioRoom?.localParticipant?.videoTracks?.forEach(pub => pub.track.isEnabled ? pub.track.disable() : pub.track.enable());
+  const isEnabled = localParticipant.isCameraEnabled;
+  await localParticipant.setCameraEnabled(!isEnabled);
 }
 
 // ======================================================

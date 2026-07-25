@@ -40,7 +40,7 @@ const normalizedDoc = {
 case "incomingCall":
 case "callAccepted":
 case "callRejected":
-case "twilioToken":
+case "livekitToken":
   CallService.handleEvent(data);
   break;
 
@@ -98,9 +98,9 @@ case "chatMessage":
         WhiteboardService.handleEvent(data);
         break;
       case "screenShareStarted":
-  // L'overlay est géré par Twilio directement via attachTrack
-      console.log("📺 Partage d'écran démarré par", data.userName);
-      break;
+  // L'overlay est géré par LiveKit directement via attachTrack
+  console.log("📺 Partage d'écran démarré par", data.userName);
+  break;
 
       case "screenShareStopped": {
     import("/js/ui/components/screen.share.overlay.js").then(({ ScreenShareOverlay }) => {

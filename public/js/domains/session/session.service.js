@@ -126,11 +126,11 @@ export const SessionService = {
         break;
       }
 
-      case "twilioToken": {
-        this.startHeartbeat(); // ✅ Timer commence quand le prof accepte
-       CallService.handleEvent(data); // délègue à CallService, pas de double appel
-       break;
-      }
+      case "livekitToken": {
+  this.startHeartbeat(); // ✅ Timer commence quand le prof accepte
+  CallService.handleEvent(data); // délègue à CallService, pas de double appel
+  break;
+}
 
    case "callSent": {
   CallService.handleEvent(data);
@@ -143,10 +143,7 @@ export const SessionService = {
 }
 
   case "callAccepted":
-  case "callRejected":
-  case "twilioLocalTrack":
-  case "twilioRemoteTracks":
-  case "twilioDisconnected": {
+  case "callRejected": {
   CallService.handleEvent(data);
   break;
      }

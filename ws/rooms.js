@@ -2,7 +2,7 @@
 // ✅ On utilise le service de paiement robuste
 import * as StripeService from "../services/payment.service.js";
 import { safeSend } from "./utils.js";
-import { TwilioService } from "./twilio.service.js";
+import { LiveKitService } from "./livekit.service.js";
 
 const rooms = new Map();       // roomId -> Set<ws>
 const sessionData = new Map();  // roomId -> { startTime: Date, participants: [] }
@@ -64,20 +64,21 @@ export async function joinRoom(ws, { roomId }, onlineProfessors, clients) {
         });
 
         try {
-            await TwilioService.createRoom(roomId);
+            await LiveKitService.createRoom(roomId);
         } catch (err) {
             console.error(`❌ Erreur Twilio Service:`, err.message);
         }
 
         for (const participant of currentRoom) {
             const role = participant.role || "eleve";
-            const token = TwilioService.generateToken(participant.userId, role, roomId);
+            const token = await LiveKitService.generateToken(participant.userId, role, roomId);
             
             safeSend(participant, {
-                type: "twilioToken",
-                token,
-                roomName: roomId
-            });
+    type: "livekitToken",
+    token,
+    roomName: roomId,
+    url: process.env.LIVEKIT_URL  // ajoutez l'URL, le client en aura besoin pour se connecter
+});
         }
     }
 }
@@ -118,7 +119,7 @@ export async function leaveRoom(ws) {
 
             // 2. Fermer la room Twilio
             try {
-                await TwilioService.deleteRoom(roomId);
+                await LiveKitService.deleteRoom(roomId);
             } catch (err) {
                 console.warn("ℹ️ Twilio Room déjà fermée.");
             }

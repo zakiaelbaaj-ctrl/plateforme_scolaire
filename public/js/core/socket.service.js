@@ -84,19 +84,31 @@ class SocketService {
 
   // ✅ Code 1008 = auth invalide/expirée → refresh silencieux avant reconnexion
   if (evt.code === 1008 && this.onAuthExpired) {
-    this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
+  this.reconnectAttempts++;
 
-    const newUrl = await this.onAuthExpired();
-    if (newUrl) {
-      this.currentUrl = newUrl;
-      this.reconnectAttempts = 0;
-      this.connect(newUrl);
-    } else {
-      WSLogger.warn("WS auth définitivement invalide — abandon reconnexion");
-      this.emit({ type: "ws:status", status: "auth-failed" });
-    }
+  if (this.reconnectAttempts > 5) {
+    WSLogger.error("WS: trop de tentatives d'auth échouées, abandon");
+    this.emit({ type: "ws:status", status: "auth-failed" });
     return;
   }
+
+  this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
+
+  const newUrl = await this.onAuthExpired();
+  if (newUrl) {
+    this.currentUrl = newUrl;
+    const delay = Math.min(
+      CONFIG.RECONNECT_BASE_MS * Math.pow(2, this.reconnectAttempts),
+      CONFIG.RECONNECT_MAX_MS
+    );
+    clearTimeout(this.reconnectTimeout);
+    this.reconnectTimeout = setTimeout(() => this.connect(newUrl), delay); // ✅ délai ajouté
+  } else {
+    WSLogger.warn("WS auth définitivement invalide — abandon reconnexion");
+    this.emit({ type: "ws:status", status: "auth-failed" });
+  }
+  return;
+}
 
   this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
   this.scheduleReconnect();

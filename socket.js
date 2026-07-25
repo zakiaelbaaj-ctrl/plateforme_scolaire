@@ -1,19 +1,15 @@
 // =======================================================
-// WEBSOCKET SERVER – VERSION FINALE CLEAN
-// ✅ updateStatus appelé seulement pour les profs (explicite)
-// ✅ Debug logs supprimés
-// ✅ Validations ajoutées
-// ✅ Système étudiant-étudiant branché
+// WEBSOCKET SERVER – VERSION FINALE VALIDÉE
 // =======================================================
 import { MatchService } from "./ws/match.service.js";
 import { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
-import { db } from "./config/index.js"; // ✅ AJOUT 1 : pour charger subscriptionStatus
+import { pool } from "./config/db.js";
 import {
   onlineProfessors,
   getOnlineProfessors,
-  addProfessor,
   removeProfessor,
+  addProfessor,
   updateStatus
 } from "./ws/state/onlineProfessors.js";
 
@@ -46,8 +42,6 @@ import {
 import {
   saveVisioSession,
   handleWebRTCSignal,
-  handleCallAccepted,
-  handleStartSession,
   updateStatus as updateVisioStatus
 } from "./ws/visio.js";
 
@@ -60,10 +54,8 @@ import {
   RateLimiter
 } from "./ws/utils.js";
 
-// ✅ AJOUT 2 : Système étudiant-étudiant
 import { handleStudentMessage, handleStudentDisconnect, cleanupStudentRoom } from "./ws/etudiant/index.js";
 
-// ✅ AJOUT 2 (suite) : préfixes réservés aux messages étudiant
 const STUDENT_TYPES = new Set([
   "student:enqueue",
   "student:dequeue",
@@ -88,36 +80,34 @@ const rateLimiter = new RateLimiter(30, 1000);
 export function initWebSocketServer(server) {
   const wss = new WebSocketServer({ server });
 
-  wss.on("connection", async (ws, req) => { // ✅ async ajouté pour subscriptionStatus
+  wss.on("connection", async (ws, req) => {
     console.log("🔌 Nouvelle connexion WebSocket");
 
-    // -------------------------
     // 1️⃣ AUTHENTIFICATION JWT
-    // -------------------------
     const url = new URL(req.url, "http://localhost");
     const token = url.searchParams.get("token");
 
     if (!token) {
+      console.log("⛔ Connexion refusée: token manquant");
       ws.close(1008, "Token requis");
       return;
     }
-
-    let payload;
+     let payload;
     try {
-      payload = jwt.verify(token, process.env.JWT_SECRET);
+      const payload = jwt.verify(token, process.env.JWT_SECRET);
       ws.userId = payload.userId;
       ws.role = payload.role === "professeur" ? "prof" : payload.role;
     } catch (err) {
+      console.log("⛔ Connexion refusée: token invalide -", err.message);
       ws.close(1008, "Token invalide");
       return;
     }
 
     console.log(`✅ Authentification réussie: ${ws.userId} (${ws.role})`);
-    // -------------------------
+
     // 2️⃣ INIT WS STATE
-    // -------------------------
     ws.roomId = null;
-    ws.studentRoomId = null; // ✅ AJOUT 2 : room peer étudiant séparée
+    ws.studentRoomId = null;
     ws.status = "idle";
     ws.prenom = null;
     ws.nom = null;
@@ -125,58 +115,55 @@ export function initWebSocketServer(server) {
     ws.pays = null;
     ws.photo_identite_url = null;
     ws.lastActiveAt = new Date().toISOString();
-    ws.isAlive = true; // ✅ CORRECTION 2 — isAlive initialisé
+    ws.isAlive = true;
     ws.subscriptionStatus = null;
-    
-
-    // -------------------------
-    // 3️⃣ EVENTS
-    // -------------------------
-   ws.on("pong", () => {
-   ws.isAlive = true;
-   ws.lastActiveAt = new Date().toISOString();
-
-  if (ws.role === "prof") {
-    const prof = onlineProfessors.get(ws.userId);
-    if (prof) {
-      prof.lastActiveAt = ws.lastActiveAt;
-      onlineProfessors.set(ws.userId, prof);
-    }
-  }
-});
-    // 🔑 Génération d'un identifiant d'instance unique pour différencier les sockets d'un même userId
     ws.socketUniqueId = Math.random().toString(36).substring(2, 9) + "-" + Date.now();
 
-    // 🔒 Empêcher double connexion pour le même user (Exécuté AVANT d'attacher le handleDisconnect)
+    // 3️⃣ GESTION ANCIENNE CONNEXION (ZOMBIE)
     if (clients.has(ws.userId)) {
-        console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
-        try {
-            const oldWs = clients.get(ws.userId);
-            oldWs._isReplacedConnection = true; 
-            oldWs.terminate(); // Déclenchera le close de l'ancienne socket de manière isolée
-        } catch {}
+      console.log(`⚠️ Ancienne connexion détectée pour ${ws.userId}, fermeture...`);
+      try {
+        const oldWs = clients.get(ws.userId);
+        oldWs._isReplacedConnection = true;
+        oldWs.terminate();
+      } catch (err) {
+        console.error("❌ Erreur fermeture ancienne socket:", err.message);
+      }
     }
-    // On enregistre immédiatement la nouvelle socket comme étant l'officielle
+
+    // Enregistrement de la nouvelle socket officielle
     clients.set(ws.userId, ws);
+
+    // 4️⃣ LISTENERS
+    ws.on("pong", () => {
+      ws.isAlive = true;
+      ws.lastActiveAt = new Date().toISOString();
+
+      if (ws.role === "prof") {
+        const prof = onlineProfessors.get(ws.userId);
+        if (prof) {
+          prof.lastActiveAt = ws.lastActiveAt;
+          onlineProfessors.set(ws.userId, prof);
+        }
+      }
+    });
 
     ws.on("message", raw => onMessage(ws, raw));
     ws.on("close", () => handleDisconnect(ws));
     ws.on("error", err => console.error("❌ Erreur WS:", err));
 
-// ✅ AJOUT 1 : Charger subscriptionStatus depuis la DB (élèves/étudiants uniquement)
-    // Non bloquant : si la DB échoue, la connexion continue avec null
-   
+    // 5️⃣ CHARGEMENT STATUT ABONNEMENT
     if (ws.role === "etudiant" || ws.role === "eleve") {
       try {
-        const [user] = await db.query(
-          `SELECT subscription_status, subscription_end_date, free_trial_end FROM users WHERE id = :userId`,
-          { replacements: { userId: ws.userId }, type: db.QueryTypes.SELECT }
+        const { rows } = await pool.query(
+          `SELECT subscription_status, subscription_end_date, free_trial_end FROM users WHERE id = $1`,
+          [ws.userId]
         );
+        const user = rows[0];
         if (user) {
           const now = new Date();
           const isSubscriptionExpired =
-            user.subscription_end_date &&
-            new Date(user.subscription_end_date) < now;
+            user.subscription_end_date && new Date(user.subscription_end_date) < now;
           const isTrialExpired =
             user.subscription_status === "trial" &&
             user.free_trial_end &&
@@ -189,10 +176,9 @@ export function initWebSocketServer(server) {
         console.error("❌ Erreur chargement subscriptionStatus:", err.message);
       }
     }
-     }); // ← ferme wss.on("connection")
-  // =======================
-  // PING / PONG (Keep-Alive)
-  // =======================
+  });
+
+  // Keep-Alive Ping/Pong
   setInterval(() => {
     wss.clients.forEach(ws => {
       if (!ws.isAlive) return ws.terminate();
@@ -202,36 +188,31 @@ export function initWebSocketServer(server) {
   }, 30000);
 
   console.log("✅ WebSocket Server prêt");
-} // ← ferme initWebSocketServer
+}
 
 // =======================================================
-// MESSAGE ROUTER
+// ROUTER DE MESSAGES
 // =======================================================
 async function onMessage(ws, raw) {
-  console.log(`📩 RAW reçu de ${ws.userId}:`, raw.toString().substring(0, 100));
-  let data;
+  // Protection anti-spam Rate Limit
+  if (!rateLimiter.isAllowed(ws.userId)) {
+    return safeSend(ws, { type: "error", message: "Trop de requêtes, veuillez ralentir." });
+  }
 
+  let data;
   try {
     data = JSON.parse(raw.toString());
   } catch (err) {
-    console.error("❌ JSON invalide:", err);
-    return safeSend(ws, {
-      type: "error",
-      message: "JSON invalide"
-    });
+    return safeSend(ws, { type: "error", message: "JSON invalide" });
   }
 
-  // Tracker activité
   ws.lastActiveAt = new Date().toISOString();
-  console.log(`📩 WS message de ${ws.userId}:`, data.type);
 
-  // Validation basique
   const { valid, error } = validateMessage(data);
   if (!valid) {
     return safeSend(ws, { type: "error", message: error });
   }
 
-  // ✅ AJOUT 2 : Router les messages étudiant vers le système dédié
   if (STUDENT_TYPES.has(data.type)) {
     if (ws.role === "prof" || ws.role === "admin") {
       return safeSend(ws, { type: "error", message: "Action non autorisée." });
@@ -239,15 +220,11 @@ async function onMessage(ws, raw) {
     return handleStudentMessage(ws, data);
   }
 
-  // Émettre l'événement pour les domaines
   try {
     await handleMessage(ws, data);
   } catch (err) {
     console.error("❌ Erreur message handler:", err.message);
-    safeSend(ws, {
-      type: "error",
-      message: "Erreur serveur interne"
-    });
+    safeSend(ws, { type: "error", message: "Erreur serveur interne" });
   }
 }
 
@@ -257,273 +234,157 @@ async function onMessage(ws, raw) {
 async function handleMessage(ws, data) {
   const { type } = data;
 
-  // Identify
   if (type === "identify") return handleIdentify(ws, data);
-   if (type === "onlineProfessors") {
-  if (ws.role === "prof") {
+
+  if (type === "onlineProfessors") {
+    if (ws.role === "prof") {
+      return safeSend(ws, { type: "error", message: "Les professeurs ne peuvent pas demander cette liste." });
+    }
     return safeSend(ws, {
-      type: "error",
-      message: "Les professeurs ne peuvent pas demander cette liste."
+      type: "onlineProfessors",
+      profs: getOnlineProfessors(),
+      timestamp: new Date().toISOString()
     });
   }
 
-  console.log(`📡 Demande liste profs par ${ws.userId}`);
-
-  return safeSend(ws, {
-    type: "onlineProfessors",
-    profs: getOnlineProfessors(),
-    timestamp: new Date().toISOString()
-  });
-}
-  // Rooms
   if (type === "joinRoom") {
-  // Stocker paymentIntentId et startTime sur le WebSocket de l'élève
-  if (ws.role === "eleve" && data.paymentIntentId) {
-    ws.paymentIntentId = data.paymentIntentId;
-    ws.sessionStartTime = Date.now();
+    if (ws.role === "eleve" && data.paymentIntentId) {
+      ws.paymentIntentId = data.paymentIntentId;
+      ws.sessionStartTime = Date.now();
+    }
+    return joinRoom(ws, data, onlineProfessors, clients);
   }
-  return joinRoom(ws, data, onlineProfessors, clients);
-}
+
   if (type === "chatMessage") return chatMessage(ws, data);
   if (type === "document") return documentShare(ws, data);
 
-  // 🎨 TABLEAU BLANC (sécurisé : joinRoom obligatoire)
-if (
-  type === "tableauStroke" ||
-  type === "tableauClear" ||
-  type === "tableauUndo" ||
-  type === "tableauExport" ||
-  type === "tableauSync"
-) {
-  const activeRoomId = ws.roomId || ws.studentRoomId;
-  if (!activeRoomId) {
-    console.log(`⛔ ${type} ignoré: user ${ws.userId} n'est dans aucune room (prof ou peer)`);
-    return; 
+  if (
+    type === "tableauStroke" ||
+    type === "tableauClear" ||
+    type === "tableauUndo" ||
+    type === "tableauExport" ||
+    type === "tableauSync"
+  ) {
+    const activeRoomId = ws.roomId || ws.studentRoomId;
+    if (!activeRoomId) return;
+    data.roomId = activeRoomId;
+    if (type === "tableauStroke") return tableauStroke(ws, data);
+    if (type === "tableauClear") return tableauClear(ws, data);
+    if (type === "tableauUndo") return tableauUndo(ws, data);
+    if (type === "tableauExport") return tableauExport(ws, data);
+    if (type === "tableauSync") return tableauSync(ws, data);
   }
-  data.roomId = activeRoomId;
-  if (type === "tableauStroke") return tableauStroke(ws, data);
-  if (type === "tableauClear") return tableauClear(ws, data);
-  if (type === "tableauUndo") return tableauUndo(ws, data);
-  if (type === "tableauExport") return tableauExport(ws, data);
-  if (type === "tableauSync") return tableauSync(ws, data);
-}
-  // 📺 PARTAGE D'ÉCRAN (sécurisé : joinRoom obligatoire)
-if (type === "screenShareStart" || type === "screenShareStop") {
-  const activeRoomId = ws.roomId || ws.studentRoomId;
-  if (!activeRoomId) {
-    console.log(`⛔ ${type} ignoré: pas de room active`);
-    return;
+
+  if (type === "screenShareStart" || type === "screenShareStop") {
+    const activeRoomId = ws.roomId || ws.studentRoomId;
+    if (!activeRoomId) return;
+    data.roomId = activeRoomId;
+    if (type === "screenShareStart") return screenShareStart(ws, data);
+    if (type === "screenShareStop") return screenShareStop(ws, data);
   }
-  data.roomId = activeRoomId;
-  if (type === "screenShareStart") return screenShareStart(ws, data);
-  if (type === "screenShareStop") return screenShareStop(ws, data);
-}
-  // ------------------------------------------------------
-  // 📞 APPELER UN PROFESSEUR (avec règles métier)
-  // ------------------------------------------------------
+
   if (type === "callProfessor") {
-    if (!data.profId) {
-      return safeSend(ws, {
-        type: "error",
-        message: "profId manquant"
-      });
+    if (!data.profId) return safeSend(ws, { type: "error", message: "profId manquant" });
+    if (ws.role === "prof" || ws.role === "admin") {
+      return safeSend(ws, { type: "error", message: "Action non autorisée." });
     }
-
-    if (ws.role === "prof") {
-      return safeSend(ws, {
-        type: "error",
-        message: "Un professeur ne peut pas appeler un autre professeur."
-      });
-    }
-
-    if (ws.role === "admin") {
-      return safeSend(ws, {
-        type: "error",
-        message: "Les administrateurs ne peuvent pas appeler un professeur."
-      });
-    }
-
-    if (ws.role === "etudiant" || ws.role === "eleve") {
-      console.log(`📞 Appel: ${ws.role} ${ws.userId} → prof ${data.profId}`);
-      return callProfessor(ws, data, onlineProfessors, clients);
-    }
-
-    return safeSend(ws, {
-      type: "error",
-      message: "Vous n'êtes pas autorisé à appeler un professeur."
-    });
+    return callProfessor(ws, data, onlineProfessors, clients);
   }
 
   if (type === "acceptCall") {
-    if (!data.eleveId) {
-      return safeSend(ws, {
-        type: "error",
-        message: "eleveId manquant"
-      });
-    }
-
-    console.log(`📞 Acceptation: prof ${ws.userId} ← élève ${data.eleveId}`);
+    if (!data.eleveId) return safeSend(ws, { type: "error", message: "eleveId manquant" });
     return acceptCall(ws, onlineProfessors, clients);
   }
 
   if (type === "rejectCall") {
-    if (!data.eleveId) {
-      return safeSend(ws, {
-        type: "error",
-        message: "eleveId manquant"
-      });
-    }
-
-    console.log(`📞 Rejet: prof ${ws.userId} ← élève ${data.eleveId}`);
+    if (!data.eleveId) return safeSend(ws, { type: "error", message: "eleveId manquant" });
     return rejectCall(ws, onlineProfessors, clients);
   }
 
-  if (type === "cancelCall") {
-  return clearPendingCall(ws.userId);
-}
+  if (type === "cancelCall") return clearPendingCall(ws.userId);
 
-// ======================================================
-// 🔚 FIN DE SESSION (ACTION VOLONTAIRE : CLIC "TERMINER")
-// ======================================================
-if (type === "endSession") {
-  console.log(`🔍 endSession reçu de ${ws.userId} (${ws.role})`);
-
-  let profId = null;
-  let eleveId = null;
-
-  if (ws.role === "prof") {
-    const prof = onlineProfessors.get(ws.userId);
-
-    if (prof?.eleveId) {
-      profId = ws.userId;
-      eleveId = prof.eleveId;
-    }
-
-  } else if (ws.role === "eleve" || ws.role === "etudiant") {
-    for (const prof of onlineProfessors.values()) {
-      if (prof.eleveId === ws.userId) {
-        profId = prof.id;
-        eleveId = ws.userId;
-        break;
-      }
+  if (type === "endSession") {
+    console.log(`🔍 endSession reçu de ${ws.userId} (${ws.role})`);
+    let profId = null;
+    let eleveId = null;
+    // Extraction via roomId (ex: room_18_32)
+  const roomId = data.roomId || ws.roomId;
+  if (roomId && roomId.startsWith("room_")) {
+    const parts = roomId.split("_");
+    if (parts.length >= 3) {
+      profId = parseInt(parts[1], 10);
+      eleveId = parseInt(parts[2], 10);
     }
   }
-
-  if (profId && eleveId) {
-    console.log(`🎯 Fin session: room_${profId}_${eleveId}`);
-
-    await endSessionForDisconnect(
-      profId,
-      eleveId,
-      onlineProfessors,
-      clients
-    );
-
-  } else {
-    console.log(`⚠️ Aucun binôme actif pour ${ws.userId}`);
-
-    safeSend(ws, {
-      type: "session:stop",
-      reason: "session_ended",
-      timestamp: new Date().toISOString()
-    });
-
-    leaveRoom(ws);
-  }
-
-  // 🔁 refresh UI propre
-  broadcastOnlineProfs(onlineProfessors, clients);
-  broadcastOnlineStudents(clients);
-
-  return;
-}
-// ------------------------------------------------------
-// 🎯 MATCHING ÉTUDIANT ↔ ÉTUDIANT
-// ------------------------------------------------------
-if (type === "requestStudentMatch") {
-    const { matiere, sujet, niveau, disponibilite } = data;
-
-    if (!matiere) {
-      return safeSend(ws, {
-        type: "error",
-        message: "La matière est requise"
-      });
-    }
+  // Fallback si pas de roomId explicite
+  if (!profId || !eleveId) {
 
     if (ws.role === "prof") {
-      return safeSend(ws, {
-        type: "error",
-        message: "Les professeurs ne peuvent pas utiliser le matching."
-      });
+      const prof = onlineProfessors.get(ws.userId);
+      if (prof?.eleveId) {
+        profId = ws.userId;
+        eleveId = prof.eleveId;
+      }
+    } else if (ws.role === "eleve" || ws.role === "etudiant") {
+      for (const prof of onlineProfessors.values()) {
+        if (prof.eleveId === ws.userId) {
+          profId = prof.id;
+          eleveId = ws.userId;
+          break;
+        }
+      }
+    }
+    }
+    // 🔴 RESTAURATION CRITIQUE : Appel de la fonction de facturation
+    if (profId && eleveId) {
+      console.log(`🎯 Fin session: room_${profId}_${eleveId}`);
+      await endSessionForDisconnect(profId, eleveId, onlineProfessors, clients);
+    } else {
+      console.log(`⚠️ Aucun binôme actif pour ${ws.userId}`);
+      safeSend(ws, { type: "session:stop", reason: "session_ended", timestamp: new Date().toISOString() });
+      leaveRoom(ws);
     }
 
-    if (ws.role === "admin") {
-      return safeSend(ws, {
-        type: "error",
-        message: "Les administrateurs ne peuvent pas utiliser le matching."
-      });
-    }
+    broadcastOnlineProfs(onlineProfessors, clients);
+    broadcastOnlineStudents(clients);
+    return;
+  }
 
-    if (ws.role === "etudiant") {
+  if (type === "requestStudentMatch") {
+    const { matiere, sujet, niveau, disponibilite } = data;
+    if (!matiere) return safeSend(ws, { type: "error", message: "La matière est requise" });
+    if (ws.role === "prof" || ws.role === "admin") {
+      return safeSend(ws, { type: "error", message: "Action non autorisée." });
+    }
+    if (ws.role === "etudiant" || (ws.role === "eleve" && ws.niveau !== "primaire")) {
       ws.disponibilite = disponibilite || "now";
       return MatchService.enqueueStudent(ws, matiere, sujet, niveau);
     }
-
-    if (ws.role === "eleve" && ws.niveau === "primaire") {
-      return safeSend(ws, {
-        type: "error",
-        message: "Le matching n'est pas disponible pour les élèves du primaire."
-      });
-    }
-
-    if (ws.role === "eleve" && ws.niveau === "secondaire") {
-      ws.disponibilite = disponibilite || "now";
-      return MatchService.enqueueStudent(ws, matiere, sujet, niveau);
-    }
-
-    return safeSend(ws, {
-      type: "error",
-      message: "Vous n'êtes pas autorisé à utiliser le matching."
-    });
+    return safeSend(ws, { type: "error", message: "Matching indisponible pour votre niveau." });
   }
 
-  // ------------------------------------------------------
-  // Visio & WebRTC
-  // ------------------------------------------------------
-  if (type === "webrtcSignal") {
-    return handleWebRTCSignal(ws, data, clients);
-  }
-
-  if (type === "visioDuration") {
-    return saveVisioSession(ws, data, onlineProfessors);
-  }
-
-  if (type === "updateStatus") {
-    return updateVisioStatus(ws, data, onlineProfessors);
-  }
+  if (type === "webrtcSignal") return handleWebRTCSignal(ws, data, clients);
+  if (type === "visioDuration") return saveVisioSession(ws, data, onlineProfessors);
+  if (type === "updateStatus") return updateVisioStatus(ws, data, onlineProfessors);
   if (type === "ping") return safeSend(ws, { type: "pong" });
-
-  console.log("ℹ️ Message inconnu:", type);
 }
 
 // =======================================================
 // IDENTIFY
 // =======================================================
-  async function handleIdentify(ws, data) {
-  console.log("📋 Identify reçu pour:", ws.userId, "role:", ws.role, "prenom:", data.prenom);
+async function handleIdentify(ws, data) {
   const { prenom, nom, ville, pays, niveau, matiere, photo_identite_url } = data;
   ws.prenom = prenom || "";
   ws.nom = nom || "";
   ws.matiere = matiere || null;
   ws.niveau = niveau || null;
-  ws.userName = `${ws.prenom || ""} ${ws.nom || ""}`.trim() || ws.userId;
+  ws.userName = `${ws.prenom} ${ws.nom}`.trim() || String(ws.userId);
   ws.ville = ville || "";
   ws.pays = pays || "";
   ws.photo_identite_url = photo_identite_url || null;
   ws.identified = true;
-  console.log(`🆔 Identify: ${ws.userId} (${ws.role}) → ${ws.prenom} ${ws.nom}`);
 
-  // 1️⃣ CAS PROFESSEUR
+  // 1️⃣ PROFESSEUR
   if (ws.role === "prof") {
     addProfessor({
       id: ws.userId,
@@ -532,7 +393,7 @@ if (type === "requestStudentMatch") {
       nom: ws.nom,
       ville: ws.ville,
       pays: ws.pays,
-      matiere: ws.matiere || null,
+      matiere: ws.matiere,
       photo_identite_url: ws.photo_identite_url,
       connectedAt: new Date().toISOString(),
       sessionStartedAt: null,
@@ -541,53 +402,35 @@ if (type === "requestStudentMatch") {
       ws
     });
 
-    console.log(`🎓 Prof enregistré: ${ws.userId}`);
-    
-    // On notifie UNIQUEMENT les élèves qu'un nouveau prof est là
     broadcastOnlineProfs(onlineProfessors, clients);
 
-    // 🔔 Notifications en attente
     try {
-      const { db } = await import("./config/index.js");
-      const notifications = await db.query(
-        `SELECT * FROM notifications WHERE user_id = :profId AND is_read = false ORDER BY created_at DESC`,
-        { replacements: { profId: ws.userId }, type: db.QueryTypes.SELECT }
+      const { rows } = await pool.query(
+        `SELECT * FROM notifications WHERE user_id = $1 AND is_read = false ORDER BY created_at DESC`,
+        [ws.userId]
       );
-      for (const notif of notifications) {
-        safeSend(ws, notif.data);
-        await db.query(`UPDATE notifications SET is_read = true WHERE id = :id`, { replacements: { id: notif.id } });
+      for (const notif of rows) {
+        const notifPayload = typeof notif.data === "string" ? JSON.parse(notif.data) : notif.data;
+        safeSend(ws, notifPayload);
+        await pool.query(`UPDATE notifications SET is_read = true WHERE id = $1`, [notif.id]);
       }
     } catch (err) {
       console.error("❌ Erreur notifications prof:", err.message);
     }
     return;
-     }
-  // 2️⃣ CAS ÉTUDIANT
-    const isReconnected = clients.has(ws.userId) && clients.get(ws.userId) !== ws;
+  }
 
-    if (!isReconnected) {
-    if (ws.role === "etudiant") {
-        console.log("=== HANDLE IDENTIFY ===");
-        console.log("user:", ws.userId);
+  // 2️⃣ ÉTUDIANT
+  if (ws.role === "etudiant") {
+    broadcastOnlineStudents(clients);
+    return;
+  }
 
-        console.log("Avant broadcast");
-        broadcastOnlineStudents(clients);
-        console.log("Après broadcast");
-    } else if (ws.role === "eleve" || ws.role === "prof") {
-        broadcastOnlineProfs(onlineProfessors, clients);
-    }
-    }
-  // 3️⃣ CAS ÉLÈVE (Segmentation stricte)
+  // 3️⃣ ÉLÈVE
   if (ws.role === "eleve") {
-    console.log(`👨‍🎓 Élève enregistré: ${ws.userId}`);
-    // L'élève ne reçoit QUE la liste des professeurs
-    const profs = getOnlineProfessors();
-    console.log("🔍 getOnlineProfessors() retourne :", profs);
-    console.log("🔍 onlineProfessors MAP :", [...onlineProfessors.entries()]);
-   
     safeSend(ws, {
       type: "onlineProfessors",
-      profs,
+      profs: getOnlineProfessors(),
       timestamp: new Date().toISOString()
     });
     return;
@@ -595,76 +438,58 @@ if (type === "requestStudentMatch") {
 }
 
 // =======================================================
-// DISCONNECT — ✅ CORRECTION 1 : nommée handleDisconnect
+// DISCONNECT HANDLER
 // =======================================================
 async function handleDisconnect(ws) {
-  console.log(`❌ Déconnexion: ${ws.userId} (${ws.role})`);
-  
-  // ✅ CORRECTION CRITIQUE : On compare l'instance unique de la socket
+  if (ws._isReplacedConnection) return;
+
   const activeWs = clients.get(ws.userId);
   const isActiveConnection = activeWs && activeWs.socketUniqueId === ws.socketUniqueId;
-  // 1️⃣ LOGIQUE POUR LES PROFESSEURS
+
   if (ws.role === "prof") {
-    if (isActiveConnection) {
+  if (isActiveConnection) {
     updateStatus(ws.userId, "offline");
     const prof = onlineProfessors.get(ws.userId);
     const eleveIdSnapshot = prof?.eleveId ?? null;
 
     if (prof && eleveIdSnapshot) {
       console.log(`🔄 Prof ${ws.userId} déconnecté → libère élève ${eleveIdSnapshot}`);
-      endSessionForDisconnect(ws.userId, eleveIdSnapshot, onlineProfessors, clients);
+      await endSessionForDisconnect(ws.userId, eleveIdSnapshot, onlineProfessors, clients); // ✅ await ajouté
     }
     removeProfessor(ws.userId);
     clearPendingCall(ws.userId);
-  }else {
-      console.log(`🔕 Déconnexion ignorée (socket zombie) pour prof ${ws.userId} — reconnexion déjà en place`);
-    }
-  }
-  // 2️⃣ LOGIQUE POUR LES ÉLÈVES ET ÉTUDIANTS
-  if (ws.role === "eleve" || ws.role === "etudiant") {
-    if (isActiveConnection) {
-    // Libérer le prof si l'utilisateur était en session avec lui
+  } else {
+    console.log(`🔕 Déconnexion ignorée (socket zombie) pour prof ${ws.userId} — reconnexion déjà en place`);
+     }
+     }
+      if (ws.role === "eleve" || ws.role === "etudiant") {
+  if (isActiveConnection) {
     for (const prof of onlineProfessors.values()) {
       if (prof.eleveId === ws.userId) {
         console.log(`🔄 Utilisateur ${ws.userId} déconnecté → libère prof ${prof.id}`);
-        endSessionForDisconnect(prof.id, ws.userId, onlineProfessors, clients);
+        await endSessionForDisconnect(prof.id, ws.userId, onlineProfessors, clients); // ✅ await ajouté
       }
     }
 
-    // Retrait du matching et nettoyage Peer-to-Peer
     if (ws.role === "etudiant" && MatchService?.removeStudent) {
       MatchService.removeStudent(ws.userId);
     }
     await handleStudentDisconnect(ws);
   } else {
-      console.log(`🔕 Déconnexion ignorée (socket zombie) pour ${ws.role} ${ws.userId} — reconnexion déjà en place`);
-   // 🟢 AJOUT : même pour un socket zombie, si ce ws était encore accroché à une room
-        // étudiant (cas d'une reconnexion pendant une session active), il faut le
-        // détacher pour ne pas laisser un membre fantôme bloquer la room.
-        if (ws.role === "etudiant") {
-            cleanupStudentRoom(ws);
+    console.log(`🔕 Déconnexion ignorée (socket zombie) pour ${ws.role} ${ws.userId} — reconnexion déjà en place`);
+    if (ws.role === "etudiant") {
+      cleanupStudentRoom(ws);
     }
   }
-  }
-  // 3️⃣ NETTOYAGE SYSTÈME (Rooms & State)
+}
+// ✅ 3️⃣ NETTOYAGE SYSTÈME restauré (manquait entièrement)
   if (isActiveConnection) {
-  leaveRoom(ws);
+    leaveRoom(ws);
   }
   cleanupOnDisconnect(ws, {
     clients,
     onlineProfessors,
     rooms: getRooms()
   });
-
-  // 4️⃣ SUPPRESSION DE LA MAP (Indispensable avant le broadcast)
-  if (isActiveConnection) {
-  clients.delete(ws.userId);
-  }
-// 5️⃣ (supprimé) — cleanupOnDisconnect (étape 3️⃣) gère déjà les broadcasts
-// pour les 3 rôles (etudiant, prof, eleve). Ce bloc dupliquait l'envoi.
-
-   }
-// =======================================================
-// EXPORTS
-// =======================================================
+}
 export { clients, onlineProfessors, safeSend, broadcastOnlineProfs };

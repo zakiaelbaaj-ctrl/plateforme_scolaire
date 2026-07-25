@@ -4,7 +4,7 @@
 
 import { safeSend } from "./utils.js";
 import { MatchRegistry } from "./match.registry.js";
-import { TwilioService } from "./twilio.service.js";
+import { LiveKitService } from "./livekit.service.js";
 
 class MatchServiceClass {
 
@@ -111,7 +111,7 @@ class MatchServiceClass {
   bestPair.a.ws.roomId = roomId;
   bestPair.b.ws.roomId = roomId;
 
-  TwilioService.createRoom(roomId);
+  LiveKitService.createRoom(roomId);
 
   // 4️⃣ On notifie les deux étudiants
   safeSend(bestPair.a.ws, {
