@@ -118,7 +118,7 @@ app.use("/api/v1/webrtc", webrtcRoutes);
 app.use("/api/v1/appels", appelsRoutes);
 app.use("/api/v1/ratings", ratingRoutes);
 app.use("/api/v1/push", pushRoutes);
-app.use("/api/v1/admin", tempMigrationRoutes);
+app.use("/api/v1/migration-temp", tempMigrationRoutes);
 
 
 // =======================================================
