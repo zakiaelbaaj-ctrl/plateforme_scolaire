@@ -109,4 +109,24 @@ router.get("/check-encoding", async (req, res) => {
   }
 });
 
+router.get("/full-users-check", async (req, res) => {
+  const providedSecret = req.headers["x-migration-secret"];
+
+  if (!MIGRATION_SECRET || providedSecret !== MIGRATION_SECRET) {
+    return res.status(403).json({ success: false, message: "Non autorisé" });
+  }
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT id, prenom, nom, role, email, matiere::text, niveau::text
+      FROM users
+      ORDER BY id
+    `);
+
+    return res.json({ success: true, total: rows.length, users: rows });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 export default router;
