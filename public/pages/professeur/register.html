@@ -66,11 +66,9 @@
       </div>
 
       <div class="form-group">
-        <label for="matiere">Matière enseignée</label>
-        <select id="matiere" name="matiere" required>
-          <option value="">-- Choisir une matière --</option>
-
-          <optgroup label="Général">
+      <label for="matiere">Matière(s) enseignée(s)</label>
+      <select id="matiere" name="matiere[]" multiple required>
+      <optgroup label="Général">
             <option value="Mathématiques">Mathématiques</option>
             <option value="Français">Français</option>
             <option value="Anglais">Anglais</option>

@@ -394,6 +394,7 @@ async function handleIdentify(ws, data) {
       ville: ws.ville,
       pays: ws.pays,
       matiere: ws.matiere,
+      niveau: ws.niveau,
       photo_identite_url: ws.photo_identite_url,
       connectedAt: new Date().toISOString(),
       sessionStartedAt: null,

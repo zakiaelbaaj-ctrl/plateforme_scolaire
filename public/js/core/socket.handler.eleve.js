@@ -80,10 +80,17 @@ case "callRejected":
   break;
       case "invoice:ready": {
   console.log("📥 Facture disponible:", data.url);
-  // Afficher notification avec lien de téléchargement
-  const container = document.getElementById("invoice-container") 
+
+  // 🆕 On sauvegarde la facture pour pouvoir l'afficher même après une redirection
+  localStorage.setItem("pendingInvoice", JSON.stringify({
+    url: data.url,
+    montant: data.montant,
+    dureeMinutes: data.dureeMinutes
+  }));
+
+  const container = document.getElementById("invoice-container")
                  ?? document.getElementById("stripe-status-message");
-  
+
   if (container) {
     container.innerHTML = `
       <div class="invoice-box">
@@ -96,7 +103,7 @@ case "callRejected":
     `;
   }
   break;
-   }
+}
   // ✔️ Ces events terminent la session ET stoppent le timer
     case "callEnded":
     case "session:stop":
@@ -227,7 +234,14 @@ case "screenShareStopped": {
   onTransportOpen() {
     AppState.setWsConnected(true);
     if (AppState.currentUser?.id) {
-      socketService.send({ type: "identify", ...AppState.currentUser });
+      console.log("📸 PHOTO DANS AppState :", AppState.currentUser.photo_identite_url);
+      console.log("🧑 USER COMPLET :", AppState.currentUser);
+      socketService.send({
+  type: "identify",
+  ...AppState.currentUser,
+  photo_identite_url: AppState.currentUser.photo_identite_url
+});
+
     }
   }
 

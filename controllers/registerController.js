@@ -104,8 +104,8 @@ export async function registerController(req, res) {
       is_active: finalIsActive, 
       stripe_customer_id: stripeCustomerId,
       has_payment_method: false,
-      matiere: matiere || null,
-      niveau: niveau || null
+      matiere: matiere ? (Array.isArray(matiere) ? matiere : [matiere]) : null,
+      niveau: niveau ? (Array.isArray(niveau) ? niveau : [niveau]) : null
     });
 
     // ------------------------------

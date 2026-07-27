@@ -14,8 +14,8 @@ router.get("/me", requireAuth, async (req, res) => {
     const userId = req.user.id;
 
     const { rows } = await pool.query(
-      `SELECT id, prenom, nom, email, role, ville, pays, matiere, sujet, 
-              stripe_customer_id, has_payment_method -- ✅ AJOUTE CES DEUX COLONNES
+      `SELECT id, prenom, nom, email, role, ville, pays, matiere, niveau, sujet, 
+              stripe_customer_id, has_payment_method, photo_identite_url
        FROM users
        WHERE id = $1`,
       [userId]
@@ -37,13 +37,10 @@ router.get("/me", requireAuth, async (req, res) => {
 // PUT /api/v1/users/profile
 // ======================================================
 router.put("/", requireAuth, async (req, res) => {
-
   const userId = req.user.id;
-
-  const { ville, pays, matiere, sujet } = req.body;
+  const { ville, pays, matiere, niveau, sujet } = req.body;
 
   try {
-
     const { rows } = await pool.query(
       `SELECT role FROM users WHERE id = $1`,
       [userId]
@@ -53,34 +50,33 @@ router.put("/", requireAuth, async (req, res) => {
       return res.status(404).json({ message: "Utilisateur introuvable" });
     }
 
-    const role = rows[0].role;
+     const role = rows[0].role;
+     const finalSujet = role === "eleve" ? (sujet ?? null) : null;
+     const finalNiveau = niveau
+      ? JSON.stringify(Array.isArray(niveau) ? niveau : [niveau])
+      : null;
+      // ✅ AJOUT — même traitement pour matiere (SQL brut = besoin de JSON.stringify)
+    const finalMatiere = matiere
+      ? JSON.stringify(Array.isArray(matiere) ? matiere : [matiere])
+      : null;
 
-    const finalSujet = role === "eleve" ? sujet : null;
-
+    // ✅ Toutes les valeurs non fournies passent explicitement à null (pas undefined)
     await pool.query(
       `UPDATE users
-       SET ville = $1,
-           pays = $2,
-           matiere = $3,
-           sujet = $4
-       WHERE id = $5`,
-      [ville, pays, matiere, finalSujet, userId]
+       SET ville = COALESCE($1, ville),
+           pays = COALESCE($2, pays),
+           matiere = COALESCE($3, matiere),
+           niveau = COALESCE($4, niveau),
+           sujet = COALESCE($5, sujet)
+       WHERE id = $6`,
+      [ville ?? null, pays ?? null, finalMatiere, finalNiveau, finalSujet, userId]
     );
 
-    res.json({
-      success: true
-    });
+    res.json({ success: true });
 
   } catch (err) {
-
     console.error("❌ update profile:", err.message);
-
-    res.status(500).json({
-      message: "Erreur DB"
-    });
-
+    res.status(500).json({ message: "Erreur DB" });
   }
-
 });
-
 export default router;

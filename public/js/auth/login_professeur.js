@@ -45,10 +45,8 @@ async function loginProfesseur(event) {
 
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value.trim();
-  const matiere = document.getElementById("matiere").value.trim();
-  const niveau = document.getElementById("niveau").value.trim();
 
-  if (!username || !password || !matiere || !niveau) {
+  if (!username || !password) {
     showError("Tous les champs sont requis");
     return;
   }
@@ -76,10 +74,6 @@ async function loginProfesseur(event) {
     if (!accessToken) throw new Error("Token absent dans la rÃÂÃÂ©ponse serveur");
     if (!currentUser || !["prof", "professeur"].includes(currentUser.role))
       throw new Error("Cet utilisateur n'est pas professeur");
-
-    // Enrichir utilisateur
-    currentUser.matiere = matiere;
-    currentUser.niveau = niveau;
 
     // Stockage
     localStorage.setItem("token", accessToken);

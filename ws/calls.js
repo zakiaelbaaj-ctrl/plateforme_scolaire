@@ -24,20 +24,23 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
       message: "Action non autorisée"
     });
   }
-   // 🔒 Vérification du moyen de paiement — relecture DB (valeur fraîche)
-const { rows } = await pool.query(
-  `SELECT has_payment_method FROM users WHERE id = $1`,
-  [eleveId]
-);
-const hasPaymentMethod = rows[0]?.has_payment_method ?? false;
-if (!hasPaymentMethod) {
-  return safeSend(ws, {
-    type: "error",
-    code: "NO_PAYMENT_METHOD",
-    message: "⚠️ Aucun moyen de paiement enregistré. Veuillez ajouter une carte bancaire avant d'appeler un professeur."
-  });
-}
-  
+
+  // 🔒 Relecture DB fraîche : paiement + matière/niveau actuels
+  const { rows } = await pool.query(
+    `SELECT has_payment_method, matiere, niveau FROM users WHERE id = $1`,
+    [eleveId]
+  );
+  const eleveData = rows[0];
+  const hasPaymentMethod = eleveData?.has_payment_method ?? false;
+
+  if (!hasPaymentMethod) {
+    return safeSend(ws, {
+      type: "error",
+      code: "NO_PAYMENT_METHOD",
+      message: "⚠️ Aucun moyen de paiement enregistré. Veuillez ajouter une carte bancaire avant d'appeler un professeur."
+    });
+  }
+
   const profIdNum = parseInt(profId, 10);
   if (isNaN(profIdNum)) {
     return safeSend(ws, {
@@ -51,6 +54,29 @@ if (!hasPaymentMethod) {
     return safeSend(ws, {
       type: "error",
       message: "Professeur hors ligne"
+    });
+  }
+
+  // 🔒 Vérification matière/niveau — défense en profondeur
+  const eleveMatiere = Array.isArray(eleveData?.matiere) ? eleveData.matiere[0] : eleveData?.matiere;
+  const eleveNiveau = Array.isArray(eleveData?.niveau) ? eleveData.niveau[0] : eleveData?.niveau;
+
+  if (!eleveMatiere || !eleveNiveau) {
+    return safeSend(ws, {
+      type: "error",
+      code: "PROFILE_INCOMPLETE",
+      message: "Veuillez choisir votre matière et votre niveau avant d'appeler un professeur."
+    });
+  }
+
+  const profMatieres = Array.isArray(prof.matiere) ? prof.matiere : (prof.matiere ? [prof.matiere] : []);
+  const profNiveaux = Array.isArray(prof.niveau) ? prof.niveau : (prof.niveau ? [prof.niveau] : []);
+
+  if (!profMatieres.includes(eleveMatiere) || !profNiveaux.includes(eleveNiveau)) {
+    return safeSend(ws, {
+      type: "error",
+      code: "MATIERE_NIVEAU_MISMATCH",
+      message: "Ce professeur n'enseigne pas votre matière ou votre niveau."
     });
   }
 

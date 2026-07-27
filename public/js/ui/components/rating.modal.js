@@ -164,15 +164,9 @@ export function openRatingModal(profName, profId) {
 // ======================================================
 
 export function closeRatingModal() {
+  const modal = document.getElementById("rating-modal");
+  if (modal) modal.style.display = "none";
 
-  const modal =
-    document.getElementById("rating-modal");
-
-
-  if (modal) {
-    modal.style.display = "none";
-  }
-// 🆕 Reset message d'erreur
   const errorEl = document.getElementById("rating-error");
   if (errorEl) {
     errorEl.style.display = "none";
@@ -181,16 +175,75 @@ export function closeRatingModal() {
 
   currentRatingProfId = null;
   currentRatingValue  = 0;
-
-  // 🔓 Autorise une prochaine session
   ratingVisible = false;
 
+  console.log("⭐ Modal notation fermée");
 
-  console.log(
-    "⭐ Modal notation fermée"
-  );
+  // 🆕 Si une facture est en attente, on l'affiche avant de rediriger
+  const pendingInvoiceRaw = localStorage.getItem("pendingInvoice");
+
+  if (pendingInvoiceRaw) {
+    localStorage.removeItem("pendingInvoice");
+    const invoice = JSON.parse(pendingInvoiceRaw);
+    showInvoiceBeforeRedirect(invoice);
+    return; // ⛔ on ne redirige pas tout de suite
+  }
+
+  window.location.href = "/pages/eleve/profs_en_ligne.html";
 }
 
+// 🆕 Petite modale bloquante pour laisser le temps à l'élève de télécharger sa facture
+function showInvoiceBeforeRedirect(invoice) {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 10000;
+  `;
+
+  overlay.innerHTML = `
+    <div style="position:relative; background:var(--ink-soft); border:1px solid var(--border-light);
+                color:var(--text-primary); padding:32px; border-radius:16px; max-width:380px; width:90%;
+                text-align:center; font-family: var(--font-body, system-ui, sans-serif);">
+      <button id="invoice-close-btn"
+        style="position:absolute; top:12px; right:14px; background:none; border:none;
+               color:var(--text-muted, #888); font-size:20px; cursor:pointer; line-height:1;">
+        ✕
+      </button>
+
+      <p style="font-family: var(--font-display); font-size:18px; margin-bottom:8px;">
+        📥 <strong>Votre facture est prête</strong>
+      </p>
+      <p style="font-size:14px; color:var(--text-secondary); margin-bottom:24px;">
+        Durée : ${invoice.dureeMinutes} min — Montant : ${invoice.montant}€
+      </p>
+
+       <a href="${invoice.url}" target="_blank"
+          style="display:block; background:var(--accent); color:#fff; text-decoration:none;
+          padding:10px 18px; border-radius:8px; font-weight:600; font-size:14px;
+          margin-bottom:12px;">
+       📥 Télécharger ma facture
+         </a>
+
+      <button id="invoice-continue-btn"
+        style="background:var(--ink-muted); border:1px solid var(--border-light); color:var(--text-primary);
+               padding:10px 18px; border-radius:8px; cursor:pointer; width:100%; font-size:14px; font-weight:600;
+               font-family: var(--font-body);">
+        🔎 Trouver un autre professeur
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById("invoice-close-btn").onclick = () => {
+    overlay.remove();
+  };
+
+  document.getElementById("invoice-continue-btn").onclick = () => {
+    overlay.remove();
+    window.location.href = "/pages/eleve/profs_en_ligne.html";
+  };
+}
 // ======================================================
 // SUBMIT
 // ======================================================

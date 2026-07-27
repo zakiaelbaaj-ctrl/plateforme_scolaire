@@ -1,23 +1,31 @@
-# Ne pas envoyer les dépendances
-node_modules/
-.env.local
-# Ne pas envoyer les variables secrètes (DB, JWT, etc.)
+﻿# Environnement
 .env
 .env.render.backup
-.env.*
-# Environnements virtuels Python
-.venv/
+.env.*.local
+
+# Dépendances
+node_modules/
 public/venv/
-backend/venv/
-turn-render/
-Archives_plateforme/
-backups/
-plateforme_educative/
-.env.render.backup
- invoices/ 
-invoices/*.pdf
+
+# Fichiers de sauvegarde
 *.backup
 *.bak
-connectedProfs
-# Fichiers uploadés par les utilisateurs
+
+# Uploads utilisateurs
 uploads/
+
+# Fichiers générés à l'exécution
+connectedProfs
+invoices/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

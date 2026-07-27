@@ -9,6 +9,57 @@
   <link rel="stylesheet" href="/css/dashboard_eleve.css">
 
   <style>
+    .profile-completion-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.profile-completion-modal {
+  background: var(--ink-soft);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 420px;
+  width: 90%;
+  color: var(--text-primary);
+}
+
+.profile-completion-modal h2 {
+  font-family: var(--font-display);
+  margin-bottom: 8px;
+}
+
+.profile-completion-modal p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.profile-completion-modal .form-group {
+  margin-bottom: 16px;
+}
+
+.profile-completion-modal label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.profile-completion-modal select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--ink-muted);
+  color: var(--text-primary);
+  font-size: 14px;
+}
     body {
       padding: 2rem;
       background: var(--ink);
@@ -218,6 +269,40 @@
   </div>
 
   <div id="paymentBanner"></div>
+  <div id="profileCompletionOverlay" class="profile-completion-overlay" style="display:none;">
+  <div class="profile-completion-modal">
+    <h2>🎯 Avant de commencer</h2>
+    <p>Choisissez votre matière et votre niveau pour être mis en relation avec le bon professeur.</p>
+
+    <div class="form-group">
+      <label for="pcMatiere">Matière</label>
+      <select id="pcMatiere" required>
+        <option value="">-- Choisir une matière --</option>
+        <option value="Mathématiques">Mathématiques</option>
+        <option value="Français">Français</option>
+        <option value="Anglais">Anglais</option>
+        <option value="Histoire-Géographie">Histoire-Géographie</option>
+        <option value="Physique-Chimie">Physique-Chimie</option>
+        <option value="SVT">SVT</option>
+        <option value="Informatique">Informatique</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="pcNiveau">Niveau scolaire</label>
+      <select id="pcNiveau" required>
+        <option value="">-- Choisir votre niveau --</option>
+        <option value="Primaire">Primaire</option>
+        <option value="Collège">Collège</option>
+        <option value="Lycée">Lycée</option>
+        <option value="Supérieur">Supérieur</option>
+      </select>
+    </div>
+
+    <button id="pcSubmitBtn" class="payment-banner__btn" style="width:100%;">Valider</button>
+    <div id="pcErrorDiv" style="color:var(--danger); margin-top:10px; font-size:13px;"></div>
+  </div>
+</div>
 
   <div id="profList" class="prof-grid">
     <p class="prof-empty">Chargement…</p>
@@ -258,7 +343,11 @@
     import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
     import { getUserProfile } from "/js/services/user.service.js";
     import { openSetupSession } from "/js/services/stripe.service.js";
-
+    
+    // ✅ AJOUT — nécessaire pour l'appel PUT /api/v1/users/profile
+   const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "http://localhost:4000"
+  : "";
     // Statuts réellement utilisés côté backend (voir ws/visio.js) :
     // "disponible", "appel_recu", "en_appel", "en_session", "occupe", "absent", "pending"
     const STATUS_CLASS = {
@@ -284,6 +373,76 @@
     // Rempli dans init(), utilisé par renderProfList() pour savoir si un
     // clic doit être autorisé (même règle que canCall dans dashboard.js)
     let currentUserData = null;
+function showProfileCompletionModal() {
+  const overlay = document.getElementById("profileCompletionOverlay");
+  overlay.style.display = "flex";
+  // ✅ Pré-remplissage avec les valeurs actuelles si elles existent
+  const matiereSelect = document.getElementById("pcMatiere");
+  const niveauSelect = document.getElementById("pcNiveau");
+
+  if (currentUserData?.matiere) {
+  const currentMatiere = Array.isArray(currentUserData.matiere)
+    ? currentUserData.matiere[0]
+    : currentUserData.matiere;
+  matiereSelect.value = currentMatiere || "";
+}
+  if (currentUserData?.niveau) {
+    const currentNiveau = Array.isArray(currentUserData.niveau)
+      ? currentUserData.niveau[0]
+      : currentUserData.niveau;
+    niveauSelect.value = currentNiveau || "";
+  }
+
+  const submitBtn = document.getElementById("pcSubmitBtn");
+  const errorDiv = document.getElementById("pcErrorDiv");
+
+  submitBtn.addEventListener("click", async () => {
+    const matiere = document.getElementById("pcMatiere").value;
+    const niveau = document.getElementById("pcNiveau").value;
+
+    if (!matiere || !niveau) {
+      errorDiv.textContent = "Veuillez choisir une matière et un niveau.";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Enregistrement...";
+    errorDiv.textContent = "";
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/users/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${AppState.token}`
+        },
+        body: JSON.stringify({ matiere, niveau })
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Erreur lors de l'enregistrement");
+      }
+
+      // Mise à jour locale de l'utilisateur courant
+      currentUserData.matiere = [matiere];
+      currentUserData.niveau = [niveau];
+      AppState.setCurrentUser(currentUserData);
+      localStorage.setItem("currentUser", JSON.stringify(currentUserData));
+
+      overlay.style.display = "none";
+
+      // Rafraîchir la liste des profs maintenant filtrée
+      renderProfList(AppState.onlineProfessors);
+
+    } catch (err) {
+      console.error("Erreur completion profil:", err);
+      errorDiv.textContent = err.message || "Une erreur est survenue.";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Valider";
+    }
+  }, { once: true }); // évite les doubles écouteurs si la modal est réaffichée
+}
 
     function renderPaymentBanner() {
       const el = document.getElementById("paymentBanner");
@@ -329,30 +488,60 @@
     }
 
     function renderProfList(profs = []) {
-      const container = document.getElementById("profList");
-      container.innerHTML = "";
+  const container = document.getElementById("profList");
+  container.innerHTML = "";
 
-      if (!profs.length) {
-        container.innerHTML = `<p class="prof-empty">Aucun professeur en ligne pour le moment.</p>`;
-        return;
-      }
+  // ✅ Filtrage selon matière/niveau de l'élève
+  const eleveMatiere = Array.isArray(currentUserData?.matiere)
+    ? currentUserData.matiere[0]
+    : currentUserData?.matiere;
+  const eleveNiveau = Array.isArray(currentUserData?.niveau)
+    ? currentUserData.niveau[0]
+    : currentUserData?.niveau;
 
-      profs.forEach((p) => {
+  const filteredProfs = profs.filter((p) => {
+    if (!eleveMatiere || !eleveNiveau) return false;
+    const profMatieres = Array.isArray(p.matiere) ? p.matiere : (p.matiere ? [p.matiere] : []);
+    const profNiveaux = Array.isArray(p.niveau) ? p.niveau : (p.niveau ? [p.niveau] : []);
+    return profMatieres.includes(eleveMatiere) && profNiveaux.includes(eleveNiveau);
+  });
+
+  if (!filteredProfs.length) {
+    container.innerHTML = `<p class="prof-empty">Aucun professeur disponible pour ${eleveMatiere || "cette matière"} - ${eleveNiveau || "ce niveau"} pour le moment.</p>`;
+    return;
+  }
+
+  filteredProfs.forEach((p) => {
         const statusClass = STATUS_CLASS[p.status] || "status-offline";
         const statusLabel = STATUS_LABEL[p.status] || p.status || "—";
         const nom = `${p.prenom ?? ""} ${p.nom ?? ""}`.trim() || "Professeur";
         const initiale = nom.charAt(0).toUpperCase();
+        console.log("photo_identite_url bruit:", p.photo_identite_url);   // 👈 AJOUTER ICI
+// 🔥 Nouveau bloc avatar : corrige les backslashes + reconstruit l’URL complète
+let avatarHtml = "";
 
-        // Repli en initiales (cohérent avec .prof-item du dashboard) plutôt
-        // qu'une image /img/default-avatar.png qui n'existe pas sur le disque.
-        const photoHtml = p.photo_identite_url
-          ? `<img
-               src="${p.photo_identite_url}"
-               class="prof-photo"
-               alt="Photo de ${nom}"
-               onerror="this.replaceWith(Object.assign(document.createElement('div'), { className: 'prof-photo-fallback', textContent: '${initiale}' }));"
-             >`
-          : `<div class="prof-photo-fallback">${initiale}</div>`;
+if (p.photo_identite_url) {
+  const normalizedPath = p.photo_identite_url.replace(/\\/g, "/");
+
+  // Si c'est déjà une URL complète (http:// ou https://), on l'utilise telle quelle
+  const fullUrl = /^https?:\/\//i.test(normalizedPath)
+    ? normalizedPath
+    : `${API_URL}/${normalizedPath.replace(/^\/+/, "")}`;
+
+  avatarHtml = `
+    <img
+      src="${fullUrl}"
+      class="prof-photo"
+      alt="Photo de ${nom}"
+      onerror="this.replaceWith(Object.assign(
+        document.createElement('div'),
+        { className: 'prof-photo-fallback', textContent: '${initiale}' }
+      ))"
+    >
+  `;
+} else {
+  avatarHtml = `<div class="prof-photo-fallback">${initiale}</div>`;
+}
 
         // Même règle que canCall dans dashboard.js : il faut que le prof
         // soit marqué disponible ET que l'élève ait une carte enregistrée.
@@ -361,9 +550,9 @@
         const card = document.createElement("div");
         card.className = `prof-card ${canCall ? "prof-card--clickable" : "prof-card--disabled"}`;
         card.innerHTML = `
-          ${photoHtml}
+          ${avatarHtml}
           <div class="prof-name">${nom}</div>
-          <div class="prof-matiere">${p.matiere || "—"}</div>
+          <div class="prof-matiere">${Array.isArray(p.matiere) ? p.matiere.join(", ") : (p.matiere || "—")}</div>
           <div class="prof-location">${[p.ville, p.pays].filter(Boolean).join(", ")}</div>
           <div class="prof-status ${statusClass}">${statusLabel}</div>
           <div class="prof-connected-since">${connectedSinceLabel(p.connectedAt)}</div>
@@ -401,11 +590,8 @@
       AppState.token = localStorage.getItem("token");
 
       renderPaymentBanner();
-
-      // Envoie déjà "identify" en interne au bon moment (TRANSPORT_OPEN) -
-      // même logique que dashboard.js élève, pas de duplication de code.
-      
-
+      // ✅ MODIFIÉ : la modal s'affiche toujours, pas juste si vide
+      showProfileCompletionModal();
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       socketService.connect(`${wsProtocol}//${window.location.host}?token=${AppState.token}`);
 

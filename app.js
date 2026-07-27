@@ -33,6 +33,7 @@ import whiteboardRoutes from "./routes/whiteboard.routes.js";
 import stripeStudentRoutes from "./routes/v1/stripe/stripe.student.routes.js";
 import ratingRoutes from "./routes/v1/eleves/ratings.routes.js";
 import pushRoutes from "./routes/v1/push/push.routes.js";
+import migrateRoute from "./routes/v1/admin/migrate.route.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -205,6 +206,7 @@ app.get("/stripe/refresh", (req, res) => {
 app.get(['/6babaf8f211263c914e3ecc3691fff46', '/.well-known/*'], (req, res) => {
     res.status(204).end(); // Réponse "No Content" propre
 });
+app.use("/internal-migrate", migrateRoute);
 app.use("/api/v1/auth", signupRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/eleves", elevesRoutes);

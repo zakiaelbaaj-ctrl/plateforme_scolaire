@@ -32,7 +32,7 @@ const User = sequelize.define("User", {
   telephone: { type: DataTypes.STRING(20) },
   ville: { type: DataTypes.STRING(255) },
   pays: { type: DataTypes.STRING(255), defaultValue: "France"},
-  matiere: { type: DataTypes.STRING(100) },
+  matiere: { type: DataTypes.JSON, allowNull: true },
   niveau: {
   type: DataTypes.JSON,
   allowNull: true

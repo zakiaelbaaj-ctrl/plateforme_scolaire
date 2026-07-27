@@ -30,6 +30,12 @@ export async function signupProfController(req, res) {
       niveaux = [niveaux];
     }
     console.log("Niveaux reçus :", niveaux);
+    // ✅ AJOUT — même traitement pour matiere
+    let matieres = matiere;
+     if (!Array.isArray(matieres)) {
+      matieres = [matieres];
+    }
+      console.log("Matières reçues :", matieres);
 
 
     // 🟢 AJOUT — Vérification de l'acceptation de la charte de sécurité
@@ -75,7 +81,8 @@ export async function signupProfController(req, res) {
       role: "prof",
       statut: "pending", // L'admin devra valider ce compte
       niveau: niveaux,
-      matiere: matiere,
+
+      matiere: matieres,
       diplome_url: diplomeFile.path,
       piece_identite_url: pieceIdentiteFile.path,
       photo_identite_url: photoIdentiteFile.path,

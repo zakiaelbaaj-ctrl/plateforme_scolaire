@@ -36,15 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const username = document.getElementById("username")?.value.trim();
-    const password = document.getElementById("password")?.value.trim();
-    const matiere = document.getElementById("matiere")?.value;
-    const niveau = document.getElementById("niveau")?.value;
-     
-    // Vérification optionnelle : si l'élève choisit "Universitaire", tu peux ajouter un log pour déboguer
-    if (niveau === "universitaire") {
-    console.log("🔧 Mode Universitaire détecté pour l'utilisateur");
-   }
+   const username = document.getElementById("username")?.value.trim();
+   const password = document.getElementById("password")?.value.trim();
     if (!username || !password) {
       errorDiv.textContent = "Veuillez remplir tous les champs.";
       return;
@@ -66,8 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({
           username,
           password,
-          matiere,
-          niveau
         })
       });
 
@@ -90,11 +81,6 @@ if (data.accessToken) {
     // 2. On stocke l'objet utilisateur complet (contient id, nom, rôle, etc.)
     localStorage.setItem("currentUser", JSON.stringify(data.user));
     
-    // 3. On stocke le niveau (spécifique à l'élève)
-    if (niveau) {
-        localStorage.setItem("userLevel", niveau);
-    }
-
     //🔧 REDIRECTION DYNAMIQUE SELON LE RÔLE
     // On récupère le rôle directement depuis l'objet user renvoyé par le backend
         const userRole = data.user.role;
@@ -102,7 +88,7 @@ if (data.accessToken) {
 if (userRole === "eleve") {
   window.location.replace("../../pages/eleve/profs_en_ligne.html");
 } else if (userRole === "etudiant") {
-  window.location.replace("../../pages/etudiant/dashboarhtml");
+  window.location.replace("../../pages/etudiant/dashboard.html");
 } else if (userRole === "prof") {
   window.location.replace("../../pages/professeur/dashboard.html");
 } else if (userRole === "admin") {
