@@ -10,8 +10,9 @@ const router = express.Router();
 // (.pdf, .jpg, .png...) au lieu du nom aléatoire sans extension généré par défaut
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/diplomes/");
-  },
+  const baseDir = process.env.UPLOAD_DIR || "uploads/diplomes/";
+  cb(null, baseDir);
+},
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
     const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;

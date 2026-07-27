@@ -142,7 +142,7 @@ app.get('/favicon.ico', (req, res) => {
 // =======================================================
 const docsDir = path.join(publicPath, "documents");
 const corrDir = path.join(publicPath, "corrections");
-const uploadDir = path.join(__dirname, "uploads/diplomes");
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, "uploads/diplomes");
 
 [uploadDir, docsDir, corrDir].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
