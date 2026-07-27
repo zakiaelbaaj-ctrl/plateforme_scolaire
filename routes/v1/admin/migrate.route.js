@@ -76,5 +76,37 @@ router.post("/run-migration-matiere-niveau", async (req, res) => {
     client.release();
   }
 });
+router.get("/check-encoding", async (req, res) => {
+  const providedSecret = req.headers["x-migration-secret"];
+
+  if (!MIGRATION_SECRET || providedSecret !== MIGRATION_SECRET) {
+    return res.status(403).json({ success: false, message: "Non autorisé" });
+  }
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT id, prenom, nom, matiere::text, niveau::text
+      FROM users
+      WHERE matiere IS NOT NULL OR niveau IS NOT NULL
+      ORDER BY id
+    `);
+
+    const corrupted = rows.filter(r =>
+      (r.matiere && r.matiere.includes("�")) ||
+      (r.niveau && r.niveau.includes("�"))
+    );
+
+    return res.json({
+      success: true,
+      total: rows.length,
+      corrupted: corrupted.length,
+      corruptedRows: corrupted,
+      allRows: rows
+    });
+  } catch (err) {
+    console.error("❌ Erreur check-encoding:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 export default router;
