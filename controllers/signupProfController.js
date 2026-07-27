@@ -83,11 +83,11 @@ export async function signupProfController(req, res) {
       niveau: niveaux,
 
       matiere: matieres,
-      diplome_url: diplomeFile.path,
-      piece_identite_url: pieceIdentiteFile.path,
-      photo_identite_url: photoIdentiteFile.path,
-      curriculum_vitae_url: curriculumVitaeFile.path,
-      lettre_motivation_url: lettreMotivationFile.path,
+      diplome_url: `/uploads/diplomes/${diplomeFile.filename}`,
+piece_identite_url: `/uploads/diplomes/${pieceIdentiteFile.filename}`,
+photo_identite_url: `/uploads/diplomes/${photoIdentiteFile.filename}`,
+curriculum_vitae_url: `/uploads/diplomes/${curriculumVitaeFile.filename}`,
+lettre_motivation_url: `/uploads/diplomes/${lettreMotivationFile.filename}`,
     });
 
     logger.info(`✨ Nouveau professeur inscrit (en attente) : ${email}`);
