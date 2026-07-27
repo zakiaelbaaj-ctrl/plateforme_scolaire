@@ -101,7 +101,7 @@ export async function generateInvoicePdf({
       // =========================
       // ENTREPRISE
       // =========================
-      // ✅ APRÈS
+      
 doc
   .fontSize(12)
   .text("Émetteur :", 50, 150, { underline: true })
@@ -123,43 +123,42 @@ doc
       // =========================
       // QR CODE
       // =========================
-      doc
-        .fontSize(12)
-        .text("QR Code (vérification) :", 50, 280);
+          doc
+         .fontSize(10)
+         .text("Vérification :", 440, 280, { width: 105 });
 
-      doc.image(qrImageBuffer, 50, 300, { width: 120 });
-
+           doc.image(qrImageBuffer, 440, 295, { width: 100 });
       // =========================
       // TABLEAU
       // =========================
-     // ✅ APRÈS — colonnes élargies
-const tableTop = 300;
+
+       const tableTop = 280;
 
 doc
   .fontSize(11)
-  .text("Description",  50, tableTop)
-  .text("Montant HT",  280, tableTop)
-  .text("TVA (20%)",   380, tableTop)
-  .text("Total TTC",   480, tableTop);
+  .text("Description", 50, tableTop)
+  .text("Montant HT",  50, tableTop + 40)
+  .text("TVA (20%)",   50, tableTop + 60)
+  .text("Total TTC",   50, tableTop + 80);
 
-doc.moveTo(50, tableTop + 15).lineTo(560, tableTop + 15).stroke();
+doc.moveTo(50, tableTop + 15).lineTo(400, tableTop + 15).stroke();
 
 doc
   .fontSize(10)
-  .text(`${planType}`,                          50, tableTop + 25, { width: 220 })
-  .text(`${(amountHT / 100).toFixed(2)} €`,   280, tableTop + 25, { width: 90 })
-  .text(`${(tvaAmount / 100).toFixed(2)} €`,  380, tableTop + 25, { width: 90 })
-  .text(`${(amount / 100).toFixed(2)} €`,     480, tableTop + 25, { width: 80 });
+  .text(`${planType}`, 50, tableTop + 20, { width: 340, height: 15, ellipsis: true })
+  .text(`${(amountHT / 100).toFixed(2)} €`,  180, tableTop + 40, { width: 90 })
+  .text(`${(tvaAmount / 100).toFixed(2)} €`, 180, tableTop + 60, { width: 90 })
+  .text(`${(amount / 100).toFixed(2)} €`,    180, tableTop + 80, { width: 90 });
 
-doc.moveTo(50, tableTop + 45).lineTo(560, tableTop + 45).stroke();
+doc.moveTo(50, tableTop + 100).lineTo(400, tableTop + 100).stroke();
 
 // =========================
 // TOTAL
 // =========================
 doc
   .fontSize(13)
-  .text("TOTAL TTC :", 380, tableTop + 65)
-  .text(`${(amount / 100).toFixed(2)} €`, 480, tableTop + 65, { width: 80 });
+  .text("TOTAL TTC :", 50, tableTop + 115)
+  .text(`${(amount / 100).toFixed(2)} €`, 180, tableTop + 115, { width: 90 });
       // =========================
       // FOOTER
       // =========================
