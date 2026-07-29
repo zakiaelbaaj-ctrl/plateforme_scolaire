@@ -7,6 +7,7 @@ import { handleStartSession } from "./visio.js";
 import { pool } from "../config/db.js";
 import * as onlineProfessorsModule from "./state/onlineProfessors.js";
 import { processSessionPayment } from "../services/payment.service.js";
+import { sendPushToUser } from "../services/push.service.js";
 import { closeRoom } from "./rooms.js"; // 🟢 AJOUT import en haut du fichier
 
 // État des appels en attente (SERVEUR UNIQUEMENT)
@@ -142,7 +143,13 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
     eleveName: ws.userName,
     timestamp: new Date().toISOString()
   });
-
+ // 🔔 Notification push (fonctionne écran verrouillé / app fermée)
+  sendPushToUser(profIdNum, {
+    title: "📞 Appel entrant",
+    body: `${ws.userName} vous appelle`,
+    tag: "incoming-call",
+    url: "/pages/professeur/dashboard.html"
+  });
   // Confirmer à l'élève
   safeSend(ws, {
     type: "callSent",

@@ -59,8 +59,8 @@
     <a href="dashboard_admin.html" class="back-home">⬅️ Retour à l'accueil</a>
   </footer>
 </main>
-
-<div id="confirmModal" class="modal" aria-hidden="true" role="dialog">
+<div id="confirmModal" class="modal" aria-hidden="true" role="dialog" inert>
+ 
   <div class="modal-content">
     <h3 id="modalTitle">Confirmation</h3>
     <p id="modalMessage"></p>
@@ -254,15 +254,26 @@ async function confirmAction() {
 }
 
 function showModal(title, message) {
+  const modal = document.getElementById("confirmModal");
+
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalMessage").textContent = message;
-  document.getElementById("confirmModal").style.display = "flex";
+
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");   // 🔥 obligatoire
+  modal.removeAttribute("inert");               // 🔥 si tu utilises inert dans ton HTML
 }
 
 function closeModal() {
+  const modal = document.getElementById("confirmModal");
+
   pendingAction = null;
-  document.getElementById("confirmModal").style.display = "none";
+
+  modal.style.display = "none";
+  modal.setAttribute("aria-hidden", "true");    // 🔒 on cache proprement
+  modal.setAttribute("inert", "");              // 🔒 empêche le focus
 }
+
 
 window.onclick = function(event) {
   const modal = document.getElementById("confirmModal");

@@ -21,6 +21,7 @@ export const pool = new Pool({
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 20000,
+  options: "-c client_encoding=UTF8",
 });
 
 // ---- LOG SAFE ----
@@ -46,7 +47,8 @@ export const sequelize = new Sequelize(process.env.DATABASE_URL, {
   logging: false, // Mis à false pour éviter de polluer ta console
   // ✅ SSL Dynamique pour Sequelize
   dialectOptions: {
-    ssl: isProduction ? { require: true, rejectUnauthorized: false } : false  // ← même logique
+    ssl: isProduction ? { require: true, rejectUnauthorized: false } : false,  // ← même logique
+  client_encoding: "utf8",
   },
   pool: {
     max: 5,

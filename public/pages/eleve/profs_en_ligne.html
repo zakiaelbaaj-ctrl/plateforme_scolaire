@@ -516,7 +516,6 @@ function showProfileCompletionModal() {
         const statusLabel = STATUS_LABEL[p.status] || p.status || "—";
         const nom = `${p.prenom ?? ""} ${p.nom ?? ""}`.trim() || "Professeur";
         const initiale = nom.charAt(0).toUpperCase();
-        console.log("photo_identite_url bruit:", p.photo_identite_url);   // 👈 AJOUTER ICI
 // 🔥 Nouveau bloc avatar : corrige les backslashes + reconstruit l’URL complète
 let avatarHtml = "";
 
