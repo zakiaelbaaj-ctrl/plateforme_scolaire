@@ -1,7 +1,7 @@
 // routes/v1/push/push.routes.js
 import express from "express";
 import { requireAuth } from "#middlewares/requireAuth.js";
-import { subscribePush, unsubscribePush, getVapidPublicKey } from "#controllers/push.controller.js";
+import { subscribePush, unsubscribePush, getVapidPublicKey, debugLog } from "#controllers/push.controller.js";
 
 const router = express.Router();
 
