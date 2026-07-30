@@ -103,16 +103,6 @@
         deconnexion();
       }
     }
-    if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").then(() => {
-
-    // 🔥 iOS demande la permission ici
-    Notification.requestPermission().then(permission => {
-      console.log("Permission:", permission);
-    });
-
-  });
-}
 
   </script>
   </body>
