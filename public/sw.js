@@ -1,4 +1,4 @@
-const CACHE_NAME = "urgencescolaire-v5"; // ⚠️ Incrémenté pour forcer la mise à jour
+const CACHE_NAME = "urgencescolaire-v6"; // ⚠️ Incrémenté pour forcer la mise à jour
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
