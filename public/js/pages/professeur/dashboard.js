@@ -151,9 +151,18 @@ document.addEventListener("DOMContentLoaded", async () => {
  AppState.setCurrentUser(userData);
 AppState.token = localStorage.getItem("token"); // OK pour token (mais idéalement setter)
  renderCurrentUserInfo(userData);
-initPushNotifications();
+//initPushNotifications();
+// Afficher le bouton si permission pas encore accordée
+  const notifBtn = document.getElementById("enable-notifications-btn");
+  if (notifBtn && Notification.permission !== "granted") {
+    notifBtn.style.display = "block";
+    notifBtn.addEventListener("click", () => {
+      initPushNotifications();   // ← appelé directement dans le clic
+      notifBtn.style.display = "none";
+    });
+  }
 
-  // // 🔴 Si c'est un professeur, init Stripe onboarding
+  // 🔴 Si c'est un professeur, init Stripe onboarding
 if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboarding_complete) {
   const stripeBtn = document.getElementById("stripe-onboarding-btn");
   if (stripeBtn) {
