@@ -65,13 +65,19 @@ _on(event, cb) {
         this._emit("callSent", data);
         break;
 
-      case "incomingCall":
+       case "incomingCall":
         AppState.setIncomingCallEleveId(data.eleveId);
         AppState._notify("call:incoming", data);
         break;
 
-      case "callAccepted":
+        case "callAccepted":
         CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
+        break;
+
+        case "callRejected":
+        CallStateMachine.reset();
+        AppState.setIncomingCallEleveId?.(null);
+        AppState._notify("call:rejected", data);
         break;
 
         case "callTimeout":

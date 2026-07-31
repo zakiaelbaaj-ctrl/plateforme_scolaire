@@ -297,7 +297,8 @@ ScreenShareService.onStop(() => {
     case 'inCall':   updateCallStatus('En communication'); break;
     case 'ended':    cleanupSession('Session terminée');
      break;
-    case null:       cleanupSession('Session terminée'); break; // ⚠️ explicite
+    case 'idle':      // ← AJOUT (déclenché par CallStateMachine.reset())
+    case null:       cleanupSession("En attente d'un élève…"); break;
     // default vide  ignore les états inconnus
   }
 });
