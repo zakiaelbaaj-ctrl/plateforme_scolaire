@@ -73,9 +73,10 @@ case "livekitToken":
   CallService.handleEvent(data);
   break;
 
-case "incomingCall":
-case "callAccepted":
-case "callRejected":
+   case "incomingCall":
+   case "callAccepted":
+   case "callRejected":
+   case "callTimeout":
   CallService.handleEvent(data);
   break;
       case "invoice:ready": {

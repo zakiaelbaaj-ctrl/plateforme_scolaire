@@ -19,7 +19,8 @@ import {
   acceptCall,
   rejectCall,
   endSessionForDisconnect,
-  clearPendingCall
+  clearPendingCall,
+  getPendingCall
 } from "./ws/calls.js";
 
 import {
@@ -414,6 +415,18 @@ async function handleIdentify(ws, data) {
 
     broadcastOnlineProfs(onlineProfessors, clients);
 
+    // 🔁 Si un appel était en attente au moment de la déconnexion, le renvoyer
+    const pendingCall = getPendingCall(ws.userId);
+    if (pendingCall) {
+      safeSend(ws, {
+        type: "incomingCall",
+        eleveId: pendingCall.eleveId,
+        eleveName: pendingCall.eleveName,
+        timestamp: pendingCall.timestamp
+      });
+      console.log(`🔁 Appel en attente renvoyé au prof ${ws.userId} après reconnexion`);
+    }
+
     try {
       const { rows } = await pool.query(
         `SELECT * FROM notifications WHERE user_id = $1 AND is_read = false ORDER BY created_at DESC`,
@@ -467,8 +480,9 @@ async function handleDisconnect(ws) {
       await endSessionForDisconnect(ws.userId, eleveIdSnapshot, onlineProfessors, clients); // ✅ await ajouté
     }
     // 🟢 Le prof reste visible "en ligne" tant qu'il ne s'est pas déconnecté manuellement
+    // ⚠️ On NE nettoie PAS l'appel en attente ici : il doit survivre à une coupure WS
+    // (le timeout de 45s dans callProfessor() s'en charge si le prof ne répond jamais)
     setProfessorOffline(ws.userId);
-    clearPendingCall(ws.userId);
   } else {
     console.log(`🔕 Déconnexion ignorée (socket zombie) pour prof ${ws.userId} — reconnexion déjà en place`);
   }

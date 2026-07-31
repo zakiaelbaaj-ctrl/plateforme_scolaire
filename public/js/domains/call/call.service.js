@@ -19,6 +19,7 @@ _on(event, cb) {
   onCallAccepted(cb)  { this._on("callAccepted", cb); },
   onConnected(cb)     { this._on("connected", cb); },
   onCallRejected(cb)  { this._on("callRejected", cb); },
+  onCallTimeout(cb)   { this._on("callTimeout", cb); },
   onCallEnded(cb)     { this._on("callEnded", cb); },
   onLocalTrack(cb)    { this._on("localTrack", cb); },
   onRemoteTracks(cb)  { this._on("remoteTracks", cb); },
@@ -66,6 +67,12 @@ _on(event, cb) {
 
       case "callAccepted":
         CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
+        break;
+        
+        case "callTimeout":
+        CallStateMachine.reset();
+        AppState.setIncomingCallEleveId?.(null);
+        AppState._notify("call:timeout", data);
         break;
         }
   },

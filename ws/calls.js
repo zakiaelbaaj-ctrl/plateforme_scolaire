@@ -126,11 +126,36 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
   }
 
   // ✅ CRÉER L'APPEL EN ATTENTE
+  const callTimestamp = new Date().toISOString();
   pendingCalls.set(profIdNum, {
     eleveId,
     eleveName: ws.userName,
-    timestamp: new Date().toISOString()
+    timestamp: callTimestamp
   });
+
+  // ⏱️ Filet de sécurité : si le prof ne répond pas dans les 45s, on libère tout
+  setTimeout(() => {
+    const stillPending = pendingCalls.get(profIdNum);
+    if (!stillPending || stillPending.timestamp !== callTimestamp) return; // déjà traité entre-temps
+
+    pendingCalls.delete(profIdNum);
+    const p = onlineProfessors.get(profIdNum);
+    if (p) p.status = "disponible";
+    broadcastOnlineProfs(onlineProfessors, clients);
+
+    const currentEleveWs = clients.get(eleveId);
+    if (currentEleveWs?.readyState === 1) {
+      safeSend(currentEleveWs, {
+        type: "callTimeout",
+        profId: profIdNum,
+        message: "Le professeur n'a pas répondu."
+      });
+    }
+    if (p?.ws?.readyState === 1) {
+      safeSend(p.ws, { type: "callTimeout", eleveId });
+    }
+    console.log(`⏱️ Appel expiré (timeout 45s): prof ${profIdNum}, élève ${eleveId}`);
+  }, 45000);
 
   // Marquer prof comme sollicité
   prof.status = "appel_reçu";

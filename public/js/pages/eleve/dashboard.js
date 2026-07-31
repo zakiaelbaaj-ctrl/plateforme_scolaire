@@ -301,6 +301,20 @@ ScreenShareService.onStop(() => {
     // default vide  ignore les états inconnus
   }
 });
+// ================= CALL TIMEOUT (prof n'a pas répondu) =================
+  AppState.on('call:timeout', (data) => {
+    console.log("⏱️ Appel expiré, le professeur n'a pas répondu", data);
+
+    cleanupSession("Le professeur n'a pas répondu");
+    AppState.currentProfId = null;
+    AppState.currentSession = null;
+
+    AppState._notify("ui:notification", {
+      type: "error",
+      title: "Aucune réponse",
+      message: "Le professeur n'a pas répondu à votre appel. Vous pouvez réessayer ou choisir un autre professeur."
+    });
+  });
    AppState.on("timer:update", (seconds) => {
   const m = String(Math.floor(seconds / 60)).padStart(2, "0");
   const s = String(seconds % 60).padStart(2, "0");
