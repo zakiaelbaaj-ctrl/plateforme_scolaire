@@ -34,59 +34,35 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 // ======================================================
-// DEBUG — envoie les logs client vers le serveur (temporaire)
+// NOTIFICATIONS PUSH
 // ======================================================
-async function debugLog(msg) {
-  try {
-    await fetch(`${API_URL}/api/v1/push/debug-log`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ msg, ts: new Date().toISOString() })
-    });
-  } catch {}
-}
-
 async function initPushNotifications() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     console.warn("⚠️ Notifications push non supportées sur ce navigateur");
-    await debugLog("⚠️ Push non supporté sur ce navigateur");
     return;
   }
 
   try {
-    await debugLog(`🔍 Permission actuelle: ${Notification.permission}`);
-
     const permission = await Notification.requestPermission();
-    await debugLog(`🔍 Permission après demande: ${permission}`);
-
     if (permission !== "granted") {
       console.warn("⚠️ Permission de notification refusée par le prof");
-      await debugLog("⚠️ Permission refusée par le prof");
       return;
     }
 
     const registration = await navigator.serviceWorker.ready;
-    await debugLog("✅ Service worker ready");
-
     let subscription = await registration.pushManager.getSubscription();
-    await debugLog(`🔍 Subscription existante: ${!!subscription}`);
 
     if (!subscription) {
-      // API_URL est déjà défini en haut du fichier (module scope), pas besoin de le redéclarer
       const keyRes = await fetch(`${API_URL}/api/v1/push/vapid-public-key`);
-      await debugLog(`🔍 Réponse vapid-public-key: ${keyRes.status}`);
-
       const { publicKey } = await keyRes.json();
-      await debugLog(`🔍 publicKey reçue: ${publicKey ? publicKey.slice(0, 20) + "..." : "VIDE"}`);
 
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey)
       });
-      await debugLog("✅ Nouvelle subscription créée");
     }
 
-    const res = await fetch(`${API_URL}/api/v1/push/subscribe`, {
+    await fetch(`${API_URL}/api/v1/push/subscribe`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -94,14 +70,11 @@ async function initPushNotifications() {
       },
       body: JSON.stringify(subscription)
     });
-    await debugLog(`🔍 Réponse /subscribe: ${res.status}`);
 
     console.log("✅ Abonnement push enregistré côté serveur");
-    await debugLog("✅ Abonnement push enregistré côté serveur");
 
   } catch (err) {
     console.error("❌ Erreur initPushNotifications:", err);
-    await debugLog(`❌ Erreur initPushNotifications: ${err.name} — ${err.message}`);
   }
 }
 // ================= STRIPE ONBOARDING =================
@@ -157,9 +130,8 @@ AppState.token = localStorage.getItem("token"); // OK pour token (mais idéaleme
     try {
       await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
-      await debugLog("✅ SW prêt au chargement de la page");
     } catch (err) {
-      await debugLog(`❌ Erreur SW register: ${err.message}`);
+      console.error("❌ Erreur SW register:", err.message);
     }
   }
 //initPushNotifications();

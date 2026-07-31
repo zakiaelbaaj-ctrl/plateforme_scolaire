@@ -56,11 +56,3 @@ export async function unsubscribePush(req, res) {
     return res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 }
-// ------------------------------------------------------
-// POST /api/v1/push/debug-log
-// Temporaire — pour voir les logs client dans les logs Render
-// ------------------------------------------------------
-export function debugLog(req, res) {
-  console.log("📱 [CLIENT DEBUG]", req.body.msg, req.body.ts);
-  return res.status(200).json({ ok: true });
-}
