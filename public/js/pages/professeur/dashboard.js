@@ -164,14 +164,17 @@ AppState.token = localStorage.getItem("token"); // OK pour token (mais idéaleme
   }
 //initPushNotifications();
 // Afficher le bouton si permission pas encore accordée
- const notifBtn = document.getElementById("enable-notifications-btn");
-  await debugLog(`🔍 [Android debug] notifBtn trouvé: ${!!notifBtn}, permission: ${Notification.permission}, UA: ${navigator.userAgent}`);
+const notifBtn = document.getElementById("enable-notifications-btn");
   if (notifBtn && Notification.permission !== "granted") {
     notifBtn.style.display = "block";
     notifBtn.addEventListener("click", () => {
       initPushNotifications();
       notifBtn.style.display = "none";
     });
+  } else if (Notification.permission === "granted") {
+    // Permission déjà accordée (peut-être sur un ancien test) →
+    // on retente silencieusement, ça ne redemandera pas de popup
+    initPushNotifications();
   }
 
   // 🔴 Si c'est un professeur, init Stripe onboarding
