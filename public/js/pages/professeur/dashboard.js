@@ -151,6 +151,17 @@ document.addEventListener("DOMContentLoaded", async () => {
  AppState.setCurrentUser(userData);
 AppState.token = localStorage.getItem("token"); // OK pour token (mais idéalement setter)
  renderCurrentUserInfo(userData);
+
+ // Enregistrer et attendre le SW AVANT d'afficher le bouton
+  if ("serviceWorker" in navigator) {
+    try {
+      await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      await debugLog("✅ SW prêt au chargement de la page");
+    } catch (err) {
+      await debugLog(`❌ Erreur SW register: ${err.message}`);
+    }
+  }
 //initPushNotifications();
 // Afficher le bouton si permission pas encore accordée
  const notifBtn = document.getElementById("enable-notifications-btn");
