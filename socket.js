@@ -10,7 +10,8 @@ import {
   getOnlineProfessors,
   removeProfessor,
   addProfessor,
-  updateStatus
+  updateStatus,
+  setProfessorOffline
 } from "./ws/state/onlineProfessors.js";
 
 import {
@@ -366,6 +367,14 @@ async function handleMessage(ws, data) {
   if (type === "webrtcSignal") return handleWebRTCSignal(ws, data, clients);
   if (type === "visioDuration") return saveVisioSession(ws, data, onlineProfessors);
   if (type === "updateStatus") return updateVisioStatus(ws, data, onlineProfessors);
+  if (type === "logout") {
+    if (ws.role === "prof") {
+      removeProfessor(ws.userId);
+      broadcastOnlineProfs(onlineProfessors, clients);
+      console.log(`🚪 Déconnexion manuelle prof ${ws.userId}`);
+    }
+    return;
+  }
   if (type === "ping") return safeSend(ws, { type: "pong" });
 }
 
@@ -457,11 +466,12 @@ async function handleDisconnect(ws) {
       console.log(`🔄 Prof ${ws.userId} déconnecté → libère élève ${eleveIdSnapshot}`);
       await endSessionForDisconnect(ws.userId, eleveIdSnapshot, onlineProfessors, clients); // ✅ await ajouté
     }
-    removeProfessor(ws.userId);
+    // 🟢 Le prof reste visible "en ligne" tant qu'il ne s'est pas déconnecté manuellement
+    setProfessorOffline(ws.userId);
     clearPendingCall(ws.userId);
   } else {
     console.log(`🔕 Déconnexion ignorée (socket zombie) pour prof ${ws.userId} — reconnexion déjà en place`);
-     }
+  }
      }
       if (ws.role === "eleve" || ws.role === "etudiant") {
   if (isActiveConnection) {

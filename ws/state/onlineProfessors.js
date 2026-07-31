@@ -12,19 +12,26 @@ const onlineProfessors = new Map();
  */
 function addProfessor(prof) {
   if (!prof.id) return;
-  console.log("🚨 addProfessor APPELÉ", {
-    id: prof.id,
-    prenom: prof.prenom,
-    role: prof.role
-  });
-  // 🔥 IMPORTANT : stocker la WebSocket 
-  if (!prof.ws) { 
-    console.warn("⚠️ addProfessor appelé sans ws !"); 
+
+  const existing = onlineProfessors.get(prof.id);
+  if (existing) {
+    // 🔄 Reconnexion : on garde le statut/session existants, on met juste à jour la socket
+    existing.ws = prof.ws;
+    existing.prenom = prof.prenom;
+    existing.nom = prof.nom;
+    existing.ville = prof.ville;
+    existing.pays = prof.pays;
+    existing.matiere = prof.matiere;
+    existing.niveau = prof.niveau;
+    existing.photo_identite_url = prof.photo_identite_url;
+    existing.lastActiveAt = prof.lastActiveAt;
+    onlineProfessors.set(prof.id, existing);
+    console.log(`🔄 Professeur reconnecté (statut conservé: ${existing.status}) : ${prof.prenom} ${prof.nom} (${prof.id})`);
+    return;
   }
+
   prof.status = "disponible";
   onlineProfessors.set(prof.id, prof);
-  console.log("📊 onlineProfessors.size =", onlineProfessors.size);
-  console.log("📊 IDs =", [...onlineProfessors.keys()]);
   console.log(`✅ Professeur connecté : ${prof.prenom} ${prof.nom} (${prof.id})`);
 }
 
@@ -36,6 +43,17 @@ function removeProfessor(profId) {
   const prof = onlineProfessors.get(profId);
   onlineProfessors.delete(profId);
   console.log(`👋 Professeur déconnecté : ${prof.prenom} ${prof.nom} (${prof.id})`);
+}
+/**
+ * Coupe la référence WebSocket sans retirer le prof de la liste
+ * (utilisé quand l'app passe en arrière-plan / perd la connexion)
+ */
+function setProfessorOffline(profId) {
+  if (!onlineProfessors.has(profId)) return;
+  const prof = onlineProfessors.get(profId);
+  prof.ws = null;
+  onlineProfessors.set(profId, prof);
+  console.log(`💤 Prof ${profId} déconnecté (WS) — reste visible en ligne`);
 }
 
 /**
@@ -99,7 +117,7 @@ export function getOnlineProfessors() {
     const tempsDepuisActivite = Math.floor((now - lastActiveAt) / 1000);
 
     const estActif = tempsDepuisActivite < 1800; // 30 min
-    const disponibiliteReelle = prof.status === "disponible" && estActif;
+    const disponibiliteReelle = prof.status === "disponible";
     
     profs.push({
       id: prof.id,
@@ -138,5 +156,6 @@ export {
   removeProfessor,
   updateStatus,
   startSession,
-  endSession
+  endSession,
+  setProfessorOffline
 };

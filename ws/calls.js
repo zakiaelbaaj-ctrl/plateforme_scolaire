@@ -51,7 +51,7 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
   }
 
   const prof = onlineProfessors.get(profIdNum);
-  if (!prof || !prof.ws || prof.ws.readyState !== 1) {
+  if (!prof) {
     return safeSend(ws, {
       type: "error",
       message: "Professeur hors ligne"
@@ -136,13 +136,15 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
   prof.status = "appel_reçu";
   broadcastOnlineProfs(onlineProfessors, clients);
 
-  // 📲 Notifier le prof
-  safeSend(prof.ws, {
-    type: "incomingCall",
-    eleveId,
-    eleveName: ws.userName,
-    timestamp: new Date().toISOString()
-  });
+  // 📲 Notifier le prof (WS live si connecté, push dans tous les cas)
+  if (prof.ws && prof.ws.readyState === 1) {
+    safeSend(prof.ws, {
+      type: "incomingCall",
+      eleveId,
+      eleveName: ws.userName,
+      timestamp: new Date().toISOString()
+    });
+  }
  // 🔔 Notification push (fonctionne écran verrouillé / app fermée)
   sendPushToUser(profIdNum, {
     title: "📞 Appel entrant",

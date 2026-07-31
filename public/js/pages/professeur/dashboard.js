@@ -467,7 +467,8 @@ document.getElementById("send-file")
   document.getElementById("toggle-camera-btn")?.addEventListener("click", toggleCamera);
 
   // ================= LOGOUT =================
-  document.getElementById("logout-btn")?.addEventListener("click", () => {
+ document.getElementById("logout-btn")?.addEventListener("click", () => {
+    socketService.send({ type: "logout" });
     SessionService.stopVideoCall?.();
     localStorage.clear();
     window.location.href = "/pages/professeur/login.html";
