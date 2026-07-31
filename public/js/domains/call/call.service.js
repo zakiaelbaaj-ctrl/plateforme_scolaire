@@ -60,6 +60,11 @@ _on(event, cb) {
   if (data.token) VideoService.connect(data.token, data.url);
   break;
 
+      case "callSent":
+        CallStateMachine.setState(CallStateMachine.STATES.CALLING);
+        this._emit("callSent", data);
+        break;
+
       case "incomingCall":
         AppState.setIncomingCallEleveId(data.eleveId);
         AppState._notify("call:incoming", data);
@@ -68,7 +73,7 @@ _on(event, cb) {
       case "callAccepted":
         CallStateMachine.setState(CallStateMachine.STATES.IN_CALL);
         break;
-        
+
         case "callTimeout":
         CallStateMachine.reset();
         AppState.setIncomingCallEleveId?.(null);

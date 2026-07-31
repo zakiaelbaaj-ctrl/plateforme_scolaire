@@ -239,7 +239,13 @@ function subscribeToDomains() {
   });
   AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
   AppState.on('call:incoming',      (data)   => showIncomingCall(data));
-
+  
+  AppState.on('call:timeout', (data) => {
+    console.log("⏱️ Appel expiré côté prof", data);
+    hideIncomingAlert();
+    updateCallStatus("En attente d'un élève…");
+    AppState.currentIncomingCallEleveId = null;
+  });
   // ================= CHAT =================
   AppState.on('chat:new', (msg) => renderChat(msg));
 

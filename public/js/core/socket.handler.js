@@ -40,6 +40,7 @@ const normalizedDoc = {
 case "incomingCall":
 case "callAccepted":
 case "callRejected":
+case "callTimeout":
 case "livekitToken":
   CallService.handleEvent(data);
   break;
