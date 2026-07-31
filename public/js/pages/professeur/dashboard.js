@@ -153,12 +153,11 @@ AppState.token = localStorage.getItem("token"); // OK pour token (mais idéaleme
  renderCurrentUserInfo(userData);
 //initPushNotifications();
 // Afficher le bouton si permission pas encore accordée
-  const notifBtn = document.getElementById("enable-notifications-btn");
-  debugLog(`🔍 notifBtn trouvé: ${!!notifBtn}, permission: ${Notification.permission}`);
+ const notifBtn = document.getElementById("enable-notifications-btn");
   if (notifBtn && Notification.permission !== "granted") {
     notifBtn.style.display = "block";
     notifBtn.addEventListener("click", () => {
-      initPushNotifications();   // ← appelé directement dans le clic
+      initPushNotifications();
       notifBtn.style.display = "none";
     });
   }
