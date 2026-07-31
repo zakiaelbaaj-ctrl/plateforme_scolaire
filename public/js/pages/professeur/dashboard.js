@@ -165,6 +165,7 @@ AppState.token = localStorage.getItem("token"); // OK pour token (mais idéaleme
 //initPushNotifications();
 // Afficher le bouton si permission pas encore accordée
  const notifBtn = document.getElementById("enable-notifications-btn");
+  await debugLog(`🔍 [Android debug] notifBtn trouvé: ${!!notifBtn}, permission: ${Notification.permission}, UA: ${navigator.userAgent}`);
   if (notifBtn && Notification.permission !== "granted") {
     notifBtn.style.display = "block";
     notifBtn.addEventListener("click", () => {
