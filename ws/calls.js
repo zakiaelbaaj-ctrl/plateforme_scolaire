@@ -173,9 +173,10 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
     });
   }
  // 🔔 Notification push (fonctionne écran verrouillé / app fermée)
+  const classeLabel = ws.classe ? ` (${ws.classe})` : "";
   sendPushToUser(profIdNum, {
     title: "📞 Appel entrant",
-    body: `${ws.userName} vous appelle`,
+    body: `${ws.userName}${classeLabel} vous appelle`,
     tag: "incoming-call",
     url: "/pages/professeur/dashboard.html"
   });
