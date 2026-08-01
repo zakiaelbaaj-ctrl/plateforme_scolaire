@@ -4,6 +4,7 @@ import logger from "../config/logger.js";
 import { QueryTypes } from "sequelize";
 import { pool } from "../config/db.js";
 import * as mailService from "./mail.service.js"; // Ou le chemin vers ton service d'envoi de mail
+import { getTarifHoraireHT } from "./pricing.util.js";
 const PRICES = {
   monthly: Number(process.env.PRICE_MONTHLY_CENTS) || 999,
   yearly: Number(process.env.PRICE_YEARLY_CENTS) || 9999,
@@ -152,16 +153,21 @@ export async function processSessionPayment(roomId) {
       return { status: 'covered_by_subscription' };
     }
 
-    const hourlyRate = prof.is_university_prof ? 40 : 20;
-    const pricePerMinEUR = hourlyRate / 60;
-    const totalAmountEUR = Math.round(duration * pricePerMinEUR * 100);
+    const hourlyRateHT = getTarifHoraireHT(eleve.niveau);
+
+    const pricePerMinHT = hourlyRateHT / 60;
+    const amountHT = Math.round(duration * pricePerMinHT * 100);
+
+    const amountTVA = Math.round(amountHT * 0.20);
+    const totalAmountEUR = amountHT + amountTVA;
 
     if (totalAmountEUR < 50) {
       console.log(`⚠️ Montant ${totalAmountEUR}cts trop bas. Ignoré.`);
       return { status: 'skipped', reason: 'amount_too_low' };
     }
 
-    const feeAmountEUR = Math.round(totalAmountEUR * 0.26);
+    const commissionEUR = Math.round(amountHT * 0.28);
+    const feeAmountEUR = commissionEUR + amountTVA;
     const studentCurrency = eleve.currency?.toLowerCase() || 'eur';
 
     // Prélèvement automatique
@@ -191,7 +197,7 @@ export async function processSessionPayment(roomId) {
       payment_method: paymentMethodId,
       off_session: true, 
       confirm: true,
-      description: `Session visio ${duration} min avec ${prof.is_university_prof ? 'Prof Universitaire' : 'Prof Standard'}`,
+      description: `Session visio ${duration} min — niveau ${eleve.niveau ? (Array.isArray(eleve.niveau) ? eleve.niveau[0] : eleve.niveau) : "non précisé"}`,
       metadata: { roomId, profId, eleveId, studentCurrency },
       ...(prof.stripe_account_id?.trim() && {
         transfer_data: { destination: prof.stripe_account_id },
@@ -266,8 +272,13 @@ return {
  */
 async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
   try {
-    const hourlyRate = prof.is_university_prof ? 40 : 20;
-    const totalAmount = Math.round(duration * (hourlyRate / 60) * 100);
+    const hourlyRateHT = getTarifHoraireHT(eleve.niveau);
+
+    const amountHT = Math.round(duration * (hourlyRateHT / 60) * 100);
+    const amountTVA = Math.round(amountHT * 0.20);
+    const totalAmount = amountHT + amountTVA;
+    const commissionEUR = Math.round(amountHT * 0.28);
+    const feeAmountEUR = commissionEUR + amountTVA;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],

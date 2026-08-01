@@ -14,13 +14,12 @@ router.get("/me", requireAuth, async (req, res) => {
     const userId = req.user.id;
 
     const { rows } = await pool.query(
-      `SELECT id, prenom, nom, email, role, ville, pays, matiere, niveau, sujet, 
+      `SELECT id, prenom, nom, email, role, ville, pays, matiere, niveau, sujet, classe,
               stripe_customer_id, has_payment_method, photo_identite_url
        FROM users
        WHERE id = $1`,
       [userId]
     );
-
     if (!rows.length) {
       return res.status(404).json({ message: "Utilisateur introuvable" });
     }
@@ -38,7 +37,7 @@ router.get("/me", requireAuth, async (req, res) => {
 // ======================================================
 router.put("/", requireAuth, async (req, res) => {
   const userId = req.user.id;
-  const { ville, pays, matiere, niveau, sujet } = req.body;
+  const { ville, pays, matiere, niveau, sujet, classe } = req.body;
 
   try {
     const { rows } = await pool.query(
@@ -67,9 +66,10 @@ router.put("/", requireAuth, async (req, res) => {
            pays = COALESCE($2, pays),
            matiere = COALESCE($3, matiere),
            niveau = COALESCE($4, niveau),
-           sujet = COALESCE($5, sujet)
-       WHERE id = $6`,
-      [ville ?? null, pays ?? null, finalMatiere, finalNiveau, finalSujet, userId]
+           sujet = COALESCE($5, sujet),
+           classe = COALESCE($6, classe)
+       WHERE id = $7`,
+      [ville ?? null, pays ?? null, finalMatiere, finalNiveau, finalSujet, classe || null, userId]
     );
 
     res.json({ success: true });

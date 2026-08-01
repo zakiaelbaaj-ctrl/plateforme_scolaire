@@ -130,6 +130,7 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
   pendingCalls.set(profIdNum, {
     eleveId,
     eleveName: ws.userName,
+    eleveClasse: ws.classe || null,
     timestamp: callTimestamp
   });
 
@@ -167,6 +168,7 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
       type: "incomingCall",
       eleveId,
       eleveName: ws.userName,
+      eleveClasse: ws.classe || null,
       timestamp: new Date().toISOString()
     });
   }

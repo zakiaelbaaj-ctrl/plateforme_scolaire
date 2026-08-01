@@ -551,7 +551,7 @@ function cleanupSession(message) {
 // CALL UI
 // ======================================================
 
-function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays }) {
+  function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays, eleveClasse }) {
   console.log("⚠️ showIncomingCall appelée", { eleveId, eleveName });
 
   AppState.currentIncomingCallEleveId = eleveId ?? null;
@@ -570,8 +570,9 @@ function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays }) {
   if (noCall) noCall.style.display = "none";
   if (text) {
     const location = eleveVille && elevePays ? ` — ${eleveVille}, ${elevePays}` : "";
-text.textContent = `${eleveName || "Élève"}${location}`;
-}
+    const classe = eleveClasse ? ` (${eleveClasse})` : "";
+    text.textContent = `${eleveName || "Élève"}${classe}${location}`;
+  }
  console.log("box après:", box?.className, getComputedStyle(box).display, box?.offsetHeight);
 }
 

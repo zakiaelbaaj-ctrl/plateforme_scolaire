@@ -298,6 +298,12 @@
         <option value="Supérieur">Supérieur</option>
       </select>
     </div>
+    <div class="form-group" id="pcClasseWrapper" style="display:none;">
+  <label for="pcClasse">Classe précise (optionnel)</label>
+  <select id="pcClasse">
+    <option value="">-- Non précisé --</option>
+  </select>
+</div>
 
     <button id="pcSubmitBtn" class="payment-banner__btn" style="width:100%;">Valider</button>
     <div id="pcErrorDiv" style="color:var(--danger); margin-top:10px; font-size:13px;"></div>
@@ -373,6 +379,34 @@
     // Rempli dans init(), utilisé par renderProfList() pour savoir si un
     // clic doit être autorisé (même règle que canCall dans dashboard.js)
     let currentUserData = null;
+    const CLASSES_PAR_NIVEAU = {
+      "Primaire": ["CP", "CE1", "CE2", "CM1", "CM2"],
+      "Collège":  ["6ème", "5ème", "4ème", "3ème"],
+      "Lycée":    ["Seconde", "Première", "Terminale"],
+      "Supérieur": []
+    };
+
+    const classeWrapper = document.getElementById("pcClasseWrapper");
+    const classeSelect  = document.getElementById("pcClasse");
+
+    function updateClasseOptions(niveau) {
+      const classes = CLASSES_PAR_NIVEAU[niveau] || [];
+      classeSelect.innerHTML = '<option value="">-- Non précisé --</option>';
+
+      if (classes.length === 0) {
+        classeWrapper.style.display = "none";
+        return;
+      }
+
+      classes.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        classeSelect.appendChild(opt);
+      });
+      classeWrapper.style.display = "block";
+    }
+
 function showProfileCompletionModal() {
   const overlay = document.getElementById("profileCompletionOverlay");
   overlay.style.display = "flex";
@@ -392,6 +426,16 @@ function showProfileCompletionModal() {
       : currentUserData.niveau;
     niveauSelect.value = currentNiveau || "";
   }
+  niveauSelect.addEventListener("change", () => {
+    updateClasseOptions(niveauSelect.value);
+  });
+
+  if (currentUserData?.classe) {
+    updateClasseOptions(niveauSelect.value);
+    classeSelect.value = currentUserData.classe;
+  } else if (niveauSelect.value) {
+    updateClasseOptions(niveauSelect.value);
+  }
 
   const submitBtn = document.getElementById("pcSubmitBtn");
   const errorDiv = document.getElementById("pcErrorDiv");
@@ -399,7 +443,8 @@ function showProfileCompletionModal() {
   submitBtn.addEventListener("click", async () => {
     const matiere = document.getElementById("pcMatiere").value;
     const niveau = document.getElementById("pcNiveau").value;
-
+    const classe = document.getElementById("pcClasse").value;
+    
     if (!matiere || !niveau) {
       errorDiv.textContent = "Veuillez choisir une matière et un niveau.";
       return;
@@ -416,7 +461,7 @@ function showProfileCompletionModal() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${AppState.token}`
         },
-        body: JSON.stringify({ matiere, niveau })
+        body: JSON.stringify({ matiere, niveau, classe })
       });
 
       const result = await response.json();
@@ -427,6 +472,7 @@ function showProfileCompletionModal() {
       // Mise à jour locale de l'utilisateur courant
       currentUserData.matiere = [matiere];
       currentUserData.niveau = [niveau];
+       currentUserData.classe = classe;
       AppState.setCurrentUser(currentUserData);
       localStorage.setItem("currentUser", JSON.stringify(currentUserData));
 

@@ -383,11 +383,12 @@ async function handleMessage(ws, data) {
 // IDENTIFY
 // =======================================================
 async function handleIdentify(ws, data) {
-  const { prenom, nom, ville, pays, niveau, matiere, photo_identite_url } = data;
+  const { prenom, nom, ville, pays, niveau, matiere, classe, photo_identite_url } = data;
   ws.prenom = prenom || "";
   ws.nom = nom || "";
   ws.matiere = matiere || null;
   ws.niveau = niveau || null;
+  ws.classe = classe || null;
   ws.userName = `${ws.prenom} ${ws.nom}`.trim() || String(ws.userId);
   ws.ville = ville || "";
   ws.pays = pays || "";
@@ -422,6 +423,7 @@ async function handleIdentify(ws, data) {
         type: "incomingCall",
         eleveId: pendingCall.eleveId,
         eleveName: pendingCall.eleveName,
+        eleveClasse: pendingCall.eleveClasse,
         timestamp: pendingCall.timestamp
       });
       console.log(`🔁 Appel en attente renvoyé au prof ${ws.userId} après reconnexion`);
