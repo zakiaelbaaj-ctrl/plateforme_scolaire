@@ -43,4 +43,8 @@ router.post(
 // Route: POST /api/v1/auth/signup-eleve
 // Note: Pas besoin de multer ici car l'élève n'envoie pas de diplôme
 router.post("/signup-eleve", registerController);
+// --- INSCRIPTION ÉTUDIANT ---
+// Route: POST /api/v1/auth/signup-etudiant
+// Même logique que l'élève : pas de fichier à uploader
+router.post("/signup-etudiant", registerController);
 export default router;
