@@ -2,6 +2,7 @@
 // 🔑 LOGIN ÉTUDIANT
 // ============================================
 
+import { showPreferencesModal } from "./preferences-modal.js";
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:4000" 
   : "";
@@ -49,10 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const valeurSaisie = document.getElementById("username")?.value.trim();
   const password = document.getElementById("password")?.value.trim();
-  const matiere = document.getElementById("matiere")?.value.trim();
-  const niveau = document.getElementById("niveau")?.value.trim();
-
-  if (!valeurSaisie || !password || !matiere || !niveau) {
+  if (!valeurSaisie || !password) {
     showError("Tous les champs sont requis");
     return;
   }
@@ -98,18 +96,19 @@ document.addEventListener("DOMContentLoaded", () => {
       throw new Error("Cet utilisateur n'est pas enregistré comme étudiant");
     }
 
-    currentUser.matiere = matiere;
-    currentUser.niveau = niveau;
-
     localStorage.setItem("token", accessToken);
     localStorage.setItem("refreshToken", json.refreshToken || "");
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
 
-    showSuccess("Connexion réussie ! Redirection...");
+    showSuccess("Connexion réussie !");
+    showLoading(false);
 
-    setTimeout(() => {
-      window.location.replace("dashboard.html");
-    }, 1000);
+   const prefs = await showPreferencesModal(accessToken);
+currentUser.matiere = prefs.matiere;
+currentUser.langue_matiere = prefs.langue_matiere;
+currentUser.niveau = prefs.niveau;
+localStorage.setItem("currentUser", JSON.stringify(currentUser));
+window.location.replace("dashboard.html");
 
   } catch (err) {
     console.error("❌ Erreur:", err);
@@ -154,7 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loginForm.addEventListener("submit", loginEtudiant);
 
-  ["username", "password", "matiere", "niveau"].forEach(id => {
+  ["username", "password"].forEach(id => {
     document.getElementById(id)?.addEventListener("focus", hideError);
     document.getElementById(id)?.addEventListener("change", hideError);
   });
