@@ -38,18 +38,32 @@ class SocketService {
 
     this.currentUrl = url;
     WSLogger.info("WS connect", url);
-    this.ws = new WebSocket(url);
-    this.ws.onopen = () => {
-      console.log("A - onopen");
-  this.reconnectAttempts = 0;
-  this.manualClose = false;
-  this.startHeartbeat();
-  this.emit({ type: "TRANSPORT_OPEN" });
-  this.emit({ type: "ws:status", status: "connected" }); // ← identify envoyé ici
-  this.flushQueue(); // ← après identify, pas avant
-};
 
-    this.ws.onmessage = (evt) => {
+    // 🟢 FIX — référence locale capturée par les closures ci-dessous.
+    // Chaque handler compare `this.ws === socket` avant d'agir : si une
+    // reconnexion plus récente a déjà remplacé `this.ws`, ce handler est
+    // périmé (stale) et ne doit RIEN déclencher — ni reconnexion, ni
+    // heartbeat, ni émission d'événement. Sans cette garde, un handler
+    // d'une ancienne socket peut appeler scheduleReconnect() après coup
+    // et créer une connexion fantôme en plus de la connexion active,
+    // provoquant une boucle de reconnexions en cascade.
+    const socket = new WebSocket(url);
+    this.ws = socket;
+
+    socket.onopen = () => {
+      if (this.ws !== socket) return; // périmé — ignorer
+      console.log("A - onopen");
+      this.reconnectAttempts = 0;
+      this.manualClose = false;
+      this.startHeartbeat();
+      this.emit({ type: "TRANSPORT_OPEN" });
+      this.emit({ type: "ws:status", status: "connected" }); // ← identify envoyé ici
+      this.flushQueue(); // ← après identify, pas avant
+    };
+
+    socket.onmessage = (evt) => {
+      if (this.ws !== socket) return; // périmé — ignorer
+
       // 1. 🛡️ On intercepte le texte brut envoyé par le serveur
       if (evt.data === "pong") {
         this.lastPong = Date.now(); // On remet le chrono à zéro !
@@ -72,48 +86,64 @@ class SocketService {
       this.emit(data);
     };
 
-    this.ws.onclose = async (evt) => {
-  WSLogger.warn("WS fermé", evt.code);
-  this.stopHeartbeat();
-  this.emit({ type: "TRANSPORT_CLOSED", code: evt.code });
+    socket.onclose = async (evt) => {
+      if (this.ws !== socket) {
+        // 🟢 FIX — cette socket n'est plus la connexion active (déjà
+        // remplacée par une reconnexion plus récente). On ignore
+        // totalement cet événement : surtout, on NE programme PAS de
+        // reconnexion depuis un handler périmé.
+        WSLogger.info("WS fermé (connexion périmée, ignoré)", evt.code);
+        return;
+      }
 
-  if (this.manualClose || evt.code === 1000) {
-    this.emit({ type: "ws:status", status: "disconnected" });
-    return;
-  }
+      WSLogger.warn("WS fermé", evt.code);
+      this.stopHeartbeat();
+      this.emit({ type: "TRANSPORT_CLOSED", code: evt.code });
 
-  // ✅ Code 1008 = auth invalide/expirée → refresh silencieux avant reconnexion
-  if (evt.code === 1008 && this.onAuthExpired) {
-  this.reconnectAttempts++;
+      if (this.manualClose || evt.code === 1000) {
+        this.emit({ type: "ws:status", status: "disconnected" });
+        return;
+      }
 
-  if (this.reconnectAttempts > 5) {
-    WSLogger.error("WS: trop de tentatives d'auth échouées, abandon");
-    this.emit({ type: "ws:status", status: "auth-failed" });
-    return;
-  }
+      // ✅ Code 1008 = auth invalide/expirée → refresh silencieux avant reconnexion
+      if (evt.code === 1008 && this.onAuthExpired) {
+        this.reconnectAttempts++;
 
-  this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
+        if (this.reconnectAttempts > 5) {
+          WSLogger.error("WS: trop de tentatives d'auth échouées, abandon");
+          this.emit({ type: "ws:status", status: "auth-failed" });
+          return;
+        }
 
-  const newUrl = await this.onAuthExpired();
-  if (newUrl) {
-    this.currentUrl = newUrl;
-    const delay = Math.min(
-      CONFIG.RECONNECT_BASE_MS * Math.pow(2, this.reconnectAttempts),
-      CONFIG.RECONNECT_MAX_MS
-    );
-    clearTimeout(this.reconnectTimeout);
-    this.reconnectTimeout = setTimeout(() => this.connect(newUrl), delay); // ✅ délai ajouté
-  } else {
-    WSLogger.warn("WS auth définitivement invalide — abandon reconnexion");
-    this.emit({ type: "ws:status", status: "auth-failed" });
-  }
-  return;
-}
+        this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
 
-  this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
-  this.scheduleReconnect();
-};
-    this.ws.onerror = (err) => {
+        const newUrl = await this.onAuthExpired();
+
+        // 🟢 FIX — entre le début de l'await ci-dessus et sa résolution,
+        // une autre connexion a pu être établie entre-temps. On revérifie.
+        if (this.ws !== socket) return;
+
+        if (newUrl) {
+          this.currentUrl = newUrl;
+          const delay = Math.min(
+            CONFIG.RECONNECT_BASE_MS * Math.pow(2, this.reconnectAttempts),
+            CONFIG.RECONNECT_MAX_MS
+          );
+          clearTimeout(this.reconnectTimeout);
+          this.reconnectTimeout = setTimeout(() => this.connect(newUrl), delay); // ✅ délai ajouté
+        } else {
+          WSLogger.warn("WS auth définitivement invalide — abandon reconnexion");
+          this.emit({ type: "ws:status", status: "auth-failed" });
+        }
+        return;
+      }
+
+      this.emit({ type: "ws:status", status: "reconnecting", attempt: this.reconnectAttempts });
+      this.scheduleReconnect();
+    };
+
+    socket.onerror = (err) => {
+      if (this.ws !== socket) return; // périmé — ignorer
       WSLogger.error("WS erreur", err);
     };
   }

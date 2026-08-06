@@ -61,6 +61,10 @@ import { handleStudentMessage, handleStudentDisconnect, cleanupStudentRoom } fro
 const STUDENT_TYPES = new Set([
   "student:enqueue",
   "student:dequeue",
+  "student:callUser",       // 🟢 AJOUT — appel direct
+  "student:callAccept",     // 🟢 AJOUT
+  "student:callDecline",    // 🟢 AJOUT
+  "student:callCancel",
   "student:joinRoom",
   "student:join-room",
   "student:leaveRoom",
@@ -75,6 +79,12 @@ const STUDENT_TYPES = new Set([
 // =======================================================
 const clients = new Map(); // userId → ws
 const rateLimiter = new RateLimiter(30, 1000);
+// 🟢 AJOUT — limite dédiée à la signalisation WebRTC (rafales de candidats
+// ICE normales : plusieurs dizaines en une fraction de seconde). La limite
+// globale de 30/s était trop stricte pour ce cas précis et faisait perdre
+// des candidats ICE, pouvant casser l'établissement de la connexion.
+const signalRateLimiter = new RateLimiter(120, 1000);
+const SIGNALING_TYPES = new Set(["student:signal", "webrtcSignal"]);
 
 // =======================================================
 // INIT SERVER
@@ -127,6 +137,17 @@ export function initWebSocketServer(server) {
       try {
         const oldWs = clients.get(ws.userId);
         oldWs._isReplacedConnection = true;
+
+        // 🟢 FIX RACE CONDITION — sans ceci, le nettoyage de la room de l'ancien
+        // socket n'arrive qu'à l'événement 'close' (asynchrone, potentiellement
+        // après que le NOUVEAU socket ait déjà envoyé student:joinRoom). Résultat :
+        // le serveur voit encore 2 membres dans la room et rejette la reconnexion
+        // avec "Room pleine.". On force donc ce nettoyage ici, de façon synchrone,
+        // AVANT que le nouveau client ne puisse tenter de rejoindre la room.
+        if (oldWs.role === "etudiant" && oldWs.studentRoomId) {
+          cleanupStudentRoom(oldWs);
+        }
+
         oldWs.terminate();
       } catch (err) {
         console.error("❌ Erreur fermeture ancienne socket:", err.message);
@@ -196,16 +217,18 @@ export function initWebSocketServer(server) {
 // ROUTER DE MESSAGES
 // =======================================================
 async function onMessage(ws, raw) {
-  // Protection anti-spam Rate Limit
-  if (!rateLimiter.isAllowed(ws.userId)) {
-    return safeSend(ws, { type: "error", message: "Trop de requêtes, veuillez ralentir." });
-  }
-
   let data;
   try {
     data = JSON.parse(raw.toString());
   } catch (err) {
     return safeSend(ws, { type: "error", message: "JSON invalide" });
+  }
+
+  // 🟢 AJOUT — limite adaptée au type de message : plus généreuse pour la
+  // signalisation WebRTC (rafales ICE), stricte pour tout le reste.
+  const limiter = SIGNALING_TYPES.has(data.type) ? signalRateLimiter : rateLimiter;
+  if (!limiter.isAllowed(ws.userId)) {
+    return safeSend(ws, { type: "error", message: "Trop de requêtes, veuillez ralentir." });
   }
 
   ws.lastActiveAt = new Date().toISOString();

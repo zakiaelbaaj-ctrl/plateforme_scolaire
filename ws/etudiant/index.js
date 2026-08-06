@@ -5,6 +5,7 @@ import { joinRoom, leaveRoom, handleUnexpectedDisconnect } from "./rooms.js";
 import { documentShare }        from "./documents.js";
 import { handleSignal }         from "./video.js";
 import { StudentMatchService }  from "./match.service.js";
+import { StudentCallService }   from "./call.service.js"; // 🟢 AJOUT — appel direct
 import { safeSend } from "../utils.js";
 import { clients } from "../../socket.js";
 
@@ -35,6 +36,26 @@ export async function handleStudentMessage(ws, msg) {
 
         case "student:dequeue":
             StudentMatchService.removeStudent(ws.userId);
+            break;
+
+        // --------------------------------------------------
+        // 🟢 AJOUT — APPEL DIRECT (étudiant → étudiant ciblé)
+        // Indépendant du matching par file d'attente ci-dessus.
+        // --------------------------------------------------
+        case "student:callUser":
+            StudentCallService.callUser(ws, msg.targetUserId);
+            break;
+
+        case "student:callAccept":
+            StudentCallService.acceptCall(ws, msg.callId);
+            break;
+
+        case "student:callDecline":
+            StudentCallService.declineCall(ws, msg.callId);
+            break;
+
+        case "student:callCancel":
+            StudentCallService.cancelCall(ws, msg.callId);
             break;
 
         // --------------------------------------------------
@@ -127,6 +148,9 @@ export async function handleStudentMessage(ws, msg) {
 export async function handleStudentDisconnect(ws) {
     // Retirer de la file de matching si en attente
     StudentMatchService.removeStudent(ws.userId);
+
+    // 🟢 AJOUT — Nettoyer un éventuel appel direct en attente (envoyé ou reçu)
+    StudentCallService.cleanupUser(ws.userId);
 
     // Quitter la room peer si en session
     if (ws.studentRoomId) {

@@ -10,10 +10,12 @@ import { eventBus }                    from "/js/core/eventBus.js";
 import { EtudiantService }             from "/js/services/etudiant.service.js";
 import { EtudiantSessionOrchestrator } from "/js/domains/etudiant-session/etudiant.session.orchestrator.js";
 import { EtudiantMatchingService }     from "/js/domains/etudiant-session/etudiant.matching.service.js";
+import { EtudiantCallService }         from "/js/domains/etudiant-session/etudiant.call.service.js"; // 🟢 AJOUT
 import { WhiteboardService }           from "/js/domains/whiteboard/whiteboard.service.js";
 import { ChatService }                 from "/js/domains/chat/chat.service.js";
 import { startSessionTimer, stopSessionTimer, pauseSessionTimer, resumeSessionTimer } from "/js/pages/etudiant/session.timer.js";
 import { ScreenShareOverlay } from "/js/ui/components/screen.share.overlay.js";
+import { CallUI } from "/js/ui/components/call.ui.js"; // 🟢 AJOUT — composant autonome, même modèle que ScreenShareOverlay
 import { refreshAccessToken } from "/js/lib/auth.refresh.js";
 // ======================================================
 // // AUTH — configuré UNE SEULE FOIS, en premier
@@ -45,6 +47,7 @@ setAuthProvider({
 const UI = {
 
      _matchSound: new Audio("/assets/sounds/call.mp3"),
+     _currentOutgoingCallId: null, // 🟢 AJOUT — callId de l'appel direct qu'ON vient d'émettre
 
      _playMatchSound() {
         this._matchSound.currentTime = 0;
@@ -81,6 +84,10 @@ const UI = {
         alert(msg);
     },
         onMatchFound(data) {
+         // 🟢 AJOUT — si une modale d'appel direct était affichée, on la referme
+         CallUI.hide();
+         this._currentOutgoingCallId = null;
+
          this._playMatchSound();
          this.toggleView('session');
          const wrapper = document.getElementById('whiteboard-wrapper');
@@ -115,6 +122,8 @@ const UI = {
     const list = document.getElementById('etudiant-list');
     if (!list) return;
 
+    CallUI.injectListButtonStyles(); // 🟢 AJOUT — styles du bouton "Appeler"
+
     list.innerHTML = "";
 
     if (!students.length) {
@@ -122,7 +131,12 @@ const UI = {
         return;
     }
 
+    const myId = AppState.currentUser?.id;
+
     students.forEach(student => {
+        // 🟢 AJOUT — ne pas s'afficher soi-même dans la liste appelable
+        if (String(student.id) === String(myId)) return;
+
         const li = document.createElement('li');
         li.className = "etudiant-list__item";
         li.dataset.id = student.id;
@@ -136,6 +150,7 @@ const UI = {
             <span class="etudiant-list__avatar">👤</span>
             <span class="etudiant-list__name">${nom}</span>
             ${meta ? `<span class="etudiant-list__meta">${meta}</span>` : ""}
+            <button type="button" class="etudiant-list__call-btn" data-call-target="${student.id}">📞 Appeler</button>
         `;
 
         list.appendChild(li);
@@ -143,6 +158,49 @@ const UI = {
 
     Logger.log(`🧹 Liste mise à jour visuellement : ${students.length} étudiant(s)`);
 },
+
+    // ======================================================
+    // 🟢 AJOUT — APPEL DIRECT : simples relais vers CallUI
+    // (dashboard.js ne construit aucun DOM lui-même ici)
+    // ======================================================
+
+    onIncomingCall(data) {
+        CallUI.showIncoming(data, {
+            onAccept: () => EtudiantCallService.acceptCall(data.callId),
+            onDecline: () => EtudiantCallService.declineCall(data.callId),
+        });
+    },
+
+    onCallRinging(data) {
+        this._currentOutgoingCallId = data.callId;
+        CallUI.showOutgoing(data, {
+            onCancel: () => {
+                EtudiantCallService.cancelCall(data.callId);
+                this._currentOutgoingCallId = null;
+            },
+        });
+    },
+
+    onCallDeclined(data) {
+        this._currentOutgoingCallId = null;
+        CallUI.declined(data);
+    },
+
+    onCallCancelled(data) {
+        this._currentOutgoingCallId = null;
+        CallUI.cancelled(data);
+    },
+
+    onCallTimeout(data) {
+        this._currentOutgoingCallId = null;
+        CallUI.timeout(data);
+    },
+
+    onCallError(data) {
+        this._currentOutgoingCallId = null;
+        CallUI.error(data);
+    },
+
 onUserLeft() {
   // 1. Toast non bloquant
   const toast = document.createElement("div");
@@ -351,6 +409,14 @@ eventBus.on("student:match-found", (data) => {
     UI.notify(`Match trouvé avec ${data.partnerName} !`);
 });
 
+// 🟢 AJOUT — appel direct : branchement des événements sur UI (simples relais vers CallUI)
+eventBus.on("student:incoming-call", (data) => UI.onIncomingCall(data));
+eventBus.on("student:call-ringing",  (data) => UI.onCallRinging(data));
+eventBus.on("student:call-declined", (data) => UI.onCallDeclined(data));
+eventBus.on("student:call-cancelled", (data) => UI.onCallCancelled(data));
+eventBus.on("student:call-timeout",  (data) => UI.onCallTimeout(data));
+eventBus.on("student:call-error",    (data) => UI.onCallError(data));
+
 eventBus.on("media:local-stream", (stream) => {
     const video = document.getElementById('local-video');
     if (video) video.srcObject = stream;
@@ -543,6 +609,34 @@ if (btnRejoindre) {
         });
     });
 }
+
+    // 🟢 AJOUT — 2bis. Délégation de clic pour le bouton "Appeler" de chaque étudiant
+    //    (la liste est régénérée à chaque mise à jour ; la délégation évite de
+    //    re-brancher un listener par étudiant à chaque fois). Reste ici car le
+    //    branchement des interactions DOM est le rôle propre de setupInteractions().
+    const etudiantList = document.getElementById('etudiant-list');
+    if (etudiantList) {
+        etudiantList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.etudiant-list__call-btn');
+            if (!btn) return;
+
+            const targetId = btn.dataset.callTarget;
+            if (!targetId) return;
+
+            btn.disabled = true;
+            btn.textContent = "Appel...";
+
+            EtudiantCallService.callUser(targetId);
+
+            // Réactivation de sécurité si aucune réponse serveur ne survient
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = "📞 Appeler";
+            }, 3000);
+        });
+    } else {
+        Logger.warn("⚠️ #etudiant-list introuvable dans le DOM");
+    }
 
     // 3. Chat
     const btnSend   = document.getElementById('send-msg');

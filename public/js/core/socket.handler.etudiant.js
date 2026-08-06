@@ -107,6 +107,61 @@ case "student:match-found":
   break;
 
     // ==================================================
+    // 🟢 AJOUT — APPEL DIRECT (étudiant → étudiant ciblé)
+    // Indépendant du matching. Une fois accepté, le serveur envoie
+    // "student:matchFound" (ci-dessus) qui prend le relais normalement.
+    // ==================================================
+
+    case "student:incomingCall":
+      Logger.log("📞 Appel entrant de :", data.fromName);
+      eventBus.emit("student:incoming-call", {
+        callId:      data.callId,
+        fromId:      data.fromId,
+        fromName:    data.fromName,
+        fromMatiere: data.fromMatiere,
+        fromNiveau:  data.fromNiveau,
+      });
+      break;
+
+    case "student:callRinging":
+      Logger.log("📞 Sonnerie envoyée à :", data.toName);
+      eventBus.emit("student:call-ringing", {
+        callId: data.callId,
+        toId:   data.toId,
+        toName: data.toName,
+      });
+      break;
+
+    case "student:callDeclined":
+      Logger.log("🚫 Appel refusé par :", data.toName);
+      eventBus.emit("student:call-declined", {
+        toName: data.toName,
+      });
+      break;
+
+    case "student:callCancelled":
+      Logger.log("🚫 Appel annulé :", data.reason || "");
+      eventBus.emit("student:call-cancelled", {
+        fromName: data.fromName,
+        reason:   data.reason || null,
+      });
+      break;
+
+    case "student:callTimeout":
+      Logger.log("⏱️ Appel expiré, pas de réponse de :", data.toName);
+      eventBus.emit("student:call-timeout", {
+        toName: data.toName,
+      });
+      break;
+
+    case "student:callError":
+      Logger.warn("📞 Erreur d'appel :", data.message);
+      eventBus.emit("student:call-error", {
+        message: data.message,
+      });
+      break;
+
+    // ==================================================
     // 🔒 SESSION
     // ==================================================
 

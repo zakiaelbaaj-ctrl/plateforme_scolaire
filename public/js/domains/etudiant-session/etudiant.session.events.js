@@ -80,6 +80,35 @@ eventBus.on("student:session-ready", (data) => {
 });
 
   // ====================================================
+  // 🟢 AJOUT — APPEL DIRECT (étudiant → étudiant ciblé)
+  // ====================================================
+
+  eventBus.on("student:incoming-call", (data) => {
+    Logger.log("📥 UI Events : Appel entrant reçu, transfert à l'UI.");
+    uiService?.onIncomingCall?.(data);
+  });
+
+  eventBus.on("student:call-ringing", (data) => {
+    uiService?.onCallRinging?.(data);
+  });
+
+  eventBus.on("student:call-declined", (data) => {
+    uiService?.onCallDeclined?.(data);
+  });
+
+  eventBus.on("student:call-cancelled", (data) => {
+    uiService?.onCallCancelled?.(data);
+  });
+
+  eventBus.on("student:call-timeout", (data) => {
+    uiService?.onCallTimeout?.(data);
+  });
+
+  eventBus.on("student:call-error", (data) => {
+    uiService?.onCallError?.(data);
+  });
+
+  // ====================================================
   // 📦 SESSION ROOM
   // ====================================================
 
