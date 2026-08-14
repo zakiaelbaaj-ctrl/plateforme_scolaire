@@ -771,9 +771,11 @@ function setWbTool(activeId, callback) {
 function toggleWhiteboardFullscreen() {
   const wrapper = document.getElementById("whiteboard-wrapper");
   const btn     = document.getElementById("wb-fullscreen-btn");
+  const card    = wrapper?.closest(".card--whiteboard"); // 🆕 remonte au parent commun
   if (!wrapper) return;
 
   const isFullscreen = wrapper.classList.toggle("whiteboard-fullscreen");
+  card?.classList.toggle("whiteboard-fullscreen", isFullscreen); // 🆕 synchronise le parent
 
   if (isFullscreen) {
     if (btn) { btn.textContent = "⊡"; btn.title = "Quitter le plein écran"; }
