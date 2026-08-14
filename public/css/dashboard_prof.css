@@ -355,7 +355,7 @@ h3 {
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-card), var(--shadow-inset);
-  animation: fade-up 0.35s ease both;
+  animation: fade-up 0.35s ease;
 }
 
 /* Seulement video et whiteboard ont besoin de overflow:hidden */
