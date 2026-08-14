@@ -656,10 +656,26 @@ document.addEventListener("fullscreenchange", () => {
     if (btn) btn.textContent = "⛶";
   }
 });
-// Cacher le partage d'écran si non supporté (tablette/mobile)
+// Cacher le partage d'écran si non supporté (tablette/mobile) + informer l'élève
 const screenShareBtn = document.getElementById("screen-share-btn");
 if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
   screenShareBtn.style.display = "none";
+
+  const notice = document.createElement("div");
+  notice.textContent = "ℹ️ Le partage d'écran n'est pas disponible sur cet appareil. Utilisez un ordinateur si vous souhaitez partager votre écran pendant un cours.";
+  notice.style.cssText = `
+    position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+    background: #2563eb; color: white; padding: 14px 18px;
+    border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: system-ui, sans-serif; font-size: 14px; max-width: 320px;
+    line-height: 1.4;
+  `;
+  document.body.appendChild(notice);
+  setTimeout(() => {
+    notice.style.opacity = "0";
+    notice.style.transition = "opacity 0.3s ease";
+    setTimeout(() => notice.remove(), 300);
+  }, 8000);
 }
 // ======================================================
 // BOUTONS SCROLL LISTE PROFESSEURS
