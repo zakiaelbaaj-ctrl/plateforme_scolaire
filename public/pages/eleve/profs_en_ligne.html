@@ -567,12 +567,10 @@ let avatarHtml = "";
 
 if (p.photo_identite_url) {
   const normalizedPath = p.photo_identite_url.replace(/\\/g, "/");
-
-  // Si c'est déjà une URL complète (http:// ou https://), on l'utilise telle quelle
+  const filename = normalizedPath.split("/").pop();
   const fullUrl = /^https?:\/\//i.test(normalizedPath)
     ? normalizedPath
-    : `${API_URL}/${normalizedPath.replace(/^\/+/, "")}`;
-
+    : `${API_URL}/api/v1/documents/avatar/${filename}`;
   avatarHtml = `
     <img
       src="${fullUrl}"

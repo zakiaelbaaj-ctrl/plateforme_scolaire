@@ -33,6 +33,8 @@ import whiteboardRoutes from "./routes/whiteboard.routes.js";
 import stripeStudentRoutes from "./routes/v1/stripe/stripe.student.routes.js";
 import ratingRoutes from "./routes/v1/eleves/ratings.routes.js";
 import pushRoutes from "./routes/v1/push/push.routes.js";
+import documentsRouter from "./routes/v1/documents/documents.routes.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -117,6 +119,7 @@ app.use("/api/v1/webrtc", webrtcRoutes);
 app.use("/api/v1/appels", appelsRoutes);
 app.use("/api/v1/ratings", ratingRoutes);
 app.use("/api/v1/push", pushRoutes);
+app.use("/api/v1/documents", documentsRouter);
 // =======================================================
 // VUES & STATIQUE
 // =======================================================
@@ -150,7 +153,7 @@ const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, "uploads/diplom
 
 app.use("/documents", express.static(docsDir));
 app.use("/corrections", express.static(corrDir));
-app.use("/uploads/diplomes", express.static(uploadDir));
+//app.use("/uploads/diplomes", express.static(uploadDir));
 // =======================================================
 // PAGES FRONTEND PROTÉGÉES
 // =======================================================

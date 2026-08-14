@@ -186,35 +186,35 @@ function afficherDossier() {
     <div class="detail-row">
       <strong>Diplôme :</strong>
       ${prof.diplome_url 
-        ? `<a href="${prof.diplome_url}" target="_blank" class="back-home">📄 Voir</a>`
+        ? `<button class="back-home" onclick="voirDocument('${prof.diplome_url}')">📄 Voir</button>`
         : "Aucun"}
     </div>
 
     <div class="detail-row">
       <strong>Pièce d'identité :</strong>
       ${prof.piece_identite_url 
-        ? `<a href="${prof.piece_identite_url}" target="_blank" class="back-home">🪪 Voir</a>`
-        : "Aucun"}
+        ? `<button class="back-home" onclick="voirDocument('${prof.piece_identite_url}')">🪪 Voir</button>`
+         : "Aucun"}
     </div>
 
     <div class="detail-row">
       <strong>Photo d'identité :</strong>
       ${prof.photo_identite_url 
-        ? `<a href="${prof.photo_identite_url}" target="_blank" class="back-home">🖼️ Voir</a>`
+        ? `<button class="back-home" onclick="voirDocument('${prof.photo_identite_url}')">🖼️ Voir</button>`
         : "Aucun"}
     </div>
 
     <div class="detail-row">
       <strong>CV :</strong>
       ${prof.curriculum_vitae_url 
-        ? `<a href="${prof.curriculum_vitae_url}" target="_blank" class="back-home">📘 Voir</a>`
+        ? `<button class="back-home" onclick="voirDocument('${prof.curriculum_vitae_url}')">📘 Voir</button>`
         : "Aucun"}
     </div>
 
     <div class="detail-row">
       <strong>Lettre de motivation :</strong>
       ${prof.lettre_motivation_url 
-        ? `<a href="${prof.lettre_motivation_url}" target="_blank" class="back-home">✉️ Voir</a>`
+        ? `<button class="back-home" onclick="voirDocument('${prof.lettre_motivation_url}')">✉️ Voir</button>`
         : "Aucun"}
     </div>
   `;
@@ -247,9 +247,24 @@ async function updateStatut(statut) {
     alert("❌ " + err.message);
   }
 }
+async function voirDocument(urlBrut) {
+  const token = localStorage.getItem("token");
+  const filename = urlBrut.split("/").pop();
+  try {
+    const res = await fetch(`${API_URL}/api/v1/documents/${filename}/signed-url`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("Impossible de générer le lien");
+    const { url } = await res.json();
+    window.open(`${API_URL}${url}`, "_blank");
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
 async function telechargerTousLesDocuments() {
   const zip = new JSZip();
   const dossier = zip.folder(`${prof.nom}_${prof.prenom}_documents`);
+  const token = localStorage.getItem("token");
 
   const fichiers = [
     { url: prof.diplome_url, nom: "diplome.pdf" },
@@ -263,18 +278,21 @@ async function telechargerTousLesDocuments() {
     if (!fichier.url) continue;
 
     try {
-      const response = await fetch(fichier.url);
+      const filename = fichier.url.split("/").pop();
+      const response = await fetch(`${API_URL}/api/v1/documents/${filename}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       dossier.file(fichier.nom, blob);
     } catch (err) {
-      console.warn("Impossible de télécharger :", fichier.url);
+      console.warn("Impossible de télécharger :", fichier.url, err.message);
     }
   }
 
   const contenu = await zip.generateAsync({ type: "blob" });
   saveAs(contenu, `${prof.nom}_${prof.prenom}_documents.zip`);
 }
-
 document.getElementById("btnValider").onclick = () => updateStatut("active");
 document.getElementById("btnRejeter").onclick = () => updateStatut("rejected");
 document.getElementById("btnAttente").onclick = () => updateStatut("pending");

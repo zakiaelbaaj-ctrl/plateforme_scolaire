@@ -434,7 +434,18 @@ export async function endSessionForDisconnect(profId, eleveId, onlineProfessors,
          VALUES (:profId, 'invoice', :data, NOW())`,
         { replacements: { profId, data: JSON.stringify(invoicePayload) } }
       );
-    }
+      } else if (paymentResult && paymentResult.status === 'skipped') {
+    // ✅ AJOUT : notifier les deux parties que la session n'a pas été facturée
+    const notBilledPayload = {
+      type: "session:notBilled",
+      reason: paymentResult.reason,
+      dureeMinutes: paymentResult.duration || Math.ceil(durationSeconds / 60),
+      message: "Cette session était trop courte pour être facturée."
+    };
+
+    if (eleveWs?.readyState === 1) safeSend(eleveWs, notBilledPayload);
+    if (profWs?.readyState === 1)  safeSend(profWs,  notBilledPayload);
+  }
   } catch (err) {
     console.error(`❌ Erreur paiement pour ${roomId}:`, err.message);
   }

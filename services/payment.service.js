@@ -115,13 +115,12 @@ export async function processSessionPayment(roomId) {
 
     while (attempts < 3) {
       const result = await pool.query(
-        `SELECT duration_seconds, user_id, professor_id 
-         FROM visio_sessions 
-         WHERE room_id = $1 AND duration_seconds > 0
-         ORDER BY created_at DESC LIMIT 1`,
-        [roomId]
-      );
-
+  `SELECT id, duration_seconds, user_id, professor_id 
+   FROM visio_sessions 
+   WHERE room_id = $1 AND duration_seconds > 0
+   ORDER BY created_at DESC LIMIT 1`,
+  [roomId]
+);
       if (result.rows.length > 0) {
         sessionData = result.rows[0];
         break;
@@ -135,7 +134,7 @@ export async function processSessionPayment(roomId) {
     duration = Math.ceil(sessionData.duration_seconds / 60);
     eleveId = sessionData.user_id;
     profId = sessionData.professor_id;
-
+     const sessionId = sessionData.id;
     // ✅ CORRECTION SQL : Remplacement de $1, $2 par des replacements nommés Sequelize
     const users = await db.query(
       `SELECT id, email, username, role, stripe_customer_id, stripe_account_id, currency, is_university_prof, is_subscriber 
@@ -148,10 +147,14 @@ export async function processSessionPayment(roomId) {
 
     if (!eleve || !prof) throw new Error("Participants introuvables.");
 
-    if (eleve.role === 'eleve' && prof.role === 'eleve') {
-      if (!eleve.is_subscriber) throw new Error("Abonnement entraide requis.");
-      return { status: 'covered_by_subscription' };
-    }
+   if (eleve.role === 'eleve' && prof.role === 'eleve') {
+  if (!eleve.is_subscriber) throw new Error("Abonnement entraide requis.");
+  await pool.query(
+    `UPDATE visio_sessions SET payment_status = 'covered_by_subscription', is_paid = true WHERE id = $1`,
+    [sessionId]
+  );
+  return { status: 'covered_by_subscription' };
+}
 
     const hourlyRateHT = getTarifHoraireHT(eleve.niveau);
 
@@ -162,10 +165,30 @@ export async function processSessionPayment(roomId) {
     const totalAmountEUR = amountHT + amountTVA;
 
     if (totalAmountEUR < 50) {
-      console.log(`⚠️ Montant ${totalAmountEUR}cts trop bas. Ignoré.`);
-      return { status: 'skipped', reason: 'amount_too_low' };
-    }
+  logger.warn("Paiement ignoré : montant sous le seuil Stripe", {
+    sessionId, roomId, profId, eleveId, duration, totalAmountEUR,
+  });
 
+  await pool.query(
+    `UPDATE visio_sessions 
+     SET payment_status = 'skipped_low_amount', amount = $1
+     WHERE id = $2`,
+    [totalAmountEUR / 100, sessionId]
+  );
+
+  // ✅ Email isolé — un échec d'envoi ne doit jamais bloquer le retour
+  try {
+    await mailService.sendSessionTooShortEmail(prof.email, {
+      duration,
+      studentName: eleve.username || eleve.email,
+      displayName: prof.username || prof.email,
+    });
+  } catch (emailErr) {
+    logger.error("⚠️ Échec envoi email session trop courte (non bloquant):", { message: emailErr.message });
+  }
+
+  return { status: 'skipped', reason: 'amount_too_low', amount: totalAmountEUR };
+}
     const commissionEUR = Math.round(amountHT * 0.28);
     const feeAmountEUR = commissionEUR + amountTVA;
     const studentCurrency = eleve.currency?.toLowerCase() || 'eur';
@@ -206,6 +229,13 @@ export async function processSessionPayment(roomId) {
     });
     
     console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR/100}€`);
+   
+    await pool.query(
+  `UPDATE visio_sessions 
+   SET payment_status = 'succeeded', payment_intent_id = $1, amount = $2, is_paid = true
+   WHERE id = $3`,
+  [paymentIntent.id, totalAmountEUR / 100, sessionId]
+);
     // 👉 La génération du PDF
     const { generateInvoicePdf } = await import("./invoicePdf.js"); // Adaptez le chemin
     const invoiceNumber = `VID-${profId}-${eleveId}-${Date.now()}`;
@@ -247,24 +277,34 @@ return {
     url: `/invoices/${fileName}` 
 };
 
-  } catch (err) {
-    // Gestion du cas SCA (Authentification requise)
-    if (err.raw && err.raw.code === 'authentication_required') {
-      // On récupère à nouveau les objets pour être sûr
-      // ✅ CORRECTION SQL : Syntaxe Sequelize ici aussi
-      const users = await db.query(
-        `SELECT * FROM users WHERE id IN (:profId, :eleveId)`, 
-        { replacements: { profId, eleveId }, type: QueryTypes.SELECT }
-      );
-      const prof = users.find(u => u.id == profId);
-      const eleve = users.find(u => u.id == eleveId);
-      
-      const invoiceUrl = await handleAuthenticationRequired(eleve, prof, duration, roomId);
-      return { status: 'requires_action', checkout_url: invoiceUrl };
-    }
-    logger.error("❌ Erreur processSessionPayment:", err.message);
-    throw err;
+ } catch (err) {
+  if (err.raw && err.raw.code === 'authentication_required') {
+    const users = await db.query(
+      `SELECT * FROM users WHERE id IN (:profId, :eleveId)`,
+      { replacements: { profId, eleveId }, type: QueryTypes.SELECT }
+    );
+    const prof = users.find(u => u.id == profId);
+    const eleve = users.find(u => u.id == eleveId);
+
+    const invoiceUrl = await handleAuthenticationRequired(eleve, prof, duration, roomId);
+
+    await pool.query(
+      `UPDATE visio_sessions SET payment_status = 'requires_action' WHERE room_id = $1 AND payment_status = 'pending'`,
+      [roomId]
+    );
+
+    return { status: 'requires_action', checkout_url: invoiceUrl };
   }
+
+  logger.error("❌ Erreur processSessionPayment:", err.message);
+
+  await pool.query(
+    `UPDATE visio_sessions SET payment_status = 'failed' WHERE room_id = $1 AND payment_status = 'pending'`,
+    [roomId]
+  ).catch(e => logger.error("Échec mise à jour payment_status='failed'", { message: e.message }));
+
+  throw err;
+}
 }
 
 /**

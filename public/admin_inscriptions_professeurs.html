@@ -154,9 +154,9 @@ function afficherProfesseurs() {
       <td>${p.matiere || "—"}</td>
       <td>${p.ville || "—"}</td>
       <td>${p.pays || "—"}</td>
-      <td>${p.diplome_url ? `<a href="${p.diplome_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">📄 Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
-      <td>${p.piece_identite_url ? `<a href="${p.piece_identite_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">🪪 Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
-      <td>${p.photo_identite_url ? `<a href="${p.photo_identite_url}" target="_blank" class="back-home" style="font-size:10px; padding:4px 6px;">🖼️ Voir</a>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
+      <td>${p.diplome_url ? `<button class="back-home" style="font-size:10px; padding:4px 6px;" onclick="voirDocument('${p.diplome_url}')">📄 Voir</button>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
+      <td>${p.piece_identite_url ? `<button class="back-home" style="font-size:10px; padding:4px 6px;" onclick="voirDocument('${p.piece_identite_url}')">🪪 Voir</button>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
+      <td>${p.photo_identite_url ? `<button class="back-home" style="font-size:10px; padding:4px 6px;" onclick="voirDocument('${p.photo_identite_url}')">🖼️ Voir</button>` : '<span style="color:gray; font-size:11px;">Aucun</span>'}</td>
       <td>${p.heures_mois || 0} h</td>
       <td><span style="font-size:11px;">${dateInsc}</span></td>
       <td><span class="status ${statusClass}">${statusText}</span></td>
@@ -290,6 +290,21 @@ function voirDossier(index) {
 }
 
 document.addEventListener("DOMContentLoaded", chargerProfesseurs);
+
+async function voirDocument(urlBrut) {
+  const token = localStorage.getItem("token");
+  const filename = urlBrut.split("/").pop();
+  try {
+    const res = await fetch(`${API_URL}/api/v1/documents/${filename}/signed-url`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("Impossible de générer le lien");
+    const { url } = await res.json();
+    window.open(`${API_URL}${url}`, "_blank");
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+}
 </script>
 </body>
 </html>

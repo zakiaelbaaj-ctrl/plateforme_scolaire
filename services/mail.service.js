@@ -196,6 +196,29 @@ export async function sendProfPaymentEmail(email, { invoiceNumber, amount, durat
   });
 }
 // ------------------------------------------------------
+// Email session trop courte (non facturée)
+// ------------------------------------------------------
+export async function sendSessionTooShortEmail(email, { duration, studentName, displayName }) {
+  return sendEmail({
+    to: email,
+    subject: "ℹ️ Session non facturée — durée trop courte",
+    text: `Bonjour ${displayName}, votre session avec ${studentName} a duré ${duration} minute(s), en dessous du seuil minimum de facturation. Cette session n'a donc pas pu être facturée ni vous être rémunérée. Si vous pensez qu'il s'agit d'une erreur, contactez le support.`,
+    html: `
+      <div style="font-family: sans-serif; color: #333; line-height: 1.6;">
+        <h2 style="color: #e65100;">ℹ️ Session non facturée</h2>
+        <p>Bonjour <strong>${displayName}</strong>,</p>
+        <p>Votre session avec <strong>${studentName}</strong> a duré <strong>${duration} minute${duration > 1 ? "s" : ""}</strong>, 
+        ce qui est en dessous du seuil minimum requis pour être facturée.</p>
+        <p>Cette session n'a donc pas pu être facturée à l'élève, et vous ne serez pas rémunéré(e) pour celle-ci.</p>
+        <p style="font-size: 0.85em; color: #666; margin-top: 25px;">
+          Si vous pensez qu'il s'agit d'une erreur (par exemple un problème technique ayant écourté la session), 
+          contactez notre équipe support.
+        </p>
+      </div>
+    `
+  });
+}
+// ------------------------------------------------------
 // Email activation compte professeur
 // ------------------------------------------------------
 export async function sendProfActivatedEmail(user) {

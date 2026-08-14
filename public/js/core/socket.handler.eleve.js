@@ -220,6 +220,29 @@ case "screenShareStopped": {
         
         break;
         }
+        case "session:notBilled": {
+  const toast = document.createElement("div");
+  toast.innerHTML = `
+    <div style="margin-bottom: 12px; font-size: 14px;">
+      ℹ️ <strong>Session non facturée</strong><br>
+      <span style="font-size: 12px; opacity: 0.9;">Durée : ${data.dureeMinutes} min — trop courte pour être facturée.</span>
+    </div>
+  `;
+  toast.style.cssText = `
+    position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+    background: #f59e0b; color: white; padding: 16px;
+    border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: system-ui, sans-serif; transition: opacity 0.3s ease;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      toast.style.opacity = "0";
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 20000);
+  break;
+}
        case "error":
      WSLogger.warn(`Erreur serveur [${data.code ?? "?"}] :`, data.message ?? data);
      if (data.message) {

@@ -135,6 +135,14 @@ case "chatMessage":
         AppState._notify("wallet:update", data.montant); 
         
         break;
+        case "session:notBilled":
+  console.info(`[PAIE] Session non facturée : ${data.dureeMinutes} min (trop courte)`);
+  AppState._notify("ui:notification", {
+    type: "warning",
+    title: "Session non facturée",
+    message: `Cette session de ${data.dureeMinutes} min était trop courte pour être facturée.`
+  });
+  break;
         // Dans SocketHandlerProf.handle(), avant default:
       case "TRANSPORT_CLOSED":
        // ✅ Silencieux — la reconnexion est gérée par socket.service.js
