@@ -230,7 +230,7 @@ export async function sendProfActivatedEmail(user) {
   return sendEmail({
     to: user.email,
     subject: "✅ Votre compte professeur a été activé !",
-    text: `Bonjour ${displayName}, votre compte a été validé par notre équipe. Connectez-vous dès maintenant pour apparaître dans la liste des professeurs disponibles et recevoir des appels d'élèves. N'oubliez pas de configurer votre compte Stripe pour recevoir vos paiements : ${stripeSetupUrl}. Connexion : ${loginUrl}`,
+    text: `Bonjour ${displayName}, votre compte a été validé par notre équipe. Connectez-vous dès maintenant pour apparaître dans la liste des professeurs disponibles et recevoir des appels d'élèves. Important : le partage d'écran n'est pas disponible sur téléphone mobile — l'utilisation d'un ordinateur est donc fortement conseillée pour le bon déroulement de vos cours. N'oubliez pas de configurer votre compte Stripe pour recevoir vos paiements : ${stripeSetupUrl}. Connexion : ${loginUrl}`,
     html: `
       <div style="font-family: sans-serif; color: #333; line-height: 1.6;">
         <h2 style="color: #2e7d32;">🎉 Votre compte a été activé !</h2>
@@ -251,6 +251,17 @@ export async function sendProfActivatedEmail(user) {
              Me connecter
           </a>
         </div>
+
+        <h3 style="margin-top: 24px; color: #1565c0;">💻 Bon à savoir avant votre premier cours</h3>
+        <p>
+          L'utilisation d'un <strong>ordinateur est fortement conseillée</strong> pour le bon déroulement de vos cours.
+          En effet, le partage d'écran (utile pour montrer un document, un exercice ou une correction) 
+          n'est pas disponible sur téléphone mobile en raison de limitations techniques propres à iOS et Android.
+        </p>
+        <p style="font-size: 0.9em; color: #555;">
+          Vous pouvez tout de même donner cours depuis une tablette ou un smartphone si besoin — 
+          seule la fonctionnalité de partage d'écran sera alors indisponible.
+        </p>
 
         <h3 style="margin-top: 24px; color: #e65100;">💳 Étape indispensable : configurer votre compte Stripe</h3>
         <p>
