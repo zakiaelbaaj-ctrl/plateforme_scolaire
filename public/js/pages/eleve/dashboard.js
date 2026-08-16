@@ -622,11 +622,13 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
   // ✅ wb-fullscreen-btn — utilise l'API Fullscreen native
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   whiteboardWrapper = whiteboardWrapper || document.getElementById("whiteboard-wrapper");
+  const card = whiteboardWrapper?.closest(".card--whiteboard");
   
   if (!document.fullscreenEnabled) {
     // Fallback CSS pour tablette/iOS
     const btn = document.getElementById("wb-fullscreen-btn");
     const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
+    card?.classList.toggle("whiteboard-fullscreen", isFs); // ✅ AJOUTE CETTE LIGNE
     if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
     WhiteboardService._canvas?.resizeCanvas?.();
     return;

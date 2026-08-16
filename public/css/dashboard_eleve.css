@@ -645,7 +645,27 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   display: flex;
   gap: var(--space-sm);
 }
-
+#whiteboard-wrapper.whiteboard-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  margin: 0;
+  border-radius: 0;
+  min-height: 100vh;
+  background: #fff;
+}
+.card--whiteboard.whiteboard-fullscreen #wb-fullscreen-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 99px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
 /* ======================================================
    CONFIGURATION DU TABLEAU BLANC EN PLEIN ÉCRAN
    ====================================================== */
@@ -945,7 +965,7 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
 
 .top-bar    { animation: fade-down 0.3s ease both; }
 .prof-bar   { animation: fade-down 0.3s ease 0.05s both; }
-.card       { animation: fade-up 0.35s ease both; }
+.card       { animation: fade-up 0.35s ease; }
 
 .col-main .card:nth-child(1) { animation-delay: 0.08s; }
 .col-main .card:nth-child(2) { animation-delay: 0.14s; }
