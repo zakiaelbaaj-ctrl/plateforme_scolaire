@@ -625,7 +625,6 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   const card = whiteboardWrapper?.closest(".card--whiteboard");
 
   let log = [];
-  log.push("fullscreenEnabled = " + document.fullscreenEnabled);
 
   try {
     if (!document.fullscreenEnabled) {
@@ -633,17 +632,21 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
       const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
       card?.classList.toggle("whiteboard-fullscreen", isFs);
       if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
-      log.push("isFs = " + isFs);
 
-      // 🔍 LE VRAI DIAGNOSTIC : ce que le navigateur calcule réellement
-      const computed = getComputedStyle(whiteboardWrapper);
-      log.push("computed position = " + computed.position);
-      log.push("computed top = " + computed.top);
-      log.push("computed left = " + computed.left);
-      log.push("computed width = " + computed.width);
-      log.push("computed height = " + computed.height);
-      log.push("computed zIndex = " + computed.zIndex);
-      log.push("computed background = " + computed.backgroundColor);
+      // 🔍 Force le recalcul de mise en page avant de lire le style
+      void whiteboardWrapper.offsetHeight;
+
+      // 🔍 Re-récupère l'élément fraîchement depuis le DOM, au cas où la variable serait périmée
+      const freshWrapper = document.getElementById("whiteboard-wrapper");
+      log.push("même élément = " + (freshWrapper === whiteboardWrapper));
+      log.push("classes réelles sur freshWrapper = " + freshWrapper.className);
+
+      const computed = getComputedStyle(freshWrapper);
+      log.push("position (après reflow) = " + computed.position);
+      log.push("width (après reflow) = " + computed.width);
+
+      // 🔍 Compte combien d'éléments ont cet ID sur la page (devrait être 1)
+      log.push("nombre d'éléments avec cet ID = " + document.querySelectorAll("#whiteboard-wrapper").length);
 
       WhiteboardService._canvas?.resizeCanvas?.();
     }
