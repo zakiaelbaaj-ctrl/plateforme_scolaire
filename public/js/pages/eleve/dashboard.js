@@ -626,29 +626,26 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
 
   let log = [];
   log.push("fullscreenEnabled = " + document.fullscreenEnabled);
-  log.push("whiteboardWrapper existe = " + !!whiteboardWrapper);
-  log.push("card existe = " + !!card);
 
   try {
     if (!document.fullscreenEnabled) {
-      log.push("→ Branche CSS FALLBACK");
       const btn = document.getElementById("wb-fullscreen-btn");
       const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
       card?.classList.toggle("whiteboard-fullscreen", isFs);
       if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
       log.push("isFs = " + isFs);
-      log.push("wrapper classes = " + whiteboardWrapper.className);
-      log.push("card classes = " + (card ? card.className : "PAS DE CARD"));
+
+      // 🔍 LE VRAI DIAGNOSTIC : ce que le navigateur calcule réellement
+      const computed = getComputedStyle(whiteboardWrapper);
+      log.push("computed position = " + computed.position);
+      log.push("computed top = " + computed.top);
+      log.push("computed left = " + computed.left);
+      log.push("computed width = " + computed.width);
+      log.push("computed height = " + computed.height);
+      log.push("computed zIndex = " + computed.zIndex);
+      log.push("computed background = " + computed.backgroundColor);
+
       WhiteboardService._canvas?.resizeCanvas?.();
-    } else {
-      log.push("→ Branche FULLSCREEN API");
-      if (!document.fullscreenElement) {
-        whiteboardWrapper.requestFullscreen()
-          .then(() => alert("requestFullscreen OK"))
-          .catch(e => alert("requestFullscreen ÉCHEC: " + e.message));
-      } else {
-        document.exitFullscreen();
-      }
     }
   } catch (err) {
     log.push("❌ ERREUR: " + err.message);
