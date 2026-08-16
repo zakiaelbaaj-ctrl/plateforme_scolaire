@@ -624,6 +624,8 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   whiteboardWrapper = whiteboardWrapper || document.getElementById("whiteboard-wrapper");
   const card = whiteboardWrapper?.closest(".card--whiteboard");
   
+  alert("fullscreenEnabled = " + document.fullscreenEnabled); // 🔍 DIAGNOSTIC TEMPORAIRE
+
   if (!document.fullscreenEnabled) {
     // Fallback CSS pour tablette/iOS
     const btn = document.getElementById("wb-fullscreen-btn");
@@ -634,10 +636,14 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
     return;
   }
 
+  alert("BRANCHE FULLSCREEN API NATIVE utilisée"); // 🔍 DIAGNOSTIC TEMPORAIRE
+
   if (!document.fullscreenElement) {
     whiteboardWrapper.requestFullscreen()
-      .then(() => console.log("✅ requestFullscreen OK"))
-      .catch(e => console.error("❌ requestFullscreen failed:", e));
+      //.then(() => console.log("✅ requestFullscreen OK"))
+      //.catch(e => console.error("❌ requestFullscreen failed:", e));
+      then(() => alert("requestFullscreen OK")) // 🔍 DIAGNOSTIC TEMPORAIRE
+      .catch(e => alert("requestFullscreen ÉCHEC: " + e.message)); // 🔍 DIAGNOSTIC TEMPORAIRE
   } else {
     document.exitFullscreen();
   }
