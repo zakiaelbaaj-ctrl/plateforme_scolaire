@@ -623,30 +623,38 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   whiteboardWrapper = whiteboardWrapper || document.getElementById("whiteboard-wrapper");
   const card = whiteboardWrapper?.closest(".card--whiteboard");
-  
-  alert("fullscreenEnabled = " + document.fullscreenEnabled); // 🔍 DIAGNOSTIC TEMPORAIRE
 
-  if (!document.fullscreenEnabled) {
-    // Fallback CSS pour tablette/iOS
-    const btn = document.getElementById("wb-fullscreen-btn");
-    const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
-    card?.classList.toggle("whiteboard-fullscreen", isFs); // ✅ AJOUTE CETTE LIGNE
-    if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
-    WhiteboardService._canvas?.resizeCanvas?.();
-    return;
+  let log = [];
+  log.push("fullscreenEnabled = " + document.fullscreenEnabled);
+  log.push("whiteboardWrapper existe = " + !!whiteboardWrapper);
+  log.push("card existe = " + !!card);
+
+  try {
+    if (!document.fullscreenEnabled) {
+      log.push("→ Branche CSS FALLBACK");
+      const btn = document.getElementById("wb-fullscreen-btn");
+      const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
+      card?.classList.toggle("whiteboard-fullscreen", isFs);
+      if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
+      log.push("isFs = " + isFs);
+      log.push("wrapper classes = " + whiteboardWrapper.className);
+      log.push("card classes = " + (card ? card.className : "PAS DE CARD"));
+      WhiteboardService._canvas?.resizeCanvas?.();
+    } else {
+      log.push("→ Branche FULLSCREEN API");
+      if (!document.fullscreenElement) {
+        whiteboardWrapper.requestFullscreen()
+          .then(() => alert("requestFullscreen OK"))
+          .catch(e => alert("requestFullscreen ÉCHEC: " + e.message));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+  } catch (err) {
+    log.push("❌ ERREUR: " + err.message);
   }
 
-  alert("BRANCHE FULLSCREEN API NATIVE utilisée"); // 🔍 DIAGNOSTIC TEMPORAIRE
-
-  if (!document.fullscreenElement) {
-    whiteboardWrapper.requestFullscreen()
-      //.then(() => console.log("✅ requestFullscreen OK"))
-      //.catch(e => console.error("❌ requestFullscreen failed:", e));
-      then(() => alert("requestFullscreen OK")) // 🔍 DIAGNOSTIC TEMPORAIRE
-      .catch(e => alert("requestFullscreen ÉCHEC: " + e.message)); // 🔍 DIAGNOSTIC TEMPORAIRE
-  } else {
-    document.exitFullscreen();
-  }
+  alert(log.join("\n"));
 });
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement === whiteboardWrapper) {
