@@ -122,8 +122,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
  AppState.setCurrentUser(userData);
-AppState.token = localStorage.getItem("token"); // OK pour token (mais idéalement setter)
+ AppState.token = localStorage.getItem("token"); // OK pour token (mais idéalement setter)
  renderCurrentUserInfo(userData);
+ // ✅ AJOUT : initialise _myUserId pour le tableau blanc (undo/redo, authorId des traits)
+WhiteboardService.initSession();
 
  // Enregistrer et attendre le SW AVANT d'afficher le bouton
   if ("serviceWorker" in navigator) {

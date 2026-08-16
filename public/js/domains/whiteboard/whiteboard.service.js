@@ -48,10 +48,8 @@ export const WhiteboardService = {
   // INIT SESSION
   // ============================
 
-  initSession() {
-    _myUserId = AppState.currentUserId
-             ?? AppState.userId
-             ?? AppState.currentUser?.id
+initSession() {
+    _myUserId = AppState.currentUser?.id
              ?? JSON.parse(localStorage.getItem("currentUser") || "{}").id
              ?? null;
     if (!_myUserId) console.warn("⚠️ WhiteboardService : userId introuvable");
