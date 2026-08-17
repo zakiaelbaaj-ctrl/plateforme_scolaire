@@ -983,55 +983,50 @@ console.log({
     wbExitFullscreenBtn,
     whiteboardCard
 });
+
+const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent) 
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 if (wbFullscreenBtn && wbExitFullscreenBtn && whiteboardCard) {
 
-    // Fonction pour synchroniser l'affichage des boutons selon l'état réel
     const syncButtons = () => {
         const isFullscreen = whiteboardCard.classList.contains("whiteboard-fullscreen");
-        
         if (isFullscreen) {
             wbFullscreenBtn.style.display = "none";
-            wbExitFullscreenBtn.style.display = "inline-block"; // Force l'affichage
+            wbExitFullscreenBtn.style.display = "inline-block";
         } else {
             wbFullscreenBtn.style.display = "inline-block";
             wbExitFullscreenBtn.style.display = "none";
         }
     };
 
-    // Un observateur qui surveille si un script tente de modifier le style du bouton Quitter
     const observer = new MutationObserver(() => {
         const isFullscreen = whiteboardCard.classList.contains("whiteboard-fullscreen");
-        // Si on est en plein écran et que le bouton s'est fait masquer, on le remet
         if (isFullscreen && wbExitFullscreenBtn.style.display === "none") {
             wbExitFullscreenBtn.style.display = "inline-block";
         }
     });
-
-    // On commence à surveiller les changements de style sur le bouton Quitter
     observer.observe(wbExitFullscreenBtn, { attributes: true, attributeFilter: ["style"] });
 
-   // Référence pour remettre la vidéo distante à sa place initiale
     const remoteBlock = document.getElementById("remoteBlock");
     let remoteBlockOriginalParent      = remoteBlock?.parentElement || null;
     let remoteBlockOriginalNextSibling = remoteBlock?.nextElementSibling || null;
 
-    // Activer le plein écran
     wbFullscreenBtn.addEventListener("click", () => {
         whiteboardCard.classList.add("whiteboard-fullscreen");
         syncButtons();
 
-        // ✅ Déplace la vidéo du partenaire À L'INTÉRIEUR de la carte tableau blanc
-        // (obligatoire : l'API Fullscreen native n'affiche que l'élément
-        // demandé et ses descendants, rien en dehors n'est visible)
         if (remoteBlock) {
             whiteboardCard.appendChild(remoteBlock);
         }
 
-        // ✅ Vrai plein écran natif
-        if (whiteboardCard.requestFullscreen) {
-            whiteboardCard.requestFullscreen();
-        } else if (whiteboardCard.webkitRequestFullscreen) {
-            whiteboardCard.webkitRequestFullscreen();
+        // ✅ Sur iOS, on saute l'appel natif — non fiable, le CSS suffit déjà
+        if (!isIOS) {
+            if (whiteboardCard.requestFullscreen) {
+                whiteboardCard.requestFullscreen().catch(e => console.warn("requestFullscreen échec (ignoré):", e));
+            } else if (whiteboardCard.webkitRequestFullscreen) {
+                whiteboardCard.webkitRequestFullscreen();
+            }
         }
 
         setTimeout(() => {
@@ -1039,12 +1034,10 @@ if (wbFullscreenBtn && wbExitFullscreenBtn && whiteboardCard) {
         }, 0);
     });
 
-    // Quitter le plein écran
     wbExitFullscreenBtn.addEventListener("click", () => {
         whiteboardCard.classList.remove("whiteboard-fullscreen");
         syncButtons();
 
-        // ✅ Remet la vidéo distante à sa place d'origine dans le DOM
         if (remoteBlock && remoteBlockOriginalParent) {
             if (remoteBlockOriginalNextSibling) {
                 remoteBlockOriginalParent.insertBefore(remoteBlock, remoteBlockOriginalNextSibling);
@@ -1053,11 +1046,13 @@ if (wbFullscreenBtn && wbExitFullscreenBtn && whiteboardCard) {
             }
         }
 
-        // ✅ Quitter le vrai plein écran natif
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        } else if (document.webkitFullscreenElement) {
-            document.webkitExitFullscreen();
+        // ✅ Sur iOS, pas de vrai plein écran natif à quitter
+        if (!isIOS) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else if (document.webkitFullscreenElement) {
+                document.webkitExitFullscreen();
+            }
         }
 
         setTimeout(() => {
