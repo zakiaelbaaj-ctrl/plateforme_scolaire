@@ -620,41 +620,30 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
   setWbTool("textToolBtn", () => WhiteboardService.setTool?.("text"));
 });
   // ✅ wb-fullscreen-btn — utilise l'API Fullscreen native
+const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent) 
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+ se fait passer pour un Mac
+
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   whiteboardWrapper = whiteboardWrapper || document.getElementById("whiteboard-wrapper");
   const card = whiteboardWrapper?.closest(".card--whiteboard");
 
-  let log = [];
-
-  try {
-    if (!document.fullscreenEnabled) {
-      const btn = document.getElementById("wb-fullscreen-btn");
-      const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
-      card?.classList.toggle("whiteboard-fullscreen", isFs);
-      if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
-
-      // 🔍 Force le recalcul de mise en page avant de lire le style
-      void whiteboardWrapper.offsetHeight;
-
-      // 🔍 Re-récupère l'élément fraîchement depuis le DOM, au cas où la variable serait périmée
-      const freshWrapper = document.getElementById("whiteboard-wrapper");
-      log.push("même élément = " + (freshWrapper === whiteboardWrapper));
-      log.push("classes réelles sur freshWrapper = " + freshWrapper.className);
-
-      const computed = getComputedStyle(freshWrapper);
-      log.push("position (après reflow) = " + computed.position);
-      log.push("width (après reflow) = " + computed.width);
-
-      // 🔍 Compte combien d'éléments ont cet ID sur la page (devrait être 1)
-      log.push("nombre d'éléments avec cet ID = " + document.querySelectorAll("#whiteboard-wrapper").length);
-
-      WhiteboardService._canvas?.resizeCanvas?.();
-    }
-  } catch (err) {
-    log.push("❌ ERREUR: " + err.message);
+  if (isIOS || !document.fullscreenEnabled) {
+    // Fallback CSS pour tablette/iOS — toujours utilisé sur iOS, peu importe ce que dit fullscreenEnabled
+    const btn = document.getElementById("wb-fullscreen-btn");
+    const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
+    card?.classList.toggle("whiteboard-fullscreen", isFs);
+    if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
+    WhiteboardService._canvas?.resizeCanvas?.();
+    return;
   }
 
-  alert(log.join("\n"));
+  if (!document.fullscreenElement) {
+    whiteboardWrapper.requestFullscreen()
+      .then(() => console.log("✅ requestFullscreen OK"))
+      .catch(e => console.error("❌ requestFullscreen failed:", e));
+  } else {
+    document.exitFullscreen();
+  }
 });
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement === whiteboardWrapper) {
