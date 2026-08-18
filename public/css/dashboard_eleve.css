@@ -561,6 +561,33 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   color: var(--text-muted);
   font-size: 0.7rem;
 }
+
+/* ======================================================
+   NOTICE D'INFORMATION APPLE / iOS
+   ====================================================== */
+.ios-camera-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(37, 99, 235, 0.12); /* Bleu semi-transparent pour thème sombre */
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd; /* Bleu clair lisible sur fond sombre */
+  padding: 8px 10px;
+  margin: 8px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.ios-camera-notice .notice-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* Cacher la notice automatiquement quand la vidéo est réduite */
+.card.card--video.is-collapsed .ios-camera-notice {
+  display: none;
+}
 /* ======================================================
    9. EXTRA : COMPORTEMENT QUAND LE TABLEAU EST EN GRAND (SANS IMPORTANT)
    ====================================================== */
