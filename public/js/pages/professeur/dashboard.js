@@ -18,6 +18,9 @@ import { ScreenShareService } from "/js/domains/call/screen.share.service.js";
 import { ScreenShareOverlay }  from "/js/ui/components/screen.share.overlay.js";
 let whiteboardWrapper = null;
 let videoMiniature = null;
+let deferredInstallPrompt = null;
+let remoteVideoTrack = null;
+
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:4000" 
   : "";
@@ -77,6 +80,76 @@ async function initPushNotifications() {
     console.error("❌ Erreur initPushNotifications:", err);
   }
 }
+// Détection iOS + affichage d'instructions si pas déjà en PWA installée
+function checkIOSInstallPrompt() {
+  const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
+  const isInStandaloneMode = window.navigator.standalone === true;
+
+  if (isIOS && !isInStandaloneMode && localStorage.getItem("iosInstallDismissed") !== "true") {
+    const banner = document.createElement("div");
+    banner.style.cssText = `
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--ink-soft, #161310); color: var(--text-primary, #f0ead8);
+      border: 1px solid var(--accent, #2196f3); padding: 14px 18px;
+      border-radius: 10px; z-index: 9999; max-width: 340px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4); font-family: system-ui, sans-serif;
+      font-size: 14px; display: flex; flex-direction: column; gap: 10px;
+    `;
+    banner.innerHTML = `
+      <div>📲 <strong>Installez l'application</strong><br>
+      Pour recevoir les appels même app fermée : appuyez sur <strong>Partager</strong> ⬆️ puis
+      <strong>"Sur l'écran d'accueil"</strong>.</div>
+      <button id="ios-install-dismiss" style="padding:8px; border-radius:6px; border:1px solid #444; background:transparent; color:#aaa; cursor:pointer;">Compris</button>
+    `;
+    document.body.appendChild(banner);
+    document.getElementById("ios-install-dismiss").addEventListener("click", () => {
+      localStorage.setItem("iosInstallDismissed", "true");
+      banner.remove();
+    });
+  }
+}
+function showInstallBanner() {
+  if (localStorage.getItem("installBannerDismissed") === "true") return;
+
+  const banner = document.createElement("div");
+  banner.id = "install-banner";
+  banner.style.cssText = `
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--ink-soft, #161310); color: var(--text-primary, #f0ead8);
+    border: 1px solid var(--accent, #2196f3); padding: 14px 18px;
+    border-radius: 10px; z-index: 9999; max-width: 340px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4); font-family: system-ui, sans-serif;
+    font-size: 14px; display: flex; flex-direction: column; gap: 10px;
+  `;
+  banner.innerHTML = `
+    <div>📲 <strong>Installez l'application</strong><br>
+    Pour recevoir les appels même app fermée, ajoutez cette page à votre écran d'accueil.</div>
+    <div style="display:flex; gap:8px;">
+      <button id="install-accept" style="flex:1; padding:8px; border-radius:6px; border:none; background:#2196f3; color:#fff; cursor:pointer;">Installer</button>
+      <button id="install-dismiss" style="padding:8px 12px; border-radius:6px; border:1px solid #444; background:transparent; color:#aaa; cursor:pointer;">Plus tard</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+
+  document.getElementById("install-accept").addEventListener("click", async () => {
+    banner.remove();
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+    }
+  });
+
+  document.getElementById("install-dismiss").addEventListener("click", () => {
+    localStorage.setItem("installBannerDismissed", "true");
+    banner.remove();
+  });
+}
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner();
+});
 // ================= STRIPE ONBOARDING =================
 async function initStripeOnboarding() {
   try {
@@ -107,6 +180,8 @@ async function initStripeOnboarding() {
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
+  // 🔴 PWA - Vérification immédiate pour iOS Safari
+  checkIOSInstallPrompt();
   // 1. Gérer immédiatement le retour de Stripe (Succès/Annulation)
     handleAllStripeReturns();
   // Débloquer l'audio dès la première interaction
@@ -124,7 +199,6 @@ document.addEventListener("DOMContentLoaded", async () => {
  AppState.setCurrentUser(userData);
  AppState.token = localStorage.getItem("token"); // OK pour token (mais idéalement setter)
  renderCurrentUserInfo(userData);
- // ✅ AJOUT : initialise _myUserId pour le tableau blanc (undo/redo, authorId des traits)
 WhiteboardService.initSession();
 
  // Enregistrer et attendre le SW AVANT d'afficher le bouton
@@ -152,11 +226,9 @@ const notifBtn = document.getElementById("enable-notifications-btn");
       notifBtn.style.display = "none";
     });
   } else if (Notification.permission === "granted") {
-    // Permission déjà accordée (peut-être sur un ancien test) →
-    // on retente silencieusement, ça ne redemandera pas de popup
     initPushNotifications();
   }
-  // ✅ NOUVEAU — charger l'état initial de disponibilité
+
 try {
   const res = await fetch(`${API_URL}/api/v1/push/disponibilite`, {
     headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
@@ -676,7 +748,6 @@ function attachLocalVideo(track) {
   else container.prepend(el);
 }
 // Stocker le track distant globalement
-let remoteVideoTrack = null; // ← déclaré en haut du fichier (scope module)
 
 function attachRemoteTracks(tracks) {
   tracks?.forEach(track => {

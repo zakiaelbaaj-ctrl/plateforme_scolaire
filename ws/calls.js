@@ -182,6 +182,19 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
     tag: "incoming-call",
     url: "/pages/professeur/dashboard.html"
   });
+  // ✅ NOUVEAU — relance le push à 10s si le prof n'a toujours pas répondu
+  setTimeout(() => {
+    if (pendingCalls.has(profIdNum) && pendingCalls.get(profIdNum).timestamp === callTimestamp) {
+      sendPushToUser(profIdNum, {
+        title: "📞 Appel entrant",
+        body: `${ws.userName}${classeLabel} vous appelle toujours`,
+        tag: "incoming-call",
+        recipientRole: "professeur",
+        type: "incoming_call",
+        url: "/pages/professeur/dashboard.html"
+      });
+    }
+  }, 10000);
   // Confirmer à l'élève
   safeSend(ws, {
     type: "callSent",

@@ -108,7 +108,7 @@ self.addEventListener("push", (event) => {
     );
     return;
   }
-  
+
   const isCall = payload.type === "incoming_call" || payload.tag === "incoming-call";
 
   // ✅ Fallback par rôle de destinataire, plus fiable qu'un chemin fixe
@@ -126,6 +126,7 @@ self.addEventListener("push", (event) => {
     renotify: true,
     requireInteraction: true, // Laisse la notification affichée jusqu'à réaction
     vibrate: isCall ? [500, 200, 500, 200, 500, 200, 500] : [200, 100, 200], // Motif sonnerie si appel
+    silent: false,
     data: {
   url: payload.url || fallbackUrl,      // ✅ utilise le fallback calculé
   roomUrl: payload.roomUrl || null      // ✅ AJOUT
