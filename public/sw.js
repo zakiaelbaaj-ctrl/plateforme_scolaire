@@ -1,4 +1,4 @@
-const CACHE_NAME = "urgencescolaire-v7"; // ⚠️ Incrémenté pour forcer la mise à jour
+const CACHE_NAME = "urgencescolaire-v8"; // ⚠️ Incrémenté pour forcer la mise à jour
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -99,7 +99,6 @@ self.addEventListener("push", (event) => {
     payload.body = event.data ? event.data.text() : "";
   }
 
-  // ✅ NOUVEAU — annulation d'appel : ferme la notif existante, n'en affiche pas de nouvelle
   if (payload.type === "call_cancelled") {
     event.waitUntil(
       self.registration.getNotifications({ tag: payload.tag || "incoming-call" }).then((notifications) => {
@@ -110,8 +109,6 @@ self.addEventListener("push", (event) => {
   }
 
   const isCall = payload.type === "incoming_call" || payload.tag === "incoming-call";
-
-  // ✅ Fallback par rôle de destinataire, plus fiable qu'un chemin fixe
   const dashboardByRole = {
     professeur: "/pages/professeur/dashboard.html",
     eleve: "/pages/eleve/dashboard.html",
@@ -124,14 +121,12 @@ self.addEventListener("push", (event) => {
     badge: "/assets/icons/icones.png",
     tag: payload.tag || "default",
     renotify: true,
-    requireInteraction: true, // Laisse la notification affichée jusqu'à réaction
-    vibrate: isCall ? [500, 200, 500, 200, 500, 200, 500] : [200, 100, 200], // Motif sonnerie si appel
-    silent: false,
+    requireInteraction: true,
+    vibrate: isCall ? [500, 200, 500, 200, 500, 200, 500] : [200, 100, 200],
     data: {
-  url: payload.url || fallbackUrl,      // ✅ utilise le fallback calculé
-  roomUrl: payload.roomUrl || null      // ✅ AJOUT
-},
-    // Boutons d'action rapides pour les appels
+      url: payload.url || fallbackUrl,
+      roomUrl: payload.roomUrl || null
+    },
     actions: isCall ? [
       { action: "accept", title: "📞 Décrocher" },
       { action: "reject", title: "✕ Refuser" }
@@ -139,7 +134,16 @@ self.addEventListener("push", (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(payload.title || "Urgence Scolaire", options)
+    (async () => {
+      // ✅ NOUVEAU — ferme explicitement toute notification existante avec ce tag
+      // avant d'en afficher une nouvelle, pour éviter les doublons si le SW a
+      // redémarré entre deux envois (cas d'un appareil qui s'est mis en veille)
+      if (isCall) {
+        const existing = await self.registration.getNotifications({ tag: options.tag });
+        existing.forEach((n) => n.close());
+      }
+      await self.registration.showNotification(payload.title || "Urgence Scolaire", options);
+    })()
   );
 });
 
