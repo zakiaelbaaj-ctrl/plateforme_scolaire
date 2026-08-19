@@ -32,6 +32,21 @@ pool
   .connect()
   .then(() => console.log("✅ Connecté à PostgreSQL"))
   .catch((err) => console.error("❌ Erreur PostgreSQL :", err));
+  // =======================================================
+// ✅ NOUVEAU — Migration légère : colonnes manquantes
+// =======================================================
+async function ensureEstDisponibleColumn() {
+  try {
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS est_disponible BOOLEAN DEFAULT true
+    `);
+    console.log("✅ Colonne est_disponible vérifiée/créée");
+  } catch (err) {
+    console.error("❌ Erreur vérification colonne est_disponible:", err.message);
+  }
+}
+await ensureEstDisponibleColumn();
 // =======================================================
 // WebSocket Server
 // =======================================================

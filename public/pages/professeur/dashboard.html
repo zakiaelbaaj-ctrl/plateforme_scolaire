@@ -40,9 +40,19 @@
     <span class="session-dot"></span>
     <span id="call-status">En attente d'un élève…</span>
   </div>
+
+  <!-- ✅ interrupteur de disponibilité -->
+  <div class="dispo-switch-container">
+    <span>Disponible pour les appels</span>
+    <label class="switch">
+      <input type="checkbox" id="dispoToggle">
+      <span class="slider"></span>
+    </label>
+    <span id="dispoStatusText">Hors ligne</span>
+  </div>
+
   <span id="call-time" class="call-timer"></span>
-  <span id="ws-status-badge" style="font-size:12px; margin-left:8px;">🟢 Connecté</span> <!-- ✅ -->
-  
+  <span id="ws-status-badge" style="font-size:12px; margin-left:8px;">🟢 Connecté</span>
 </div>
 
 <div class="top-bar__actions">
@@ -50,9 +60,7 @@
     🔔 Activer les notifications
   </button>
   <button id="end-session-btn" class="btn btn--danger btn--sm" style="display:none;">✕ Terminer</button>
-  
   <button id="screen-share-btn" class="btn btn--icon" title="Partager mon écran">🖥️</button>
-  
   <button id="logout-btn" class="btn btn--ghost">🚪 Déconnexion</button>
 </div>
   </header>

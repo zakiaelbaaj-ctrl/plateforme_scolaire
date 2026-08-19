@@ -86,6 +86,7 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
     "en_session":  "Ce professeur est déjà en session",
     "appel_reçu":  "Ce professeur est déjà sollicité",
     "offline":     "Ce professeur est hors ligne",
+    "indisponible": "Ce professeur s'est rendu indisponible", // ✅ NOUVEAU
   }[prof.status] || "Ce professeur est indisponible";
  
   return safeSend(ws, {
@@ -155,6 +156,7 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
     if (p?.ws?.readyState === 1) {
       safeSend(p.ws, { type: "callTimeout", eleveId });
     }
+    sendPushToUser(profIdNum, { type: "call_cancelled", tag: "incoming-call" });
     console.log(`⏱️ Appel expiré (timeout 45s): prof ${profIdNum}, élève ${eleveId}`);
   }, 45000);
 

@@ -391,7 +391,7 @@ async function handleMessage(ws, data) {
   if (type === "webrtcSignal") return handleWebRTCSignal(ws, data, clients);
   if (type === "visioDuration") return saveVisioSession(ws, data, onlineProfessors);
   if (type === "updateStatus") return updateVisioStatus(ws, data, onlineProfessors);
-  if (type === "logout") {
+    if (type === "logout") {
     if (ws.role === "prof") {
       removeProfessor(ws.userId);
       broadcastOnlineProfs(onlineProfessors, clients);
@@ -399,6 +399,40 @@ async function handleMessage(ws, data) {
     }
     return;
   }
+
+  // ✅ NOUVEAU
+  if (type === "updateAvailability") {
+    if (ws.role !== "prof") {
+      return safeSend(ws, { type: "error", message: "Action non autorisée." });
+    }
+
+    const { estDisponible } = data;
+    const newStatus = estDisponible ? "disponible" : "indisponible";
+
+    const prof = onlineProfessors.get(ws.userId);
+    if (prof && (prof.status === "en_session" || prof.status === "appel_reçu")) {
+      return safeSend(ws, {
+        type: "error",
+        code: "AVAILABILITY_LOCKED", // ✅ AJOUT
+        message: "Impossible de changer votre disponibilité pendant une session ou un appel en cours."
+      });
+    }
+
+    updateStatus(ws.userId, newStatus);
+
+    try {
+      await pool.query(
+        `UPDATE users SET est_disponible = $1 WHERE id = $2`,
+        [estDisponible, ws.userId]
+      );
+    } catch (err) {
+      console.error("❌ Erreur persistance est_disponible:", err.message);
+    }
+
+    broadcastOnlineProfs(onlineProfessors, clients);
+    return safeSend(ws, { type: "availabilityUpdated", estDisponible });
+  }
+
   if (type === "ping") return safeSend(ws, { type: "pong" });
 }
 
@@ -436,6 +470,18 @@ async function handleIdentify(ws, data) {
       lastActiveAt: ws.lastActiveAt,
       ws
     });
+    // ✅ NOUVEAU — restaure la disponibilité choisie manuellement par le prof
+    try {
+      const { rows } = await pool.query(
+        `SELECT est_disponible FROM users WHERE id = $1`,
+        [ws.userId]
+      );
+      if (rows[0] && rows[0].est_disponible === false) {
+        updateStatus(ws.userId, "indisponible");
+      }
+    } catch (err) {
+      console.error("❌ Erreur lecture est_disponible:", err.message);
+    }
 
     broadcastOnlineProfs(onlineProfessors, clients);
 

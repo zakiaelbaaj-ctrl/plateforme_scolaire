@@ -135,6 +135,12 @@ WhiteboardService.initSession();
     } catch (err) {
       console.error("❌ Erreur SW register:", err.message);
     }
+  // ✅ NOUVEAU — écoute les messages du SW (ex: appel entrant accepté depuis la notification)
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type === "INCOMING_CALL_ACCEPTED" && event.data.roomUrl) {
+      window.location.href = event.data.roomUrl;
+    }
+  });
   }
 //initPushNotifications();
 // Afficher le bouton si permission pas encore accordée
@@ -150,6 +156,19 @@ const notifBtn = document.getElementById("enable-notifications-btn");
     // on retente silencieusement, ça ne redemandera pas de popup
     initPushNotifications();
   }
+  // ✅ NOUVEAU — charger l'état initial de disponibilité
+try {
+  const res = await fetch(`${API_URL}/api/v1/push/disponibilite`, {
+    headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+  });
+  const data = await res.json();
+  const dispoToggle = document.getElementById("dispoToggle");
+  const dispoStatusText = document.getElementById("dispoStatusText");
+  if (dispoToggle) dispoToggle.checked = data.estDisponible;
+  if (dispoStatusText) dispoStatusText.textContent = data.estDisponible ? "En ligne" : "Hors ligne";
+} catch (err) {
+  console.error("❌ Impossible de charger la disponibilité initiale:", err);
+}
 
   // 🔴 Si c'est un professeur, init Stripe onboarding
 if (AppState.currentUser?.role === "prof" && !AppState.currentUser?.stripe_onboarding_complete) {
@@ -313,6 +332,23 @@ ScreenShareService.onStop(() => {
       walletEl.textContent = `+${montant}€`;
     }
   });
+  // ✅ NOUVEAU — confirmation serveur de la disponibilité
+  AppState.on("availabilityUpdated", ({ estDisponible }) => {
+    const dispoToggle = document.getElementById("dispoToggle");
+    const dispoStatusText = document.getElementById("dispoStatusText");
+    if (dispoToggle) dispoToggle.checked = estDisponible;
+    if (dispoStatusText) dispoStatusText.textContent = estDisponible ? "En ligne" : "Hors ligne";
+  });
+  // ✅ NOUVEAU — le serveur a refusé le changement (ex: session en cours)
+ AppState.on("availabilityError", ({ message }) => {
+  const dispoToggle = document.getElementById("dispoToggle");
+  const dispoStatusText = document.getElementById("dispoStatusText");
+  if (dispoToggle) {
+    dispoToggle.checked = !dispoToggle.checked; // revert
+    if (dispoStatusText) dispoStatusText.textContent = dispoToggle.checked ? "En ligne" : "Hors ligne";
+  }
+  alert(message || "Impossible de changer votre disponibilité pour le moment.");
+});
 }
   
 
@@ -473,6 +509,26 @@ document.getElementById("send-file")
     SessionService.stopVideoCall?.();
     localStorage.clear();
     window.location.href = "/pages/professeur/login.html";
+  });
+  // ✅ NOUVEAU — insérer ICI, juste avant l'accolade fermante de bindUI()
+  // ================= DISPONIBILITÉ =================
+    const dispoToggle = document.getElementById("dispoToggle");
+  const dispoStatusText = document.getElementById("dispoStatusText");
+
+    dispoToggle?.addEventListener("change", async (e) => {
+    const estDisponible = e.target.checked;
+
+    if (estDisponible && Notification.permission !== "granted") {
+      await initPushNotifications();
+      if (Notification.permission !== "granted") {
+        dispoToggle.checked = false;
+        alert("Active les notifications pour pouvoir être disponible.");
+        return;
+      }
+    }
+
+    // ✅ Envoi WS — la confirmation/erreur arrive via availabilityUpdated / availabilityError
+    socketService.send({ type: "updateAvailability", estDisponible });
   });
 }
 function updateWsStatus(status, attempt = 0) {

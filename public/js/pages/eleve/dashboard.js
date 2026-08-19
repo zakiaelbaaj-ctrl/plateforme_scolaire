@@ -112,14 +112,19 @@ function saveAndRenderUser(user) {
 // ======================================================
 function attemptCallToProfessor(prof) {
   const user = AppState.currentUser;
+  // ✅ NOUVEAU — verrou anti-double appel
+  if (AppState.callInProgress) {
+    return { ok: false, reason: "call-in-progress" };
+  }
   const canCall = !!prof?.disponibilite && !!user?.has_payment_method;
-
+  
   if (!canCall) {
     return {
       ok: false,
       reason: !user?.has_payment_method ? "no-card" : "unavailable"
     };
   }
+  AppState.callInProgress = true; // ✅ verrouille dès le déclenchement
 
   AppState.currentProfId = prof.id;
   AppState.currentSession = {
@@ -128,7 +133,6 @@ function attemptCallToProfessor(prof) {
     roomId: AppState.currentRoomId
   };
   SessionService.callProfessor(prof.id);
-
   return { ok: true };
 }
 // ======================================================
@@ -295,17 +299,22 @@ ScreenShareService.onStop(() => {
     case 'calling':  updateCallStatus('Appel en cours...'); break;
     case 'ringing':  updateCallStatus('Appel entrant...'); break;
     case 'inCall':   updateCallStatus('En communication'); break;
-    case 'ended':    cleanupSession('Session terminée');
+    case 'ended':
+      AppState.callInProgress = false; // ✅ libère le verrou    
+      cleanupSession('Session terminée');
      break;
     case 'idle':      // ← AJOUT (déclenché par CallStateMachine.reset())
-    case null:       cleanupSession("En attente d'un élève…"); break;
+    case null:
+      AppState.callInProgress = false; // ✅ libère le verrou
+      cleanupSession("En attente d'un élève…"); break;
     // default vide  ignore les états inconnus
   }
 });
 // ================= CALL TIMEOUT (prof n'a pas répondu) =================
   AppState.on('call:timeout', (data) => {
     console.log("⏱️ Appel expiré, le professeur n'a pas répondu", data);
-
+    
+    AppState.callInProgress = false; // ✅ NOUVEAU — libère le verrou
     cleanupSession("Le professeur n'a pas répondu");
     AppState.currentProfId = null;
     AppState.currentSession = null;
@@ -798,7 +807,16 @@ if (canCall) {
   btn.disabled = false;
   btn.style.opacity = "1";
   btn.style.cursor = "pointer";
-  btn.onclick = () => attemptCallToProfessor(prof);   // ← simplifié
+  btn.onclick = () => {
+  const result = attemptCallToProfessor(prof);
+  if (!result.ok && result.reason === "call-in-progress") {
+    AppState._notify("ui:notification", {
+      type: "error",
+      title: "Appel déjà en cours",
+      message: "Attendez la fin de l'appel actuel avant d'en démarrer un autre."
+    });
+  }
+};
 } else {
       // --- État : INDISPONIBLE (ou carte manquante) ---
       let statusLabel = "Indisponible";

@@ -143,12 +143,23 @@ case "chatMessage":
     message: `Cette session de ${data.dureeMinutes} min était trop courte pour être facturée.`
   });
   break;
+  // ✅ NOUVEAU
+        case "availabilityUpdated":
+          AppState._notify("availabilityUpdated", { estDisponible: data.estDisponible });
+          break;
+
         // Dans SocketHandlerProf.handle(), avant default:
       case "TRANSPORT_CLOSED":
        // ✅ Silencieux — la reconnexion est gérée par socket.service.js
        break;
         case "error":
        WSLogger.warn(`Erreur serveur [${data.code ?? "?"}] :`, data.message ?? "");
+
+       // ✅ NOUVEAU — revert spécifique du toggle disponibilité
+       if (data.code === "AVAILABILITY_LOCKED") {
+         AppState._notify("availabilityError", { message: data.message });
+         break;
+       }
        if (data.message) {
        const el = document.getElementById("call-status");
        if (el) el.textContent = `⚠️ ${data.message}`;
