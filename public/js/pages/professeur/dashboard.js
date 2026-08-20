@@ -501,12 +501,14 @@ whiteboardWrapper = document.getElementById('whiteboard-wrapper');
 videoMiniature = document.querySelector('.video-miniature');
 const videoMini       = document.getElementById('remote-video-mini');
 
+// ✅ NOUVEAU — détection iOS explicite (fullscreenEnabled non fiable sur iPad)
+const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent) 
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 // Toggle plein écran
 fullscreenBtn?.addEventListener('click', () => {
-  const isMobile = !document.fullscreenEnabled;
-
-  if (isMobile) {
-    // Fallback CSS pour tablette/iOS
+  if (isIOS || !document.fullscreenEnabled) {
+    // Fallback CSS pour tablette/iOS — toujours utilisé sur iOS
     toggleWhiteboardFullscreen();
   } else {
     if (!document.fullscreenElement) {
