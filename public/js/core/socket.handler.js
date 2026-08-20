@@ -5,10 +5,32 @@ import { WhiteboardService } from "/js/domains/whiteboard/whiteboard.service.js"
 import { CallService } from "../domains/call/call.service.js";
 import { SessionService } from "../domains/session/session.service.js";
 import { CallStateMachine } from "../domains/call/call.state.machine.js";
+import { refreshAccessToken } from "../lib/auth.refresh.js"; // ✅ NOUVEAU
+
 class SocketHandlerProf {
   constructor() {
     this._unsubscribeSocket = socketService.onMessage((data) => this.handle(data));
     this._unsubscribeCall = AppState.on("ui:requestCall", (prof) => this.handleOutgoingCall(prof));
+
+    // ✅ NOUVEAU — filet de sécurité anti-boucle infinie : quand le WS ferme
+    // avec le code 1008 (token expiré), socket.service.js appelle cette
+    // fonction au lieu de rejouer le même token expiré en boucle.
+    socketService.setAuthExpiredHandler(async () => {
+      const ok = await refreshAccessToken();
+      if (!ok) {
+        WSLogger.warn("Refresh token invalide/expiré — abandon reconnexion prof");
+        return null;
+      }
+
+      const newToken = localStorage.getItem("token");
+      if (!newToken) {
+        WSLogger.error("Refresh signalé OK mais aucun token trouvé — abandon");
+        return null;
+      }
+      AppState.token = newToken;
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${wsProtocol}//${window.location.host}?token=${newToken}`;
+    });
   }
 
   handle(data) {
@@ -143,7 +165,6 @@ case "chatMessage":
     message: `Cette session de ${data.dureeMinutes} min était trop courte pour être facturée.`
   });
   break;
-  // ✅ NOUVEAU
         case "availabilityUpdated":
           AppState._notify("availabilityUpdated", { estDisponible: data.estDisponible });
           break;

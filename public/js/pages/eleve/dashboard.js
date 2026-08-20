@@ -84,6 +84,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 2500); // 2.5 secondes entre chaque vérification
   }
   const _wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  socketHandlerEleve.init();
   socketService.connect(`${_wsProtocol}//${window.location.host}?token=${AppState.token}`);
 
   // Activer les clics et les abonnements
@@ -501,6 +502,7 @@ document.getElementById("send-file")
 
   document.getElementById("logout-btn")?.addEventListener("click", () => {
     VideoService.disconnect();
+    socketHandlerEleve.destroy();
     localStorage.clear();
     window.location.href = "/pages/eleve/login.html";
   });

@@ -579,6 +579,7 @@ document.getElementById("send-file")
  document.getElementById("logout-btn")?.addEventListener("click", () => {
     socketService.send({ type: "logout" });
     SessionService.stopVideoCall?.();
+    socketHandlerProf.destroy();
     localStorage.clear();
     window.location.href = "/pages/professeur/login.html";
   });
@@ -624,6 +625,13 @@ function updateWsStatus(status, attempt = 0) {
       badge.textContent = "🔴 Hors ligne";
       badge.style.color = "#f44336";
       badge.title = "Connexion perdue";
+      break;
+      case "auth-failed":
+      badge.textContent = "🔴 Session expirée";
+      badge.style.color = "#f44336";
+      badge.title = "Reconnexion requise";
+      localStorage.clear();
+      window.location.replace("/pages/professeur/login.html?reason=session_expired");
       break;
   }
 }
