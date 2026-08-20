@@ -630,16 +630,19 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return;
   setWbTool("textToolBtn", () => WhiteboardService.setTool?.("text"));
 });
-  // ✅ wb-fullscreen-btn — utilise l'API Fullscreen native
-const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent) 
+  // ✅ wb-fullscreen-btn — détecte tout appareil mobile/tactile (pas seulement
+// iOS) : l'API fullscreen native affiche une bannière système peu visible
+// sur mobile (Chrome Android inclus), donc on force le fallback CSS partout
+// sur mobile pour garder notre propre bouton "Quitter" fixe et visible.
+const isMobileDevice = /iP(ad|hone|od)|Android/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+ se fait passer pour un Mac
 
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   whiteboardWrapper = whiteboardWrapper || document.getElementById("whiteboard-wrapper");
   const card = whiteboardWrapper?.closest(".card--whiteboard");
 
-  if (isIOS || !document.fullscreenEnabled) {
-    // Fallback CSS pour tablette/iOS — toujours utilisé sur iOS, peu importe ce que dit fullscreenEnabled
+  if (isMobileDevice || !document.fullscreenEnabled) {
+    // Fallback CSS pour mobile/tablette — toujours utilisé sur Android/iOS
     const btn = document.getElementById("wb-fullscreen-btn");
     const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
     card?.classList.toggle("whiteboard-fullscreen", isFs);

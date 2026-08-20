@@ -501,14 +501,15 @@ whiteboardWrapper = document.getElementById('whiteboard-wrapper');
 videoMiniature = document.querySelector('.video-miniature');
 const videoMini       = document.getElementById('remote-video-mini');
 
-// ✅ NOUVEAU — détection iOS explicite (fullscreenEnabled non fiable sur iPad)
-const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent) 
+// ✅ Détecte tout appareil mobile/tactile (pas seulement iOS) —
+// l'API fullscreen native affiche une bannière système peu visible sur mobile
+// (Chrome Android inclus), donc on préfère systématiquement le fallback CSS
+// avec notre propre bouton "Quitter" fixe et toujours visible.
+const isMobileDevice = /iP(ad|hone|od)|Android/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-// Toggle plein écran
 fullscreenBtn?.addEventListener('click', () => {
-  if (isIOS || !document.fullscreenEnabled) {
-    // Fallback CSS pour tablette/iOS — toujours utilisé sur iOS
+  if (isMobileDevice || !document.fullscreenEnabled) {
     toggleWhiteboardFullscreen();
   } else {
     if (!document.fullscreenElement) {
