@@ -642,11 +642,23 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   const card = whiteboardWrapper?.closest(".card--whiteboard");
 
   if (isMobileDevice || !document.fullscreenEnabled) {
-    // Fallback CSS pour mobile/tablette — toujours utilisé sur Android/iOS
     const btn = document.getElementById("wb-fullscreen-btn");
     const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
     card?.classList.toggle("whiteboard-fullscreen", isFs);
     if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
+
+    // ✅ NOUVEAU
+    if (isFs) {
+      if (videoMiniature) videoMiniature.style.display = "block";
+      syncMiniatureStream();
+    } else {
+      if (videoMiniature) videoMiniature.style.display = "none";
+      if (remoteVideoTrack) {
+        const videoMini = document.getElementById("remote-video-mini");
+        if (videoMini) remoteVideoTrack.detach(videoMini);
+      }
+    }
+
     WhiteboardService._canvas?.resizeCanvas?.();
     return;
   }
