@@ -652,39 +652,22 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
     const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
     card?.classList.toggle("whiteboard-fullscreen", isFs);
 
-   if (btn) {
+     // 🔍 DEBUG TEMPORAIRE — à retirer une fois le bug résolu
   if (isFs) {
-    btn._originalParent = btn.parentElement;
-    btn._originalNextSibling = btn.nextSibling;
-    document.body.appendChild(btn);
-  } else if (btn._originalParent) {
-    btn._originalParent.insertBefore(btn, btn._originalNextSibling);
-    btn._originalParent = null;
-    btn._originalNextSibling = null;
+    fetch("/css/dashboard_eleve.css", { cache: "no-store" })
+      .then(r => r.text())
+      .then(css => {
+        const hasRule = css.includes("body > #wb-fullscreen-btn");
+        const idx = css.indexOf("body > #wb-fullscreen-btn");
+        alert(
+          "DEBUG CSS réseau (no-store):\n" +
+          "Règle présente: " + hasRule + "\n" +
+          "Longueur CSS: " + css.length + "\n" +
+          "Extrait autour: " + (idx >= 0 ? css.substring(idx - 20, idx + 150) : "N/A")
+        );
+      })
+      .catch(e => alert("Erreur fetch CSS: " + e.message));
   }
-  btn.textContent = isFs ? "Quitter" : "Plein écran";
-
-  // 🔍 DEBUG TEMPORAIRE — à retirer une fois le bug résolu
-  if (isFs) {
-    setTimeout(() => {
-      const style = getComputedStyle(btn);
-      alert(
-        "DEBUG btn:\n" +
-        "parent=" + btn.parentElement?.tagName + "\n" +
-        "position=" + style.position + "\n" +
-        "top=" + style.top + "\n" +
-        "right=" + style.right + "\n" +
-        "zIndex=" + style.zIndex + "\n" +
-        "display=" + style.display + "\n" +
-        "visibility=" + style.visibility + "\n" +
-        "opacity=" + style.opacity + "\n" +
-        "width=" + style.width + "\n" +
-        "height=" + style.height + "\n" +
-        "rect=" + JSON.stringify(btn.getBoundingClientRect())
-      );
-    }, 300);
-  }
-}
 
     if (isFs) {
       if (videoMiniature) videoMiniature.style.display = "block";
