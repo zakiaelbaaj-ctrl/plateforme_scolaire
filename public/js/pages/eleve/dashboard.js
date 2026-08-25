@@ -1,4 +1,4 @@
-// ======================================================
+﻿// ======================================================
 // DASHBOARD ELEVE _ UI PURE
 // ======================================================
 
@@ -630,29 +630,28 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return;
   setWbTool("textToolBtn", () => WhiteboardService.setTool?.("text"));
 });
-const wbExitBtn = document.getElementById("wb-exit-btn");
+// ======================================================
+// WHITEBOARD FULLSCREEN
+// ======================================================
 
-  // ✅ wb-fullscreen-btn — détecte tout appareil mobile/tactile (pas seulement
-// iOS) : l'API fullscreen native affiche une bannière système peu visible
-// sur mobile (Chrome Android inclus), donc on force le fallback CSS partout
-// sur mobile pour garder notre propre bouton "Quitter" fixe et visible.
-const isMobileDevice = /iP(ad|hone|od)|Android/.test(navigator.userAgent)
-  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+ se fait passer pour un Mac
+// Détecte tout appareil mobile/tactile (pas seulement iOS) : l'API
+// fullscreen native affiche une bannière système peu visible sur mobile
+// (Chrome Android inclus), donc on force le fallback CSS partout sur
+// mobile pour garder notre propre bouton "Quitter" fixe et visible.
+// Le dernier test détecte les iPadOS récents qui se présentent comme MacIntel.
+const isMobileDevice =
+  /iP(ad|hone|od)|Android/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
   whiteboardWrapper = whiteboardWrapper || document.getElementById("whiteboard-wrapper");
   const card = whiteboardWrapper?.closest(".card--whiteboard");
+  const btn = document.getElementById("wb-fullscreen-btn");
 
   if (isMobileDevice || !document.fullscreenEnabled) {
-    const btn = document.getElementById("wb-fullscreen-btn");
     const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
     card?.classList.toggle("whiteboard-fullscreen", isFs);
 
-    // ✅ FIX iPad/Safari : déplace le bouton hors de la carte au lieu de
-    // compter uniquement sur position:fixed, qui peut être piégé par un
-    // ancêtre avec overflow/transform/border-radius (comportement WebKit
-    // connu sur iOS). Garantit que le bouton reste positionné par rapport
-    // au viewport, peu importe la structure ou le style des ancêtres.
     if (btn) {
       if (isFs) {
         btn._originalParent = btn.parentElement;
@@ -663,8 +662,9 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
         btn._originalParent = null;
         btn._originalNextSibling = null;
       }
-      btn.textContent = isFs ? "❌ Quitter" : "⛶";
+      btn.textContent = isFs ? "Quitter" : "Plein écran";
     }
+
     if (isFs) {
       if (videoMiniature) videoMiniature.style.display = "block";
       syncMiniatureStream();
@@ -682,20 +682,11 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
 
   if (!document.fullscreenElement) {
     whiteboardWrapper.requestFullscreen()
-      .then(() => console.log("✅ requestFullscreen OK"))
-      .catch(e => console.error("❌ requestFullscreen failed:", e));
+      .then(() => console.log("requestFullscreen OK"))
+      .catch(e => console.error("requestFullscreen failed:", e));
   } else {
     document.exitFullscreen();
   }
-});
-wbExitBtn?.addEventListener("click", () => {
-  if (isMobileDevice || !document.fullscreenEnabled) {
-    whiteboardWrapper.classList.remove("whiteboard-fullscreen");
-    wbExitBtn.style.display = "none"; // cacher le bouton sortie
-    return;
-  }
-  document.exitFullscreen();
-  wbExitBtn.style.display = "none";
 });
 
 document.addEventListener("fullscreenchange", () => {
@@ -703,10 +694,7 @@ document.addEventListener("fullscreenchange", () => {
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
     const btn = document.getElementById("wb-fullscreen-btn");
-    if (btn) btn.textContent = "❌ Quitter";
-
-    // ✅ afficher le bouton sortie
-    if (wbExitBtn) wbExitBtn.style.display = "inline-block";
+    if (btn) btn.textContent = "Quitter";
   } else {
     if (videoMiniature) videoMiniature.style.display = "none";
     if (remoteVideoTrack) {
@@ -714,14 +702,9 @@ document.addEventListener("fullscreenchange", () => {
       if (videoMini) remoteVideoTrack.detach(videoMini);
     }
     const btn = document.getElementById("wb-fullscreen-btn");
-    if (btn) btn.textContent = "⛶";
-
-    // ✅ cacher le bouton sortie
-    if (wbExitBtn) wbExitBtn.style.display = "none";
+    if (btn) btn.textContent = "Plein écran";
   }
 });
-
-
 // Cacher le partage d'écran si non supporté (tablette/mobile) + informer l'élève
 const screenShareBtn = document.getElementById("screen-share-btn");
 if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
