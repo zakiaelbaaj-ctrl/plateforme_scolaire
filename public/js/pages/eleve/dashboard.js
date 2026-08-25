@@ -663,8 +663,6 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
       }
       btn.textContent = isFs ? "❌ Quitter" : "⛶";
     }
-
-    // ✅ NOUVEAU
     if (isFs) {
       if (videoMiniature) videoMiniature.style.display = "block";
       syncMiniatureStream();
