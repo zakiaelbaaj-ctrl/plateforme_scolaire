@@ -645,7 +645,24 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
     const btn = document.getElementById("wb-fullscreen-btn");
     const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
     card?.classList.toggle("whiteboard-fullscreen", isFs);
-    if (btn) btn.textContent = isFs ? "❌ Quitter" : "⛶";
+
+    // ✅ FIX iPad/Safari : déplace le bouton hors de la carte au lieu de
+    // compter uniquement sur position:fixed, qui peut être piégé par un
+    // ancêtre avec overflow/transform/border-radius (comportement WebKit
+    // connu sur iOS). Garantit que le bouton reste positionné par rapport
+    // au viewport, peu importe la structure ou le style des ancêtres.
+    if (btn) {
+      if (isFs) {
+        btn._originalParent = btn.parentElement;
+        btn._originalNextSibling = btn.nextSibling;
+        document.body.appendChild(btn);
+      } else if (btn._originalParent) {
+        btn._originalParent.insertBefore(btn, btn._originalNextSibling);
+        btn._originalParent = null;
+        btn._originalNextSibling = null;
+      }
+      btn.textContent = isFs ? "❌ Quitter" : "⛶";
+    }
 
     // ✅ NOUVEAU
     if (isFs) {
