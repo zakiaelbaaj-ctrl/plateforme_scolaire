@@ -1,4 +1,4 @@
-const CACHE_NAME = "urgencescolaire-v8"; // ⚠️ Incrémenté pour forcer la mise à jour
+const CACHE_NAME = "urgencescolaire-v9"; // ⚠️ Incrémenté pour forcer la mise à jour (fix bouton whiteboard iPad)
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
