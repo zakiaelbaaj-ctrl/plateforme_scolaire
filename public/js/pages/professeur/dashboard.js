@@ -918,7 +918,7 @@ function toggleWhiteboardFullscreen() {
   card?.classList.toggle("whiteboard-fullscreen", isFullscreen);
 
   if (isFullscreen) {
-    if (btn) { btn.textContent = "❌ Quitter"; btn.title = "Quitter le plein écran"; }
+    if (btn) { btn.textContent = "❌"; btn.title = "Quitter le plein écran"; }
     // ✅ NOUVEAU — remplace la logique perdue de "fullscreenchange" sur mobile
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();

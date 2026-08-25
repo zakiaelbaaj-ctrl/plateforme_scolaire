@@ -672,6 +672,14 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   display: flex;
   gap: var(--space-sm);
 }
+/* ======================================================
+   TABLEAU BLANC — PLEIN ÉCRAN (fallback CSS mobile + natif desktop)
+   ====================================================== */
+
+#whiteboard-wrapper {
+  position: relative;
+}
+
 #whiteboard-wrapper.whiteboard-fullscreen {
   position: fixed;
   inset: 0;
@@ -681,11 +689,13 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   min-height: 100vh;
   background: #fff;
 }
-.card--whiteboard.whiteboard-fullscreen #wb-fullscreen-btn {
+
+/* Bouton Quitter/Plein écran — toujours au-dessus de tout */
+#whiteboard-wrapper.whiteboard-fullscreen #wb-fullscreen-btn {
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 10000;
+  z-index: 10001;
   background: rgba(0, 0, 0, 0.75);
   color: #fff;
   border: none;
@@ -693,34 +703,14 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   border-radius: 99px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-/* ======================================================
-   CONFIGURATION DU TABLEAU BLANC EN PLEIN ÉCRAN
-   ====================================================== */
 
-/* 🟢 FORCE LES OUTILS À RESTER VISIBLES PAR-DESSUS */
-#whiteboard-wrapper.whiteboard-fullscreen .whiteboard-toolbar,
-#whiteboard-wrapper.whiteboard-fullscreen .canvas-tools,
-#whiteboard-wrapper.whiteboard-fullscreen [class*="toolbar"] {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10000; /* Passe au-dessus du canvas blanc */
-  display: flex !important; /* Si jamais un script essayait de le cacher */
-}
-
-/* Ajustement du bouton pour qu'il change de texte ou de couleur en plein écran */
-#whiteboard-wrapper.whiteboard-fullscreen #btn-fullscreen-whiteboard {
-  background: var(--btn-danger-bg, #ff4d4d);
-  color: white;
-}
-/* Outils en overlay dans le wrapper (visibles en fullscreen) */
+/* Barre d'outils (undo/clear/download + outils de dessin) — overlay bas */
 .whiteboard-tools--overlay {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 10;
+  z-index: 10000;
   background: rgba(13, 15, 20, 0.92);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--border);
@@ -730,10 +720,8 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   padding: var(--space-sm) var(--space-md);
   flex-wrap: wrap;
 }
-#whiteboard-wrapper {
-  position: relative;
-}
-/* Miniature vidéo dans le wrapper */
+
+/* Miniature vidéo — sous la barre d'outils, jamais par-dessus */
 #whiteboard-wrapper .video-miniature {
   position: absolute;
   bottom: 60px;
@@ -744,7 +732,7 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
   border-radius: var(--radius-md);
   overflow: hidden;
   background: #000;
-  z-index: 20;
+  z-index: 9999;
   box-shadow: var(--shadow-float);
 }
 

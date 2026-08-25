@@ -634,7 +634,16 @@ input:checked + .slider::before {
   background: #fff; /* Fond blanc opaque pour ne pas voir le dashboard derrière */
 
 }
-.card--whiteboard.whiteboard-fullscreen #wb-fullscreen-btn {
+.card--whiteboard .card__header {
+  display: flex;
+  justify-content: space-between; /* titre à gauche, bouton plein écran à droite */
+  align-items: center;
+  margin-bottom: var(--space-sm); /* espace entre le titre et le canvas */
+  border-bottom: 1px solid var(--border-light);
+  padding: var(--space-sm) var(--space-md);
+}
+
+#whiteboard-wrapper.whiteboard-fullscreen #wb-fullscreen-btn {
   position: fixed;
   top: 16px;
   right: 16px;
@@ -1094,7 +1103,8 @@ input:checked + .slider::before {
 /* ============================= */
 /* WHITEBOARD FULLSCREEN CONTROLS */
 /* ============================= */
-#whiteboard-wrapper:fullscreen .wb-tools-group--right {
+/* ✅ NOUVEAU — même règle pour le fallback CSS mobile (classe .whiteboard-fullscreen) */
+.whiteboard-fullscreen .wb-tools-group--right {
     position: absolute;
     left: 20px;
     bottom: 20px;
@@ -1103,3 +1113,17 @@ input:checked + .slider::before {
     display: flex;
     gap: 8px;
 }
+#whiteboard-wrapper:fullscreen .whiteboard-tools {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex; /* plus de !important */
+    background: rgba(13, 15, 20, 0.92);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+}
+

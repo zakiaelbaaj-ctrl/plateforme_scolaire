@@ -1170,18 +1170,18 @@ function renderCurrentUserInfo(user) {
   // --- 3. INJECTION UNIQUE DANS LE DOM ---
   // On n'injecte qu'une seule fois pour éviter de détruire les événements
   infoContainer.innerHTML = `
-    <div class="user-card">
-      <div class="user-card__header">
-        <h3 class="card-title">💳 Paramètres de paiement</h3>
-      </div>
-      <div class="user-card__body">
-        <div class="user-card__stripe-content">
-          ${stripeHTML}
-        </div>
-        <div id="stripe-status-message"></div>
-      </div>
+  <div class="user-card">
+    <div class="user-card__header">
+      <h3 class="card-title">💳 Paramètres de paiement</h3>
     </div>
-  `;
+    <div class="user-card__body compact-payment">
+      <div class="user-card__stripe-content">
+        ${stripeHTML}
+      </div>
+      <div id="stripe-status-message"></div>
+    </div>
+  </div>
+`;
 
   // --- 4. ATTACHEMENT DES événements ---
   // On utilise .onclick pour s'assurer qu'il n'y a qu'un seul écouteur à la fois
