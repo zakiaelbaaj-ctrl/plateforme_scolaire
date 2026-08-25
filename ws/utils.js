@@ -162,33 +162,23 @@ export function cleanupOnDisconnect(ws, deps) {
         });
       }
     }
-    // ✅ CORRECTION BUG 2 : Ne supprimer le prof que s'il ne s'agit PAS d'une reconnexion (socket remplacée)
-    if (!ws._isReplacedConnection) {
-      onlineProfessors.delete(userId);
-      broadcastOnlineProfs(onlineProfessors, clients);
-    } else {
-      console.log(`🔕 Suppression de onlineProfessors ignorée pour prof ${userId} (reconnexion active)`);
-    }
+    // ✅ FIX : on ne supprime JAMAIS le prof de onlineProfessors ici.
+    // setProfessorOffline() (appelé juste avant dans handleDisconnect) s'est déjà
+    // chargé de couper la référence WS tout en gardant le prof visible/reconnectable.
+    // La suppression définitive de onlineProfessors ne doit se produire que sur une
+    // déconnexion manuelle explicite (voir le handler "logout" dans socket.js, qui
+    // appelle removeProfessor()).
+    broadcastOnlineProfs(onlineProfessors, clients);
   }
   // 2. ÉLÈVE
+  // ✅ NETTOYAGE : la libération du prof (status='disponible', eleveId=null) et la
+  // notification callEnded sont déjà gérées en amont par endSessionForDisconnect()
+  // (appelé dans handleDisconnect avant cleanupOnDisconnect). Ce bloc ne trouvait
+  // donc plus jamais de correspondance — supprimé pour éviter la confusion.
   else if (role === "eleve") {
-    for (const prof of onlineProfessors.values()) {
-      if (prof.eleveId === userId) {
-        const profWs = clients.get(prof.id);
-        if (profWs?.readyState === 1) {
-          safeSend(profWs, {
-            type: "callEnded",
-            reason: "eleve_disconnected",
-            timestamp: new Date().toISOString()
-          });
-        }
-        prof.status = "disponible";
-        prof.eleveId = null;
-      }
-    }
     if (!ws._isReplacedConnection) {
       broadcastOnlineProfs(onlineProfessors, clients);
-      }
+    }
   }
  // 3. ÉTUDIANT
   else if (role === "etudiant") {

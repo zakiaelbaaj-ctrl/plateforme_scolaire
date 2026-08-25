@@ -32,6 +32,21 @@ router.post(
 
     logger.info("📩 Webhook Stripe reçu", { type: event.type, id: event.id });
 
+    // ✅ IDEMPOTENCE — check en lecture seule, AVANT tout traitement métier
+    try {
+      const already = await sequelize.query(
+        `SELECT 1 FROM stripe_webhook_events WHERE event_id = :eventId LIMIT 1`,
+        { replacements: { eventId: event.id }, type: sequelize.QueryTypes.SELECT }
+      );
+      if (already.length > 0) {
+        logger.info("🚫 Webhook Stripe déjà traité, skip", { eventId: event.id, type: event.type });
+        return res.status(200).send();
+      }
+    } catch (checkErr) {
+      logger.error("❌ Erreur vérification idempotence webhook", { message: checkErr.message });
+      return res.status(500).send();
+    }
+
     try {
       if (event.type === "checkout.session.completed") {
         await handleCheckoutSessionCompleted(event.data.object);
@@ -45,9 +60,22 @@ router.post(
       else if (event.type === "payment_intent.canceled") {
         await handlePaymentIntentCanceled(event.data.object);
       }
+      else if (event.type === "setup_intent.succeeded") {
+        await handleSetupIntentSucceeded(event.data.object);
+      }
       else {
         logger.info("⏭️ Webhook non traité", { type: event.type });
       }
+
+      // ✅ Marqué traité SEULEMENT après succès complet du traitement métier
+      // → en cas d'erreur ci-dessus, l'event_id n'est pas inséré, Stripe pourra
+      //   retenter légitimement (ex: panne DB transitoire)
+      await sequelize.query(
+        `INSERT INTO stripe_webhook_events (event_id, event_type) 
+         VALUES (:eventId, :eventType) 
+         ON CONFLICT (event_id) DO NOTHING`,
+        { replacements: { eventId: event.id, eventType: event.type } }
+      );
 
       res.status(200).send();
     } catch (err) {
@@ -269,6 +297,49 @@ async function handleCheckoutSessionCompleted(session) {
     }
   }
 }
+/**
+ * ✅ Gère l'enregistrement direct d'une carte via SetupIntent
+ * (flux createSetupIntent() côté payment.service.js, indépendant de
+ * checkout.session.completed en mode 'setup')
+ */
+async function handleSetupIntentSucceeded(setupIntent) {
+  const customerId = setupIntent.customer;
+  const paymentMethodId = setupIntent.payment_method;
+
+  if (!customerId || !paymentMethodId) {
+    logger.warn("⚠️ setup_intent.succeeded: données manquantes", {
+      customerId,
+      paymentMethodId,
+      setupIntentId: setupIntent.id,
+    });
+    return;
+  }
+
+  try {
+    await stripe.customers.update(customerId, {
+      invoice_settings: { default_payment_method: paymentMethodId },
+    });
+
+    const result = await sequelize.query(
+      `UPDATE users SET has_payment_method = true WHERE stripe_customer_id = :customerId`,
+      { replacements: { customerId } }
+    );
+
+    logger.info("✅ Carte enregistrée (setup_intent.succeeded)", {
+      customerId,
+      paymentMethodId,
+    });
+
+    if (!result?.[1]?.rowCount) {
+      logger.warn("⚠️ Aucun utilisateur trouvé pour ce customer Stripe", { customerId });
+    }
+  } catch (err) {
+    logger.error("❌ setup_intent.succeeded failed", {
+      message: err.message,
+      customerId,
+    });
+  }
+}
 
 /**
  * ✅ Gère le succès des paiements d'appels vidéo (20€ ou 40€/h)
@@ -291,9 +362,21 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
     logger.error("❌ Invalid amount in payment intent", { intentId });
     return;
   }
-
   await sequelize.transaction(async (t) => {
+    // 🔴 AJOUT ICI : Vérification si ce paiement Stripe a déjà été enregistré
+    const existingPayment = await sequelize.query(
+      `SELECT 1 FROM payments WHERE stripe_session_id = :intentId LIMIT 1`,
+      {
+        replacements: { intentId },
+        type: sequelize.QueryTypes.SELECT,
+        transaction: t
+      }
+    );
 
+    if (existingPayment.length > 0) {
+      logger.warn("⚠️ Payment Intent déjà enregistré dans les paiements", { intentId });
+      return; // Stop net
+    }
     const lockResult = await sequelize.query(
       `SELECT is_paid 
        FROM visio_sessions 
@@ -352,7 +435,6 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
     });
   });
 }
-
 /**
  * ❌ Gère l'échec du paiement
  */

@@ -12,7 +12,6 @@ import * as elevesController from "./eleves.controller.js";
 import * as appelController from "./appel.controller.js";
 import * as profController from "./prof.controller.js";
 import * as paymentController from "./payment.controller.js";
-import * as webhookController from "./webhook.controller.js";
 import * as userController from "./user.controller.js";
 
 // Export nommé pour accès granulaire
@@ -22,7 +21,6 @@ export {
   appelController,
   profController,
   paymentController,
-  webhookController,
   userController,
 };
 
@@ -33,6 +31,5 @@ export default {
   appelController,
   profController,
   paymentController,
-  webhookController,
   userController,
 };

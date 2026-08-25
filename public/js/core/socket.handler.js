@@ -158,13 +158,26 @@ case "chatMessage":
         
         break;
         case "session:notBilled":
-  console.info(`[PAIE] Session non facturée : ${data.dureeMinutes} min (trop courte)`);
-  AppState._notify("ui:notification", {
-    type: "warning",
-    title: "Session non facturée",
-    message: `Cette session de ${data.dureeMinutes} min était trop courte pour être facturée.`
-  });
+  // ✅ "session:notBilled" est aussi envoyé au prof quand le paiement est en
+  // attente de validation 3D Secure côté élève (reason: "requires_action") —
+  // on distingue les deux cas dans le message affiché.
+  if (data.reason === "requires_action") {
+    console.info(`[PAIE] Paiement en attente de validation bancaire`);
+    AppState._notify("ui:notification", {
+      type: "info",
+      title: "Paiement en attente",
+      message: data.message || "Le paiement de cette session est en attente de validation par l'élève."
+    });
+  } else {
+    console.info(`[PAIE] Session non facturée : ${data.dureeMinutes} min (trop courte)`);
+    AppState._notify("ui:notification", {
+      type: "warning",
+      title: "Session non facturée",
+      message: `Cette session de ${data.dureeMinutes} min était trop courte pour être facturée.`
+    });
+  }
   break;
+  
         case "availabilityUpdated":
           AppState._notify("availabilityUpdated", { estDisponible: data.estDisponible });
           break;

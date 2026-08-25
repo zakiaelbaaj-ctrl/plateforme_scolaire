@@ -432,35 +432,71 @@ export async function endSessionForDisconnect(profId, eleveId, onlineProfessors,
   try {
     const paymentResult = await processSessionPayment(roomId);
 
-    if (paymentResult && paymentResult.status !== 'requires_action' && paymentResult.status !== 'skipped') {
-      const invoicePayload = {
+    if (paymentResult?.status === 'succeeded') {
+      const dureeMinutes = paymentResult.duration || Math.ceil(durationSeconds / 60);
+      const totalAmountEUR = paymentResult.amount || 0;
+      const feeAmountEUR = paymentResult.feeAmountEUR || 0;
+      const profNetEUR = totalAmountEUR - feeAmountEUR;
+
+      // ✅ L'élève voit le montant TTC qu'il a payé
+      const invoicePayloadEleve = {
         type: "invoice:ready",
         url: paymentResult.url || `/dashboard/invoices`,
-        dureeMinutes: paymentResult.duration || Math.ceil(durationSeconds / 60),
-        montant: paymentResult.amount ? (paymentResult.amount / 100).toFixed(2) : "N/A"
+        dureeMinutes,
+        montant: (totalAmountEUR / 100).toFixed(2)
       };
 
-      if (eleveWs?.readyState === 1) safeSend(eleveWs, invoicePayload);
-      if (profWs?.readyState === 1)  safeSend(profWs,  invoicePayload);
+      // ✅ Le prof voit UNIQUEMENT son net (après retenue plateforme)
+      const invoicePayloadProf = {
+        type: "invoice:ready",
+        url: paymentResult.url || `/dashboard/invoices`,
+        dureeMinutes,
+        montant: (profNetEUR / 100).toFixed(2)
+      };
+
+      if (eleveWs?.readyState === 1) safeSend(eleveWs, invoicePayloadEleve);
+      if (profWs?.readyState === 1)  safeSend(profWs,  invoicePayloadProf);
 
       const { db } = await import("../config/index.js");
       await db.query(
         `INSERT INTO notifications (user_id, type, data, created_at) 
          VALUES (:profId, 'invoice', :data, NOW())`,
-        { replacements: { profId, data: JSON.stringify(invoicePayload) } }
+        { replacements: { profId, data: JSON.stringify(invoicePayloadProf) } }
       );
-      } else if (paymentResult && paymentResult.status === 'skipped') {
-    // ✅ AJOUT : notifier les deux parties que la session n'a pas été facturée
-    const notBilledPayload = {
-      type: "session:notBilled",
-      reason: paymentResult.reason,
-      dureeMinutes: paymentResult.duration || Math.ceil(durationSeconds / 60),
-      message: "Cette session était trop courte pour être facturée."
-    };
 
-    if (eleveWs?.readyState === 1) safeSend(eleveWs, notBilledPayload);
-    if (profWs?.readyState === 1)  safeSend(profWs,  notBilledPayload);
-  }
+    } else if (paymentResult?.status === 'skipped') {
+      // ✅ Session trop courte pour être facturée
+      const notBilledPayload = {
+        type: "session:notBilled",
+        reason: paymentResult.reason,
+        dureeMinutes: paymentResult.duration || Math.ceil(durationSeconds / 60),
+        message: "Cette session était trop courte pour être facturée."
+      };
+
+      if (eleveWs?.readyState === 1) safeSend(eleveWs, notBilledPayload);
+      if (profWs?.readyState === 1)  safeSend(profWs,  notBilledPayload);
+
+    } else if (paymentResult?.status === 'requires_action') {
+      // ✅ NOUVEAU : notifier en temps réel qu'une validation bancaire (3D Secure)
+      // est requise, en plus de l'email déjà envoyé par handleAuthenticationRequired.
+      const actionRequiredPayload = {
+        type: "payment:actionRequired",
+        checkoutUrl: paymentResult.checkout_url || null,
+        message: "Votre banque nécessite une validation pour ce paiement. Un email vous a été envoyé."
+      };
+
+      if (eleveWs?.readyState === 1) safeSend(eleveWs, actionRequiredPayload);
+      // Le prof est informé sobrement, sans détail financier tant que le paiement n'est pas confirmé
+      if (profWs?.readyState === 1) safeSend(profWs, {
+        type: "session:notBilled",
+        reason: "requires_action",
+        message: "Le paiement de cette session est en attente de validation par l'élève."
+      });
+
+    } else if (paymentResult?.status === 'duplicate_blocked') {
+      // ℹ️ Paiement déjà traité précédemment — rien à notifier, comportement normal
+      console.log(`ℹ️ Paiement déjà traité pour ${roomId}, aucune notification renvoyée`);
+    }
   } catch (err) {
     console.error(`❌ Erreur paiement pour ${roomId}:`, err.message);
   }

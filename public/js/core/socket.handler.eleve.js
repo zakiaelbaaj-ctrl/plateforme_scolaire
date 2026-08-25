@@ -243,6 +243,43 @@ case "screenShareStopped": {
   }, 20000);
   break;
 }
+
+        // ✅ NOUVEAU : le prélèvement automatique nécessite une validation
+        // bancaire (3D Secure / SCA). Toast persistant (pas de disparition
+        // automatique) avec un bouton direct vers la page de régularisation,
+        // puisque l'action est requise de l'élève, pas juste informative.
+        case "payment:actionRequired": {
+  const toast = document.createElement("div");
+  toast.innerHTML = `
+    <div style="margin-bottom: 12px; font-size: 14px;">
+      ⚠️ <strong>Validation bancaire requise</strong><br>
+      <span style="font-size: 12px; opacity: 0.9;">${data.message || "Votre banque doit valider ce paiement."}</span>
+    </div>
+    ${data.checkoutUrl ? `
+    <button id="complete-payment-btn" style="width: 100%; background: white; color: #dc2626; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+      Valider mon paiement
+    </button>` : ""}
+  `;
+  toast.style.cssText = `
+    position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+    background: #dc2626; color: white; padding: 16px;
+    border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: system-ui, sans-serif; transition: opacity 0.3s ease;
+    max-width: 320px;
+  `;
+  document.body.appendChild(toast);
+
+  const btn = document.getElementById("complete-payment-btn");
+  if (btn && data.checkoutUrl) {
+    btn.onclick = () => {
+      window.open(data.checkoutUrl, '_blank');
+      toast.remove();
+    };
+  }
+  // Pas de disparition automatique — l'élève doit voir et traiter cette alerte
+  break;
+}
+
        case "error":
      WSLogger.warn(`Erreur serveur [${data.code ?? "?"}] :`, data.message ?? data);
      if (data.message) {
