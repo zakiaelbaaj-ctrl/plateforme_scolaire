@@ -691,7 +691,7 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
 }
 
 /* Bouton Quitter/Plein écran — toujours au-dessus de tout */
-#whiteboard-wrapper.whiteboard-fullscreen #wb-fullscreen-btn {
+.card--whiteboard.whiteboard-fullscreen #wb-fullscreen-btn {
   position: fixed;
   top: 16px;
   right: 16px;
