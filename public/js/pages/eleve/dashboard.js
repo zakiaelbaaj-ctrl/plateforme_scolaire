@@ -630,6 +630,8 @@ document.getElementById("textToolBtn")?.addEventListener("click", () => {
   if (!AppState.canUseTools) return;
   setWbTool("textToolBtn", () => WhiteboardService.setTool?.("text"));
 });
+const wbExitBtn = document.getElementById("wb-exit-btn");
+
   // ✅ wb-fullscreen-btn — détecte tout appareil mobile/tactile (pas seulement
 // iOS) : l'API fullscreen native affiche une bannière système peu visible
 // sur mobile (Chrome Android inclus), donc on force le fallback CSS partout
@@ -686,12 +688,25 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
     document.exitFullscreen();
   }
 });
+wbExitBtn?.addEventListener("click", () => {
+  if (isMobileDevice || !document.fullscreenEnabled) {
+    whiteboardWrapper.classList.remove("whiteboard-fullscreen");
+    wbExitBtn.style.display = "none"; // cacher le bouton sortie
+    return;
+  }
+  document.exitFullscreen();
+  wbExitBtn.style.display = "none";
+});
+
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement === whiteboardWrapper) {
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
     const btn = document.getElementById("wb-fullscreen-btn");
     if (btn) btn.textContent = "❌ Quitter";
+
+    // ✅ afficher le bouton sortie
+    if (wbExitBtn) wbExitBtn.style.display = "inline-block";
   } else {
     if (videoMiniature) videoMiniature.style.display = "none";
     if (remoteVideoTrack) {
@@ -700,8 +715,13 @@ document.addEventListener("fullscreenchange", () => {
     }
     const btn = document.getElementById("wb-fullscreen-btn");
     if (btn) btn.textContent = "⛶";
+
+    // ✅ cacher le bouton sortie
+    if (wbExitBtn) wbExitBtn.style.display = "none";
   }
 });
+
+
 // Cacher le partage d'écran si non supporté (tablette/mobile) + informer l'élève
 const screenShareBtn = document.getElementById("screen-share-btn");
 if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
