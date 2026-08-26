@@ -657,20 +657,27 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
         btn._originalParent = btn.parentElement;
         btn._originalNextSibling = btn.nextSibling;
         document.body.appendChild(btn);
+        btn.textContent = "Quitter";
 
-        // ✅ FIX Safari/iOS : force un reflow immédiat après avoir déplacé
-        // l'élément dans le DOM. Sans ça, Safari iOS peut ne pas repeindre
-        // visuellement l'élément tout de suite, même si ses styles calculés
-        // (position:fixed, top, right, z-index) sont corrects — le bouton
-        // reste invisible jusqu'au prochain événement qui force un reflow
-        // (ex: ouverture d'une alert()). Lire offsetHeight force ce reflow.
-        void btn.offsetHeight;
-      } else if (btn._originalParent) {
-        btn._originalParent.insertBefore(btn, btn._originalNextSibling);
-        btn._originalParent = null;
-        btn._originalNextSibling = null;
+        // ✅ FIX Safari/iOS : le simple déplacement + changement de style
+        // dans le même tick JS ne suffit pas à faire peindre l'élément par
+        // Safari iOS (problème de paint, pas de layout — offsetHeight seul
+        // ne le résout pas). On force explicitement un cycle de paint en
+        // masquant puis réaffichant l'élément sur deux frames successives.
+        btn.style.display = "none";
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            btn.style.display = "";
+          });
+        });
+      } else {
+        btn.textContent = "Plein écran";
+        if (btn._originalParent) {
+          btn._originalParent.insertBefore(btn, btn._originalNextSibling);
+          btn._originalParent = null;
+          btn._originalNextSibling = null;
+        }
       }
-      btn.textContent = isFs ? "Quitter" : "Plein écran";
     }
 
     if (isFs) {
