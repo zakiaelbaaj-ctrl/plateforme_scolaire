@@ -657,21 +657,37 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
         btn._originalParent = btn.parentElement;
         btn._originalNextSibling = btn.nextSibling;
         document.body.appendChild(btn);
-        btn.textContent = "Quitter";
 
-        // ✅ FIX Safari/iOS : le simple déplacement + changement de style
-        // dans le même tick JS ne suffit pas à faire peindre l'élément par
-        // Safari iOS (problème de paint, pas de layout — offsetHeight seul
-        // ne le résout pas). On force explicitement un cycle de paint en
-        // masquant puis réaffichant l'élément sur deux frames successives.
-        btn.style.display = "none";
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            btn.style.display = "";
-          });
-        });
+        // ✅ FIX Safari/iOS : styles appliqués directement en inline plutôt
+        // que via une règle CSS externe (body > #wb-fullscreen-btn). Les
+        // styles inline s'appliquent de façon synchrone avec la mutation
+        // DOM, sans dépendre d'un recalcul de feuille de style externe —
+        // plus robuste face aux bugs de timing de paint sur Safari iOS.
+        btn.style.position = "fixed";
+        btn.style.top = "16px";
+        btn.style.right = "16px";
+        btn.style.zIndex = "2147483647";
+        btn.style.display = "inline-flex";
+        btn.style.background = "rgba(0, 0, 0, 0.75)";
+        btn.style.color = "#fff";
+        btn.style.border = "none";
+        btn.style.padding = "10px 16px";
+        btn.style.borderRadius = "99px";
+        btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+        btn.textContent = "Quitter";
       } else {
         btn.textContent = "Plein écran";
+        btn.style.position = "";
+        btn.style.top = "";
+        btn.style.right = "";
+        btn.style.zIndex = "";
+        btn.style.display = "";
+        btn.style.background = "";
+        btn.style.color = "";
+        btn.style.border = "";
+        btn.style.padding = "";
+        btn.style.borderRadius = "";
+        btn.style.boxShadow = "";
         if (btn._originalParent) {
           btn._originalParent.insertBefore(btn, btn._originalNextSibling);
           btn._originalParent = null;
