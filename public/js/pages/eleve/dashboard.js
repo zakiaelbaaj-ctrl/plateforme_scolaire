@@ -652,22 +652,26 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
     const isFs = whiteboardWrapper.classList.toggle("whiteboard-fullscreen");
     card?.classList.toggle("whiteboard-fullscreen", isFs);
 
-     // 🔍 DEBUG TEMPORAIRE — à retirer une fois le bug résolu
-  if (isFs) {
-    fetch("/css/dashboard_eleve.css", { cache: "no-store" })
-      .then(r => r.text())
-      .then(css => {
-        const hasRule = css.includes("body > #wb-fullscreen-btn");
-        const idx = css.indexOf("body > #wb-fullscreen-btn");
-        alert(
-          "DEBUG CSS réseau (no-store):\n" +
-          "Règle présente: " + hasRule + "\n" +
-          "Longueur CSS: " + css.length + "\n" +
-          "Extrait autour: " + (idx >= 0 ? css.substring(idx - 20, idx + 150) : "N/A")
-        );
-      })
-      .catch(e => alert("Erreur fetch CSS: " + e.message));
-  }
+      if (btn) {
+      if (isFs) {
+        btn._originalParent = btn.parentElement;
+        btn._originalNextSibling = btn.nextSibling;
+        document.body.appendChild(btn);
+
+        // ✅ FIX Safari/iOS : force un reflow immédiat après avoir déplacé
+        // l'élément dans le DOM. Sans ça, Safari iOS peut ne pas repeindre
+        // visuellement l'élément tout de suite, même si ses styles calculés
+        // (position:fixed, top, right, z-index) sont corrects — le bouton
+        // reste invisible jusqu'au prochain événement qui force un reflow
+        // (ex: ouverture d'une alert()). Lire offsetHeight force ce reflow.
+        void btn.offsetHeight;
+      } else if (btn._originalParent) {
+        btn._originalParent.insertBefore(btn, btn._originalNextSibling);
+        btn._originalParent = null;
+        btn._originalNextSibling = null;
+      }
+      btn.textContent = isFs ? "Quitter" : "Plein écran";
+    }
 
     if (isFs) {
       if (videoMiniature) videoMiniature.style.display = "block";
