@@ -676,23 +676,16 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
         btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
         btn.textContent = "Quitter";
       } else {
-        btn.textContent = "Plein écran";
-        btn.style.position = "";
-        btn.style.top = "";
-        btn.style.right = "";
-        btn.style.zIndex = "";
-        btn.style.display = "";
-        btn.style.background = "";
-        btn.style.color = "";
-        btn.style.border = "";
-        btn.style.padding = "";
-        btn.style.borderRadius = "";
-        btn.style.boxShadow = "";
         if (btn._originalParent) {
           btn._originalParent.insertBefore(btn, btn._originalNextSibling);
           btn._originalParent = null;
           btn._originalNextSibling = null;
         }
+        // ✅ Retire l'attribut style entier (au lieu de vider champ par
+        // champ) pour garantir un retour propre à l'état CSS de base,
+        // sans risque d'oubli ou d'ordre d'opérations incorrect.
+        btn.removeAttribute("style");
+        btn.textContent = "Plein écran";
       }
     }
 
