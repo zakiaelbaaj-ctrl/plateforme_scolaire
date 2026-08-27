@@ -177,7 +177,7 @@ case "chatMessage":
     });
   }
   break;
-  
+
         case "availabilityUpdated":
           AppState._notify("availabilityUpdated", { estDisponible: data.estDisponible });
           break;
@@ -223,6 +223,13 @@ case "chatMessage":
         ...AppState.currentUser,
         tabId: sessionStorage.getItem("tabId")
       });
+      // ✅ NOUVEAU — si une session était active en mémoire, on redemande
+    // à rejoindre la room pour déclencher la reconnexion côté serveur
+    // (annule la grâce, redonne un token LiveKit frais).
+    if (AppState.currentRoomId) {
+      console.log("🔄 Reconnexion : re-join room existante", AppState.currentRoomId);
+      socketService.send({ type: "joinRoom", roomId: AppState.currentRoomId });
+    }
     }
   }
 

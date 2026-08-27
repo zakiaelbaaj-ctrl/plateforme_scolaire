@@ -295,14 +295,16 @@ case "screenShareStopped": {
   onTransportOpen() {
     AppState.setWsConnected(true);
     if (AppState.currentUser?.id) {
-      console.log("📸 PHOTO DANS AppState :", AppState.currentUser.photo_identite_url);
-      console.log("🧑 USER COMPLET :", AppState.currentUser);
       socketService.send({
   type: "identify",
   ...AppState.currentUser,
   photo_identite_url: AppState.currentUser.photo_identite_url
 });
-
+// ✅ NOUVEAU — même logique de reprise
+    if (AppState.currentRoomId) {
+      console.log("🔄 Reconnexion : re-join room existante", AppState.currentRoomId);
+      socketService.send({ type: "joinRoom", roomId: AppState.currentRoomId });
+    }
     }
   }
 

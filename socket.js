@@ -28,7 +28,8 @@ import {
   chatMessage,
   documentShare,
   leaveRoom,
-  getRooms
+  getRooms,
+  handleUnexpectedDisconnect
 } from "./ws/rooms.js";
 
 import {
@@ -542,29 +543,42 @@ async function handleDisconnect(ws) {
 
   if (ws.role === "prof") {
   if (isActiveConnection) {
-    updateStatus(ws.userId, "offline");
     const prof = onlineProfessors.get(ws.userId);
-    const eleveIdSnapshot = prof?.eleveId ?? null;
-
-    if (prof && eleveIdSnapshot) {
-      console.log(`🔄 Prof ${ws.userId} déconnecté → libère élève ${eleveIdSnapshot}`);
-      await endSessionForDisconnect(ws.userId, eleveIdSnapshot, onlineProfessors, clients); // ✅ await ajouté
+    const hasActiveSession = !!prof?.eleveId;
+    if (!hasActiveSession) {
+      updateStatus(ws.userId, "offline"); // ✅ seulement si pas de session en cours
     }
-    // 🟢 Le prof reste visible "en ligne" tant qu'il ne s'est pas déconnecté manuellement
-    // ⚠️ On NE nettoie PAS l'appel en attente ici : il doit survivre à une coupure WS
-    // (le timeout de 45s dans callProfessor() s'en charge si le prof ne répond jamais)
     setProfessorOffline(ws.userId);
+
+    if (hasActiveSession && ws.roomId) {
+      handleUnexpectedDisconnect(ws, {
+        onGraceExpired: async () => {
+          console.log(`🔄 Grâce expirée (prof ${ws.userId}) → libère élève ${prof.eleveId}`);
+          await endSessionForDisconnect(ws.userId, prof.eleveId, onlineProfessors, clients);
+          broadcastOnlineProfs(onlineProfessors, clients);
+        }
+      });
+    }
   } else {
-    console.log(`🔕 Déconnexion ignorée (socket zombie) pour prof ${ws.userId} — reconnexion déjà en place`);
+    console.log(`🔕 Déconnexion ignorée (socket zombie) pour prof ${ws.userId}`);
   }
-     }
-      if (ws.role === "eleve" || ws.role === "etudiant") {
+}
+
+if (ws.role === "eleve" || ws.role === "etudiant") {
   if (isActiveConnection) {
+    let matchedProf = null;
     for (const prof of onlineProfessors.values()) {
-      if (prof.eleveId === ws.userId) {
-        console.log(`🔄 Utilisateur ${ws.userId} déconnecté → libère prof ${prof.id}`);
-        await endSessionForDisconnect(prof.id, ws.userId, onlineProfessors, clients); // ✅ await ajouté
-      }
+      if (prof.eleveId === ws.userId) { matchedProf = prof; break; }
+    }
+
+    if (matchedProf && ws.roomId) {
+      handleUnexpectedDisconnect(ws, {
+        onGraceExpired: async () => {
+          console.log(`🔄 Grâce expirée (élève ${ws.userId}) → libère prof ${matchedProf.id}`);
+          await endSessionForDisconnect(matchedProf.id, ws.userId, onlineProfessors, clients);
+          broadcastOnlineProfs(onlineProfessors, clients);
+        }
+      });
     }
 
     if (ws.role === "etudiant" && MatchService?.removeStudent) {
@@ -572,20 +586,12 @@ async function handleDisconnect(ws) {
     }
     await handleStudentDisconnect(ws);
   } else {
-    console.log(`🔕 Déconnexion ignorée (socket zombie) pour ${ws.role} ${ws.userId} — reconnexion déjà en place`);
-    if (ws.role === "etudiant") {
-      cleanupStudentRoom(ws);
-    }
+    console.log(`🔕 Déconnexion ignorée (socket zombie) pour ${ws.role} ${ws.userId}`);
+    if (ws.role === "etudiant") cleanupStudentRoom(ws);
   }
 }
-// ✅ 3️⃣ NETTOYAGE SYSTÈME restauré (manquait entièrement)
-  if (isActiveConnection) {
-    leaveRoom(ws);
-  }
-  cleanupOnDisconnect(ws, {
-    clients,
-    onlineProfessors,
-    rooms: getRooms()
-  });
+
+// ✅ leaveRoom n'est plus appelé ici automatiquement.
+cleanupOnDisconnect(ws, { clients, onlineProfessors, rooms: getRooms() });
 }
 export { clients, onlineProfessors, safeSend, broadcastOnlineProfs };

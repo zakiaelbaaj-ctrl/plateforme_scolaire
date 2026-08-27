@@ -112,7 +112,12 @@ function saveAndRenderUser(user) {
 // APPEL D'UN PROFESSEUR — logique centralisée
 // ======================================================
 function attemptCallToProfessor(prof) {
+  console.log(`🔎 DIAG attemptCallToProfessor appelé, stack:`, new Error().stack);
   const user = AppState.currentUser;
+  // ✅ Bloquer si une room est déjà active (pas seulement callInProgress)
+  if (AppState.callInProgress || AppState.currentRoomId) {
+    return { ok: false, reason: "call-in-progress" };
+  }
   // ✅ NOUVEAU — verrou anti-double appel
   if (AppState.callInProgress) {
     return { ok: false, reason: "call-in-progress" };

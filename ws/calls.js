@@ -18,6 +18,7 @@ const pendingCalls = new Map();  // profId -> {eleveId, timestamp}
 // =======================================================
 export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
   const eleveId = ws.userId;
+  console.log(`🔎 DIAG callProfessor: eleveId=${eleveId} socketId=${ws.socketUniqueId} profId=${profId} profStatusAvant=${onlineProfessors.get(parseInt(profId,10))?.status}`);
 
   if (ws.role !== "eleve" && ws.role !== "etudiant") {
     return safeSend(ws, {
@@ -412,26 +413,26 @@ export async function endSessionForDisconnect(profId, eleveId, onlineProfessors,
   console.log(`⏱️ Durée calculée: ${durationSeconds}s pour ${roomId}`);
 
   // ✅ INSERTION EN DB si durée suffisante
-  if (durationSeconds >= 5) {
-    try {
-      const { pool } = await import("../config/db.js");
-      await pool.query(
-        `INSERT INTO visio_sessions
-         (user_id, professor_id, room_id, start_time, end_time, duration_seconds, payment_status)
-         VALUES ($1, $2, $3, $4, NOW(), $5, 'pending')
-         ON CONFLICT DO NOTHING`,
-        [eleveId, profId, roomId, sessionStartedAt, durationSeconds]
-      );
-      console.log(`✅ visio_session insérée: ${durationSeconds}s`);
-    } catch (err) {
-      console.error(`❌ Erreur insertion visio_session:`, err.message);
-    }
-  }
-
-  // 💰 PAIEMENT
+  let sessionId = null;
+if (durationSeconds >= 5) {
   try {
-    const paymentResult = await processSessionPayment(roomId);
+    const { pool } = await import("../config/db.js");
+    const insertRes = await pool.query(
+      `INSERT INTO visio_sessions
+       (user_id, professor_id, room_id, start_time, end_time, duration_seconds, payment_status)
+       VALUES ($1, $2, $3, $4, NOW(), $5, 'pending')
+       RETURNING id`,
+      [eleveId, profId, roomId, sessionStartedAt, durationSeconds]
+    );
+    sessionId = insertRes.rows[0]?.id ?? null;
+    console.log(`✅ visio_session insérée: ${durationSeconds}s (id=${sessionId})`);
+  } catch (err) {
+    console.error(`❌ Erreur insertion visio_session:`, err.message);
+  }
+}
 
+try {
+  const paymentResult = await processSessionPayment(roomId, sessionId);
     if (paymentResult?.status === 'succeeded') {
       const dureeMinutes = paymentResult.duration || Math.ceil(durationSeconds / 60);
       const totalAmountEUR = paymentResult.amount || 0;

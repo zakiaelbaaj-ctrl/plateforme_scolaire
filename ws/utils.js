@@ -151,17 +151,7 @@ export function cleanupOnDisconnect(ws, deps) {
   console.log(`❌ WS fermé: ${userId} (Rôle: ${role})`);
   // 1. PROFESSEUR
   if (role === "prof") {
-    const prof = onlineProfessors.get(userId);
-    if (prof?.eleveId) {
-      const studentWs = clients.get(prof.eleveId);
-      if (studentWs?.readyState === 1) {
-        safeSend(studentWs, {
-          type: "callEnded",
-          reason: "prof_disconnected",
-          timestamp: new Date().toISOString()
-        });
-      }
-    }
+    
     // ✅ FIX : on ne supprime JAMAIS le prof de onlineProfessors ici.
     // setProfessorOffline() (appelé juste avant dans handleDisconnect) s'est déjà
     // chargé de couper la référence WS tout en gardant le prof visible/reconnectable.

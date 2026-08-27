@@ -6,6 +6,9 @@ import { LiveKitService } from "./livekit.service.js";
 
 const rooms = new Map();       // roomId -> Set<ws>
 const sessionData = new Map();  // roomId -> { startTime: Date, participants: [] }
+const disconnected = new Map(); // roomId -> Map(userId -> { timer, role })
+
+const GRACE_PERIOD_MS = 90000; // ✅ 90s — laisse le temps de changer de fenêtre/consulter un fichier
 
 // =======================================================
 // JOIN ROOM
@@ -17,9 +20,47 @@ export async function joinRoom(ws, { roomId }, onlineProfessors, clients) {
         return safeSend(ws, { type: "error", message: "roomId requis" });
     }
 
-    if (ws.roomId === roomId && !rooms.has(roomId)) {
-        ws.roomId = null;
+    // ✅ NOUVEAU — reconnexion pendant la grâce
+        const roomDisc = disconnected.get(roomId);
+    if (roomDisc?.has(ws.userId)) {
+        const entry = roomDisc.get(ws.userId);
+        clearTimeout(entry.timer);
+        roomDisc.delete(ws.userId);
+        if (roomDisc.size === 0) disconnected.delete(roomId);
+
+        console.log(`🔄 ${ws.userId} reconnecté à ${roomId} (grâce annulée)`);
+
+        ws.roomId = roomId;
+        if (!rooms.has(roomId)) rooms.set(roomId, new Set());
+        rooms.get(roomId).add(ws);
+
+        broadcastRoom(roomId, {
+            type: "peerReconnected",
+            userId: ws.userId,
+            userName: ws.userName
+        }, ws);
+        safeSend(ws, { type: "joinedRoom", roomId, reconnected: true });
+
+        const currentRoom = rooms.get(roomId);
+        if (currentRoom.size === 2) {
+            for (const participant of currentRoom) {
+                const role = participant.role || "eleve";
+                try {
+                    const token = await LiveKitService.generateToken(participant.userId, role, roomId);
+                    safeSend(participant, {
+                        type: "livekitToken",
+                        token,
+                        roomName: roomId,
+                        url: process.env.LIVEKIT_URL
+                    });
+                } catch (err) {
+                    console.error("❌ Erreur régénération token LiveKit (reconnexion):", err.message);
+                }
+            }
+        }
+        return;   // ✅ on sort ici, la ligne suivante `if (ws.roomId === roomId) return;` n'est jamais atteinte dans ce cas
     }
+
     if (ws.roomId === roomId) return;
     if (ws.roomId) await leaveRoom(ws); 
 
@@ -84,7 +125,9 @@ export async function joinRoom(ws, { roomId }, onlineProfessors, clients) {
 }
 
 // =======================================================
-// LEAVE ROOM
+// LEAVE ROOM— fin VOLONTAIRE / DÉFINITIVE (inchangé)
+// À n'appeler que lors d'une vraie fin de session, jamais
+// sur une simple coupure WS.
 // =======================================================
 export async function leaveRoom(ws) {
     // 1. Sécurité sur l'ID de la room
@@ -130,8 +173,54 @@ export async function leaveRoom(ws) {
             console.log(`🗑️ Salon supprimé: ${roomId}`);
         }
     }
-
+    disconnected.delete(roomId); // au cas où une grâce était en cours
     ws.roomId = null;
+}
+// =======================================================
+// ✅ NOUVEAU — déconnexion INVOLONTAIRE (fermeture WS, réseau,
+// changement de fenêtre iPad, etc.). Ne détruit ni la room ni
+// la session tout de suite — période de grâce.
+// =======================================================
+export function handleUnexpectedDisconnect(ws, { onGraceExpired } = {}) {
+    let roomId = ws.roomId;
+    if (!roomId) return;
+
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    room.delete(ws); // retire le socket mort, la room "logique" reste ouverte
+
+    console.log(`⏳ ${ws.userName} (${ws.role}) déconnecté de ${roomId} — grâce ${GRACE_PERIOD_MS / 1000}s`);
+
+    broadcastRoom(roomId, {
+        type: "peerDisconnected",
+        userId: ws.userId,
+        userName: ws.userName,
+        graceSeconds: GRACE_PERIOD_MS / 1000
+    });
+    if (!disconnected.has(roomId)) disconnected.set(roomId, new Map());
+
+    const timer = setTimeout(() => {
+        const roomDisc = disconnected.get(roomId);
+        roomDisc?.delete(ws.userId);
+        if (roomDisc && roomDisc.size === 0) disconnected.delete(roomId);
+
+        console.log(`🏁 Grâce expirée pour ${ws.userId} → fin définitive ${roomId}`);
+        // ✅ Délègue la vraie fermeture (facturation, session:stop, LiveKit)
+        // au code appelant, qui connaît le contexte prof/élève complet.
+        if (typeof onGraceExpired === "function") {
+            onGraceExpired();
+        }
+    }, GRACE_PERIOD_MS);
+
+    disconnected.get(roomId).set(ws.userId, { timer, role: ws.role });
+
+    // ⚠️ On NE remet PAS ws.roomId à null ici : on veut pouvoir vérifier,
+    // au moment de la reconnexion, à quelle room ce userId doit revenir.
+    // (voir note d'intégration côté server.js ci-dessous)
+}
+export function isInGracePeriod(roomId, userId) {
+    return disconnected.get(roomId)?.has(userId) ?? false;
 }
 // =======================================================
 // ⚡ FIX : FORCE CLOSE ROOM (Avec avertissement aux clients)
@@ -158,6 +247,13 @@ export function closeRoom(roomId, { notify = true } = {}) {
         rooms.delete(roomId);
     }
     sessionData.delete(roomId);
+    // ✅ NOUVEAU — annule toute grâce en attente pour cette room,
+    // pour éviter qu'un timer orphelin ne se déclenche après coup.
+    const roomDisc = disconnected.get(roomId);
+    if (roomDisc) {
+        for (const entry of roomDisc.values()) clearTimeout(entry.timer);
+        disconnected.delete(roomId);
+    }
 }
 // =======================================================
 // CHAT & DOCUMENTS

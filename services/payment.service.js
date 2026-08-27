@@ -105,51 +105,47 @@ export async function createSetupIntent(userId) {
 /**
  * 3. FACTURATION DIRECTE (En fin de cours)
  */
-export async function processSessionPayment(roomId) {
-  let eleveId, profId, duration; // DÃ©clarÃ©s ici pour Ãªtre accessibles dans le catch
+export async function processSessionPayment(roomId, sessionId = null) {
+  let eleveId, profId, duration;
   try {
-    console.log(`ðŸ” [SYNCHRO] Lecture directe via Pool pour : ${roomId}`);
-
     let sessionData = null;
-    let attempts = 0;
 
-    while (attempts < 3) {
+    if (sessionId) {
       const result = await pool.query(
         `SELECT id, duration_seconds, user_id, professor_id, payment_status 
-   FROM visio_sessions 
-   WHERE room_id = $1 AND duration_seconds > 0
-   ORDER BY created_at DESC LIMIT 1`,
-        [roomId]
+         FROM visio_sessions WHERE id = $1`,
+        [sessionId]
       );
-      if (result.rows.length > 0) {
-        sessionData = result.rows[0];
-        break;
+      sessionData = result.rows[0] || null;
+    } else {
+      let attempts = 0;
+      while (attempts < 3) {
+        const result = await pool.query(
+          `SELECT id, duration_seconds, user_id, professor_id, payment_status 
+           FROM visio_sessions 
+           WHERE room_id = $1 AND duration_seconds > 0
+           ORDER BY created_at DESC LIMIT 1`,
+          [roomId]
+        );
+        if (result.rows.length > 0) { sessionData = result.rows[0]; break; }
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      attempts++;
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     if (!sessionData) return null;
 
-    // âœ… ANTI-DOUBLON : si cette session a dÃ©jÃ  Ã©tÃ© traitÃ©e, on bloque net.
-    const ALREADY_PROCESSED_STATUSES = [
-      'succeeded',
-      'skipped_low_amount',
-      'requires_action',
-    ];
+    const ALREADY_PROCESSED_STATUSES = ['succeeded', 'skipped_low_amount', 'requires_action'];
     if (ALREADY_PROCESSED_STATUSES.includes(sessionData.payment_status)) {
-      logger.warn("ðŸš« Duplicate visio payment blocked", {
-        roomId,
-        sessionId: sessionData.id,
-        payment_status: sessionData.payment_status,
+      logger.warn("🚫 Duplicate visio payment blocked", {
+        roomId, sessionId: sessionData.id, payment_status: sessionData.payment_status,
       });
       return { status: 'duplicate_blocked', payment_status: sessionData.payment_status };
     }
-
-    duration = Math.ceil(sessionData.duration_seconds / 60);
+        duration = Math.ceil(sessionData.duration_seconds / 60);
     eleveId = sessionData.user_id;
     profId = sessionData.professor_id;
-    const sessionId = sessionData.id;
+    const resolvedSessionId = sessionData.id;  // ✅ renommé, plus de conflit
 
     const users = await db.query(
       `SELECT id, email, username, role, stripe_customer_id, stripe_account_id, currency, is_university_prof, is_subscriber 
@@ -177,18 +173,19 @@ export async function processSessionPayment(roomId) {
     const totalAmountEUR = amountHT + amountTVA;
 
     if (totalAmountEUR < 50) {
-      logger.warn("Paiement ignorÃ© : montant sous le seuil Stripe", {
-        sessionId, roomId, profId, eleveId, duration, billedDuration, totalAmountEUR,
+      logger.warn("Paiement ignoré : montant sous le seuil Stripe", {
+        resolvedSessionId, roomId, profId, eleveId, duration, billedDuration, totalAmountEUR,
       });
 
-      await pool.query(
+            await pool.query(
         `UPDATE visio_sessions 
      SET payment_status = 'skipped_low_amount', amount = $1
      WHERE id = $2`,
-        [totalAmountEUR / 100, sessionId]
+        [totalAmountEUR / 100, resolvedSessionId]
       );
 
-      // âœ… Email isolÃ© â€” un Ã©chec d'envoi ne doit jamais bloquer le retour
+      // ✅ Email isolé — un échec d'envoi ne doit jamais bloquer le retour
+
       try {
         await mailService.sendSessionTooShortEmail(prof.email, {
           duration,
@@ -202,15 +199,15 @@ export async function processSessionPayment(roomId) {
       return { status: 'skipped', reason: 'amount_too_low', amount: totalAmountEUR };
     }
 
-    // âœ… RÃ‰PARTITION 50/50 sur le TTC : la plateforme retient application_fee_amount
+   // ✅ RÉPARTITION 50/50 sur le TTC : la plateforme retient application_fee_amount
     // (couvre taxe + charges + urgence scolaire), le solde part au prof via transfer_data.
     const feeAmountEUR = Math.round(totalAmountEUR * 0.5);
     const studentCurrency = eleve.currency?.toLowerCase() || 'eur';
 
-    // PrÃ©lÃ¨vement automatique
+    // ✅ Prélèvement automatique
     const customer = await stripe.customers.retrieve(eleve.stripe_customer_id);
     let paymentMethodId = customer.invoice_settings?.default_payment_method;
-    // âœ… FIX : Si pas de moyen de paiement "par dÃ©faut", on liste et on prend la premiÃ¨re carte active
+    // ✅ FIX : Si pas de moyen de paiement "par défaut", on liste et on prend la première carte active
     if (!paymentMethodId) {
       const paymentMethods = await stripe.paymentMethods.list({
         customer: eleve.stripe_customer_id,
@@ -227,40 +224,44 @@ export async function processSessionPayment(roomId) {
     }
     if (!paymentMethodId) throw new Error("Moyen de paiement par dÃ©faut manquant.");
 
-    const paymentIntent = await stripe.paymentIntents.create({
+        const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmountEUR,
       currency: 'eur',
       customer: eleve.stripe_customer_id,
       payment_method: paymentMethodId,
       off_session: true,
       confirm: true,
-      description: `Session visio ${duration} min (facturÃ©e ${billedDuration} min) â€” niveau ${eleve.niveau ? (Array.isArray(eleve.niveau) ? eleve.niveau[0] : eleve.niveau) : "non prÃ©cisÃ©"}`,
+      description: `Session visio ${duration} min (facturée ${billedDuration} min) — niveau ${eleve.niveau ? (Array.isArray(eleve.niveau) ? eleve.niveau[0] : eleve.niveau) : "non précisé"}`,
       metadata: { roomId, profId, eleveId, studentCurrency, realDuration: String(duration), billedDuration: String(billedDuration) },
       ...(prof.stripe_account_id?.trim() && {
         transfer_data: { destination: prof.stripe_account_id },
         application_fee_amount: feeAmountEUR,
       }),
+    }, {
+      idempotencyKey: `session_payment_${sessionData.id}`  // ✅ seule transition }, { — deux arguments au total
     });
 
-    console.log(`âœ… [STRIPE] PrÃ©lÃ¨vement rÃ©ussi : ${totalAmountEUR/100}â‚¬`);
+    console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR / 100} €`);
 
-    await pool.query(
+        await pool.query(
       `UPDATE visio_sessions 
    SET payment_status = 'succeeded', payment_intent_id = $1, amount = $2, is_paid = true
    WHERE id = $3`,
-      [paymentIntent.id, totalAmountEUR / 100, sessionId]
+      [paymentIntent.id, totalAmountEUR / 100, resolvedSessionId]
     );
-    // ðŸ‘‰ La gÃ©nÃ©ration du PDF
+    // ✅ La génération du PDF
     const { generateInvoicePdf } = await import("./invoicePdf.js"); // Adaptez le chemin
     const invoiceNumber = `VID-${profId}-${eleveId}-${Date.now()}`;
     const { fileName } = await generateInvoicePdf({
       userId: eleveId,
-      planType: `Cours vidÃ©o (${billedDuration} min)`,
+      planType: `Cours vidéo (${billedDuration} min)`,
       amount: totalAmountEUR,
       invoiceNumber,
       date: new Date()
     });
-    // âœ… Emails isolÃ©s â€” un Ã©chec d'envoi ne doit JAMAIS empÃªcher le retour du succÃ¨s du paiement
+    // ✅ Emails isolés — un échec d'envoi ne doit JAMAIS empêcher
+// le retour du succès du paiement
+
     try {
       await mailService.sendInvoiceEmail(eleve.email, {
         invoiceNumber,
@@ -270,18 +271,17 @@ export async function processSessionPayment(roomId) {
         displayName: eleve.username || eleve.email
       });
     } catch (emailErr) {
-      logger.error("âš ï¸ Ã‰chec envoi email facture Ã©lÃ¨ve (non bloquant):", { message: emailErr.message });
-    }
-    try {
-      // âœ… AJOUT : Email au prof
+      logger.error("⚠️ Échec envoi email facture élève (non bloquant):", { message: emailErr.message });
+   }
+   try {
       await mailService.sendProfPaymentEmail(prof.email, {
         invoiceNumber,
-        amount: (totalAmountEUR - feeAmountEUR) / 100, // montant aprÃ¨s commission
+        amount: (totalAmountEUR - feeAmountEUR) / 100, // montant après commission
         duration: billedDuration,
         displayName: prof.username || prof.email
       })
     } catch (emailErr) {
-      logger.error("âš ï¸ Ã‰chec envoi email paiement prof (non bloquant):", { message: emailErr.message });
+      logger.error("⚠️ Échec envoi email paiement prof (non bloquant):", { message: emailErr.message });
     }
 
     return {
@@ -336,20 +336,20 @@ export async function processSessionPayment(roomId) {
 }
 
 /**
- * 4. GESTION SCA : Facture manuelle si le prÃ©lÃ¨vement automatique Ã©choue
+ * 4. GESTION SCA : Facture manuelle si le prélèvement automatique échoue
  */
 async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
   try {
     const hourlyRateHT = getTarifHoraireHT(eleve.niveau);
 
-    // âœ… MÃªme rÃ¨gle de durÃ©e minimale que le paiement direct
+    // ✅ Même règle de durée minimale que le paiement direct
     const billedDuration = Math.max(duration, 15);
 
     const amountHT = Math.round(billedDuration * (hourlyRateHT / 60) * 100);
     const amountTVA = Math.round(amountHT * 0.20);
     const totalAmount = amountHT + amountTVA;
 
-    // âœ… RÃ‰PARTITION 50/50 sur le TTC (cohÃ©rent avec processSessionPayment)
+    // ✅ RÉPARTITION 50/50 sur le TTC (cohérent avec processSessionPayment)
     const feeAmountEUR = Math.round(totalAmount * 0.5);
 
     const session = await stripe.checkout.sessions.create({
@@ -359,7 +359,7 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
         price_data: {
           currency: eleve.currency?.toLowerCase() || 'eur',
           product_data: {
-            name: `RÃ©gularisation cours (${billedDuration} min)`,
+            name: `Régularisation cours (${billedDuration} min)`,
             description: `Session avec ${prof.username || 'votre professeur'}`,
           },
           unit_amount: totalAmount,
@@ -379,7 +379,7 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
 
       metadata: { roomId, type: 'recovery_payment', userId: eleve.id, billedDuration: String(billedDuration) }
     });
-    // âœ… Email isolÃ© â€” un Ã©chec d'envoi ne doit pas empÃªcher le retour de l'URL de paiement
+    // ✅ Email isolé — un échec d'envoi ne doit pas empêcher le retour de l'URL de paiement
     try {
       await mailService.sendPaymentActionRequiredEmail(eleve.email, {
         amount: totalAmount / 100,
@@ -387,17 +387,17 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
         duration: billedDuration
       });
     } catch (emailErr) {
-      logger.error("âš ï¸ Ã‰chec envoi email rÃ©gularisation (non bloquant):", { message: emailErr.message });
+      logger.error("⚠️ Échec envoi email régularisation (non bloquant):", { message: emailErr.message });
     }
     return session.url;
   } catch (error) {
-    logger.error("âŒ Erreur handleAuthenticationRequired:", error.message);
+    logger.error("⚠️ Erreur handleAuthenticationRequired:", error.message);
     throw error;
   }
 }
 
 /**
- * 5. ABONNEMENT Ã‰TUDIANT (Entraide 20â‚¬/heure)
+ * // ✅ ABONNEMENT ÉTUDIANT (Entraide 20€/heure)
  */
 export async function createStudentSubscription(userId) {
   try {
@@ -413,9 +413,9 @@ export async function createStudentSubscription(userId) {
       line_items: [{
         price_data: {
           currency: user.currency?.toLowerCase() || 'eur',
-          unit_amount: 2000, // 20.00â‚¬
+          unit_amount: 2000, // ✅ 20.00€
           recurring: { interval: 'month' },
-          product_data: { name: "Abonnement Entraide", description: "Appels illimitÃ©s entre Ã©tudiants" },
+          product_data: { name: "Abonnement Entraide", description: "Appels illimités entre étudiants" },
         },
         quantity: 1,
       }],
