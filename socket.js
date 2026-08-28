@@ -545,11 +545,13 @@ async function handleDisconnect(ws) {
   if (isActiveConnection) {
     const prof = onlineProfessors.get(ws.userId);
     const hasActiveSession = !!prof?.eleveId;
-    if (!hasActiveSession) {
-      updateStatus(ws.userId, "offline");
-    }
-    setProfessorOffline(ws.userId);
 
+    // ✅ Le statut n'est JAMAIS modifié automatiquement sur déconnexion —
+    // seul le toggle "updateAvailability" (contrôlé par le prof) ou la
+    // vraie fin de session (endSessionForDisconnect) peuvent le changer.
+    // La déconnexion WS coupe uniquement la référence socket (setProfessorOffline).
+    setProfessorOffline(ws.userId);
+    
     if (hasActiveSession && ws.roomId) {
       sendPushToUser(ws.userId, {
         title: "⚠️ Appel interrompu",

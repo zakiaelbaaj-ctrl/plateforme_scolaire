@@ -917,7 +917,20 @@ function renderProfList(profs = []) {
   list.innerHTML = "";
 
   if (!profs.length) {
-    list.innerHTML = `<li class="empty">Aucun professeur connecté</li>`;
+    const user = AppState.currentUser;
+    const eleveMatiere = Array.isArray(user?.matiere) ? user.matiere[0] : user?.matiere;
+    const eleveNiveau = Array.isArray(user?.niveau) ? user.niveau[0] : user?.niveau;
+
+    if (!eleveMatiere || !eleveNiveau) {
+      list.innerHTML = `
+        <li class="empty empty--profile">
+          ⚠️ <a href="/pages/eleve/profs_en_ligne.html" style="color: var(--accent); text-decoration: underline;">
+            Complétez votre profil (matière et niveau)
+          </a> pour voir les professeurs disponibles.
+        </li>`;
+    } else {
+      list.innerHTML = `<li class="empty">Aucun professeur connecté pour votre matière/niveau actuellement</li>`;
+    }
     return;
   }
 

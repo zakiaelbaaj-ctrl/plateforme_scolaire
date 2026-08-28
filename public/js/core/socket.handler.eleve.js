@@ -7,6 +7,23 @@ import { CallStateMachine } from "../domains/call/call.state.machine.js";
 import { CallService } from "../domains/call/call.service.js";
 import { refreshAccessToken } from "../lib/auth.refresh.js";
 import { showNotification } from "/js/ui/components/notification.js";
+// ✅ NOUVEAU — même logique de correspondance que le serveur (callProfessor
+// dans ws/calls.js), pour n'afficher côté élève que les profs enseignant
+// sa matière et son niveau. Évite qu'un élève clique sur un prof qui sera
+// de toute façon rejeté par le serveur (MATIERE_NIVEAU_MISMATCH).
+function filterProfsByMatiereNiveau(profs, user) {
+  const eleveMatiere = Array.isArray(user?.matiere) ? user.matiere[0] : user?.matiere;
+  const eleveNiveau = Array.isArray(user?.niveau) ? user.niveau[0] : user?.niveau;
+  
+  if (!eleveMatiere || !eleveNiveau) return [];
+
+  return profs.filter(prof => {
+    const profMatieres = Array.isArray(prof.matiere) ? prof.matiere : (prof.matiere ? [prof.matiere] : []);
+    const profNiveaux = Array.isArray(prof.niveau) ? prof.niveau : (prof.niveau ? [prof.niveau] : []);
+    return profMatieres.includes(eleveMatiere) && profNiveaux.includes(eleveNiveau);
+  });
+}
+
 class SocketHandlerEleve {
   constructor() {
     this._unsubscribeSocket = socketService.onMessage((data) => this.handle(data));
@@ -45,7 +62,9 @@ class SocketHandlerEleve {
       case "TRANSPORT_OPEN": this.onTransportOpen(); break;
      case "onlineProfessors":
 case "professorsList":
-  AppState.setOnlineProfessors(data.profs ?? data.professors ?? []);
+  AppState.setOnlineProfessors(
+    filterProfsByMatiereNiveau(data.profs ?? data.professors ?? [], AppState.currentUser)
+  );
   break;
        case "document":
        case "documentReceived":
