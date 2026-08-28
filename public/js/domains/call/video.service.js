@@ -11,6 +11,21 @@ export const VideoService = {
   // ⚠️ Signature changée : LiveKit a besoin de l'URL du serveur, pas seulement du token
   async connect(token, url) {
     try {
+      // ✅ NOUVEAU — nettoie proprement toute connexion LiveKit précédente
+      // avant d'en établir une nouvelle. Sans ça, sur iOS Safari en particulier,
+      // les anciens tracks caméra/micro peuvent rester "accrochés" et bloquer
+      // la nouvelle acquisition média après une reconnexion.
+      if (this.room) {
+        console.log("🔄 Nettoyage de l'ancienne connexion LiveKit avant reconnexion");
+        this._silentDisconnect = true;
+        this._stopLocalTracks();
+        try {
+          await this.room.disconnect();
+        } catch (e) {
+          console.warn("⚠️ Erreur lors de la déconnexion de l'ancienne room:", e.message);
+        }
+        this.room = null;
+      }
       this.room = new Room({
         adaptiveStream: true,
         dynacast: true,
@@ -162,6 +177,11 @@ export const VideoService = {
 
     if (track.kind === Track.Kind.Audio) {
       if (side === "remote") {
+         // ✅ NOUVEAU — retire les éléments audio distants précédents avant d'ajouter le nouveau
+    document.querySelectorAll('audio[data-livekit-remote="true"]').forEach(el => {
+      el.srcObject = null;
+      el.remove();
+    });
         const el = track.attach();
         el.autoplay = true;
         document.body.appendChild(el);

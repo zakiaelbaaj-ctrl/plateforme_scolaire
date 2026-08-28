@@ -62,6 +62,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   saveAndRenderUser(userData);
   AppState.token = localStorage.getItem("token");
   AppState.setCallState(null);
+  // ✅ EMPLACEMENT EXACT — ici, juste après AppState.token et AppState.setCallState,
+  // et AVANT la logique de polling Stripe / la connexion WebSocket.
+  if ("serviceWorker" in navigator) {
+    try {
+      await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+    } catch (err) {
+      console.error("❌ Erreur SW register (élève):", err.message);
+    }
+  }
+  const notifBtn = document.getElementById("enable-notifications-btn");
+if (notifBtn && Notification.permission !== "granted") {
+  notifBtn.style.display = "inline-flex";
+  notifBtn.addEventListener("click", () => {
+    initPushNotifications();
+    notifBtn.style.display = "none";
+  });
+} else if (Notification.permission === "granted") {
+  initPushNotifications();
+}
 
   // 4. LOGIQUE DE SYNCHRONISATION (Polling) : Si retour Stripe mais carte encore 'false'
   const urlParams = new URLSearchParams(window.location.search);
@@ -98,6 +118,56 @@ document.addEventListener("DOMContentLoaded", async () => {
 /**
  * Fonction utilitaire pour synchroniser LocalStorage, AppState et UI
  */
+// À ajouter en haut du fichier, avec les autres fonctions utilitaires
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "http://localhost:4000"
+  : "";
+
+async function initPushNotifications() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    console.warn("⚠️ Notifications push non supportées sur ce navigateur");
+    return;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("⚠️ Permission de notification refusée par l'élève");
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      const keyRes = await fetch(`${API_URL}/api/v1/push/vapid-public-key`);
+      const { publicKey } = await keyRes.json();
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+    }
+
+    await fetch(`${API_URL}/api/v1/push/subscribe`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("token")}`
+      },
+      body: JSON.stringify(subscription)
+    });
+
+    console.log("✅ Abonnement push enregistré côté serveur (élève)");
+  } catch (err) {
+    console.error("❌ Erreur initPushNotifications (élève):", err);
+  }
+}
 function saveAndRenderUser(user) {
   if (!user) return;
   localStorage.setItem("currentUser", JSON.stringify(user));
@@ -114,11 +184,9 @@ function saveAndRenderUser(user) {
 function attemptCallToProfessor(prof) {
   console.log(`🔎 DIAG attemptCallToProfessor appelé, stack:`, new Error().stack);
   const user = AppState.currentUser;
-  // ✅ Bloquer si une room est déjà active (pas seulement callInProgress)
   if (AppState.callInProgress || AppState.currentRoomId) {
     return { ok: false, reason: "call-in-progress" };
   }
-  // ✅ NOUVEAU — verrou anti-double appel
   if (AppState.callInProgress) {
     return { ok: false, reason: "call-in-progress" };
   }
@@ -130,7 +198,18 @@ function attemptCallToProfessor(prof) {
       reason: !user?.has_payment_method ? "no-card" : "unavailable"
     };
   }
-  AppState.callInProgress = true; // ✅ verrouille dès le déclenchement
+
+  // ✅ NOUVEAU — confirmation explicite du montant minimum avant l'appel
+  const confirmed = window.confirm(
+    `Vous êtes sur le point d'appeler ${prof.prenom} ${prof.nom}.\n\n` +
+    `La session est facturée au temps réel de communication, avec un montant ` +
+    `minimum de 2€ même pour un appel très court.\n\nContinuer ?`
+  );
+  if (!confirmed) {
+    return { ok: false, reason: "cancelled-by-user" };
+  }
+
+  AppState.callInProgress = true;
 
   AppState.currentProfId = prof.id;
   AppState.currentSession = {
@@ -181,7 +260,7 @@ function initAutoCallFromUrl() {
     if (settled) return;
 
     const prof = profs.find((p) => p.id === targetProfId);
-    if (!prof) return; // pas encore reçu, on attend la prochaine mise à jour
+    if (!prof) return;
 
     settled = true;
     clearTimeout(timeoutId);
@@ -191,6 +270,13 @@ function initAutoCallFromUrl() {
 
 if (!result.ok) {
   console.warn("⚠️ Auto-appel annulé :", result.reason, prof);
+
+  // ✅ NOUVEAU — annulation volontaire de l'élève : pas d'erreur à afficher,
+  // c'est un choix informé, pas un échec.
+  if (result.reason === "cancelled-by-user") {
+    return;
+  }
+
   AppState._notify("ui:notification", {
     type: "error",
     title: "Appel impossible",

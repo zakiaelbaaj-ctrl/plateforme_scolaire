@@ -6,7 +6,7 @@ import { WhiteboardService } from "../domains/whiteboard/whiteboard.service.js";
 import { CallStateMachine } from "../domains/call/call.state.machine.js";
 import { CallService } from "../domains/call/call.service.js";
 import { refreshAccessToken } from "../lib/auth.refresh.js";
-
+import { showNotification } from "/js/ui/components/notification.js";
 class SocketHandlerEleve {
   constructor() {
     this._unsubscribeSocket = socketService.onMessage((data) => this.handle(data));
@@ -144,6 +144,23 @@ case "livekitToken":
       case "chatMessage":
         AppState.addChatMessage({ sender: data.sender, text: data.text });
         break;
+        case "peerDisconnected": {
+  const graceSeconds = data.graceSeconds || 90;
+  showNotification(
+    `${data.userName || "Le professeur"} s'est déconnecté — reconnexion possible sous ${graceSeconds}s.`,
+    "info"
+  );
+  const el = document.getElementById("call-status");
+  if (el) el.textContent = `⏳ En attente du retour du professeur (${graceSeconds}s)...`;
+  break;
+}
+
+case "peerReconnected": {
+  showNotification(`${data.userName || "Le professeur"} est de retour.`, "success");
+  const el = document.getElementById("call-status");
+  if (el) el.textContent = "En communication";
+  break;
+}
 
         case "tableauStroke":
         case "tableauSync":

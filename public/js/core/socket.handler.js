@@ -109,6 +109,28 @@ case "chatMessage":
     text: data.text ?? ""
   });
   break;
+  case "peerDisconnected": {
+  const graceSeconds = data.graceSeconds || 90;
+  AppState._notify("ui:notification", {
+    type: "warning",
+    title: "Connexion instable",
+    message: `${data.userName || "L'élève"} s'est déconnecté — reconnexion possible sous ${graceSeconds}s.`
+  });
+  const el = document.getElementById("call-status");
+  if (el) el.textContent = `⏳ En attente de reconnexion (${graceSeconds}s)...`;
+  break;
+}
+
+case "peerReconnected": {
+  AppState._notify("ui:notification", {
+    type: "success",
+    title: "Reconnecté",
+    message: `${data.userName || "L'élève"} est de retour.`
+  });
+  const el = document.getElementById("call-status");
+  if (el) el.textContent = "En communication";
+  break;
+}
   case "ws:status":
   AppState._notify("ws:status", data);
   break;

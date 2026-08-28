@@ -160,44 +160,42 @@ export async function processSessionPayment(roomId, sessionId = null) {
 
     const hourlyRateHT = getTarifHoraireHT(eleve.niveau);
 
-    // âœ… DURÃ‰E MINIMALE FACTURÃ‰E : 15 min, pour Ã©viter les micro-transactions
-    // dÃ©ficitaires en frais fixes Stripe (~0.25â‚¬ + 1.4%). La durÃ©e rÃ©elle
-    // (`duration`) reste conservÃ©e pour les logs / metadata / email, mais le
-    // calcul du montant se fait toujours sur `billedDuration`.
-    const billedDuration = Math.max(duration, 15);
+   // ✅ MISE DE SERVICE — montant plancher dû dès que la communication a eu
+// lieu (duration > 0), pour couvrir les frais Stripe (2,5% + 0,25€) même
+// sur une session très courte. Ne s'ajoute PAS au montant au prorata :
+// c'est un plancher, pas un supplément — on facture le plus élevé des deux.
+const MISE_DE_SERVICE_CENTS = 200; // 2€
 
-    const pricePerMinHT = hourlyRateHT / 60;
-    const amountHT = Math.round(billedDuration * pricePerMinHT * 100);
+const pricePerMinHT = hourlyRateHT / 60;
+const amountHT = Math.round(duration * pricePerMinHT * 100);
+const amountTVA = Math.round(amountHT * 0.20);
+const montantProrata = amountHT + amountTVA;
 
-    const amountTVA = Math.round(amountHT * 0.20);
-    const totalAmountEUR = amountHT + amountTVA;
+const totalAmountEUR = duration > 0
+  ? Math.max(montantProrata, MISE_DE_SERVICE_CENTS)
+  : 0;
 
-    if (totalAmountEUR < 50) {
-      logger.warn("Paiement ignoré : montant sous le seuil Stripe", {
-        resolvedSessionId, roomId, profId, eleveId, duration, billedDuration, totalAmountEUR,
-      });
+const billedDuration = duration; // conservé pour affichage/logs/facture
 
-            await pool.query(
-        `UPDATE visio_sessions 
-     SET payment_status = 'skipped_low_amount', amount = $1
-     WHERE id = $2`,
-        [totalAmountEUR / 100, resolvedSessionId]
-      );
-
-      // ✅ Email isolé — un échec d'envoi ne doit jamais bloquer le retour
-
-      try {
-        await mailService.sendSessionTooShortEmail(prof.email, {
-          duration,
-          studentName: eleve.username || eleve.email,
-          displayName: prof.username || prof.email,
-        });
-      } catch (emailErr) {
-        logger.error("âš ï¸ Ã‰chec envoi email session trop courte (non bloquant):", { message: emailErr.message });
-      }
-
-      return { status: 'skipped', reason: 'amount_too_low', amount: totalAmountEUR };
-    }
+if (totalAmountEUR < 50) {
+  // Filet de sécurité — ne devrait plus se déclencher en pratique
+  // puisque MISE_DE_SERVICE_CENTS (200) > 50, sauf si duration === 0.
+  logger.warn("Paiement ignoré : montant sous le seuil Stripe", {
+    resolvedSessionId, roomId, profId, eleveId, duration, billedDuration, totalAmountEUR,
+  });
+  await pool.query(
+    `UPDATE visio_sessions SET payment_status = 'skipped_low_amount', amount = $1 WHERE id = $2`,
+    [totalAmountEUR / 100, resolvedSessionId]
+  );
+  try {
+    await mailService.sendSessionTooShortEmail(prof.email, {
+      duration, studentName: eleve.username || eleve.email, displayName: prof.username || prof.email,
+    });
+  } catch (emailErr) {
+    logger.error("⚠️ Échec envoi email session trop courte (non bloquant):", { message: emailErr.message });
+  }
+  return { status: 'skipped', reason: 'amount_too_low', amount: totalAmountEUR };
+}
 
    // ✅ RÉPARTITION 50/50 sur le TTC : la plateforme retient application_fee_amount
     // (couvre taxe + charges + urgence scolaire), le solde part au prof via transfer_data.
@@ -341,17 +339,17 @@ export async function processSessionPayment(roomId, sessionId = null) {
 async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
   try {
     const hourlyRateHT = getTarifHoraireHT(eleve.niveau);
+    const MISE_DE_SERVICE_CENTS = 200; // 2€
 
-    // ✅ Même règle de durée minimale que le paiement direct
-    const billedDuration = Math.max(duration, 15);
-
-    const amountHT = Math.round(billedDuration * (hourlyRateHT / 60) * 100);
+    const amountHT = Math.round(duration * (hourlyRateHT / 60) * 100);
     const amountTVA = Math.round(amountHT * 0.20);
-    const totalAmount = amountHT + amountTVA;
+    const montantProrata = amountHT + amountTVA;
+    const totalAmount = duration > 0
+      ? Math.max(montantProrata, MISE_DE_SERVICE_CENTS)
+      : 0;
+    const billedDuration = duration;
 
-    // ✅ RÉPARTITION 50/50 sur le TTC (cohérent avec processSessionPayment)
     const feeAmountEUR = Math.round(totalAmount * 0.5);
-
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       customer: eleve.stripe_customer_id,

@@ -58,7 +58,7 @@ import {
 } from "./ws/utils.js";
 
 import { handleStudentMessage, handleStudentDisconnect, cleanupStudentRoom } from "./ws/etudiant/index.js";
-
+import { sendPushToUser } from "./services/push.service.js";
 const STUDENT_TYPES = new Set([
   "student:enqueue",
   "student:dequeue",
@@ -546,14 +546,26 @@ async function handleDisconnect(ws) {
     const prof = onlineProfessors.get(ws.userId);
     const hasActiveSession = !!prof?.eleveId;
     if (!hasActiveSession) {
-      updateStatus(ws.userId, "offline"); // ✅ seulement si pas de session en cours
+      updateStatus(ws.userId, "offline");
     }
     setProfessorOffline(ws.userId);
 
     if (hasActiveSession && ws.roomId) {
+      sendPushToUser(ws.userId, {
+        title: "⚠️ Appel interrompu",
+        body: "Revenez dans l'app pour continuer votre session.",
+        tag: "call-disconnected",
+        url: "/pages/professeur/dashboard.html"
+      });
+
       handleUnexpectedDisconnect(ws, {
         onGraceExpired: async () => {
           console.log(`🔄 Grâce expirée (prof ${ws.userId}) → libère élève ${prof.eleveId}`);
+          sendPushToUser(ws.userId, {
+            title: "Session terminée",
+            body: "Votre session s'est terminée car vous n'êtes pas revenu à temps.",
+            tag: "call-disconnected"
+          });
           await endSessionForDisconnect(ws.userId, prof.eleveId, onlineProfessors, clients);
           broadcastOnlineProfs(onlineProfessors, clients);
         }
@@ -572,9 +584,22 @@ if (ws.role === "eleve" || ws.role === "etudiant") {
     }
 
     if (matchedProf && ws.roomId) {
+       // ✅ NOUVEAU — alerte immédiate à l'élève, symétrique au push prof
+      sendPushToUser(ws.userId, {
+        title: "⚠️ Appel interrompu",
+        body: "Revenez dans l'app pour continuer votre session.",
+        tag: "call-disconnected",
+        url: "/pages/eleve/dashboard.html"
+      });
       handleUnexpectedDisconnect(ws, {
         onGraceExpired: async () => {
           console.log(`🔄 Grâce expirée (élève ${ws.userId}) → libère prof ${matchedProf.id}`);
+          // ✅ NOUVEAU — notifie la vraie fin, remplace la précédente (même tag)
+          sendPushToUser(ws.userId, {
+            title: "Session terminée",
+            body: "Votre session s'est terminée car vous n'êtes pas revenu à temps.",
+            tag: "call-disconnected"
+          });
           await endSessionForDisconnect(matchedProf.id, ws.userId, onlineProfessors, clients);
           broadcastOnlineProfs(onlineProfessors, clients);
         }
