@@ -178,25 +178,26 @@ export function cleanupOnDisconnect(ws, deps) {
   }
 
   // 4. ROOMS
-  if (ws.roomId && rooms.has(ws.roomId)) {
+ // ws/utils.js — cleanupOnDisconnect, section "4. ROOMS"
+if (ws.roomId && rooms.has(ws.roomId)) {
     const room = rooms.get(ws.roomId);
-    
-    room.forEach(client => {
-      if (client !== ws && client.readyState === 1) {
-        safeSend(client, {
-          type: "userLeftRoom",
-          userId: userId,
-          role: role
-        });
-      }
-    });
 
-    room.delete(ws);
-    if (room.size === 0) {
-      rooms.delete(ws.roomId);
-      console.log(`🏠 Room ${ws.roomId} supprimée (vide)`);
+    // ✅ NOUVEAU — si ws n'est déjà plus dans la room (donc déjà géré par
+    // handleUnexpectedDisconnect pour une déconnexion pendant une session
+    // active), on ne renvoie pas un second message contradictoire.
+    if (room.has(ws)) {
+      room.forEach(client => {
+        if (client !== ws && client.readyState === 1) {
+          safeSend(client, { type: "userLeftRoom", userId, role });
+        }
+      });
+      room.delete(ws);
+      if (room.size === 0) {
+        rooms.delete(ws.roomId);
+        console.log(`🏠 Room ${ws.roomId} supprimée (vide)`);
+      }
     }
-  }
+}
 
   console.log(`✅ Nettoyage complet effectué pour ${userId}`);
 }

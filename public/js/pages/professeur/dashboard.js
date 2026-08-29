@@ -576,8 +576,9 @@ fileInput?.addEventListener("change", () => {
 document.getElementById("send-file")
 ?.addEventListener("click", sendDocument);
   // ================= VISIO =================
-  document.getElementById("toggle-camera-btn")?.addEventListener("click", toggleCamera);
-
+  // dans bindUI() :
+document.getElementById("toggle-camera-btn")?.addEventListener("click", toggleCamera);
+document.getElementById("toggle-mic-btn")?.addEventListener("click", toggleMic);
   // ================= LOGOUT =================
  document.getElementById("logout-btn")?.addEventListener("click", () => {
     socketService.send({ type: "logout" });
@@ -647,6 +648,8 @@ function onSessionStarted(event) {
   AppState.currentRoomId     = event.roomId;
 
   updateCallStatus("En communication");
+  updateMicButton(true);
+  updateCameraButton(true);
   setSessionActive(true); //✅ affiche le timer ET le bouton terminer
 
   WhiteboardService.initCanvas("whiteboard-canvas", {
@@ -659,8 +662,6 @@ function onSessionStarted(event) {
   // ✅ NE PAS appeler SessionService.startTimer ici
   // Le timer est démarré dans joinedRoom du socket handler prof
   // SessionService.startTimer?.(updateTimerUI); ➡️ SUPPRIMER cette ligne
-
-  
 function setSessionActive(active) {
   const endBtn = document.getElementById("end-session-btn");
   const badge  = document.getElementById("session-badge");
@@ -834,6 +835,30 @@ async function toggleCamera() {
 
   const isEnabled = localParticipant.isCameraEnabled;
   await localParticipant.setCameraEnabled(!isEnabled);
+  updateCameraButton(!isEnabled); // ✅ AJOUT — met à jour l'icône, ne change rien au comportement existant
+}
+
+// ✅ NOUVEAU — même pattern que toggleCamera, pour le micro
+async function toggleMic() {
+  const localParticipant = VideoService.room?.localParticipant;
+  if (!localParticipant) return;
+
+  const isEnabled = localParticipant.isMicrophoneEnabled;
+  await localParticipant.setMicrophoneEnabled(!isEnabled);
+  updateMicButton(!isEnabled);
+}
+function updateCameraButton(isEnabled) {
+  const btn = document.getElementById("toggle-camera-btn");
+  if (!btn) return;
+  btn.textContent = isEnabled ? "📷" : "📵";
+  btn.title = isEnabled ? "Couper la caméra" : "Réactiver la caméra";
+}
+
+function updateMicButton(isEnabled) {
+  const btn = document.getElementById("toggle-mic-btn");
+  if (!btn) return;
+  btn.textContent = isEnabled ? "🎙️" : "🔇";
+  btn.title = isEnabled ? "Couper le micro" : "Réactiver le micro";
 }
 
 // ======================================================

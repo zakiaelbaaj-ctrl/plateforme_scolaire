@@ -349,6 +349,11 @@ AppState.on("ws:status", (data) => {
        colorPicker: document.getElementById("whiteboardColor"),
        sizeSlider:  document.getElementById("whiteboardSize")
       });
+      // ✅ NOUVEAU — réinitialise l'affichage micro/caméra à l'état "actif"
+      // au début de chaque nouvelle session (au cas où ils auraient été
+      // coupés lors d'un appel précédent).
+      updateMicButton(true);
+      updateCameraButton(true);
      });
 // ================= PROFESSEURS EN LIGNE =================  ← AJOUTER ICI
   AppState.on("professors:update", (profs) => {
@@ -417,6 +422,21 @@ ScreenShareService.onStop(() => {
       message: "Le professeur n'a pas répondu à votre appel. Vous pouvez réessayer ou choisir un autre professeur."
     });
   });
+  // ================= APPEL REFUSÉ PAR LE PROF =================
+AppState.on('call:rejected', (data) => {
+  console.log("❌ Appel refusé par le professeur", data);
+
+  AppState.callInProgress = false; // ✅ libère le verrou anti-double-appel
+  cleanupSession("Appel refusé");
+  AppState.currentProfId = null;
+  AppState.currentSession = null;
+
+  AppState._notify("ui:notification", {
+    type: "error",
+    title: "Appel refusé",
+    message: "Le professeur a refusé votre appel. Vous pouvez choisir un autre professeur en ligne."
+  });
+});
    AppState.on("timer:update", (seconds) => {
   const m = String(Math.floor(seconds / 60)).padStart(2, "0");
   const s = String(seconds % 60).padStart(2, "0");
@@ -565,6 +585,8 @@ function bindUI() {
       console.log("⚠️🤖 Fenêtre vidéo repliée/dépliée par l'utilisateur");
     });
   }
+  document.getElementById("toggle-camera-btn")?.addEventListener("click", toggleCamera);
+  document.getElementById("toggle-mic-btn")?.addEventListener("click", toggleMic);
   document.getElementById("send-msg")?.addEventListener("click", sendChat);
 
   document.getElementById("chat-input")?.addEventListener("keydown", (e) => {
@@ -1129,7 +1151,38 @@ function attachRemoteTracks(tracks) {
     }
   });
 }
+// ✅ NOUVEAU — ajouté avec les autres fonctions "CALL UI", après attachRemoteTracks par exemple
+async function toggleCamera() {
+  const localParticipant = VideoService.room?.localParticipant;
+  if (!localParticipant) return;
 
+  const isEnabled = localParticipant.isCameraEnabled;
+  await localParticipant.setCameraEnabled(!isEnabled);
+  updateCameraButton(!isEnabled);
+}
+
+async function toggleMic() {
+  const localParticipant = VideoService.room?.localParticipant;
+  if (!localParticipant) return;
+
+  const isEnabled = localParticipant.isMicrophoneEnabled;
+  await localParticipant.setMicrophoneEnabled(!isEnabled);
+  updateMicButton(!isEnabled);
+}
+
+function updateCameraButton(isEnabled) {
+  const btn = document.getElementById("toggle-camera-btn");
+  if (!btn) return;
+  btn.textContent = isEnabled ? "📷" : "📵";
+  btn.title = isEnabled ? "Couper la caméra" : "Réactiver la caméra";
+}
+
+function updateMicButton(isEnabled) {
+  const btn = document.getElementById("toggle-mic-btn");
+  if (!btn) return;
+  btn.textContent = isEnabled ? "🎙️" : "🔇";
+  btn.title = isEnabled ? "Couper le micro" : "Réactiver le micro";
+}
 function updateCallStatus(text) {
   const el = document.getElementById("call-status");
   if (el) el.textContent = text;

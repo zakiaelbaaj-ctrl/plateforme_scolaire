@@ -186,6 +186,11 @@ h3 {
   color: var(--accent);
   box-shadow: var(--shadow-glow); /* Félicitations, le bouton s'illumine ! 🚀 */
 }
+.btn--muted {
+  background: var(--danger-soft, rgba(255, 79, 106, 0.12));
+  border-color: var(--danger);
+  color: var(--danger);
+}
 
 .btn--sm { padding: 5px 11px; font-size: 0.75rem; }
 .full-width { width: 100%; }
