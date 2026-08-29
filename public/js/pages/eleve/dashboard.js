@@ -20,6 +20,7 @@ import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
 import { getUserProfile } from "../../services/user.service.js";
 import { handleAllStripeReturns, holdFundsForSession } 
 from "/js/services/stripe.service.js";
+import { showNotification } from "/js/ui/components/notification.js";
 import { initStripeOnboarding } from "/js/services/stripe.service.js";
 import { openSetupSession } from "/js/services/stripe.service.js";
 import { initRatingModal, openRatingModal, loadProfessorRating } from "/js/ui/components/rating.modal.js";
@@ -328,6 +329,14 @@ function syncMiniatureStream() {
 // DOMAIN SUBSCRIPTIONS
 // ======================================================
 function subscribeToDomains() {
+   // ================= NOTIFICATIONS GÉNÉRIQUES =================
+      // ✅ NOUVEAU — canal utilisé par call:timeout, call:rejected, no-card,
+      // et d'autres points du fichier qui émettaient déjà "ui:notification"
+      // sans qu'aucun listener ne l'affiche réellement côté élève.
+      AppState.on("ui:notification", (notif) => {
+        const type = notif.type === "error" ? "error" : notif.type === "success" ? "success" : "info";
+        showNotification(notif.message || notif.title || "", type);
+      });
       // ================= INDICATEUR CONNEXION =================
 AppState.on("ws:status", (data) => {
   console.log("WS STATUS", data);
