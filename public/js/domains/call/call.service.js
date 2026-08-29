@@ -77,12 +77,14 @@ _on(event, cb) {
         case "callRejected":
         CallStateMachine.reset();
         AppState.setIncomingCallEleveId?.(null);
+        this._emit("callRejected", data);   // 🔔 déclenche les callbacks enregistrés
         AppState._notify("call:rejected", data);
         break;
 
         case "callTimeout":
         CallStateMachine.reset();
         AppState.setIncomingCallEleveId?.(null);
+        this._emit("callTimeout", data); 
         AppState._notify("call:timeout", data);
         break;
         }

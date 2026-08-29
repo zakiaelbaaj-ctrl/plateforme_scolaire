@@ -327,8 +327,7 @@ function syncMiniatureStream() {
 // ======================================================
 // DOMAIN SUBSCRIPTIONS
 // ======================================================
-
-    function subscribeToDomains() {
+function subscribeToDomains() {
       // ================= INDICATEUR CONNEXION =================
 AppState.on("ws:status", (data) => {
   console.log("WS STATUS", data);
