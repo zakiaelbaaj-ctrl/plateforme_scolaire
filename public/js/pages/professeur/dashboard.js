@@ -524,16 +524,22 @@ fullscreenBtn?.addEventListener('click', () => {
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement === whiteboardWrapper) {
     videoMiniature.style.display = "block";
-    syncMiniatureStream(); // ✅ attache le track sur la miniature visible
+    syncMiniatureStream();
     fullscreenBtn.textContent = "❌ Quitter";
     fullscreenBtn.title = "Quitter le plein écran";
   } else {
     videoMiniature.style.display = "none";
-    // Détacher proprement en sortant du plein écran
     if (remoteVideoTrack) remoteVideoTrack.detach(videoMini);
     fullscreenBtn.textContent = "⛶";
     fullscreenBtn.title = "Plein écran";
   }
+  // ✅ NOUVEAU — redimensionne le canvas à sa vraie résolution après le
+  // changement de taille du wrapper (entrée ET sortie du plein écran natif).
+  // Un léger délai laisse le temps au navigateur de finaliser le layout
+  // avant de lire les nouvelles dimensions.
+  setTimeout(() => {
+    WhiteboardService._canvas?.resizeCanvas?.();
+  }, 50);
 });
   // ================= CHAT =================
   document.getElementById("send-msg")?.addEventListener("click", sendChat);
