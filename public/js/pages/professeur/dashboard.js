@@ -949,13 +949,41 @@ function toggleWhiteboardFullscreen() {
   card?.classList.toggle("whiteboard-fullscreen", isFullscreen);
 
   if (isFullscreen) {
-    if (btn) { btn.textContent = "❌"; btn.title = "Quitter le plein écran"; }
-    // ✅ NOUVEAU — remplace la logique perdue de "fullscreenchange" sur mobile
+    if (btn) {
+      btn.textContent = "❌ Quitter";
+      btn.title = "Quitter le plein écran";
+      // ✅ NOUVEAU — sort le bouton de toute la hiérarchie de conteneurs
+      // en fullscreen (même pattern que le fallback mobile côté élève),
+      // pour éviter tout piège de contexte d'empilement CSS Android.
+      btn._originalParent = btn.parentElement;
+      btn._originalNextSibling = btn.nextSibling;
+      document.body.appendChild(btn);
+      btn.style.position = "fixed";
+      btn.style.top = "16px";
+      btn.style.right = "16px";
+      btn.style.zIndex = "2147483647";
+      btn.style.display = "inline-flex";
+      btn.style.background = "rgba(0, 0, 0, 0.75)";
+      btn.style.color = "#fff";
+      btn.style.border = "none";
+      btn.style.padding = "10px 16px";
+      btn.style.borderRadius = "99px";
+      btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+    }
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
   } else {
-    if (btn) { btn.textContent = "⛶"; btn.title = "Plein écran"; }
-    // ✅ NOUVEAU
+    if (btn) {
+      // ✅ NOUVEAU — remet le bouton à sa place d'origine
+      if (btn._originalParent) {
+        btn._originalParent.insertBefore(btn, btn._originalNextSibling);
+        btn._originalParent = null;
+        btn._originalNextSibling = null;
+      }
+      btn.removeAttribute("style");
+      btn.textContent = "⛶";
+      btn.title = "Plein écran";
+    }
     if (videoMiniature) videoMiniature.style.display = "none";
     if (remoteVideoTrack) {
       const videoMini = document.getElementById('remote-video-mini');
