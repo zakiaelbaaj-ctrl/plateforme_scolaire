@@ -950,25 +950,21 @@ function toggleWhiteboardFullscreen() {
 
   if (isFullscreen) {
     if (btn) {
-      btn.textContent = "❌ Quitter";
+      btn.textContent = "🔴 TEST QUITTER 🔴";
       btn.title = "Quitter le plein écran";
-      // ✅ NOUVEAU — sort le bouton de toute la hiérarchie de conteneurs
-      // en fullscreen (même pattern que le fallback mobile côté élève),
-      // pour éviter tout piège de contexte d'empilement CSS Android.
       btn._originalParent = btn.parentElement;
       btn._originalNextSibling = btn.nextSibling;
       document.body.appendChild(btn);
       btn.style.position = "fixed";
-      btn.style.top = "16px";
-      btn.style.right = "16px";
+      btn.style.top = "50%";
+      btn.style.left = "50%";
+      btn.style.transform = "translate(-50%, -50%)";
       btn.style.zIndex = "2147483647";
-      btn.style.display = "inline-flex";
-      btn.style.background = "rgba(0, 0, 0, 0.75)";
+      btn.style.background = "red";
       btn.style.color = "#fff";
-      btn.style.border = "none";
-      btn.style.padding = "10px 16px";
-      btn.style.borderRadius = "99px";
-      btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+      btn.style.fontSize = "24px";
+      btn.style.padding = "20px 40px";
+      btn.style.border = "5px solid yellow";
     }
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
