@@ -950,21 +950,21 @@ function toggleWhiteboardFullscreen() {
 
   if (isFullscreen) {
     if (btn) {
-      btn.textContent = "🔴 TEST QUITTER 🔴";
+      btn.textContent = "❌ QUITTER";
       btn.title = "Quitter le plein écran";
       btn._originalParent = btn.parentElement;
       btn._originalNextSibling = btn.nextSibling;
       document.body.appendChild(btn);
       btn.style.position = "fixed";
-      btn.style.top = "50%";
-      btn.style.left = "50%";
-      btn.style.transform = "translate(-50%, -50%)";
+      btn.style.top = "16px";
+      btn.style.right = "16px";
       btn.style.zIndex = "2147483647";
       btn.style.background = "red";
       btn.style.color = "#fff";
-      btn.style.fontSize = "24px";
-      btn.style.padding = "20px 40px";
-      btn.style.border = "5px solid yellow";
+      btn.style.fontSize = "20px";
+      btn.style.padding = "12px 20px";
+      btn.style.border = "3px solid yellow";
+      btn.style.display = "block"; // ⬅️ au lieu de inline-flex, pour exclure une histoire de flex
     }
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
