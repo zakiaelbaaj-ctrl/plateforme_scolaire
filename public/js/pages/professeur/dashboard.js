@@ -969,7 +969,7 @@ function toggleWhiteboardFullscreen() {
       btn.style.borderRadius = "0";
       // debug visible directement à l'écran, sans DevTools
       const debugBox = document.createElement("div");
-      debugBox.textContent = "BTN existe: " + !!document.getElementById("wb-fullscreen-btn") + " | position: " + getComputedStyle(btn).position + " top:" + getComputedStyle(btn).top;
+      debugBox.textContent = "rect: " + JSON.stringify(btn.getBoundingClientRect()) + " | innerHeight:" + window.innerHeight + " innerWidth:" + window.innerWidth;
       debugBox.style.cssText = "position:fixed;top:80px;left:10px;right:80px;background:yellow;color:black;font-size:14px;z-index:999999999;padding:8px;";
       debugBox.id = "debug-box-temp";
       document.body.appendChild(debugBox);
