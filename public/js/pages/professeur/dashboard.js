@@ -948,29 +948,29 @@ function toggleWhiteboardFullscreen() {
   const isFullscreen = wrapper.classList.toggle("whiteboard-fullscreen");
   card?.classList.toggle("whiteboard-fullscreen", isFullscreen);
 
-  if (isFullscreen) {
+ if (isFullscreen) {
     if (btn) {
-      btn.textContent = "❌ QUITTER";
+      btn.textContent = "❌ Quitter";
       btn.title = "Quitter le plein écran";
       btn._originalParent = btn.parentElement;
       btn._originalNextSibling = btn.nextSibling;
       document.body.appendChild(btn);
       btn.style.position = "fixed";
-      btn.style.top = "16px";
+      btn.style.top = "calc(16px + env(safe-area-inset-top, 24px))";  // ✅ 24px de secours si env() non supporté
       btn.style.right = "16px";
       btn.style.zIndex = "2147483647";
-      btn.style.background = "red";
+      btn.style.display = "inline-flex";
+      btn.style.background = "rgba(0, 0, 0, 0.75)";
       btn.style.color = "#fff";
-      btn.style.fontSize = "20px";
-      btn.style.padding = "12px 20px";
-      btn.style.border = "3px solid yellow";
-      btn.style.display = "block"; // ⬅️ au lieu de inline-flex, pour exclure une histoire de flex
+      btn.style.border = "none";
+      btn.style.padding = "10px 16px";
+      btn.style.borderRadius = "99px";
+      btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
     }
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
   } else {
     if (btn) {
-      // ✅ NOUVEAU — remet le bouton à sa place d'origine
       if (btn._originalParent) {
         btn._originalParent.insertBefore(btn, btn._originalNextSibling);
         btn._originalParent = null;
