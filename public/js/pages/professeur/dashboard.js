@@ -950,22 +950,29 @@ function toggleWhiteboardFullscreen() {
 
  if (isFullscreen) {
     if (btn) {
-      btn.textContent = "❌ Quitter";
+      btn.textContent = "X";
       btn.title = "Quitter le plein écran";
       btn._originalParent = btn.parentElement;
       btn._originalNextSibling = btn.nextSibling;
       document.body.appendChild(btn);
       btn.style.position = "fixed";
-      btn.style.top = "calc(16px + env(safe-area-inset-top, 24px))";  // ✅ 24px de secours si env() non supporté
-      btn.style.right = "16px";
-      btn.style.zIndex = "2147483647";
-      btn.style.display = "inline-flex";
-      btn.style.background = "rgba(0, 0, 0, 0.75)";
-      btn.style.color = "#fff";
-      btn.style.border = "none";
-      btn.style.padding = "10px 16px";
-      btn.style.borderRadius = "99px";
-      btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+      btn.style.top = "80px";        // ⬅️ bien en dessous de toute barre système
+      btn.style.right = "10px";
+      btn.style.zIndex = "999999999";
+      btn.style.width = "60px";
+      btn.style.height = "60px";
+      btn.style.background = "lime";
+      btn.style.color = "#000";
+      btn.style.fontSize = "30px";
+      btn.style.fontWeight = "bold";
+      btn.style.border = "4px solid black";
+      btn.style.borderRadius = "0";
+      // debug visible directement à l'écran, sans DevTools
+      const debugBox = document.createElement("div");
+      debugBox.textContent = "BTN existe: " + !!document.getElementById("wb-fullscreen-btn") + " | position: " + getComputedStyle(btn).position + " top:" + getComputedStyle(btn).top;
+      debugBox.style.cssText = "position:fixed;top:80px;left:10px;right:80px;background:yellow;color:black;font-size:14px;z-index:999999999;padding:8px;";
+      debugBox.id = "debug-box-temp";
+      document.body.appendChild(debugBox);
     }
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
