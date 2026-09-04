@@ -950,23 +950,28 @@ function toggleWhiteboardFullscreen() {
 
  if (isFullscreen) {
     if (btn) {
-      btn.textContent = "X";
+      btn.textContent = "❌ Quitter";
       btn.title = "Quitter le plein écran";
       btn._originalParent = btn.parentElement;
       btn._originalNextSibling = btn.nextSibling;
       document.body.appendChild(btn);
       btn.style.position = "fixed";
-      btn.style.top = "80px";        // ⬅️ bien en dessous de toute barre système
-      btn.style.right = "10px";
-      btn.style.zIndex = "999999999";
-      btn.style.width = "60px";
-      btn.style.height = "60px";
-      btn.style.background = "lime";
-      btn.style.color = "#000";
-      btn.style.fontSize = "30px";
-      btn.style.fontWeight = "bold";
-      btn.style.border = "4px solid black";
-      btn.style.borderRadius = "0";
+      btn.style.top = "16px";
+      btn.style.right = "16px";
+      btn.style.zIndex = "2147483647";
+      btn.style.display = "inline-flex";
+      btn.style.background = "rgba(0, 0, 0, 0.75)";
+      btn.style.color = "#fff";
+      btn.style.border = "none";
+      btn.style.padding = "10px 16px";
+      btn.style.borderRadius = "99px";
+      btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+      // ✅ NOUVEAU — force un contexte de composition GPU pour rivaliser
+      // avec le rendu accéléré matériel de la vidéo LiveKit sur Android,
+      // qui semble ignorer le z-index CSS classique.
+      btn.style.transform = "translateZ(0)";
+      btn.style.willChange = "transform";
+      btn.style.isolation = "isolate";
       // debug visible directement à l'écran, sans DevTools
       const debugBox = document.createElement("div");
       debugBox.textContent = "rect: " + JSON.stringify(btn.getBoundingClientRect()) + " | innerHeight:" + window.innerHeight + " innerWidth:" + window.innerWidth;
