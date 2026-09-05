@@ -956,7 +956,7 @@ function toggleWhiteboardFullscreen() {
       btn._originalNextSibling = btn.nextSibling;
       document.body.appendChild(btn);
       btn.style.position = "fixed";
-      btn.style.top = "16px";
+      btn.style.top = "60px";
       btn.style.right = "16px";
       btn.style.zIndex = "2147483647";
       btn.style.display = "inline-flex";
