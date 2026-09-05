@@ -955,10 +955,10 @@ function toggleWhiteboardFullscreen() {
       btn._originalParent = btn.parentElement;
       btn._originalNextSibling = btn.nextSibling;
       document.body.appendChild(btn);
-      //btn.style.position = "fixed";
-     // btn.style.top = "60px";
-     // btn.style.right = "16px";
-     // btn.style.zIndex = "2147483647";
+      btn.style.position = "fixed";
+      btn.style.top = "60px";
+      btn.style.right = "16px";
+      btn.style.zIndex = "2147483647";
       btn.style.display = "inline-flex";
       btn.style.background = "rgba(0, 0, 0, 0.75)";
       btn.style.color = "#fff";
