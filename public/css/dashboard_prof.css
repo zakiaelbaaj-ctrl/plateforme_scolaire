@@ -1150,8 +1150,8 @@ input:checked + .slider::before {
   border-radius: 99px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-video {
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-}
 
+video {
+  filter: brightness(1);
+  -webkit-filter: brightness(1);
+}
