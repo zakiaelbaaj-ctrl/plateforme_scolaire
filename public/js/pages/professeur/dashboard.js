@@ -948,9 +948,9 @@ function toggleWhiteboardFullscreen() {
   const isFullscreen = wrapper.classList.toggle("whiteboard-fullscreen");
   card?.classList.toggle("whiteboard-fullscreen", isFullscreen);
 
- if (isFullscreen) {
+  if (isFullscreen) {
     if (btn) {
-      btn.textContent = "❌";
+      btn.textContent = "✕";
       btn.title = "Quitter le plein écran";
       // ✅ Le bouton reste dans la barre d'outils (.whiteboard-tools),
       // zone confirmée visible même pendant la vidéo — plus besoin de
@@ -960,7 +960,7 @@ function toggleWhiteboardFullscreen() {
     syncMiniatureStream();
   } else {
     if (btn) {
-      btn.textContent = "⛶";
+      btn.textContent = "[ ]";
       btn.title = "Plein écran";
     }
     if (videoMiniature) videoMiniature.style.display = "none";
@@ -972,7 +972,6 @@ function toggleWhiteboardFullscreen() {
 
   WhiteboardService.resizeCanvas?.();
 }
-
 // ======================================================
 // UI HELPERS
 // ======================================================
