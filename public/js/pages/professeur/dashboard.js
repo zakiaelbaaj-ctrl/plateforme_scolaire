@@ -950,45 +950,16 @@ function toggleWhiteboardFullscreen() {
 
  if (isFullscreen) {
     if (btn) {
-      btn.textContent = "❌ Quitter";
+      btn.textContent = "❌";
       btn.title = "Quitter le plein écran";
-      btn._originalParent = btn.parentElement;
-      btn._originalNextSibling = btn.nextSibling;
-      document.body.appendChild(btn);
-      btn.style.position = "fixed";
-      btn.style.top = "60px";
-      btn.style.right = "16px";
-      btn.style.zIndex = "2147483647";
-      btn.style.display = "inline-flex";
-      btn.style.background = "rgba(0, 0, 0, 0.75)";
-      btn.style.color = "#fff";
-      btn.style.border = "none";
-      btn.style.padding = "10px 16px";
-      btn.style.borderRadius = "99px";
-      btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
-      // ✅ NOUVEAU — force un contexte de composition GPU pour rivaliser
-      // avec le rendu accéléré matériel de la vidéo LiveKit sur Android,
-      // qui semble ignorer le z-index CSS classique.
-      btn.style.transform = "translateZ(0)";
-      btn.style.willChange = "transform";
-      btn.style.isolation = "isolate";
-      // debug visible directement à l'écran, sans DevTools
-      const debugBox = document.createElement("div");
-      debugBox.textContent = "rect: " + JSON.stringify(btn.getBoundingClientRect()) + " | innerHeight:" + window.innerHeight + " innerWidth:" + window.innerWidth;
-      debugBox.style.cssText = "position:fixed;top:80px;left:10px;right:80px;background:yellow;color:black;font-size:14px;z-index:999999999;padding:8px;";
-      debugBox.id = "debug-box-temp";
-      document.body.appendChild(debugBox);
+      // ✅ Le bouton reste dans la barre d'outils (.whiteboard-tools),
+      // zone confirmée visible même pendant la vidéo — plus besoin de
+      // le déplacer ni de lutter contre l'overlay matériel Android.
     }
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
   } else {
     if (btn) {
-      if (btn._originalParent) {
-        btn._originalParent.insertBefore(btn, btn._originalNextSibling);
-        btn._originalParent = null;
-        btn._originalNextSibling = null;
-      }
-      btn.removeAttribute("style");
       btn.textContent = "⛶";
       btn.title = "Plein écran";
     }
