@@ -91,6 +91,33 @@ export async function sendResetPasswordEmail(user, token) {
   });
 }
 
+// ✅ NOUVEAU — activation de compte élève/étudiant
+export async function sendActivationEmail(user, activationToken) {
+  const FRONTEND_URL = process.env.FRONTEND_URL || "https://urgencescolaire.com";
+  const activationUrl = `${FRONTEND_URL}/pages/eleve/activate.html?token=${activationToken}`;
+  const displayName = getDisplayName(user);
+
+  return sendEmail({
+    to: user.email,
+    subject: "Activez votre compte — Urgence Scolaire",
+    text: `Bonjour ${displayName}, merci de votre inscription ! Activez votre compte via ce lien : ${activationUrl}`,
+    html: `
+      <div style="font-family: sans-serif; color: #333;">
+        <h2>Activez votre compte</h2>
+        <p>Bonjour <strong>${displayName}</strong>,</p>
+        <p>Merci de votre inscription sur Urgence Scolaire ! Cliquez sur le bouton ci-dessous pour activer votre compte :</p>
+        <div style="margin: 25px 0;">
+          <a href="${activationUrl}" 
+             style="background-color: #2e7d32; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+             Activer mon compte
+          </a>
+        </div>
+        <p style="font-size: 0.8em; color: #666;">Ce lien est valable pendant 24 heures.</p>
+        <p style="font-size: 0.8em; color: #666;">Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email.</p>
+      </div>
+    `
+  });
+}
 // ------------------------------------------------------
 // Email match trouvé
 // ------------------------------------------------------

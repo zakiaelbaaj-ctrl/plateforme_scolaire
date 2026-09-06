@@ -58,7 +58,9 @@ const User = sequelize.define("User", {
     defaultValue: DataTypes.NOW 
   },
   resetToken: { type: DataTypes.STRING(255) },
-  resetTokenExpires: { type: DataTypes.DATE }
+  resetTokenExpires: { type: DataTypes.DATE },
+  activationToken: { type: DataTypes.STRING(255) },
+  activationTokenExpires: { type: DataTypes.DATE }
 }, {
   tableName: "users",
   timestamps: false, // Ta DB gère date_inscription manuellement

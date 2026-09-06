@@ -30,95 +30,6 @@ function sanitizeUser(user) {
   
   return safe;
 }
-// ---------------- REGISTER ----------------
-export async function registerController(req, res) {
-  try {
-    // 1. Validation express-validator (déclarée dans auth.routes.js)
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
-    }
-    const { username, prenom, nom, email, telephone, pays, ville, password, role, matiere,
-      langue_matiere } = req.body;
-
-    // 1. Validation des champs
-    if (!email || !password || !prenom || !nom) {
-      return res.status(400).json({ success: false, message: "Champs requis manquants" });
-    }
-
-    // 2. Vérification base de données (AVANT Stripe)
-    const existing = await authService.findByEmail(email);
-    if (existing) {
-      return res.status(409).json({ success: false, message: "Un compte existe déjà avec cet email" });
-    }
-
-    // 3. --- LOGIQUE STRIPE (Élève vs Prof) ---
-    let stripe_customer_id = null;
-    let stripe_account_id = null;
-
-    try {
-      if (role === "prof") {
-        // Création du compte Connect pour le prof (pour recevoir l'argent)
-        const account = await stripe.accounts.create({
-          type: 'express',
-          email: email,
-          capabilities: {
-            card_payments: { requested: true },
-            transfers: { requested: true },
-          },
-        });
-        stripe_account_id = account.id;
-      } else {
-        // Création du compte Customer pour l'élève (pour payer)
-        const customer = await stripe.customers.create({
-          email,
-          name: `${prenom} ${nom}`,
-          metadata: { username: username || "non_defini" },
-        });
-        stripe_customer_id = customer.id;
-      }
-    } catch (stripeErr) {
-      logger.error("Erreur Stripe lors de l'inscription:", stripeErr);
-      return res.status(500).json({ success: false, message: "Erreur lors de l'initialisation du compte de paiement" });
-    }
-
-    // 4. Création de l'utilisateur avec tous les nouveaux champs
-    const user = await authService.createUser({
-      username,
-      prenom,
-      nom,
-      email,
-      telephone,
-      pays,
-      ville,
-      password: password,
-      role: role || "eleve",
-      matiere,
-      langue_matiere,
-      stripe_customer_id,
-      stripe_account_id,
-      is_active: role !== "prof" // true pour élève, false pour prof (attente admin)
-    });
-
-    // 5. Génération des tokens et email
-    const tokens = await tokenService.generateTokens({ userId: user.id, role: user.role });
-
-    // On n'attend pas l'envoi de l'email pour répondre au client
-    mailService.sendWelcomeEmail(user).catch(() => {});
-
-    return res.status(201).json({
-      success: true,
-      message: role === "prof" ? "Inscription réussie, en attente de validation admin." : "Inscription réussie",
-      user: sanitizeUser(user),
-      ...tokens
-    });
-
-  } catch (err) {
-    logger.error("registerController error:", err);
-    return res.status(500).json({ success: false, message: "Erreur serveur" });
-  }
-}
-
 // ---------------- LOGIN ----------------
 export async function loginController(req, res) {
   try {
@@ -146,10 +57,14 @@ if (email) {
 
     // 3. Vérification du statut (Spécifique aux professeurs)
     // Note : Avec Sequelize, user est une instance, on y accède normalement
-    if (!user.is_active && (user.role === "prof" || user.role === "professeur")) {
+        if (!user.is_active) {
+      const isStudent = (user.role === "eleve" || user.role === "etudiant");
       return res.status(403).json({ 
         success: false, 
-        message: "Votre compte est en attente de validation par l'administrateur." 
+        message: isStudent
+          ? "Votre compte n'est pas encore activé. Vérifiez votre boîte mail ou demandez un nouveau lien d'activation."
+          : "Votre compte est en attente de validation par l'administrateur.",
+        code: isStudent ? "ACCOUNT_NOT_ACTIVATED" : "ACCOUNT_PENDING_APPROVAL"
       });
     }
 

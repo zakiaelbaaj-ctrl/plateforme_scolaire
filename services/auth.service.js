@@ -23,17 +23,6 @@ export async function comparePassword(password, hash) {
   const safeHash = hash || DUMMY_HASH;
   return bcrypt.compare(password || "", safeHash);
 }
-
-// ------------------------------
-// CREATE USER (Version Sequelize)
-// ------------------------------
-export async function createUser(userData) {
-  logger.warn("⚠️ authService.createUser appelée — considérée comme morte, à investiguer avant réactivation ou suppression", {
-    email: userData?.email,
-    role: userData?.role
-  });
-  throw new Error("authService.createUser est désactivée. Utilisez usersService.createUser à la place.");
-}
 // ------------------------------
 // FIND BY EMAIL (Modifié pour fusionner les deux besoins)
 // ------------------------------
@@ -137,4 +126,36 @@ export async function clearResetToken(userId) {
     { resetToken: null, resetTokenExpires: null },
     { where: { id: userId } }
   );
+}
+// ✅ NOUVEAU — activation de compte par email (élève/étudiant)
+
+export async function findByActivationToken(token) {
+  const user = await User.findOne({
+    where: { activationToken: token }
+  });
+
+  if (!user || (user.activationTokenExpires && new Date(user.activationTokenExpires) < new Date())) {
+    return null;
+  }
+
+  return user;
+}
+
+export async function setActivationToken(userId, token, expires) {
+  const user = await User.findByPk(userId);
+  if (user) {
+    user.activationToken = token;
+    user.activationTokenExpires = expires;
+    await user.save();
+  }
+}
+
+export async function activateUser(userId) {
+  const user = await User.findByPk(userId);
+  if (user) {
+    user.is_active = true;
+    user.activationToken = null;
+    user.activationTokenExpires = null;
+    await user.save();
+  }
 }

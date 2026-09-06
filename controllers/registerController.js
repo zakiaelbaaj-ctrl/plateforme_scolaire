@@ -1,4 +1,7 @@
 // controllers/registerController.js
+import crypto from "crypto";
+import * as authService from "#services/auth.service.js";
+import * as mailService from "#services/mail.service.js";
 import logger from "#config/logger.js";
 import * as usersService from "#services/usersService.js";
 import Stripe from 'stripe';
@@ -65,12 +68,13 @@ export async function registerController(req, res) {
       finalRole = "eleve";
     }
 
-    // Logique métier synchronisée :
-    // - Élèves/Étudiants : Actifs tout de suite
-    // - Profs : En attente (is_active = false)
+        // Logique métier synchronisée :
+    // - Élèves/Étudiants : statut "active" immédiat, mais compte inactif
+    //   tant que l'email n'est pas confirmé (is_active = false)
+    // - Profs : En attente (is_active = false, validation admin)
     const isStudent = (finalRole === "eleve" || finalRole === "etudiant");
     const finalStatus = isStudent ? "active" : "pending";
-    const finalIsActive = isStudent; 
+    const finalIsActive = false; // ✅ jamais actif immédiatement, quel que soit le rôle 
     // ------------------------------
     // 4.5 CRÉATION DU COMPTE STRIPE (Brique manquante)
     // ------------------------------
@@ -124,13 +128,20 @@ export async function registerController(req, res) {
         date_inscription: newUser.date_inscription
     };
 
-    return res.status(201).json({
-      success: true,
-      message: finalStatus === "pending" 
+    if (isStudent) {
+      const activationToken = crypto.randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+      await authService.setActivationToken(newUser.id, activationToken, expires);
+      mailService.sendActivationEmail(newUser, activationToken).catch(() => {});
+    }
+
+return res.status(201).json({
+  success: true,
+        message: finalStatus === "pending"
         ? "Inscription réussie ! Votre profil est en cours d'examen par nos équipes."
-        : "Inscription réussie ! Bienvenue sur UrgenceScolaire.",
-      data: safeUser
-    });
+        : "Inscription réussie ! Vérifiez votre boîte mail pour activer votre compte.",
+  data: safeUser
+});
 
   } catch (err) {
     logger.error("❌ Register Error:", err.message);

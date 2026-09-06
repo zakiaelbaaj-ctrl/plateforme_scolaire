@@ -238,13 +238,12 @@ return await db.query(
 }
 export async function createUser(data) {
     try {
-        // ✅ Utilisation du Modèle au lieu du SQL Brut (Beaucoup plus court !)
         const isStudent = (data.role === 'eleve' || data.role === 'etudiant');
         
         const user = await User.create({
             ...data,
             statut: isStudent ? 'active' : 'pending',
-            is_active: isStudent
+            is_active: data.is_active !== undefined ? data.is_active : isStudent
         });
 
         return user;

@@ -528,21 +528,69 @@ function bindUI() {
     elVideo.style.right  = "auto";
   };
 
-  document.onmouseup = () => {
+    document.onmouseup = () => {
     document.onmouseup   = null;
     document.onmousemove = null;
-
-    if (!hasDragged) return;   // ← NOUVEAU : pas de snap si pas bougé
-
+    if (!hasDragged) return;
     elVideo.style.transition = "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)";
 
-    const rect         = elVideo.getBoundingClientRect();
-    const windowHeight = window.innerHeight;
-    const margin       = 24;
+    const margin = 24;
+    const videoRect = elVideo.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
 
-    elVideo.style.left  = `${margin}px`;
-    elVideo.style.right = "auto";
+    // ✅ Zones à ne jamais recouvrir
+    const protectedSelectors = [
+      "#whiteboard-wrapper",
+      ".card--docs",
+      ".card--chat"
+    ];
+    const protectedRects = protectedSelectors
+      .map(sel => document.querySelector(sel))
+      .filter(Boolean)
+      .map(el => el.getBoundingClientRect());
 
+    function overlaps(a, b) {
+      return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+    }
+
+    function overlapArea(a, b) {
+      const overlapX = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+      const overlapY = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      return overlapX * overlapY;
+    }
+
+    const candidates = [
+      { top: margin,               left: margin },
+      { top: margin,               left: vw - videoRect.width - margin },
+      { top: vh - videoRect.height - margin, left: margin },
+      { top: vh - videoRect.height - margin, left: vw - videoRect.width - margin }
+    ];
+
+    let best = candidates[2]; // repli par défaut = bas-gauche
+    let bestScore = Infinity;
+
+    for (const c of candidates) {
+      const candidateRect = {
+        top: c.top, left: c.left,
+        right: c.left + videoRect.width,
+        bottom: c.top + videoRect.height
+      };
+      const totalOverlap = protectedRects.reduce(
+        (sum, pr) => sum + (overlaps(candidateRect, pr) ? overlapArea(candidateRect, pr) : 0),
+        0
+      );
+      if (totalOverlap < bestScore) {
+        bestScore = totalOverlap;
+        best = c;
+        if (totalOverlap === 0) break;
+      }
+    }
+
+    elVideo.style.top    = `${best.top}px`;
+    elVideo.style.left   = `${best.left}px`;
+    elVideo.style.bottom = "auto";
+    elVideo.style.right  = "auto";
     if (rect.top + rect.height / 2 < windowHeight / 2) {
       elVideo.style.top    = `${margin}px`;
       elVideo.style.bottom = "auto";

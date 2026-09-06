@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activation de compte — Urgence Scolaire</title>
+<style>
+  :root {
+    --ink: #0d0f14;
+    --ink-muted: #171a21;
+    --border: #2a2e38;
+    --border-light: #3a3f4b;
+    --text-primary: #f2f3f5;
+    --text-secondary: #a8adb8;
+    --text-muted: #6b7280;
+    --accent: #3b82f6;
+    --success: #2e7d32;
+    --danger: #c62828;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: var(--space-lg);
+  }
+
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--ink-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg) var(--space-lg);
+    text-align: center;
+  }
+
+  .icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto var(--space-md);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+  }
+
+  .icon--loading {
+    background: rgba(59, 130, 246, 0.12);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .icon--success { background: rgba(46, 125, 50, 0.15); }
+  .icon--error   { background: rgba(198, 40, 40, 0.15); }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.08); opacity: 0.75; }
+  }
+
+  h1 {
+    font-size: 1.25rem;
+    margin: 0 0 var(--space-sm);
+  }
+
+  p {
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0 0 var(--space-lg);
+    font-size: 0.95rem;
+  }
+
+  .btn {
+    display: inline-block;
+    width: 100%;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+
+  .btn--primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn--primary:hover { filter: brightness(1.1); }
+
+  .btn--ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-light);
+    margin-top: var(--space-sm);
+  }
+  .btn--ghost:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+
+  .btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .hidden { display: none; }
+
+  .resend-status {
+    margin-top: var(--space-md);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+  <div class="card">
+
+    <!-- État : chargement -->
+    <div id="state-loading">
+      <div class="icon icon--loading">⏳</div>
+      <h1>Activation en cours…</h1>
+      <p>Merci de patienter, nous vérifions votre lien d'activation.</p>
+    </div>
+
+    <!-- État : succès -->
+    <div id="state-success" class="hidden">
+      <div class="icon icon--success">✓</div>
+      <h1>Compte activé !</h1>
+      <p>Votre compte a bien été activé. Vous pouvez maintenant vous connecter.</p>
+      <a href="/pages/eleve/login.html" class="btn btn--primary">Se connecter</a>
+    </div>
+
+    <!-- État : erreur / lien invalide ou expiré -->
+    <div id="state-error" class="hidden">
+      <div class="icon icon--error">✕</div>
+      <h1 id="error-title">Lien invalide</h1>
+      <p id="error-message">Ce lien d'activation est invalide ou a expiré.</p>
+
+      <div id="resend-block">
+        <input
+          type="email"
+          id="resend-email"
+          placeholder="Votre adresse email"
+          style="width:100%; padding:11px 14px; border-radius:8px; border:1px solid var(--border-light); background:var(--ink); color:var(--text-primary); font-size:0.95rem; margin-bottom:var(--space-sm); box-sizing:border-box;"
+        >
+        <button id="resend-btn" class="btn btn--primary">Recevoir un nouveau lien</button>
+        <div id="resend-status" class="resend-status"></div>
+      </div>
+
+      <a href="/pages/eleve/login.html" class="btn btn--ghost">Retour à la connexion</a>
+    </div>
+
+  </div>
+
+<script type="module">
+  const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? "http://localhost:4000"
+    : "";
+
+  const stateLoading = document.getElementById("state-loading");
+  const stateSuccess = document.getElementById("state-success");
+  const stateError = document.getElementById("state-error");
+  const errorTitle = document.getElementById("error-title");
+  const errorMessage = document.getElementById("error-message");
+  const resendBtn = document.getElementById("resend-btn");
+  const resendEmail = document.getElementById("resend-email");
+  const resendStatus = document.getElementById("resend-status");
+
+  function showState(el) {
+    [stateLoading, stateSuccess, stateError].forEach(s => s.classList.add("hidden"));
+    el.classList.remove("hidden");
+  }
+
+  async function activate() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    if (!token) {
+      errorTitle.textContent = "Lien incomplet";
+      errorMessage.textContent = "Aucun jeton d'activation trouvé dans ce lien.";
+      showState(stateError);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/auth/activate?token=${encodeURIComponent(token)}`);
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        errorTitle.textContent = "Lien invalide ou expiré";
+        errorMessage.textContent = result.message || "Ce lien d'activation est invalide ou a expiré.";
+        showState(stateError);
+        return;
+      }
+
+      showState(stateSuccess);
+
+      // Redirection automatique après un court délai, pour l'utilisateur pressé
+      setTimeout(() => {
+        window.location.replace("/pages/eleve/login.html");
+      }, 4000);
+
+    } catch (err) {
+      errorTitle.textContent = "Erreur de connexion";
+      errorMessage.textContent = "Impossible de contacter le serveur. Réessayez dans quelques instants.";
+      showState(stateError);
+    }
+  }
+
+  resendBtn?.addEventListener("click", async () => {
+    const email = resendEmail.value.trim();
+    if (!email) {
+      resendStatus.textContent = "⚠️ Merci de renseigner votre email.";
+      return;
+    }
+
+    resendBtn.disabled = true;
+    resendBtn.textContent = "Envoi en cours…";
+    resendStatus.textContent = "";
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/auth/resend-activation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      const result = await res.json();
+
+      resendStatus.textContent = result.success
+        ? "✅ Si un compte existe pour cet email, un nouveau lien vient d'être envoyé."
+        : "❌ " + (result.message || "Une erreur est survenue.");
+
+    } catch (err) {
+      resendStatus.textContent = "❌ Impossible de contacter le serveur.";
+    } finally {
+      resendBtn.disabled = false;
+      resendBtn.textContent = "Recevoir un nouveau lien";
+    }
+  });
+
+  activate();
+</script>
+
+</body>
+</html>

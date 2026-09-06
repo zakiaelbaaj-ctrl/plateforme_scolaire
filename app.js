@@ -18,6 +18,7 @@ import { requireRole } from "./middlewares/requireRole.js"; // ✅ RÉAJOUTÉ
 // DEBUG TEMPORAIRE — SUPPRIMER APRÈS
 import { sequelize } from "./config/db.js"; // ← ajoute cet import EN HAUT du fichier avec les autres imports
 import signupRoutes from "./routes/v1/auth/signup.routes.js";
+import activationRoutes from "./routes/v1/auth/activation.routes.js";
 import webhookRoutes from "./routes/v1/webhooks/webhook.routes.js";
 import authRoutes from "./routes/v1/auth/auth.routes.js";
 import elevesRoutes from "./routes/v1/eleves/elevesRoutes.js";
@@ -209,6 +210,7 @@ app.get(['/6babaf8f211263c914e3ecc3691fff46', '/.well-known/*'], (req, res) => {
     res.status(204).end(); // Réponse "No Content" propre
 });
 app.use("/api/v1/auth", signupRoutes);
+app.use("/api/v1/auth", activationRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/eleves", elevesRoutes);
 app.use("/api/v1/professeurs", professeursRoutes);
