@@ -16,8 +16,32 @@ if (form) {
     if (errorDiv) { errorDiv.style.display = "none"; errorDiv.classList.remove("show"); }
     if (successDiv) { successDiv.style.display = "none"; successDiv.classList.remove("show"); }
 
+    // ✅ NOUVEAU — vérification de la confirmation du mot de passe,
+    // avant toute construction de FormData ou appel réseau.
+    const password = form.password.value.trim();
+    const passwordConfirm = form.passwordConfirm.value.trim();
+
+    if (password !== passwordConfirm) {
+      if (errorDiv) {
+        errorDiv.textContent = "❌ Les mots de passe ne correspondent pas.";
+        errorDiv.style.display = "block";
+        errorDiv.classList.add("show");
+      }
+      return;
+    }
+
+    if (password.length < 6) {
+      if (errorDiv) {
+        errorDiv.textContent = "❌ Le mot de passe doit contenir au moins 6 caractères.";
+        errorDiv.style.display = "block";
+        errorDiv.classList.add("show");
+      }
+      return;
+    }
+
     // Utilisation de FormData pour gérer les fichiers (Diplômes, etc.)
     const formData = new FormData(form);
+    formData.delete("passwordConfirm"); // ✅ ne jamais envoyer ce champ au serveur
 
     submitBtn.disabled = true;
     submitBtn.textContent = "🔧 Envoi de votre dossier...";
