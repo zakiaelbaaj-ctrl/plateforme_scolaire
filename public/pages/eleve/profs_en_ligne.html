@@ -413,7 +413,7 @@ function showProfileCompletionModal() {
   // ✅ Pré-remplissage avec les valeurs actuelles si elles existent
   const matiereSelect = document.getElementById("pcMatiere");
   const niveauSelect = document.getElementById("pcNiveau");
-
+  const classeSelect = document.getElementById("pcClasse"); // ✅ NOUVEAU
   if (currentUserData?.matiere) {
   const currentMatiere = Array.isArray(currentUserData.matiere)
     ? currentUserData.matiere[0]

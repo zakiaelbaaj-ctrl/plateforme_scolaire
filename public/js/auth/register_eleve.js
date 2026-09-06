@@ -49,25 +49,58 @@ if (form) {
         body: JSON.stringify(data)
       });
 
-      const result = await res.json();
-
+            const result = await res.json();
       if (!res.ok) {
         throw new Error(result.message || "Erreur lors de l'inscription");
       }
 
+      // ✅ Message insistant, basé sur la vraie réponse du serveur,
+      // sans redirection automatique — l'élève doit lire et agir lui-même.
       successDiv.innerHTML = `
-       œ…<strong>Inscription réussie !</strong><br>
-        🔐 Vous pouvez maintenant vous connecter.<br>
-        ⏩ Redirection vers la page de connexion...
+        <div style="text-align:center;">
+          <div style="font-size:2.5rem; margin-bottom:8px;">📧</div>
+          <strong style="font-size:1.05rem;">Inscription réussie !</strong><br><br>
+          ${result.message || "Vérifiez votre boîte mail pour activer votre compte."}<br><br>
+          <span style="opacity:0.8; font-size:0.85em;">
+            Pensez à vérifier votre dossier <strong>spam / courrier indésirable</strong>
+            si vous ne trouvez pas l'email.
+          </span>
+        </div>
       `;
       successDiv.style.display = "block";
       successDiv.classList.add("show");
-
       form.reset();
 
-      setTimeout(() => {
+      // ✅ Le formulaire disparaît pour éviter une nouvelle soumission,
+      // mais on n'impose plus de redirection automatique — c'est l'élève
+      // qui clique sur "Aller à la connexion" une fois prêt.
+      form.style.display = "none";
+
+      const goToLoginBtn = document.createElement("button");
+      goToLoginBtn.textContent = "Aller à la page de connexion";
+      goToLoginBtn.type = "button";
+      goToLoginBtn.style.cssText = `
+        margin-top: 16px;
+        width: 100%;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        background: #2563eb;
+        color: #fff;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+      `;
+      goToLoginBtn.addEventListener("mouseenter", () => {
+        goToLoginBtn.style.filter = "brightness(1.1)";
+      });
+      goToLoginBtn.addEventListener("mouseleave", () => {
+        goToLoginBtn.style.filter = "none";
+      });
+      goToLoginBtn.addEventListener("click", () => {
         window.location.href = '/pages/eleve/login.html';
-      }, 2500);
+      });
+      successDiv.appendChild(goToLoginBtn);
 
     } catch (err) {
       console.error("❌ SIGNUP ERROR:", err);
