@@ -504,103 +504,121 @@ function bindUI() {
   const elVideo     = document.querySelector('.card--video');
   const videoHeader = elVideo?.querySelector('.card__header');
 
-  if (videoHeader && elVideo) {
+   if (videoHeader && elVideo) {
     elVideo.style.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s";
 
-   videoHeader.onmousedown = function(e) {
-  elVideo.style.transition = "none";
+    // ✅ Fonction commune de fin de drag (snap intelligent), réutilisée
+    // par la souris ET le tactile, pour ne pas dupliquer la logique.
+    function endDrag(hasDragged) {
+      if (!hasDragged) return;
+      elVideo.style.transition = "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)";
 
-  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-  let hasDragged = false;   // ← NOUVEAU
-  pos3 = e.clientX;
-  pos4 = e.clientY;
+      const margin = 24;
+      const videoRect = elVideo.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
 
-  document.onmousemove = (e) => {
-    hasDragged = true;       // ← NOUVEAU
-    pos1 = pos3 - e.clientX;
-    pos2 = pos4 - e.clientY;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
+      const protectedSelectors = ["#whiteboard-wrapper", ".card--docs", ".card--chat"];
+      const protectedRects = protectedSelectors
+        .map(sel => document.querySelector(sel))
+        .filter(Boolean)
+        .map(el => el.getBoundingClientRect());
 
-    elVideo.style.top    = (elVideo.offsetTop  - pos2) + "px";
-    elVideo.style.left   = (elVideo.offsetLeft - pos1) + "px";
-    elVideo.style.bottom = "auto";
-    elVideo.style.right  = "auto";
-  };
-
-    document.onmouseup = () => {
-    document.onmouseup   = null;
-    document.onmousemove = null;
-    if (!hasDragged) return;
-    elVideo.style.transition = "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)";
-
-    const margin = 24;
-    const videoRect = elVideo.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    // ✅ Zones à ne jamais recouvrir
-    const protectedSelectors = [
-      "#whiteboard-wrapper",
-      ".card--docs",
-      ".card--chat"
-    ];
-    const protectedRects = protectedSelectors
-      .map(sel => document.querySelector(sel))
-      .filter(Boolean)
-      .map(el => el.getBoundingClientRect());
-
-    function overlaps(a, b) {
-      return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
-    }
-
-    function overlapArea(a, b) {
-      const overlapX = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
-      const overlapY = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-      return overlapX * overlapY;
-    }
-
-    const candidates = [
-      { top: margin,               left: margin },
-      { top: margin,               left: vw - videoRect.width - margin },
-      { top: vh - videoRect.height - margin, left: margin },
-      { top: vh - videoRect.height - margin, left: vw - videoRect.width - margin }
-    ];
-
-    let best = candidates[2]; // repli par défaut = bas-gauche
-    let bestScore = Infinity;
-
-    for (const c of candidates) {
-      const candidateRect = {
-        top: c.top, left: c.left,
-        right: c.left + videoRect.width,
-        bottom: c.top + videoRect.height
-      };
-      const totalOverlap = protectedRects.reduce(
-        (sum, pr) => sum + (overlaps(candidateRect, pr) ? overlapArea(candidateRect, pr) : 0),
-        0
-      );
-      if (totalOverlap < bestScore) {
-        bestScore = totalOverlap;
-        best = c;
-        if (totalOverlap === 0) break;
+      function overlaps(a, b) {
+        return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
       }
+      function overlapArea(a, b) {
+        const overlapX = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+        const overlapY = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        return overlapX * overlapY;
+      }
+
+      const candidates = [
+        { top: margin,               left: margin },
+        { top: margin,               left: vw - videoRect.width - margin },
+        { top: vh - videoRect.height - margin, left: margin },
+        { top: vh - videoRect.height - margin, left: vw - videoRect.width - margin }
+      ];
+
+      let best = candidates[2];
+      let bestScore = Infinity;
+
+      for (const c of candidates) {
+        const candidateRect = {
+          top: c.top, left: c.left,
+          right: c.left + videoRect.width,
+          bottom: c.top + videoRect.height
+        };
+        const totalOverlap = protectedRects.reduce(
+          (sum, pr) => sum + (overlaps(candidateRect, pr) ? overlapArea(candidateRect, pr) : 0),
+          0
+        );
+        if (totalOverlap < bestScore) {
+          bestScore = totalOverlap;
+          best = c;
+          if (totalOverlap === 0) break;
+        }
+      }
+
+      elVideo.style.top    = `${best.top}px`;
+      elVideo.style.left   = `${best.left}px`;
+      elVideo.style.bottom = "auto";
+      elVideo.style.right  = "auto";
     }
 
-    elVideo.style.top    = `${best.top}px`;
-    elVideo.style.left   = `${best.left}px`;
-    elVideo.style.bottom = "auto";
-    elVideo.style.right  = "auto";
-    if (rect.top + rect.height / 2 < windowHeight / 2) {
-      elVideo.style.top    = `${margin}px`;
-      elVideo.style.bottom = "auto";
-    } else {
-      elVideo.style.top    = "auto";
-      elVideo.style.bottom = `${margin}px`;
-    }
-  };
-};
-}
+    // --- SOURIS (desktop) — inchangé ---
+    videoHeader.onmousedown = function(e) {
+      elVideo.style.transition = "none";
+      let pos3 = e.clientX, pos4 = e.clientY;
+      let hasDragged = false;
+      document.onmousemove = (e) => {
+        hasDragged = true;
+        const pos1 = pos3 - e.clientX;
+        const pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        elVideo.style.top    = (elVideo.offsetTop  - pos2) + "px";
+        elVideo.style.left   = (elVideo.offsetLeft - pos1) + "px";
+        elVideo.style.bottom = "auto";
+        elVideo.style.right  = "auto";
+      };
+      document.onmouseup = () => {
+        document.onmouseup   = null;
+        document.onmousemove = null;
+        endDrag(hasDragged);
+      };
+    };
+
+    // ✅ NOUVEAU — TACTILE (mobile)
+    videoHeader.addEventListener("touchstart", function(e) {
+      elVideo.style.transition = "none";
+      let hasDragged = false;
+      let pos3 = e.touches[0].clientX;
+      let pos4 = e.touches[0].clientY;
+
+      function onTouchMove(e) {
+        hasDragged = true;
+        e.preventDefault(); // empêche le scroll de la page pendant le drag
+        const pos1 = pos3 - e.touches[0].clientX;
+        const pos2 = pos4 - e.touches[0].clientY;
+        pos3 = e.touches[0].clientX;
+        pos4 = e.touches[0].clientY;
+        elVideo.style.top    = (elVideo.offsetTop  - pos2) + "px";
+        elVideo.style.left   = (elVideo.offsetLeft - pos1) + "px";
+        elVideo.style.bottom = "auto";
+        elVideo.style.right  = "auto";
+      }
+
+      function onTouchEnd() {
+        document.removeEventListener("touchmove", onTouchMove);
+        document.removeEventListener("touchend", onTouchEnd);
+        endDrag(hasDragged);
+      }
+
+      document.addEventListener("touchmove", onTouchMove, { passive: false });
+      document.addEventListener("touchend", onTouchEnd);
+    }, { passive: true });
+  }
   // ================= ALTERNANCE DES VIDÉOS AU CLIC =================
   const videosContainer = document.querySelector('.videos');
 

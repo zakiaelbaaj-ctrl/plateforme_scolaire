@@ -24,7 +24,7 @@ if (form) {
     if(errorDiv) { errorDiv.style.display = "none"; errorDiv.classList.remove("show"); }
     if(successDiv) { successDiv.style.display = "none"; successDiv.classList.remove("show"); }
 
-    const data = {
+        const data = {
       username: form.username.value.trim(),
       prenom: form.prenom.value.trim(),
       nom: form.nom.value.trim(),
@@ -33,10 +33,22 @@ if (form) {
       pays: form.pays.value.trim(),
       password: form.password.value.trim(),
     };
+    const passwordConfirm = form.passwordConfirm.value.trim();
 
     // Validation basique
     if (!data.username || !data.email || !data.password) {
       showError("Veuillez remplir les champs obligatoires (Username, Email, Mot de passe)");
+      return;
+    }
+
+    // ✅ NOUVEAU — vérification de la confirmation du mot de passe
+    if (data.password !== passwordConfirm) {
+      showError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    if (data.password.length < 6) {
+      showError("Le mot de passe doit contenir au moins 6 caractères.");
       return;
     }
 
