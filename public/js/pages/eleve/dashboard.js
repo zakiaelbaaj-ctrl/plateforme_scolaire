@@ -1,7 +1,12 @@
 ﻿// ======================================================
 // DASHBOARD ELEVE _ UI PURE
 // ======================================================
-
+window.addEventListener("error", (e) => {
+  const debugBox = document.createElement("div");
+  debugBox.textContent = "ERREUR JS: " + e.message + " (ligne " + e.lineno + ")";
+  debugBox.style.cssText = "position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:999999;font-size:12px;";
+  document.body.appendChild(debugBox);
+});
 import { AppState }          from "/js/core/state.js";
 import { socketService }     from "/js/core/socket.service.js";
 import { SessionService }    from "/js/domains/session/session.service.js";
@@ -85,7 +90,12 @@ try {
     }
   }
   const notifBtn = document.getElementById("enable-notifications-btn");
-if (notifBtn && Notification.permission !== "granted") {
+// ✅ NOUVEAU — vérifie que l'API Notification existe avant d'y accéder,
+// pour éviter un crash silencieux sur les navigateurs qui ne la supportent
+// pas (ex. Safari iOS hors PWA installée).
+if (!("Notification" in window)) {
+  console.warn("⚠️ API Notification non supportée sur ce navigateur/contexte.");
+} else if (notifBtn && Notification.permission !== "granted") {
   notifBtn.style.display = "inline-flex";
   notifBtn.addEventListener("click", () => {
     initPushNotifications();
