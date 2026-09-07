@@ -1,12 +1,6 @@
 ﻿// ======================================================
 // DASHBOARD ELEVE _ UI PURE
 // ======================================================
-window.addEventListener("error", (e) => {
-  const debugBox = document.createElement("div");
-  debugBox.textContent = "ERREUR JS: " + e.message + " (ligne " + e.lineno + ")";
-  debugBox.style.cssText = "position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:999999;font-size:12px;";
-  document.body.appendChild(debugBox);
-});
 import { AppState }          from "/js/core/state.js";
 import { socketService }     from "/js/core/socket.service.js";
 import { SessionService }    from "/js/domains/session/session.service.js";
@@ -33,6 +27,29 @@ import { initRatingModal, openRatingModal, loadProfessorRating } from "/js/ui/co
 let remoteVideoTrack = null;
 let whiteboardWrapper = null;
 let videoMiniature = null;
+// 🔴 DEBUG TEMPORAIRE — à retirer une fois le bug identifié
+window.addEventListener("error", (e) => {
+  const debugBox = document.createElement("div");
+  debugBox.textContent = "❌ ERREUR JS: " + e.message + " | fichier: " + (e.filename || "?") + " | ligne: " + e.lineno;
+  debugBox.style.cssText = "position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:999999;font-size:11px;word-break:break-word;";
+  document.body.appendChild(debugBox);
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  const debugBox = document.createElement("div");
+  debugBox.textContent = "❌ PROMISE REJETÉE: " + (e.reason?.message || e.reason);
+  debugBox.style.cssText = "position:fixed;top:40px;left:0;right:0;background:orange;color:black;padding:10px;z-index:999999;font-size:11px;word-break:break-word;";
+  document.body.appendChild(debugBox);
+});
+
+// 🔴 DEBUG — confirme que Notification existe et affiche son état
+document.addEventListener("DOMContentLoaded", () => {
+  const debugNotif = document.createElement("div");
+  debugNotif.textContent = "Notification existe: " + ("Notification" in window) +
+    " | permission: " + (("Notification" in window) ? Notification.permission : "N/A");
+  debugNotif.style.cssText = "position:fixed;top:80px;left:0;right:0;background:yellow;color:black;padding:10px;z-index:999999;font-size:11px;";
+  document.body.appendChild(debugNotif);
+}, { once: true }); // se déclenche en plus du DOMContentLoaded principal plus bas, sans conflit
 // ======================================================
 // INIT
 // ======================================================
