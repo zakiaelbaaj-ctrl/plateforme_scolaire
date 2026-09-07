@@ -2,8 +2,9 @@
 // ==========================================
 // Gestion des professeurs connectés en ligne
 // ==========================================
-console.log(">>> Chargement du fichier ws/state/onlineProfessors.js");
-
+console.log(">>> Chargement du fichier ws/state/onlineProfessors.js")
+import { getElevesByFavoriProf } from "#services/favoris.service.js";
+import { sendPushToUser } from "#services/push.service.js";
 // Map pour stocker les professeurs en ligne
 const onlineProfessors = new Map();
 
@@ -33,6 +34,27 @@ function addProfessor(prof) {
   prof.status = "disponible";
   onlineProfessors.set(prof.id, prof);
   console.log(`✅ Professeur connecté : ${prof.prenom} ${prof.nom} (${prof.id})`);
+// ✅ NOUVEAU — nouvelle connexion (pas une reconnexion) : notifie les
+  // élèves qui ont ce prof en favori.
+  notifyFavoriteFollowers(prof).catch(err => {
+    console.error("❌ Erreur notification favoris:", err.message);
+  });
+}
+// ✅ NOUVEAU
+async function notifyFavoriteFollowers(prof) {
+  const eleveIds = await getElevesByFavoriProf(prof.id);
+  if (eleveIds.length === 0) return;
+
+  const nomProf = `${prof.prenom || ""} ${prof.nom || ""}`.trim() || "Votre professeur";
+
+  for (const eleveId of eleveIds) {
+    sendPushToUser(eleveId, {
+      title: "🎉 Votre professeur favori est en ligne",
+      body: `${nomProf} vient de se connecter — c'est le moment de le contacter !`,
+      tag: `favori-online-${prof.id}`,
+      url: "/pages/eleve/dashboard.html"
+    }).catch(() => {});
+  }
 }
 
 /**

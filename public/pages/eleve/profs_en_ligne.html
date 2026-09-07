@@ -97,6 +97,7 @@
       text-align: center;
       border: 1px solid var(--border);
       transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+      position: relative; /* ✅ NOUVEAU — nécessaire pour ancrer le bouton favori */
     }
 
     .prof-card--clickable {
@@ -590,9 +591,17 @@ if (p.photo_identite_url) {
         // soit marqué disponible ET que l'élève ait une carte enregistrée.
         const canCall = !!p.disponibilite && !!currentUserData?.has_payment_method;
 
+                // ✅ NOUVEAU — bouton favori
+        const isFavorite = (window.AppState?.favoriteProfIds || favoriteProfIds || []).includes(p.id);
+
         const card = document.createElement("div");
         card.className = `prof-card ${canCall ? "prof-card--clickable" : "prof-card--disabled"}`;
         card.innerHTML = `
+          <button class="favorite-btn" data-prof-id="${p.id}"
+            style="position:absolute; top:8px; right:8px; background:transparent; border:none; cursor:pointer; font-size:1.1rem; z-index:5;"
+            title="${isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}">
+            ${isFavorite ? "❤️" : "🤍"}
+          </button>
           ${avatarHtml}
           <div class="prof-name">${nom}</div>
           <div class="prof-matiere">${Array.isArray(p.matiere) ? p.matiere.join(", ") : (p.matiere || "—")}</div>
@@ -607,10 +616,31 @@ if (p.photo_identite_url) {
           }
         `;
 
+        // ✅ NOUVEAU — écouteur du bouton favori, posé APRÈS l'injection HTML
+        const heartBtn = card.querySelector(".favorite-btn");
+        heartBtn.addEventListener("click", async (e) => {
+          e.stopPropagation(); // empêche de déclencher le clic sur toute la carte
+          const nowFavorite = heartBtn.textContent.trim() === "🤍";
+          try {
+            await fetch(`${API_URL}/api/v1/eleves/favoris/${p.id}`, {
+              method: nowFavorite ? "POST" : "DELETE",
+              headers: { "Authorization": `Bearer ${AppState.token}` }
+            });
+            heartBtn.textContent = nowFavorite ? "❤️" : "🤍";
+            heartBtn.title = nowFavorite ? "Retirer des favoris" : "Ajouter aux favoris";
+            if (!window.favoriteProfIds) window.favoriteProfIds = [];
+            if (nowFavorite) {
+              window.favoriteProfIds.push(p.id);
+            } else {
+              window.favoriteProfIds = window.favoriteProfIds.filter(id => id !== p.id);
+            }
+          } catch (err) {
+            console.error("❌ Erreur toggle favori:", err);
+          }
+        });
+
         if (canCall) {
           card.addEventListener("click", () => {
-            // Ouvre le dashboard avec ce prof -> dashboard.js déclenchera
-            // automatiquement l'appel au chargement (voir étape suivante).
             window.location.href = `/pages/eleve/dashboard.html?callProfId=${p.id}`;
           });
         }
@@ -627,17 +657,27 @@ if (p.photo_identite_url) {
         return;
       }
 
-      currentUserData = userData;
-
+           currentUserData = userData;
       AppState.setCurrentUser(userData);
       AppState.token = localStorage.getItem("token");
-
       renderPaymentBanner();
+
+      // ✅ NOUVEAU — charge la liste des profs favoris avant le premier rendu
+      try {
+        const favRes = await fetch(`${API_URL}/api/v1/eleves/favoris`, {
+          headers: { "Authorization": `Bearer ${AppState.token}` }
+        });
+        const favResult = await favRes.json();
+        window.favoriteProfIds = favResult.success ? favResult.data : [];
+      } catch (err) {
+        console.error("❌ Erreur chargement favoris:", err);
+        window.favoriteProfIds = [];
+      }
+
       // ✅ MODIFIÉ : la modal s'affiche toujours, pas juste si vide
       showProfileCompletionModal();
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       socketService.connect(`${wsProtocol}//${window.location.host}?token=${AppState.token}`);
-
       // Affiche immédiatement si des profs sont déjà connus, puis reste réactif
       renderProfList(AppState.onlineProfessors);
       AppState.on("professors:update", renderProfList);

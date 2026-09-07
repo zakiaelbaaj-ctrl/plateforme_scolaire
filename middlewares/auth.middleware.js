@@ -1,3 +1,9 @@
+// ⚠️ ATTENTION — il existe deux middlewares d'authentification distincts
+// dans ce projet : ce fichier pose `req.user.userId`, tandis que
+// `middlewares/requireAuth.js` pose `req.user.id`.
+// Vérifiez TOUJOURS quel middleware est utilisé par la route avant
+// d'accéder à l'ID de l'utilisateur dans un contrôleur.
+
 // =======================================================
 // auth.middleware.js
 // Middleware d'authentification JWT pour la plateforme scolaire

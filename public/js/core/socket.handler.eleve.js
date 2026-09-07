@@ -23,6 +23,16 @@ function filterProfsByMatiereNiveau(profs, user) {
     return profMatieres.includes(eleveMatiere) && profNiveaux.includes(eleveNiveau);
   });
 }
+// ✅ NOUVEAU — trie les profs favoris en premier, sans perturber l'ordre
+// relatif déjà établi par le serveur (disponibilité, dernière activité).
+function sortByFavorites(profs, favoriteIds) {
+  return [...profs].sort((a, b) => {
+    const aFav = favoriteIds.includes(a.id);
+    const bFav = favoriteIds.includes(b.id);
+    if (aFav !== bFav) return aFav ? -1 : 1;
+    return 0;
+  });
+}
 
 class SocketHandlerEleve {
   constructor() {
@@ -61,11 +71,13 @@ class SocketHandlerEleve {
   break;
       case "TRANSPORT_OPEN": this.onTransportOpen(); break;
      case "onlineProfessors":
-case "professorsList":
+case "professorsList": {
+  const filtered = filterProfsByMatiereNiveau(data.profs ?? data.professors ?? [], AppState.currentUser);
   AppState.setOnlineProfessors(
-    filterProfsByMatiereNiveau(data.profs ?? data.professors ?? [], AppState.currentUser)
+    sortByFavorites(filtered, AppState.favoriteProfIds || [])
   );
   break;
+  }
        case "document":
        case "documentReceived":
        case "newDocument": {

@@ -62,6 +62,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialisation de l'état global et de l'UI
   saveAndRenderUser(userData);
   AppState.token = localStorage.getItem("token");
+  // ✅ NOUVEAU — charge la liste des profs favoris de l'élève
+try {
+  const favRes = await fetch(`${API_URL}/api/v1/eleves/favoris`, {
+    headers: { "Authorization": `Bearer ${AppState.token}` }
+  });
+  const favResult = await favRes.json();
+  AppState.favoriteProfIds = favResult.success ? favResult.data : [];
+} catch (err) {
+  console.error("❌ Erreur chargement favoris:", err);
+  AppState.favoriteProfIds = [];
+}
   AppState.setCallState(null);
   // ✅ EMPLACEMENT EXACT — ici, juste après AppState.token et AppState.setCallState,
   // et AVANT la logique de polling Stripe / la connexion WebSocket.
@@ -752,13 +763,26 @@ document.getElementById("btn-rejoindre-cours")?.addEventListener("click", async 
 
     // 🔥 3. LANCEMENT SESSION
     AppState.currentPaymentIntentId = intentId;
-AppState.currentRoomId = AppState.currentRoomId || "room_18_32";
+        // ✅ Plus de valeur par défaut codée en dur — si aucune room n'est
+    // définie, on bloque plutôt que de risquer de rejoindre la session
+    // d'un autre élève.
+    if (!AppState.currentRoomId) {
+      console.error("❌ Aucune room active — impossible de rejoindre.");
+      AppState._notify("ui:notification", {
+        type: "error",
+        title: "Erreur",
+        message: "Aucune session active à rejoindre. Réessayez depuis la liste des professeurs."
+      });
+      btn.disabled = false;
+      btn.innerText = originalText;
+      return;
+    }
 
-socketService.send({
-  type: "joinRoom",
-  roomId: AppState.currentRoomId,
-  paymentIntentId: intentId
-});
+    socketService.send({
+      type: "joinRoom",
+      roomId: AppState.currentRoomId,
+      paymentIntentId: intentId
+    });
     btn.style.display = "none";
 
   } catch (err) {
@@ -1002,7 +1026,34 @@ function sendChat() {
   ChatService.send(input.value);
   input.value = "";
 }
+// ✅ NOUVEAU — ajoute/retire un favori et rafraîchit l'affichage
+async function toggleFavorite(profId, shouldAdd) {
+  const method = shouldAdd ? "POST" : "DELETE";
+  try {
+    const res = await fetch(`${API_URL}/api/v1/eleves/favoris/${profId}`, {
+      method,
+      headers: { "Authorization": `Bearer ${AppState.token}` }
+    });
+    if (!res.ok) throw new Error("Erreur serveur");
 
+    if (shouldAdd) {
+      if (!AppState.favoriteProfIds.includes(profId)) {
+        AppState.favoriteProfIds.push(profId);
+      }
+    } else {
+      AppState.favoriteProfIds = AppState.favoriteProfIds.filter(id => id !== profId);
+    }
+
+    renderProfList(AppState.onlineProfessors);
+  } catch (err) {
+    console.error("❌ Erreur toggle favori:", err);
+    AppState._notify("ui:notification", {
+      type: "error",
+      title: "Erreur",
+      message: "Impossible de mettre à jour vos favoris pour le moment."
+    });
+  }
+}
 // ======================================================
 // PROF LIST
 // ======================================================
@@ -1030,7 +1081,6 @@ function renderProfList(profs = []) {
     return;
   }
 
-  // ✅ On récupère l'utilisateur actuel depuis l'état global
   const user = AppState.currentUser;
 
   profs.forEach(prof => {
@@ -1039,11 +1089,25 @@ function renderProfList(profs = []) {
     const rating = document.createElement("div");
     rating.className = "prof-rating";
     rating.id = `prof-rating-${prof.id}`;
-    // Nom du prof — sans XSS
+
     const span = document.createElement("span");
     span.className = "prof-name";
     span.textContent = `${prof.prenom} ${prof.nom}`;
-    // Indicateur de statut visuel
+
+    // ✅ NOUVEAU — bouton favori (cœur)
+    const isFavorite = (AppState.favoriteProfIds || []).includes(prof.id);
+    const heartBtn = document.createElement("button");
+    heartBtn.className = "favorite-btn";
+    heartBtn.textContent = isFavorite ? "❤️" : "🤍";
+    heartBtn.title = isFavorite ? "Retirer des favoris" : "Ajouter aux favoris";
+    heartBtn.style.background = "transparent";
+    heartBtn.style.border = "none";
+    heartBtn.style.cursor = "pointer";
+    heartBtn.style.fontSize = "1.1rem";
+    heartBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleFavorite(prof.id, !isFavorite);
+    };
 
     const badge = document.createElement("span");
     badge.className = "prof-status-badge";
@@ -1051,35 +1115,27 @@ function renderProfList(profs = []) {
     const btn = document.createElement("button");
     btn.className = "call-prof-btn";
 
-    /**
-     * ✅ LOGIQUE DE DISPONIBILITÉ
-     * Un prof est appelable seulement si :
-     * 1. Il est marqué comme disponible (prof.disponibilite)
-     * 2. L'élève a enregistré une carte (user.has_payment_method)
-     */
-const canCall = prof.disponibilite && user?.has_payment_method;
+    const canCall = prof.disponibilite && user?.has_payment_method;
 
-if (canCall) {
-  badge.textContent = "⚠️ Disponible";
-  badge.style.color = "#3b6d11";
-  btn.textContent = "Appeler";
-  btn.disabled = false;
-  btn.style.opacity = "1";
-  btn.style.cursor = "pointer";
-  btn.onclick = () => {
-  const result = attemptCallToProfessor(prof);
-  if (!result.ok && result.reason === "call-in-progress") {
-    AppState._notify("ui:notification", {
-      type: "error",
-      title: "Appel déjà en cours",
-      message: "Attendez la fin de l'appel actuel avant d'en démarrer un autre."
-    });
-  }
-};
-} else {
-      // --- État : INDISPONIBLE (ou carte manquante) ---
+    if (canCall) {
+      badge.textContent = "⚠️ Disponible";
+      badge.style.color = "#3b6d11";
+      btn.textContent = "Appeler";
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.style.cursor = "pointer";
+      btn.onclick = () => {
+        const result = attemptCallToProfessor(prof);
+        if (!result.ok && result.reason === "call-in-progress") {
+          AppState._notify("ui:notification", {
+            type: "error",
+            title: "Appel déjà en cours",
+            message: "Attendez la fin de l'appel actuel avant d'en démarrer un autre."
+          });
+        }
+      };
+    } else {
       let statusLabel = "Indisponible";
-      
       if (!user?.has_payment_method) {
         statusLabel = "Carte requise";
       } else {
@@ -1098,6 +1154,7 @@ if (canCall) {
       btn.style.cursor = "not-allowed";
     }
 
+    li.appendChild(heartBtn); // ✅ NOUVEAU — ajouté en premier, avant le nom
     li.appendChild(span);
     li.appendChild(badge);
     li.appendChild(rating);
@@ -1105,7 +1162,6 @@ if (canCall) {
     list.appendChild(li);
     loadProfessorRating(prof.id);
   });
-
 }
 window.renderProfList = renderProfList;
 // ======================================================

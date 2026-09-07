@@ -1,7 +1,11 @@
 // --------------------------------------------------
 // Middleware requireAuth – Version propre et corrigée
 // --------------------------------------------------
-
+// ⚠️ ATTENTION — il existe deux middlewares d'authentification distincts
+// dans ce projet : ce fichier pose `req.user.id`, tandis que
+// `middlewares/auth.middleware.js` pose `req.user.userId`.
+// Vérifiez TOUJOURS quel middleware est utilisé par la route avant
+// d'accéder à l'ID de l'utilisateur dans un contrôleur.
 import * as tokenService from "#services/token.service.js";
 import * as usersService from "#services/usersService.js";
 import logger from "#config/logger.js";
