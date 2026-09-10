@@ -1409,11 +1409,11 @@ function updateJoinButton(user) {
 
   if (!hasPaymentMethod) {
     btn.disabled = true;
-    btn.innerText = "Ajoutez une carte pour rejoindre";
+    btn.innerText = "Ajoutez une carte";
     btn.classList.add("is-disabled");
   } else {
     btn.disabled = false;
-    btn.innerText = "Rejoindre le cours";
+    btn.innerText = "Valider";
     btn.classList.remove("is-disabled");
   }
 }

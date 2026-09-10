@@ -143,6 +143,7 @@ if (this.sessionInProgress && this.currentRoomId !== roomId) {
   this.sessionInProgress = false;
   this.currentRoomId = null;
   this.selectedStudentId = null;
+  this.stopTimer();
   this._notify("session:end"); // ✅ données pures uniquement
 },
   // ==================================================

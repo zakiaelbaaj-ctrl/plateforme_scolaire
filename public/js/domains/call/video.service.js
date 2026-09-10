@@ -115,32 +115,46 @@ export const VideoService = {
     CallStateMachine.setState(CallStateMachine.STATES.ENDED);
   },
 
-  disconnectSilent() {
-    if (!this.room) return;
-    this._silentDisconnect = true;
-    this._stopLocalTracks();
-    this.room.disconnect();
-    this.room = null;
-  },
+  async disconnectSilent() {
+  if (!this.room) return;
+  this._silentDisconnect = true;
+  await this._stopLocalTracks();  // ✅ attend la désactivation avant de déconnecter
+  this.room.disconnect();
+  this.room = null;
+},
 
-  _stopLocalTracks() {
-    this.room?.localParticipant?.trackPublications?.forEach((pub) => {
-      pub.track?.stop();
-      this.room.localParticipant.unpublishTrack(pub.track);
+ async _stopLocalTracks() {
+  // ✅ NOUVEAU — désactive caméra/micro via l'API LiveKit officielle,
+  // symétrique à enableCameraAndMicrophone() utilisée à la connexion.
+  // Plus fiable que track.stop() seul pour éteindre la LED physique,
+  // car ça redescend jusqu'à la vraie source getUserMedia.
+ try {
+  if (this.room?.localParticipant) {
+    await this.room.localParticipant.setCameraEnabled(false);
+    await this.room.localParticipant.setMicrophoneEnabled(false);
+  }
+} catch (err) {
+  console.warn("⚠️ Erreur désactivation caméra/micro via LiveKit:", err.message);
+}
 
-      pub.track?.detach?.().forEach((el) => {
-        el.srcObject = null;
-        el.remove();
-      });
+  // Nettoyage complémentaire (déjà existant, gardé par sécurité)
+  this.room?.localParticipant?.trackPublications?.forEach((pub) => {
+    pub.track?.stop();
+    this.room.localParticipant.unpublishTrack(pub.track);
+
+    pub.track?.detach?.().forEach((el) => {
+      el.srcObject = null;
+      el.remove();
     });
+  });
 
-    ["localVideo", "localVideoContainer"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el?.tagName === "VIDEO") {
-        el.srcObject = null;
-        el.pause?.();
-      }
-    });
+  ["localVideo", "localVideoContainer"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el?.tagName === "VIDEO") {
+      el.srcObject = null;
+      el.pause?.();
+    }
+  });
 
     ["remoteVideo", "remoteVideoContainer"].forEach((id) => {
       const el = document.getElementById(id);

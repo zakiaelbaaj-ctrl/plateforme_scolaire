@@ -7,6 +7,9 @@ import { CallStateMachine } from "../domains/call/call.state.machine.js";
 import { CallService } from "../domains/call/call.service.js";
 import { refreshAccessToken } from "../lib/auth.refresh.js";
 import { showNotification } from "/js/ui/components/notification.js";
+import { showCallingUI, showInCallUI, showCallEndedUI, updateCallStatusUI, playRingtone, stopRingtone, playOutgoingCallSound, stopOutgoingCallSound, CallUI } 
+    from "../ui/components/call.ui.js";
+
 // ✅ NOUVEAU — même logique de correspondance que le serveur (callProfessor
 // dans ws/calls.js), pour n'afficher côté élève que les profs enseignant
 // sa matière et son niveau. Évite qu'un élève clique sur un prof qui sera
@@ -95,23 +98,41 @@ case "professorsList": {
       AppState.addDocument(normalizedDoc);
       break;
     }
-    case "callSent":
+    case "callSent": {
   CallService.handleEvent(data);
+  showCallingUI(data);
+  playOutgoingCallSound();   // 🔔 démarre la sonnerie
   break;
-
+}
 case "livekitToken":
   AppState.startTimer(); // ✔️ Timer démarre uniquement quand LiveKit confirme
   CallService.handleEvent(data);
   break;
 
-   case "incomingCall":
-   case "callAccepted":
-   case "callRejected":
-   case "callTimeout":
+    case "incomingCall":
   CallService.handleEvent(data);
+  break;
+
+case "callAccepted":
+  CallService.handleEvent(data);
+  showInCallUI(data);       // affiche brièvement "Appel établi"
+  stopOutgoingCallSound();
+  setTimeout(() => CallUI.hide(), 1200); // ✅ NOUVEAU — ferme l'overlay après un court délai
+  break;
+case "callRejected":
+  CallService.handleEvent(data);
+  CallUI.declined(data);    // ✅ NOUVEAU — ferme l'overlay + toast "a refusé l'appel"
+  stopOutgoingCallSound();  // ✅ NOUVEAU
+  break;
+
+case "callTimeout":
+  CallService.handleEvent(data);
+  CallUI.cancelled({ ...data, reason: "timeout" }); // ✅ NOUVEAU — ferme l'overlay + toast "n'a pas répondu"
+  stopOutgoingCallSound();  // ✅ NOUVEAU
   break;
       case "invoice:ready": {
   console.log("📥 Facture disponible:", data.url);
+
 
   // 🆕 On sauvegarde la facture pour pouvoir l'afficher même après une redirection
   localStorage.setItem("pendingInvoice", JSON.stringify({
@@ -136,36 +157,34 @@ case "livekitToken":
   }
   break;
 }
-  // ✔️ Ces events terminent la session ET stoppent le timer
-    case "callEnded":
-    case "session:stop":
-    case "endSession": {
+// ✔️ Ces events terminent la session ET stoppent le timer
+  case "session:stop":
+case "callEnded":
+case "endSession": {
   console.log("📥 [Élève] Session terminée:", data.type);
+  stopOutgoingCallSound();
+  showCallEndedUI(data);
 
-  // 1. Traitement interne (timer, Twilio, cleanup)
+  // 1. Traitement interne (timer, Twilio, cleanup, notation)
   SessionService._handleWs(data);
 
-  // 2. 🟢 Correction : réinitialisation de l’état de l’élève
-  AppState.endSession();            // L’élève n’est plus en session
-  AppState.currentCall = null;      // Plus d’appel en cours
-  AppState.currentRoomId = null;    // Plus de room active
-  
-  // 🟢 AJOUT : débloque la state machine (ended → idle)
-  CallStateMachine.reset();          // 🟢 débloque la state machine
-  socketService.markSessionActive(); // 🟢 débloque l'envoi socket
+  // 2. Réinitialisation de l'état de l'élève
+  AppState.endSession();
+  AppState.currentCall = null;
+  AppState.currentRoomId = null;
 
-  // 3. 🟢 Réinitialisation de l’UI
+  // 3. Débloque la state machine (ended → idle)
+  CallStateMachine.reset();
+  socketService.markSessionActive();
+
+  // 4. Réinitialisation de l'UI
   AppState._notify("ui:callState", { state: "idle" });
 
   break;
 }
-
-
-       
-       case "startSession":
+   case "startSession":
        this.handleStartSession(data);
        break;
-
        case "joinedRoom": {
         console.log("✅ [Élève] Room rejointe !");
         const roomId = data.roomId ?? data.room;

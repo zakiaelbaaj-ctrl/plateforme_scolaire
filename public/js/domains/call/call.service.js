@@ -113,8 +113,8 @@ _on(event, cb) {
 
   const savedRoomId = AppState.currentRoomId;
 
-  try {
-    VideoService.disconnectSilent();
+ try {
+    await VideoService.disconnectSilent();
     CallStateMachine.setState(CallStateMachine.STATES.ENDED);
     AppState._notify("ui:closeCallOverlay", { roomId: savedRoomId });
   } finally {
@@ -124,7 +124,7 @@ _on(event, cb) {
 },
 // ❌ handleSessionEnded() supprimé — plus appelé nulle part
 
-  disconnectVideo() {
-  VideoService.disconnectSilent();
+  async disconnectVideo() {
+  await VideoService.disconnectSilent();
 }
 };

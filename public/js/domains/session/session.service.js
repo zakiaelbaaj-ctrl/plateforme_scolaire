@@ -97,17 +97,17 @@ export const SessionService = {
         socketService.markSessionEnded(); // ✅ coupe le flood immédiatement
   
       // 3) Notation — uniquement côté élève, une seule fois
-         if (AppState.currentUser?.role === "eleve") {
-         const prof =
-          AppState.currentSession?.prof ||
-          AppState.onlineProfessors?.find(p => p.id === AppState.currentProfId);
 
-           if (prof) {
-          this.openEndSessionRating(prof);
-         } else {
-          console.warn("⚠️ Prof introuvable pour la notation");
-            }
-          }
+if (AppState.currentUser?.role === "eleve") {
+  const prof =
+    AppState.currentSession?.prof ||
+    AppState.onlineProfessors?.find(p => p.id === AppState.currentProfId);
+  if (prof) {
+    this.openEndSessionRating(prof);
+  } else {
+    console.warn("⚠️ Prof introuvable pour la notation");
+  }
+}
              break;
            }
          case "chatMessage": {
