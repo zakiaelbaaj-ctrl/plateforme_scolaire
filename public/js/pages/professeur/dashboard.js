@@ -311,7 +311,11 @@ function subscribeToDomains() {
     case 'calling':  updateCallStatus('Appel en cours...'); break;
     case 'ringing':
     case 'incoming': showIncomingCall(AppState.currentIncomingCallEleveId); break;
-    case 'inCall':   hideIncomingAlert(); updateCallStatus('En communication'); setSessionActive(true); break;
+    case 'inCall': 
+  hideIncomingAlert(); 
+  updateCallStatus(`Session avec ${AppState.currentIncomingCallEleveName || "l'élève"}`); // ✅ ajusté
+  setSessionActive(true); 
+  break;
     case 'ended':    hideIncomingAlert(); cleanupSession('Session terminée'); break; // ✅
     case 'idle':     break; // ✅ ignore silencieusement
     // ❌ retire case null et default
@@ -720,6 +724,7 @@ function cleanupSession(message) {
   console.log("⚠️ showIncomingCall appelée", { eleveId, eleveName });
 
   AppState.currentIncomingCallEleveId = eleveId ?? null;
+  AppState.currentIncomingCallEleveName = eleveName ?? null;
   const audio = document.getElementById("incomingCallSound");
   audio?.play().catch(() => {});
   const box    = document.getElementById("incoming-call-box");

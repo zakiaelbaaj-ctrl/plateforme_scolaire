@@ -1,4 +1,4 @@
-const CACHE_NAME = "urgencescolaire-v10"; // ⬅️ forcer la mise à jour après fix whiteboard Android
+const CACHE_NAME = "urgencescolaire-v11"; // ⬅️ forcer la mise à jour après fix sonnerie/notation/camera/timer
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",

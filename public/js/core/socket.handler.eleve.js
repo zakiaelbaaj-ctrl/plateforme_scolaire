@@ -115,9 +115,13 @@ case "livekitToken":
 
 case "callAccepted":
   CallService.handleEvent(data);
-  showInCallUI(data);       // affiche brièvement "Appel établi"
+  showInCallUI(data);
   stopOutgoingCallSound();
-  setTimeout(() => CallUI.hide(), 1200); // ✅ NOUVEAU — ferme l'overlay après un court délai
+  setTimeout(() => CallUI.hide(), 1200);
+
+  const remoteProfEl = document.getElementById("remote-prof-info");
+  if (remoteProfEl) remoteProfEl.textContent = data.profName || "Professeur";
+
   break;
 case "callRejected":
   CallService.handleEvent(data);
