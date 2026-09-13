@@ -58,13 +58,17 @@ const normalizedDoc = {
       AppState.addDocument(normalizedDoc);
       break;
       }
-      case "callSent":
-case "incomingCall":
-case "callAccepted":
+     case "callSent":
+     case "incomingCall":
+     case "callAccepted":
+     case "livekitToken":
+       CallService.handleEvent(data);
+       break;
+
 case "callRejected":
 case "callTimeout":
-case "livekitToken":
   CallService.handleEvent(data);
+  socketService.markSessionActive(); // ✅ NOUVEAU — débloque l'envoi pour le prochain appel
   break;
 
 case "callEnded":

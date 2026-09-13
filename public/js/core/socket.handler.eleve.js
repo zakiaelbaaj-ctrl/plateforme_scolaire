@@ -125,14 +125,15 @@ case "callAccepted":
   break;
 case "callRejected":
   CallService.handleEvent(data);
-  CallUI.declined(data);    // ✅ NOUVEAU — ferme l'overlay + toast "a refusé l'appel"
-  stopOutgoingCallSound();  // ✅ NOUVEAU
+  CallUI.declined(data);
+  stopOutgoingCallSound();
+  socketService.markSessionActive(); // ✅ NOUVEAU
   break;
-
 case "callTimeout":
   CallService.handleEvent(data);
-  CallUI.cancelled({ ...data, reason: "timeout" }); // ✅ NOUVEAU — ferme l'overlay + toast "n'a pas répondu"
-  stopOutgoingCallSound();  // ✅ NOUVEAU
+  CallUI.cancelled({ ...data, reason: "timeout" });
+  stopOutgoingCallSound();
+  socketService.markSessionActive(); // ✅ NOUVEAU
   break;
       case "invoice:ready": {
   console.log("📥 Facture disponible:", data.url);

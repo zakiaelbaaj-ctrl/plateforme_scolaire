@@ -23,17 +23,16 @@ export const CallStateMachine = (() => {
   }
 
   function setState(nextState) {
-    if (!canTransition(nextState)) {
-      console.warn(`[CallStateMachine] Transition refusée: ${state} -> ${nextState}`);
-      return false;
-    }
-    state = nextState;
-    listeners.forEach(cb => {
-      try { cb(state); } catch(e) { console.error("CallState listener error:", e); }
-    });
-    return true;
+  if (!canTransition(nextState)) {
+    console.warn(`[CallStateMachine] Transition refusée: ${state} -> ${nextState}`);
+    return false;
   }
-
+  state = nextState;
+  listeners.forEach(cb => {
+    try { cb(state); } catch(e) { console.error("CallState listener error:", e); }
+  });
+  return true;
+}
   function onChange(cb) {
     if (typeof cb === "function") listeners.add(cb);
     return () => listeners.delete(cb);

@@ -312,7 +312,7 @@ function subscribeToDomains() {
     case 'ringing':
     case 'incoming': showIncomingCall(AppState.currentIncomingCallEleveId); break;
     case 'inCall': 
-  hideIncomingAlert(); 
+  hideIncomingAlert();
   updateCallStatus(`Session avec ${AppState.currentIncomingCallEleveName || "l'élève"}`); // ✅ ajusté
   setSessionActive(true); 
   break;
@@ -657,17 +657,19 @@ function onSessionStarted(event) {
   AppState.sessionInProgress = true;
   AppState.currentRoomId     = event.roomId;
 
-  updateCallStatus("En communication");
+  // ✅ CORRIGÉ — utilise le nom de l'élève au lieu du texte générique,
+  // pour ne plus écraser l'info posée par case 'inCall'.
+  updateCallStatus(`Session avec ${AppState.currentIncomingCallEleveName || "l'élève"}`);
   updateMicButton(true);
   updateCameraButton(true);
-  setSessionActive(true); //✅ affiche le timer ET le bouton terminer
+  setSessionActive(true);
 
   WhiteboardService.initCanvas("whiteboard-canvas", {
   colorPicker: document.getElementById("whiteboardColor"),
   sizeSlider:  document.getElementById("whiteboardSize")
   });
   const remoteInfo = document.getElementById("remote-eleve-info");
-  if (remoteInfo) remoteInfo.style.display = "none";
+  if (remoteInfo) remoteInfo.style.display = "none"; // reste caché, ou tu peux l'utiliser à la place si tu préfères
 }
   // ✅ NE PAS appeler SessionService.startTimer ici
   // Le timer est démarré dans joinedRoom du socket handler prof
@@ -682,60 +684,27 @@ function setSessionActive(active) {
   if (timer)  timer.style.display = active ? "" : "none";
 }
 
-function cleanupSession(message) {
-  if (cleanupSession._running) return;
-  cleanupSession._running = true;
 
-  // ✅ DOM partage écran
-  ScreenShareOverlay.hide();
-  const ssBtn = document.getElementById("screen-share-btn");
-  if (ssBtn) ssBtn.textContent = "🖥️";
-
-  // ✅ DOM vidéo
-  ["remote-video", "local-video"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.srcObject = null;
-  });
-
-  // ✅ DOM session
-  setSessionActive(false);
-  updateCallStatus(message);
-  WhiteboardService.reset?.();
-
-  // ✅ DOM timer
-  const timerEl = document.getElementById("call-time");
-  if (timerEl) timerEl.textContent = "00:00";
-
-  // ✅ DOM chat + canvas
-  resetChat();
-  clearCanvas();
-
-  // ✅ DOM remote info
-  const remoteInfo = document.getElementById("remote-eleve-info");
-  if (remoteInfo) { remoteInfo.textContent = "En attente d'un élève…"; remoteInfo.style.display = ""; }
-
-  cleanupSession._running = false;
-}
 // ======================================================
 // CALL UI
 // ======================================================
 
-  function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays, eleveClasse }) {
-  console.log("⚠️ showIncomingCall appelée", { eleveId, eleveName });
+  function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays, eleveClasse } = {}) {
+  socketService.markSessionActive();
 
   AppState.currentIncomingCallEleveId = eleveId ?? null;
   AppState.currentIncomingCallEleveName = eleveName ?? null;
+
   const audio = document.getElementById("incomingCallSound");
   audio?.play().catch(() => {});
+
   const box    = document.getElementById("incoming-call-box");
   const text   = document.getElementById("incoming-call-text");
   const noCall = document.getElementById("no-call");
 
- console.log("box avant:", box?.className, box?.style.cssText);
-
   if (box) {
-    box.removeAttribute("style");   // supprime style="display:none;" du HTML
-    box.classList.add("visible");   // le CSS affiche en flex via #incoming-call-box.visible
+    box.removeAttribute("style");
+    box.classList.add("visible");
   }
   if (noCall) noCall.style.display = "none";
   if (text) {
@@ -743,16 +712,13 @@ function cleanupSession(message) {
     const classe = eleveClasse ? ` (${eleveClasse})` : "";
     text.textContent = `${eleveName || "Élève"}${classe}${location}`;
   }
- console.log("box après:", box?.className, getComputedStyle(box).display, box?.offsetHeight);
 }
 
 function hideIncomingAlert() {
-  const box    = document.getElementById("incoming-call-box");
-  const noCall = document.getElementById("no-call");
+  const box = document.getElementById("incoming-call-box");
   if (box) {
-    box.classList.remove("visible"); // Retire .visible ➔ CSS repasse à display: none
+    box.classList.remove("visible");
   }
-  if (noCall) noCall.style.display = "flex";
 }
 // ======================================================
 // VIDEO TRACKS
@@ -985,6 +951,29 @@ function updateCallStatus(text) {
   const el = document.getElementById("call-status");
   if (el) el.textContent = text;
 }
+function cleanupSession(message) {
+  if (cleanupSession._running) return;
+  cleanupSession._running = true;
+
+  // ✅ NOUVEAU — réinitialise l'état de la call state machine côté AppState,
+  // sinon la garde anti-spam de setCallState() bloque silencieusement la
+  // notification 'inCall' du prochain appel (elle reste bloquée sur la
+  // dernière valeur connue, qui est déjà 'inCall' après un premier appel).
+  AppState.setCallState(null);
+
+  // ✅ NOUVEAU — réinitialise aussi le nom de l'élève stocké,
+  // pour ne pas afficher par erreur le nom du précédent appelant
+  // si jamais l'affichage se déclenchait avant la prochaine mise à jour.
+  AppState.currentIncomingCallEleveName = null;
+  // ✅ NOUVEAU — réaffiche "Aucun appel en cours" à la vraie fin de session
+  const noCall = document.getElementById("no-call");
+  if (noCall) noCall.style.display = "flex";
+
+  // ✅ DOM partage écran
+  ScreenShareOverlay.hide();
+  const ssBtn = document.getElementById("screen-share-btn");
+  if (ssBtn) ssBtn.textContent = "🖥️";
+  }
 
 function renderCurrentUserInfo(user) {
   // 1. Récupération des données (on utilise 'user' passé en paramètre)

@@ -198,7 +198,6 @@ function saveAndRenderUser(user) {
 // APPEL D'UN PROFESSEUR — logique centralisée
 // ======================================================
 function attemptCallToProfessor(prof) {
-  console.log(`🔎 DIAG attemptCallToProfessor appelé, stack:`, new Error().stack);
   const user = AppState.currentUser;
   if (AppState.callInProgress || AppState.currentRoomId) {
     return { ok: false, reason: "call-in-progress" };
@@ -214,7 +213,6 @@ function attemptCallToProfessor(prof) {
       reason: !user?.has_payment_method ? "no-card" : "unavailable"
     };
   }
-
   // ✅ NOUVEAU — confirmation explicite du montant minimum avant l'appel
   const confirmed = window.confirm(
     `Vous êtes sur le point d'appeler ${prof.prenom} ${prof.nom}.\n\n` +
@@ -233,6 +231,7 @@ function attemptCallToProfessor(prof) {
     startedAt: Date.now(),
     roomId: AppState.currentRoomId
   };
+  socketService.markSessionActive();
   SessionService.callProfessor(prof.id);
   return { ok: true };
 }
