@@ -34,13 +34,21 @@ export const VideoService = {
 
       // 1️⃣ Écouteurs AVANT connexion (recommandé par LiveKit)
       this.room
-        .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+       .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
           this.attachTrack(track, "remote");
+          if (track.kind === Track.Kind.Video && track.source === Track.Source.Camera) {
+            this.showRemoteName(participant.name);
+          }
         })
+        .on(RoomEvent.ParticipantDisconnected, () => {
+          this.hideRemoteName();
+        })
+
         .on(RoomEvent.LocalTrackPublished, (publication) => {
           if (publication.track) this.attachTrack(publication.track, "local");
         })
         .on(RoomEvent.Disconnected, (reason) => {
+          this.hideRemoteName();
           if (this._silentDisconnect) {
             this._silentDisconnect = false;
             return;
@@ -78,6 +86,7 @@ export const VideoService = {
         participant.trackPublications.forEach((pub) => {
           if (pub.isSubscribed && pub.track) this.attachTrack(pub.track, "remote");
         });
+        this.showRemoteName(participant.name);
       });
 
     } catch (e) {
@@ -165,8 +174,41 @@ export const VideoService = {
     });
   },
 
-  attachTrack(track, side, attempts = 0) {
-    if (track.kind !== Track.Kind.Video && track.kind !== Track.Kind.Audio) return;
+  
+    // 🏷️ Affiche le nom de l'interlocuteur en haut à droite de sa vidéo
+  showRemoteName(name, attempts = 0) {
+    if (!name) return;
+    const host =
+      document.getElementById("remoteVideoContainer") ||
+      document.getElementById("remoteVideo")?.parentElement;
+
+    if (!host) {
+      if (attempts < 10) setTimeout(() => this.showRemoteName(name, attempts + 1), 500);
+      return;
+    }
+
+    if (getComputedStyle(host).position === "static") host.style.position = "relative";
+
+    let badge = document.getElementById("remote-name-badge");
+    if (!badge) {
+      badge = document.createElement("div");
+      badge.id = "remote-name-badge";
+      badge.style.cssText =
+        "position:absolute;top:10px;right:10px;z-index:5;padding:4px 12px;" +
+        "border-radius:999px;background:rgba(0,0,0,0.6);color:#fff;" +
+        "font-size:13px;font-weight:600;max-width:60%;white-space:nowrap;" +
+        "overflow:hidden;text-overflow:ellipsis;pointer-events:none;";
+      host.appendChild(badge);
+    }
+    badge.textContent = name;
+  },
+
+  hideRemoteName() {
+    document.getElementById("remote-name-badge")?.remove();
+  },
+
+   attachTrack(track, side, attempts = 0) {
+     if (track.kind !== Track.Kind.Video && track.kind !== Track.Kind.Audio) return;
 
     // ⚠️ Différence clé vs Twilio : la détection "écran partagé" se fait via track.source,
     // pas via track.name === "screen"

@@ -46,7 +46,7 @@ export async function joinRoom(ws, { roomId }, onlineProfessors, clients) {
             for (const participant of currentRoom) {
                 const role = participant.role || "eleve";
                 try {
-                    const token = await LiveKitService.generateToken(participant.userId, role, roomId);
+                    const token = await LiveKitService.generateToken(participant.userId, role, roomId, participant.userName);
                     safeSend(participant, {
                         type: "livekitToken",
                         token,
@@ -112,7 +112,7 @@ export async function joinRoom(ws, { roomId }, onlineProfessors, clients) {
 
         for (const participant of currentRoom) {
             const role = participant.role || "eleve";
-            const token = await LiveKitService.generateToken(participant.userId, role, roomId);
+            const token = await LiveKitService.generateToken(participant.userId, role, roomId, participant.userName);
             
             safeSend(participant, {
     type: "livekitToken",

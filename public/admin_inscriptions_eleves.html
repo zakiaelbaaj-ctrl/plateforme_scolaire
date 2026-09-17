@@ -256,7 +256,6 @@ async function confirmAction() {
   const { type, index } = pendingAction;
   const eleve = filteredEleves[index];
   const token = localStorage.getItem("token");
-
   // 1. Vérification immédiate avant l'appel
   if (!token) {
     alert("Session expirée ou Token manquant. Redirection vers la connexion...");

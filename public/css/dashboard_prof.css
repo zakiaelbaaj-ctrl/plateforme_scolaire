@@ -255,6 +255,19 @@ h3 {
   display: block;
   margin-top: 1px;
 }
+.session-eleve-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-md) var(--space-lg);
+}
+.session-eleve-info .label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 
 .top-bar__session {
   display: flex;

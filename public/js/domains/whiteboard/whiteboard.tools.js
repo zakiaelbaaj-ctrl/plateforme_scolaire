@@ -278,10 +278,11 @@ onPointerUp(pos) {
 
   if (isFullscreen) {
     const fsRect = document.fullscreenElement.getBoundingClientRect();
+    const s = this._canvas._wbScale || 1; // 📐 coordonnées virtuelles → écran
     input.style.cssText = `
       position:   absolute;
-      left:       ${pos.x}px;
-      top:        ${pos.y - 20}px;
+      left:       ${pos.x * s}px;
+      top:        ${pos.y * s - 20}px;
       z-index:    99999;
       font-size:  ${Math.max(12, this._getSize() * 5)}px;
       color:      ${this._getColor()};
@@ -298,8 +299,8 @@ onPointerUp(pos) {
     const rect = this._canvas.getBoundingClientRect();
     input.style.cssText = `
       position:   fixed;
-      left:       ${rect.left + pos.x}px;
-      top:        ${rect.top  + pos.y - 20}px;
+      left:       ${rect.left + pos.x * s}px;
+      top:        ${rect.top  + pos.y * s - 20}px;
       z-index:    99999;
       font-size:  ${Math.max(12, this._getSize() * 5)}px;
       color:      ${this._getColor()};

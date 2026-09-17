@@ -92,9 +92,10 @@ onText: (path) => {
 
   _getCanvasPos(e) {
     const rect = this.canvas.getBoundingClientRect();
+    const s = this._scale || 1; // 📐 écran → coordonnées virtuelles communes
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: (e.clientX - rect.left) / s,
+      y: (e.clientY - rect.top) / s
     };
   }
 
@@ -370,13 +371,21 @@ requestRedraw() {
   }
   this.canvas.width  = newW;
   this.canvas.height = newH;
-  this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-  this.ctx.scale(dpr, dpr);
+
+  // 📐 Largeur virtuelle commune à tous les appareils (PC, mobile, tablette)
+  const BOARD_W = 1600;
+  this._scale = rect.width / BOARD_W;
+  this.canvas._wbScale = this._scale; // partagé avec whiteboard.tools.js
+
+  this.ctx.setTransform(dpr * this._scale, 0, 0, dpr * this._scale, 0, 0);
   this.requestRedraw(); // ✅ dédupliqué via RAF
 }
 
-  clear() {
+ clear() {
+    this.ctx.save();
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // efface tout, quelle que soit l'échelle
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.restore();
   }
 
   destroy() {

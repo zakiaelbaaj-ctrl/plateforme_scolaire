@@ -311,10 +311,17 @@ function subscribeToDomains() {
     case 'calling':  updateCallStatus('Appel en cours...'); break;
     case 'ringing':
     case 'incoming': showIncomingCall(AppState.currentIncomingCallEleveId); break;
-    case 'inCall': 
+   case 'inCall':
   hideIncomingAlert();
-  updateCallStatus(`Session avec ${AppState.currentIncomingCallEleveName || "l'élève"}`); // ✅ ajusté
-  setSessionActive(true); 
+  updateCallStatus("En communication"); // ✅ redevient générique dans le header
+
+  // ✅ NOUVEAU — affiche le nom dans le panneau "Appels entrants"
+  const sessionEleveBox = document.getElementById("session-eleve-box");
+  const remoteEleveInfo = document.getElementById("remote-eleve-info");
+  if (remoteEleveInfo) remoteEleveInfo.textContent = AppState.currentIncomingCallEleveName || "Élève";
+  if (sessionEleveBox) sessionEleveBox.style.display = "block";
+
+  setSessionActive(true);
   break;
     case 'ended':    hideIncomingAlert(); cleanupSession('Session terminée'); break; // ✅
     case 'idle':     break; // ✅ ignore silencieusement
@@ -659,7 +666,7 @@ function onSessionStarted(event) {
 
   // ✅ CORRIGÉ — utilise le nom de l'élève au lieu du texte générique,
   // pour ne plus écraser l'info posée par case 'inCall'.
-  updateCallStatus(`Session avec ${AppState.currentIncomingCallEleveName || "l'élève"}`);
+  updateCallStatus("En communication");
   updateMicButton(true);
   updateCameraButton(true);
   setSessionActive(true);
@@ -968,6 +975,9 @@ function cleanupSession(message) {
   // ✅ NOUVEAU — réaffiche "Aucun appel en cours" à la vraie fin de session
   const noCall = document.getElementById("no-call");
   if (noCall) noCall.style.display = "flex";
+
+  const sessionEleveBox = document.getElementById("session-eleve-box");
+if (sessionEleveBox) sessionEleveBox.style.display = "none";
 
   // ✅ DOM partage écran
   ScreenShareOverlay.hide();

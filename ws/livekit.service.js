@@ -62,14 +62,15 @@ class LiveKitServiceClass {
     /**
      * 3️⃣ GÉNÉRATION DE TOKEN
      */
-    async generateToken(userId, role, roomId) {
+        async generateToken(userId, role, roomId, name = null) {
         try {
             const identity = role === "prof" ? `prof_${userId}` : `student_${userId}`;
 
             const at = new AccessToken(this.apiKey, this.apiSecret, {
-                identity,
-                ttl: "4h",
-            });
+                   identity,
+                   name: name || identity,
+                   ttl: "4h",
+               });
 
             at.addGrant({
                 room: roomId,
