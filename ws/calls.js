@@ -348,7 +348,57 @@ export async function rejectCall(ws, onlineProfessors, clients) {
   broadcastOnlineProfs(onlineProfessors, clients);
 }
 
+// =======================================================
+// ANNULATION PAR L'ÉLÈVE (avant réponse du prof)
+// =======================================================
+export async function cancelCall(ws, data, onlineProfessors, clients) {
+  if (ws.role !== "eleve") return;
 
+  const eleveId = ws.userId;
+  const profId  = Number(data?.profId);
+  if (!profId) {
+    return safeSend(ws, { type: "error", message: "profId manquant" });
+  }
+
+  const pendingCall = pendingCalls.get(profId);
+
+  // Rien à annuler (déjà accepté, refusé ou expiré) : on confirme quand même
+  if (!pendingCall || pendingCall.eleveId !== eleveId) {
+    console.log(`ℹ️ cancelCall sans appel en attente (élève ${eleveId} → prof ${profId})`);
+    return safeSend(ws, { type: "callCancelled", profId });
+  }
+
+  const roomId = `room_${profId}_${eleveId}`;
+
+  // Notifier le prof pour couper sa sonnerie et fermer sa boîte
+  const prof = onlineProfessors.get(profId);
+  if (prof?.ws?.readyState === 1) {
+    safeSend(prof.ws, {
+      type: "callCancelled",
+      eleveId,
+      reason: "cancelled_by_student",
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // 🗑️ Nettoyage DB anti-blocage
+  try {
+    await pool.query(`DELETE FROM rooms WHERE room_name = $1`, [roomId]);
+    console.log(`🗑️ DB Room nettoyée (Appel annulé par l'élève) : ${roomId}`);
+  } catch (dbErr) {
+    console.error("❌ Erreur nettoyage room en DB (annulation):", dbErr.message);
+  }
+
+  // Rétablir la disponibilité du prof
+  if (prof) prof.status = "disponible";
+  pendingCalls.delete(profId);
+
+  // Confirmer à l'élève
+  safeSend(ws, { type: "callCancelled", profId });
+
+  console.log(`🚫 Appel annulé par l'élève ${eleveId} → prof ${profId}`);
+  broadcastOnlineProfs(onlineProfessors, clients);
+}
 // =======================================================
 // DÉMARRER SESSION (INTERNE SERVEUR UNIQUEMENT)
 // 🔒 NE PAS APPELER DEPUIS LE CLIENT

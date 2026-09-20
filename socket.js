@@ -18,11 +18,11 @@ import {
   callProfessor,
   acceptCall,
   rejectCall,
+  cancelCall,
   endSessionForDisconnect,
   clearPendingCall,
   getPendingCall
 } from "./ws/calls.js";
-
 import {
   joinRoom,
   chatMessage,
@@ -327,7 +327,10 @@ async function handleMessage(ws, data) {
     return rejectCall(ws, onlineProfessors, clients);
   }
 
-  if (type === "cancelCall") return clearPendingCall(ws.userId);
+  if (type === "cancelCall") {
+    if (!data.profId) return safeSend(ws, { type: "error", message: "profId manquant" });
+    return cancelCall(ws, data, onlineProfessors, clients);
+  }
 
   if (type === "endSession") {
     console.log(`🔍 endSession reçu de ${ws.userId} (${ws.role})`);

@@ -609,7 +609,7 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
 .card--whiteboard { overflow: visible; }
 
 .whiteboard-canvas-wrapper {
-  background: #fff;
+  background: #e9ecef;   /* gris = hors du tableau partagé */
   margin: var(--space-md);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -621,6 +621,7 @@ h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; colo
 }
 
 .whiteboard-canvas-wrapper canvas {
+  background: #fff;        /* ✅ blanc = le tableau partagé */
   touch-action: none;
   display: block;
   width: 100%;

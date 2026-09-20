@@ -135,6 +135,9 @@ case "callTimeout":
   stopOutgoingCallSound();
   socketService.markSessionActive(); // ✅ NOUVEAU
   break;
+  case "callCancelled":
+  console.log("🚫 Annulation confirmée par le serveur", data);
+  break;
       case "invoice:ready": {
   console.log("📥 Facture disponible:", data.url);
 

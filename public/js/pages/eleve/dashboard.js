@@ -39,15 +39,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 2. Débloquer l'audio au premier clic
   const unlockAudio = () => {
-    const audio = document.getElementById("incomingCallSound");
-    if (audio) {
-      audio.muted = false;
-      audio.play().catch(() => {});
-      console.log("⚠️🤖 Audio débloqué");
-    }
-    document.removeEventListener("click", unlockAudio);
-  };
-  document.addEventListener("click", unlockAudio);
+  const audio = document.getElementById("outgoingCallSound");
+  if (audio) {
+    audio.muted = true;                 // 🔇 déblocage silencieux
+    audio.play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+        console.log("🔓 Audio débloqué (élève)");
+      })
+      .catch(() => { audio.muted = false; });
+  }
+  document.removeEventListener("click", unlockAudio);
+};
+document.addEventListener("click", unlockAudio);
 
   // 3. Récupération unique du profil utilisateur
   let userData = await getUserProfile();
@@ -194,6 +200,60 @@ function saveAndRenderUser(user) {
 // Optionnel : met à jour le bouton Rejoindre si présent
   if (typeof updateJoinButton === 'function') updateJoinButton(user);
 }
+// 🔔 Tonalité d'attente entendue par l'élève pendant que le prof est appelé
+function playOutgoingRing() {
+  const a = document.getElementById("outgoingCallSound");
+  console.log("🔔 playOutgoingRing — élément:", !!a, "| en pause:", a?.paused);
+  if (!a) return;
+  a.currentTime = 0;
+  a.play()
+    .then(() => console.log("✅ tonalité lancée"))
+    .catch(e => console.log("❌ tonalité bloquée:", e.name, e.message));
+}
+// 💬 Confirmation maison : le clic sur « Continuer » reste une interaction
+// utilisateur, contrairement à window.confirm qui la consomme (Safari).
+function showCallConfirm(prof, onConfirm) {
+  document.getElementById("call-confirm-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "call-confirm-overlay";
+  overlay.style.cssText = `
+    position:fixed; inset:0; z-index:99999; display:flex;
+    align-items:center; justify-content:center; background:rgba(0,0,0,.6);
+    font-family:system-ui, sans-serif;`;
+
+  overlay.innerHTML = `
+    <div style="background:#1b1b1b;color:#f0ead8;max-width:380px;width:90%;
+                padding:22px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);">
+      <p style="margin:0 0 12px;font-weight:600;">
+        Appeler ${prof.prenom} ${prof.nom} ?
+      </p>
+      <p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:#c9c3b4;">
+        La session est facturée au temps réel de communication, avec un montant
+        minimum de 2&nbsp;€ même pour un appel très court.
+      </p>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="call-confirm-no" style="padding:9px 14px;border-radius:8px;
+          border:1px solid #555;background:transparent;color:#ccc;cursor:pointer;">Annuler</button>
+        <button id="call-confirm-yes" style="padding:9px 16px;border-radius:8px;
+          border:none;background:#2196f3;color:#fff;font-weight:600;cursor:pointer;">Continuer</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#call-confirm-no").onclick = () => overlay.remove();
+  overlay.querySelector("#call-confirm-yes").onclick = () => {
+    overlay.remove();
+    onConfirm();               // ← exécuté dans le clic : l'audio est autorisé
+  };
+}
+function stopOutgoingRing() {
+  const a = document.getElementById("outgoingCallSound");
+  if (!a) return;
+  a.pause();
+  a.currentTime = 0;
+}
   // ======================================================
 // APPEL D'UN PROFESSEUR — logique centralisée
 // ======================================================
@@ -213,26 +273,21 @@ function attemptCallToProfessor(prof) {
       reason: !user?.has_payment_method ? "no-card" : "unavailable"
     };
   }
-  // ✅ NOUVEAU — confirmation explicite du montant minimum avant l'appel
-  const confirmed = window.confirm(
-    `Vous êtes sur le point d'appeler ${prof.prenom} ${prof.nom}.\n\n` +
-    `La session est facturée au temps réel de communication, avec un montant ` +
-    `minimum de 2€ même pour un appel très court.\n\nContinuer ?`
-  );
-  if (!confirmed) {
-    return { ok: false, reason: "cancelled-by-user" };
-  }
+    // 💬 Confirmation maison, puis appel déclenché depuis le clic « Continuer »
+  showCallConfirm(prof, () => {
+    playOutgoingRing();                 // 🔔 autorisé : on est dans un clic
 
-  AppState.callInProgress = true;
+    AppState.callInProgress = true;
+    AppState.currentProfId = prof.id;
+    AppState.currentSession = {
+      prof,
+      startedAt: Date.now(),
+      roomId: AppState.currentRoomId
+    };
+    socketService.markSessionActive();
+    SessionService.callProfessor(prof.id);
+  });
 
-  AppState.currentProfId = prof.id;
-  AppState.currentSession = {
-    prof,
-    startedAt: Date.now(),
-    roomId: AppState.currentRoomId
-  };
-  socketService.markSessionActive();
-  SessionService.callProfessor(prof.id);
   return { ok: true };
 }
 // ======================================================
@@ -408,31 +463,40 @@ ScreenShareService.onStop(() => {
   const btn = document.getElementById("screen-share-btn");
   if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
 });
+
   // ================= CALL =================
   AppState.on('ui:updateTools', (canUse) => { 
   AppState.canUseTools = canUse;
   updateToolButtons();
 });
   AppState.on('callState:change', (state) => {
-  switch (state) {
-    case 'calling':  updateCallStatus('Appel en cours...'); break;
+    switch (state) {
+    case 'calling':
+      updateCallStatus('Appel en cours...');
+      playOutgoingRing();          // ▶️ ça sonne chez l'élève
+      break;
     case 'ringing':  updateCallStatus('Appel entrant...'); break;
-    case 'inCall':   updateCallStatus('En communication'); break;
+    case 'inCall':
+      stopOutgoingRing();          // ⏹️ le prof a décroché
+      updateCallStatus('En communication');
+      break;
     case 'ended':
-      AppState.callInProgress = false; // ✅ libère le verrou    
+      stopOutgoingRing();
+      AppState.callInProgress = false; // ✅ libère le verrou
       cleanupSession('Session terminée');
      break;
     case 'idle':      // ← AJOUT (déclenché par CallStateMachine.reset())
     case null:
+      stopOutgoingRing();
       AppState.callInProgress = false; // ✅ libère le verrou
       cleanupSession("En attente d'un élève…"); break;
     // default vide  ignore les états inconnus
   }
 });
 // ================= CALL TIMEOUT (prof n'a pas répondu) =================
-  AppState.on('call:timeout', (data) => {
+    AppState.on('call:timeout', (data) => {
+    stopOutgoingRing();          // ⏹️ le prof n'a pas répondu
     console.log("⏱️ Appel expiré, le professeur n'a pas répondu", data);
-    
     AppState.callInProgress = false; // ✅ NOUVEAU — libère le verrou
     cleanupSession("Le professeur n'a pas répondu");
     AppState.currentProfId = null;
@@ -446,6 +510,7 @@ ScreenShareService.onStop(() => {
   });
   // ================= APPEL REFUSÉ PAR LE PROF =================
 AppState.on('call:rejected', (data) => {
+  stopOutgoingRing();          // ⏹️ le prof a refusé
   console.log("❌ Appel refusé par le professeur", data);
 
   AppState.callInProgress = false; // ✅ libère le verrou anti-double-appel

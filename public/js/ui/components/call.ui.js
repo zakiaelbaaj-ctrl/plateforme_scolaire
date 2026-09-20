@@ -5,7 +5,8 @@
 // ======================================================
 // --- Fonctions utilitaires ---
 // --- DANS call.ui.js ---
-
+import { socketService } from "/js/core/socket.service.js";
+import { AppState }      from "/js/core/state.js";
 /// --- Fonctions utilitaires ---
 let ringtoneAudio;
 
@@ -15,7 +16,22 @@ export function showCallingUI(data) {
   if (!document.querySelector("#call-overlay")) {
     CallUI.showOutgoing(
       { toName: data.profName || "le professeur" },
-      { onCancel: () => {} }
+              {
+        onCancel: () => {
+          const profId = AppState.currentProfId;
+          if (profId) {
+            socketService.send({ type: "cancelCall", profId });
+            console.log("🚫 Annulation de l'appel envoyée au serveur, prof:", profId);
+          } else {
+            console.warn("⚠️ Annulation impossible : aucun professeur en cours");
+          }
+
+          stopOutgoingCallSound();       // ⏹️ son géré par call.ui.js
+          CallUI.hide();
+          AppState.callInProgress = false;
+          AppState.setCallState(null);   // → 'idle' : coupe aussi la tonalité de la page
+        }
+      }
     );
   }
 

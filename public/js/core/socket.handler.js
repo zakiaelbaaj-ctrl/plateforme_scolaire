@@ -64,7 +64,15 @@ const normalizedDoc = {
      case "livekitToken":
        CallService.handleEvent(data);
        break;
-
+      case "callCancelled":
+  // 🚫 L'élève a annulé avant que le prof ne décroche
+  console.log("🚫 Appel annulé par l'élève", data);
+  AppState.currentIncomingCallEleveId = null;
+  AppState.currentIncomingCallEleveName = null;
+  AppState._notify("call:timeout", data);   // → hideIncomingAlert() : sonnerie coupée, boîte fermée
+  CallStateMachine.reset();                 // 🔓 libère l'état pour le prochain appel
+  socketService.markSessionActive();
+  break;
 case "callRejected":
 case "callTimeout":
   CallService.handleEvent(data);

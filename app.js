@@ -66,6 +66,11 @@ app.use(helmet({
       "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       "img-src": ["'self'", "data:", "https://res.cloudinary.com"],
       "font-src": ["'self'", "https://fonts.gstatic.com"],
+      // 🔓 En local (HTTP), on désactive la réécriture automatique en HTTPS,
+      // qui empêche le chargement des images, polices et manifest.
+      ...(process.env.NODE_ENV === "development"
+        ? { "upgrade-insecure-requests": null }
+        : {}),
     },
   },
   xssFilter: false,

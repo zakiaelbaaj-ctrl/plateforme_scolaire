@@ -92,10 +92,12 @@ onText: (path) => {
 
   _getCanvasPos(e) {
     const rect = this.canvas.getBoundingClientRect();
-    const s = this._scale || 1; // 📐 écran → coordonnées virtuelles communes
+    const s  = this._scale   || 1;   // 📐 écran → tableau virtuel 1600×900
+    const ox = this._offsetX || 0;   // marge de centrage horizontale
+    const oy = this._offsetY || 0;   // marge de centrage verticale
     return {
-      x: (e.clientX - rect.left) / s,
-      y: (e.clientY - rect.top) / s
+      x: (e.clientX - rect.left - ox) / s,
+      y: (e.clientY - rect.top  - oy) / s
     };
   }
 
@@ -359,28 +361,54 @@ requestRedraw() {
   }
  resizeCanvas() {
   if (this._disposed) return;
-  if (this._inFullscreenTransition) return; // ✅ ignorer pendant la transition
+  if (this._inFullscreenTransition) return;
+
   const wrapper = this.canvas.parentElement;
   const rect = wrapper?.getBoundingClientRect() ?? this.canvas.getBoundingClientRect();
   if (rect.width < 100 || rect.height < 100) return;
-  const dpr = window.devicePixelRatio || 1;
-  const newW = Math.round(rect.width  * dpr);
-  const newH = Math.round(rect.height * dpr);
-  if (this.canvas.width === newW && this.canvas.height === newH) {
-    return;
-  }
-  this.canvas.width  = newW;
-  this.canvas.height = newH;
 
-  // 📐 Largeur virtuelle commune à tous les appareils (PC, mobile, tablette)
+  // Le conteneur doit servir de repère au positionnement du canvas
+  if (wrapper && getComputedStyle(wrapper).position === "static") {
+    wrapper.style.position = "relative";
+  }
+
+  const dpr = window.devicePixelRatio || 1;
+
+  // 📐 Tableau virtuel commun à TOUS les appareils
   const BOARD_W = 1600;
-  this._scale = rect.width / BOARD_W;
-  this.canvas._wbScale = this._scale; // partagé avec whiteboard.tools.js
+  const BOARD_H = 900;
+
+  // Échelle qui fait tenir le tableau entier dans le conteneur
+  this._scale = Math.min(rect.width / BOARD_W, rect.height / BOARD_H);
+
+  // 🎯 Le canvas OCCUPE exactement le tableau, centré dans le conteneur.
+  //    Plus aucune zone dessinable en dehors du cadre partagé.
+  const cssW = BOARD_W * this._scale;
+  const cssH = BOARD_H * this._scale;
+
+  this.canvas.style.position = "absolute";
+  this.canvas.style.left   = (rect.width  - cssW) / 2 + "px";
+  this.canvas.style.top    = (rect.height - cssH) / 2 + "px";
+  this.canvas.style.width  = cssW + "px";
+  this.canvas.style.height = cssH + "px";
+
+  // Le canvas EST le tableau : il n'y a plus de marge à compenser
+  this._offsetX = 0;
+  this._offsetY = 0;
+  this.canvas._wbScale   = this._scale;
+  this.canvas._wbOffsetX = 0;
+  this.canvas._wbOffsetY = 0;
+
+  const newW = Math.round(cssW * dpr);
+  const newH = Math.round(cssH * dpr);
+  if (this.canvas.width !== newW || this.canvas.height !== newH) {
+    this.canvas.width  = newW;
+    this.canvas.height = newH;
+  }
 
   this.ctx.setTransform(dpr * this._scale, 0, 0, dpr * this._scale, 0, 0);
-  this.requestRedraw(); // ✅ dédupliqué via RAF
+  this.requestRedraw();
 }
-
  clear() {
     this.ctx.save();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0); // efface tout, quelle que soit l'échelle

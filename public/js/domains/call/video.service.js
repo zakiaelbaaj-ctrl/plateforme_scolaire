@@ -201,10 +201,33 @@ export const VideoService = {
       host.appendChild(badge);
     }
     badge.textContent = name;
+
+    // 📏 Évite que l'en-tête collant (header.top-bar) ne recouvre le badge
+    this._positionRemoteName();
+    if (!this._badgeReposition) {
+      this._badgeReposition = () => this._positionRemoteName();
+      window.addEventListener("scroll", this._badgeReposition, { passive: true });
+      window.addEventListener("resize", this._badgeReposition);
+    }
+  },
+
+  _positionRemoteName() {
+    const badge = document.getElementById("remote-name-badge");
+    const host = badge?.parentElement;
+    if (!badge || !host) return;
+    const header = document.querySelector("header.top-bar");
+    const basHeader = header ? header.getBoundingClientRect().bottom : 0;
+    const hautHost = host.getBoundingClientRect().top;
+    badge.style.top = Math.max(10, Math.round(basHeader - hautHost + 8)) + "px";
   },
 
   hideRemoteName() {
     document.getElementById("remote-name-badge")?.remove();
+    if (this._badgeReposition) {
+      window.removeEventListener("scroll", this._badgeReposition);
+      window.removeEventListener("resize", this._badgeReposition);
+      this._badgeReposition = null;
+    }
   },
 
    attachTrack(track, side, attempts = 0) {

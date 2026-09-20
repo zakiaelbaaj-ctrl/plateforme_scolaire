@@ -184,11 +184,59 @@ document.addEventListener("DOMContentLoaded", async () => {
   checkIOSInstallPrompt();
   // 1. Gérer immédiatement le retour de Stripe (Succès/Annulation)
     handleAllStripeReturns();
-  // Débloquer l'audio dès la première interaction
-  document.addEventListener("click", () => {
+    // 🔇 Déblocage de l'audio des appels (politique autoplay des navigateurs)
+  let audioDebloque = false;
+  const GESTES_AUDIO = ["click", "pointerdown", "keydown", "touchstart"];
+
+  function afficherBanniereSon() {
+    if (audioDebloque || document.getElementById("activer-son-banniere")) return;
+    const bouton = document.createElement("button");
+    bouton.id = "activer-son-banniere";
+    bouton.textContent = "🔔 Activer le son des appels";
+    bouton.style.cssText =
+      "position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:9999;" +
+      "padding:12px 20px;border:none;border-radius:999px;background:#0b5ed7;color:#fff;" +
+      "font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)";
+    document.body.appendChild(bouton);
+  }
+
+    const debloquerAudio = () => {
+    if (audioDebloque) return;
     const audio = document.getElementById("incomingCallSound");
-    if (audio) { audio.muted = false; audio.play().catch(() => {}); }
-  }, { once: true });
+    if (!audio) return;
+
+    audio.muted = true;
+    audio.volume = 0;
+    audio.play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audioDebloque = true;
+        console.log("🔓 Audio débloqué (prof) — paused:", audio.paused);
+
+        // Filet : on ne rétablit le volume qu'une fois certain que le son est arrêté
+        setTimeout(() => {
+          if (!audio.paused) {
+            audio.pause();
+            audio.currentTime = 0;
+            console.warn("⚠️ La sonnerie jouait encore, arrêt forcé");
+          }
+          audio.muted = false;
+          audio.volume = 1;
+        }, 400);
+
+        document.getElementById("activer-son-banniere")?.remove();
+        GESTES_AUDIO.forEach((e) => document.removeEventListener(e, debloquerAudio));
+      })
+      .catch((err) => {
+        audio.muted = false;
+        audio.volume = 1;
+        console.warn("🔇 Audio encore bloqué :", err.name);
+      });
+  };
+
+  GESTES_AUDIO.forEach((e) => document.addEventListener(e, debloquerAudio));
+  setTimeout(() => { if (!audioDebloque) afficherBanniereSon(); }, 1500);
 
   const userData = await getUserProfile();
   if (!userData) {
@@ -310,7 +358,12 @@ function subscribeToDomains() {
   switch (state) {
     case 'calling':  updateCallStatus('Appel en cours...'); break;
     case 'ringing':
-    case 'incoming': showIncomingCall(AppState.currentIncomingCallEleveId); break;
+    case 'incoming':
+      showIncomingCall({
+        eleveId:   AppState.currentIncomingCallEleveId,
+        eleveName: AppState.currentIncomingCallEleveName
+      });
+      break;
    case 'inCall':
   hideIncomingAlert();
   updateCallStatus("En communication"); // ✅ redevient générique dans le header
@@ -690,8 +743,6 @@ function setSessionActive(active) {
   if (badge)  badge.classList.toggle("active", active);
   if (timer)  timer.style.display = active ? "" : "none";
 }
-
-
 // ======================================================
 // CALL UI
 // ======================================================
@@ -699,11 +750,18 @@ function setSessionActive(active) {
   function showIncomingCall({ eleveId, eleveName, eleveVille, elevePays, eleveClasse } = {}) {
   socketService.markSessionActive();
 
-  AppState.currentIncomingCallEleveId = eleveId ?? null;
-  AppState.currentIncomingCallEleveName = eleveName ?? null;
+  // ✅ ne pas effacer les infos si l'appel est réaffiché sans données
+  if (eleveId   != null) AppState.currentIncomingCallEleveId   = eleveId;
+  if (eleveName != null) AppState.currentIncomingCallEleveName = eleveName;
 
+  // 🔔 ne relance pas la sonnerie si elle joue déjà
   const audio = document.getElementById("incomingCallSound");
-  audio?.play().catch(() => {});
+  if (audio && audio.paused) {
+    audio.currentTime = 0;
+    audio.play()
+      .then(() => console.log("🔔 Sonnerie prof lancée"))
+      .catch((err) => console.warn("🔇 Sonnerie prof bloquée :", err.name));
+  }
 
   const box    = document.getElementById("incoming-call-box");
   const text   = document.getElementById("incoming-call-text");
@@ -722,6 +780,13 @@ function setSessionActive(active) {
 }
 
 function hideIncomingAlert() {
+  // 🔇 Coupe la sonnerie dès que l'appel est accepté, refusé ou terminé
+  const sonnerie = document.getElementById("incomingCallSound");
+  if (sonnerie) {
+    sonnerie.pause();
+    sonnerie.currentTime = 0;
+  }
+
   const box = document.getElementById("incoming-call-box");
   if (box) {
     box.classList.remove("visible");
