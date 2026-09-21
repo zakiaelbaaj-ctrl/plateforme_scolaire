@@ -25,6 +25,7 @@
     .eleves { background: var(--color-eleves); }
     .etudiants { background: var(--color-etudiants); }
     .professeurs { background: var(--color-professeurs); }
+    .accroche { font-size: 1.15rem; color: #555; margin: 0 auto 2rem; max-width: 40rem; line-height: 1.5; }
     
     /* Masquer le footer admin si déjà logué en élève */
     #admin-footer { margin-top: 40px; opacity: 0.6; }
@@ -47,31 +48,35 @@
 
   <header>
     <img src="images/logo.png" alt="Logo">
-  <h1>Urgence Scolaire 📚</h1>
+  <h1 data-i18n="accueil.titre">Urgence Scolaire 📚</h1>
+  <select id="selecteurLangue" aria-label="Langue"
+          style="margin-inline-start:auto;font-family:inherit;font-size:.95rem;padding:6px 10px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;">
+  </select>
 </header>
 
         <main>
+        <p class="accroche" data-i18n="accueil.accroche">Un professeur disponible en quelques minutes, où que vous soyez.</p>
         <div class="ligne">
        <a href="pages/eleve/login.html" class="carte eleves">
-        <h2>👦 Élèves</h2>
-        <p>Accédez à vos cours et sessions.</p>
-        <span class="btn-entrer">Entrer</span>
+        <h2 data-i18n="accueil.eleves.titre">👦 Élèves</h2>
+        <p data-i18n="accueil.eleves.texte">Accédez à vos cours et sessions.</p>
+        <span class="btn-entrer" data-i18n="accueil.entrer">Entrer</span>
       </a>
       <a href="pages/etudiant/login.html" class="carte etudiants">
-        <h2>🎓 Étudiants</h2>
-        <p>Rejoignez vos sessions universitaires.</p>
-        <span class="btn-entrer">Entrer</span>
+        <h2 data-i18n="accueil.etudiants.titre">🎓 Étudiants</h2>
+        <p data-i18n="accueil.etudiants.texte">Rejoignez vos sessions universitaires.</p>
+        <span class="btn-entrer" data-i18n="accueil.entrer">Entrer</span>
       </a>
       <a href="pages/professeur/login.html" class="carte professeurs">
-        <h2>👨‍🏫 Professeurs</h2>
-        <p>Gérez vos classes et vos élèves.</p>
-        <span class="btn-entrer">Entrer</span>
+        <h2 data-i18n="accueil.profs.titre">👨‍🏫 Professeurs</h2>
+        <p data-i18n="accueil.profs.texte">Gérez vos classes et vos élèves.</p>
+        <span class="btn-entrer" data-i18n="accueil.entrer">Entrer</span>
       </a>
     </div>
   </main>
 
   <footer id="admin-footer">
-    <a href="login_admin.html" style="color: #333; text-decoration: none; font-size: 0.8rem;">🔐 Accès Admin</a>
+    <a href="login_admin.html" style="color: #333; text-decoration: none; font-size: 0.8rem;" data-i18n="accueil.admin">🔐 Accès Admin</a>
   </footer>
 
   <script>
@@ -105,5 +110,25 @@
     }
 
   </script>
+  <script type="module">
+    import { initI18n, definirLangue, LANGUES } from "/js/core/i18n.js";
+
+    (async () => {
+      const langue = await initI18n();
+      const select = document.getElementById("selecteurLangue");
+      if (!select) return;
+
+      LANGUES.forEach((l) => {
+        const opt = document.createElement("option");
+        opt.value = l.code;
+        opt.textContent = l.nomNatif;
+        if (l.code === langue.code) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener("change", () => definirLangue(select.value));
+    })();
+  </script>
+
   </body>
 </html>

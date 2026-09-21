@@ -1,0 +1,20 @@
+{
+  "accueil": {
+    "titre": "Urgence Scolaire 📚",
+    "entrer": "Entrar",
+    "admin": "🔐 Acceso administrador",
+    "eleves": {
+      "titre": "👦 Alumnos",
+      "texte": "Accede a tus cursos y sesiones."
+    },
+    "etudiants": {
+      "titre": "🎓 Estudiantes",
+      "texte": "Únete a tus sesiones universitarias."
+    },
+    "profs": {
+      "titre": "👨‍🏫 Profesores",
+      "texte": "Gestiona tus clases y alumnos."
+    },
+    "accroche": "Un profesor disponible en pocos minutos, estés donde estés."
+  }
+}
