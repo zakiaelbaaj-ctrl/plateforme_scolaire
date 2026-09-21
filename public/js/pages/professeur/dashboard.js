@@ -391,6 +391,16 @@ function subscribeToDomains() {
     const s = String(seconds % 60).padStart(2, "0");
     updateTimerUI(`${m}:${s}`);
   });
+    // 🔄 Fin de session : remise à zéro du minuteur et du badge.
+  //    stopTimer() émet bien timer:reset, mais personne ne l'écoutait côté prof,
+  //    d'où un compteur figé sur sa dernière valeur et un badge resté
+  //    sur « En communication ».
+  AppState.on("timer:reset", () => updateTimerUI("00:00"));
+
+  AppState.on("session:end", () => {
+    updateTimerUI("00:00");
+    updateCallStatus("En attente d'un élève…");
+  });
   AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
   AppState.on('call:incoming',      (data)   => showIncomingCall(data));
   
