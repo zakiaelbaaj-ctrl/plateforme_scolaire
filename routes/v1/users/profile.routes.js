@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "../../../config/db.js";
 import { requireAuth } from "../../../middlewares/requireAuth.js";
+import { langueParCode } from "../../../public/js/shared/langues.js";
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get("/me", requireAuth, async (req, res) => {
     const userId = req.user.id;
 
     const { rows } = await pool.query(
-      `SELECT id, prenom, nom, email, role, ville, pays, matiere, niveau, sujet, classe,
+      `SELECT id, prenom, nom, email, role, ville, pays, matiere, niveau, sujet, classe, langue,
               stripe_customer_id, has_payment_method, photo_identite_url
        FROM users
        WHERE id = $1`,
@@ -37,7 +38,10 @@ router.get("/me", requireAuth, async (req, res) => {
 // ======================================================
 router.put("/", requireAuth, async (req, res) => {
   const userId = req.user.id;
-  const { ville, pays, matiere, niveau, sujet, classe } = req.body;
+  const { ville, pays, matiere, niveau, sujet, classe, langue } = req.body;
+
+  // Seule une langue connue est acceptee ; toute autre valeur est ignoree.
+  const langueValide = langueParCode(langue) ? langue : null;
 
   try {
     const { rows } = await pool.query(
@@ -67,9 +71,10 @@ router.put("/", requireAuth, async (req, res) => {
            matiere = COALESCE($3, matiere),
            niveau = COALESCE($4, niveau),
            sujet = COALESCE($5, sujet),
-           classe = COALESCE($6, classe)
-       WHERE id = $7`,
-      [ville ?? null, pays ?? null, finalMatiere, finalNiveau, finalSujet, classe || null, userId]
+           classe = COALESCE($6, classe),
+           langue = COALESCE($7, langue)
+       WHERE id = $8`,
+      [ville ?? null, pays ?? null, finalMatiere, finalNiveau, finalSujet, classe || null, langueValide, userId]
     );
 
     res.json({ success: true });

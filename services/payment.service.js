@@ -148,7 +148,7 @@ export async function processSessionPayment(roomId, sessionId = null) {
     const resolvedSessionId = sessionData.id;  // ✅ renommé, plus de conflit
 
     const users = await db.query(
-      `SELECT id, email, username, role, stripe_customer_id, stripe_account_id, currency, is_university_prof, is_subscriber 
+      `SELECT id, email, username, role, stripe_customer_id, stripe_account_id, currency, is_university_prof, is_subscriber, mode_versement 
        FROM users WHERE id IN (:profId, :eleveId)`,
       { replacements: { profId, eleveId }, type: QueryTypes.SELECT }
     );
@@ -252,6 +252,42 @@ if (totalAmountEUR < 50) {
    WHERE id = $3`,
       [paymentIntent.id, totalAmountEUR / 100, resolvedSessionId]
     );
+
+    // 💶 Si Stripe n a transfere aucun fonds au professeur, l argent est reste
+    // sur le compte plateforme : on inscrit ce qui lui est du, pour pouvoir
+    // le lui verser par virement et en justifier le detail.
+    const stripeATransfere = Boolean(prof.stripe_account_id?.trim());
+    if (!stripeATransfere) {
+      const montantProf = totalAmountEUR - feeAmountEUR;
+      try {
+        await pool.query(
+          `INSERT INTO versements_dus (prof_id, visio_session_id, montant_cents, devise)
+           VALUES ($1, $2, $3, 'EUR')
+           ON CONFLICT (visio_session_id) DO NOTHING`,
+          [profId, resolvedSessionId, montantProf]
+        );
+
+        // Le solde est recalcule depuis la table, jamais incremente :
+        // il se repare ainsi de lui-meme en cas d incident.
+        await pool.query(
+          `UPDATE users
+              SET balance = COALESCE((
+                    SELECT SUM(montant_cents)
+                      FROM versements_dus
+                     WHERE prof_id = $1 AND statut = 'du'
+                  ), 0) / 100.0
+            WHERE id = $1`,
+          [profId]
+        );
+
+        logger.info(
+          `💶 Versement du au prof ${profId} : ${montantProf / 100} € ` +
+          `(mode ${prof.mode_versement || "non defini"}, session ${resolvedSessionId})`
+        );
+      } catch (err) {
+        logger.error("⚠️ Echec inscription du versement du (non bloquant):", { message: err.message });
+      }
+    }
     // ✅ La génération du PDF
     const { generateInvoicePdf } = await import("./invoicePdf.js"); // Adaptez le chemin
     const invoiceNumber = `VID-${profId}-${eleveId}-${Date.now()}`;
