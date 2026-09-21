@@ -153,7 +153,11 @@ if (this.sessionInProgress && this.currentRoomId !== roomId) {
   callSeconds: 0,
   timerInterval: null,
 
-  startTimer() {
+  sessionStartedAt: null,
+
+  // Le minuteur n'incremente plus : il affiche l'ecart avec l'horodatage
+  // fourni par le serveur, identique pour le professeur et pour l'eleve.
+  startTimer(startedAt) {
 
     if (this.timerInterval) {
         console.warn("⚠️ Timer déjà actif");
@@ -161,18 +165,19 @@ if (this.sessionInProgress && this.currentRoomId !== roomId) {
     }
 
     this.timerRunning = true;
-    this.callSeconds = 0;
+    this.sessionStartedAt = startedAt || Date.now();
 
-    console.log(
-      "🔥 TIMER INTERVAL CREATED",
-      new Date().toISOString()
-    );
+    const ecoule = () =>
+      Math.max(0, Math.floor((Date.now() - this.sessionStartedAt) / 1000));
+
+    this.callSeconds = ecoule();
 
     this._notify("timer:start");
+    this._notify("timer:update", this.callSeconds);
 
     this.timerInterval = setInterval(() => {
 
-        this.callSeconds++;
+        this.callSeconds = ecoule();
 
         this._notify(
           "timer:update",
@@ -192,6 +197,7 @@ stopTimer() {
     this.timerInterval = null;
     this.timerRunning = false;
     this.callSeconds = 0;
+    this.sessionStartedAt = null;
 
     this._notify("timer:reset");
 },
@@ -333,9 +339,7 @@ this._notify("documents:new", doc);
 
     console.log("📥 _notify:", event, payload);
      // 🔎 TRACE UNIQUEMENT POUR LE TIMER
-if (event === "timer:update") {
-  console.trace("⏱️ timer:update appelé avec :", payload);
-}
+
     for (const cb of listenersCopy) {
       try {
         cb(payload);

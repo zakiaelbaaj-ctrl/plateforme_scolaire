@@ -95,6 +95,7 @@ case "session:stop":
   break;
 
       case "startSession": 
+  AppState.sessionStartedAt = data.startedAt ?? Date.now();
   this.handleStartSession(data); 
   break;
 
@@ -111,7 +112,7 @@ case "joinedRoom": {
 // ✅ PAS de setCallState ici (CallService.handleEvent("startSession") le fait)
 
 // ✅ Timer démarré ici, une seule fois
-AppState.startTimer();
+AppState.startTimer(AppState.sessionStartedAt);
 break;
 }
 

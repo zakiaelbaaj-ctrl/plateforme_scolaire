@@ -68,69 +68,7 @@
       <div class="form-group">
       <label for="matiere">Matière(s) enseignée(s)</label>
       <select id="matiere" name="matiere[]" multiple required>
-      <optgroup label="Général">
-            <option value="Mathématiques">Mathématiques</option>
-            <option value="Français">Français</option>
-            <option value="Anglais">Anglais</option>
-            <option value="Histoire-Géographie">Histoire-Géographie</option>
-            <option value="Philosophie">Philosophie</option>
-            <option value="Économie">Économie</option>
-            <option value="Finance">Finance</option>
-            <option value="Droit">Droit</option>
-          </optgroup>
-
-          <optgroup label="Sciences">
-            <option value="Physique-Chimie">Physique-Chimie</option>
-            <option value="SVT">SVT</option>
-            <option value="Biologie">Biologie</option>
-            <option value="Chimie">Chimie</option>
-            <option value="Médecine">Médecine</option>
-          </optgroup>
-
-          <optgroup label="Techniques & Informatique">
-            <option value="Modélisation 3D">Modélisation 3D</option>
-            <option value="Architecture">Architecture</option>
-            <option value="Informatique">Informatique</option>
-            <option value="Informatique - Programmation">Informatique - Programmation</option>
-            <option value="Réseaux & Systèmes">Réseaux & Systèmes</option>
-          </optgroup>
-          <optgroup label="Religion">
-            <option value="Religion Islamique">Religion Islamique</option>
-            <option value="Lecture Coranique">Lecture Coranique</option>
-            <option value="Religion Catholique">Religion Catholique</option>
-            <option value="Religion Protestante">Religion Protestante</option>
-            <option value="Religion Juive">Religion Juive</option>
-          </optgroup>
-          <optgroup label="Commerce & Gestion">
-            <option value="Économie-Gestion">Économie-Gestion</option>
-            <option value="Comptabilité">Comptabilité</option>
-            <option value="Marketing">Marketing</option>
-            <option value="Sciences Politiques">Sciences Politiques</option>
-          </optgroup>
-           <optgroup label="Gastronomie">
-           <option value="Patisserie">Patisserie</option>
-            <option value="Biscuiterie">Biscuiterie</option>
-            <option value="Cuisine">Cuisine</option>
-          </optgroup>
-          <optgroup label="Arts">
-            <option value="Musique">Musique</option>
-            <option value="Arts plastiques">Arts plastiques</option>
-          </optgroup>
-
-          <optgroup label="Orientation et carrière">
-            <option value="Orientation scolaire et professionnelle">Orientation scolaire et professionnelle</option>
-            <option value="Conseil en carrière">Conseil en carrière</option>
-            <option value="Préparation aux entretiens">Préparation aux entretiens</option>
-            <option value="Rédaction de CV et lettre de motivation">Rédaction de CV et lettre de motivation</option>
-            <option value="Développement personnel">Développement personnel</option>
-            <option value="Prise de parole en public">Prise de parole en public</option>
-          </optgroup>
-
-          <optgroup label="Autres">
-            <option value="Formation professionnelle">Formation professionnelle</option>
-          </optgroup>
-
-        </select>
+      </select>
       </div>
 
       <div class="form-group">
@@ -351,6 +289,23 @@
 
   <script type="module">
     import { CLASSES_PAR_NIVEAU } from "/js/shared/niveaux.js";
+    import { MATIERES } from "/js/shared/matieres.js";
+
+    (function remplirMatieres() {
+      const select = document.getElementById("matiere");
+      if (!select) return;
+      for (const [groupe, matieres] of Object.entries(MATIERES)) {
+        const og = document.createElement("optgroup");
+        og.label = groupe;
+        matieres.forEach((m) => {
+          const opt = document.createElement("option");
+          opt.value = m;
+          opt.textContent = m;
+          og.appendChild(opt);
+        });
+        select.appendChild(og);
+      }
+    })();
 
     const niveauSelect = document.getElementById("niveau");
     const classesSelect = document.getElementById("classes");

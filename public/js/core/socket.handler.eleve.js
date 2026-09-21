@@ -105,7 +105,7 @@ case "professorsList": {
   break;
 }
 case "livekitToken":
-  AppState.startTimer(); // ✔️ Timer démarre uniquement quand LiveKit confirme
+  AppState.startTimer(AppState.sessionStartedAt); // ✔️ Timer démarre uniquement quand LiveKit confirme
   CallService.handleEvent(data);
   break;
 
@@ -191,6 +191,7 @@ case "endSession": {
   break;
 }
    case "startSession":
+       AppState.sessionStartedAt = data.startedAt ?? Date.now();
        this.handleStartSession(data);
        break;
        case "joinedRoom": {

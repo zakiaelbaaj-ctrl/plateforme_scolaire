@@ -90,16 +90,21 @@ export function handleStartSession(ws, { roomId, studentId }, clients) {
     timestamp: new Date().toISOString()
   });
 
+  // ⏱️ Horodatage unique : les deux cotes compteront depuis cet instant.
+  const startedAt = Date.now();
+
   // 2️⃣ startSession → prof
   safeSend(ws, {
     type: "startSession",
-    roomId
+    roomId,
+    startedAt
   });
 
   // 3️⃣ startSession → élève
   safeSend(student, {
     type: "startSession",
-    roomId
+    roomId,
+    startedAt
   });
 
   console.log("✅ Session démarrée proprement (une seule fois)");
