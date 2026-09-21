@@ -24,6 +24,7 @@ function addProfessor(prof) {
     existing.pays = prof.pays;
     existing.matiere = prof.matiere;
     existing.niveau = prof.niveau;
+    existing.classes = prof.classes;
     existing.photo_identite_url = prof.photo_identite_url;
     existing.lastActiveAt = prof.lastActiveAt;
     onlineProfessors.set(prof.id, existing);
@@ -150,6 +151,7 @@ export function getOnlineProfessors() {
       pays: prof.pays,
       matiere: prof.matiere || null,
       niveau: prof.niveau || null,
+      classes: prof.classes || null,
       photo_identite_url: prof.photo_identite_url,
       status: prof.status,
       disponibilite: disponibiliteReelle,

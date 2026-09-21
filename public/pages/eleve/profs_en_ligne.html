@@ -286,6 +286,8 @@
         <option value="Physique-Chimie">Physique-Chimie</option>
         <option value="SVT">SVT</option>
         <option value="Informatique">Informatique</option>
+        <option value="Finance">Finance</option>
+        <option value="Architecture">Architecture</option>
       </select>
     </div>
 
@@ -545,12 +547,19 @@ function showProfileCompletionModal() {
   const eleveNiveau = Array.isArray(currentUserData?.niveau)
     ? currentUserData.niveau[0]
     : currentUserData?.niveau;
+  const eleveClasse = Array.isArray(currentUserData?.classe)
+    ? currentUserData.classe[0]
+    : currentUserData?.classe;
 
   const filteredProfs = profs.filter((p) => {
     if (!eleveMatiere || !eleveNiveau) return false;
     const profMatieres = Array.isArray(p.matiere) ? p.matiere : (p.matiere ? [p.matiere] : []);
     const profNiveaux = Array.isArray(p.niveau) ? p.niveau : (p.niveau ? [p.niveau] : []);
-    return profMatieres.includes(eleveMatiere) && profNiveaux.includes(eleveNiveau);
+    const profClasses = Array.isArray(p.classes) ? p.classes : (p.classes ? [p.classes] : []);
+    const niveauOk =
+      profNiveaux.includes(eleveNiveau) &&
+      (profClasses.length === 0 || !eleveClasse || profClasses.includes(eleveClasse));
+    return profMatieres.includes(eleveMatiere) && niveauOk;
   });
 
   if (!filteredProfs.length) {

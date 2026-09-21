@@ -29,7 +29,7 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
 
   // 🔒 Relecture DB fraîche : paiement + matière/niveau actuels
   const { rows } = await pool.query(
-    `SELECT has_payment_method, matiere, niveau FROM users WHERE id = $1`,
+    `SELECT has_payment_method, matiere, niveau, classe FROM users WHERE id = $1`,
     [eleveId]
   );
   const eleveData = rows[0];
@@ -74,7 +74,17 @@ export async function callProfessor(ws, { profId }, onlineProfessors, clients) {
   const profMatieres = Array.isArray(prof.matiere) ? prof.matiere : (prof.matiere ? [prof.matiere] : []);
   const profNiveaux = Array.isArray(prof.niveau) ? prof.niveau : (prof.niveau ? [prof.niveau] : []);
 
-  if (!profMatieres.includes(eleveMatiere) || !profNiveaux.includes(eleveNiveau)) {
+  const eleveClasse = Array.isArray(eleveData?.classe) ? eleveData.classe[0] : eleveData?.classe;
+  const profClasses = Array.isArray(prof.classes) ? prof.classes : (prof.classes ? [prof.classes] : []);
+
+  // Le niveau est la barriere infranchissable.
+  // La classe n'affine qu'a l'interieur du niveau, et seulement si
+  // le professeur s'est restreint (liste vide = toutes les classes).
+  const niveauOk =
+    profNiveaux.includes(eleveNiveau) &&
+    (profClasses.length === 0 || !eleveClasse || profClasses.includes(eleveClasse));
+
+  if (!profMatieres.includes(eleveMatiere) || !niveauOk) {
     return safeSend(ws, {
       type: "error",
       code: "MATIERE_NIVEAU_MISMATCH",

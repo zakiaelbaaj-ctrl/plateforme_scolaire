@@ -37,6 +37,7 @@ const User = sequelize.define("User", {
   type: DataTypes.JSON,
   allowNull: true
 },
+  classes: { type: DataTypes.JSON, allowNull: true },
   langue_matiere: { type: DataTypes.STRING(50) },
   tarif_horaire: { type: DataTypes.DECIMAL(10, 2) },
   price_per_minute: { type: DataTypes.DECIMAL(6, 2), defaultValue: 1.50 },

@@ -15,9 +15,9 @@ const API_BASE = `${API_URL}/api/v1/etudiant`;
 const MATIERES = {
   "Sciences": ["Mathématiques", "Physique-Chimie", "SVT", "Biologie", "Chimie", "Médecine"],
   "Langues": ["Arabe", "Français", "Anglais", "Espagnol"],
-  "Technologie": ["Informatique", "Programmation", "Réseaux & Systèmes", "Sciences de l'ingénieur"],
+  "Technologie": ["Informatique", "Programmation", "Réseaux & Systèmes", "Sciences de l'ingénieur", "Architecture"],
   "Lettres": ["Histoire-Géographie", "Philosophie"],
-  "Économie & Droit": ["Économie", "Économie-Gestion", "Comptabilité", "Marketing", "Droit", "Sciences Politiques"],
+  "Économie & Droit": ["Économie", "Économie-Gestion", "Comptabilité", "Marketing", "Droit", "Sciences Politiques", "Finance"],
   "Arts & Autres": ["Musique", "Arts plastiques", "Formation professionnelle"]
 };
 

@@ -458,6 +458,16 @@ async function handleIdentify(ws, data) {
 
   // 1️⃣ PROFESSEUR
   if (ws.role === "prof") {
+    // 🔒 Les classes enseignees sont lues en base, jamais declarees par le client.
+    let classesProf = null;
+    try {
+      const r = await pool.query(`SELECT classes FROM users WHERE id = $1`, [ws.userId]);
+      classesProf = r.rows[0]?.classes ?? null;
+    } catch (err) {
+      console.error("❌ Erreur lecture classes:", err.message);
+    }
+    ws.classes = classesProf;
+
     addProfessor({
       id: ws.userId,
       role: ws.role,
@@ -467,6 +477,7 @@ async function handleIdentify(ws, data) {
       pays: ws.pays,
       matiere: ws.matiere,
       niveau: ws.niveau,
+      classes: ws.classes,
       photo_identite_url: ws.photo_identite_url,
       connectedAt: new Date().toISOString(),
       sessionStartedAt: null,

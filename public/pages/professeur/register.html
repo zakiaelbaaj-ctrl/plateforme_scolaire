@@ -75,6 +75,7 @@
             <option value="Histoire-Géographie">Histoire-Géographie</option>
             <option value="Philosophie">Philosophie</option>
             <option value="Économie">Économie</option>
+            <option value="Finance">Finance</option>
             <option value="Droit">Droit</option>
           </optgroup>
 
@@ -88,6 +89,7 @@
 
           <optgroup label="Techniques & Informatique">
             <option value="Modélisation 3D">Modélisation 3D</option>
+            <option value="Architecture">Architecture</option>
             <option value="Informatique">Informatique</option>
             <option value="Informatique - Programmation">Informatique - Programmation</option>
             <option value="Réseaux & Systèmes">Réseaux & Systèmes</option>
@@ -115,6 +117,15 @@
             <option value="Arts plastiques">Arts plastiques</option>
           </optgroup>
 
+          <optgroup label="Orientation et carrière">
+            <option value="Orientation scolaire et professionnelle">Orientation scolaire et professionnelle</option>
+            <option value="Conseil en carrière">Conseil en carrière</option>
+            <option value="Préparation aux entretiens">Préparation aux entretiens</option>
+            <option value="Rédaction de CV et lettre de motivation">Rédaction de CV et lettre de motivation</option>
+            <option value="Développement personnel">Développement personnel</option>
+            <option value="Prise de parole en public">Prise de parole en public</option>
+          </optgroup>
+
           <optgroup label="Autres">
             <option value="Formation professionnelle">Formation professionnelle</option>
           </optgroup>
@@ -133,27 +144,18 @@
             <option value="Supérieur">Supérieur</option>
           </optgroup>
 
-          <optgroup label="Post-bac">
-            <option value="BTS">BTS</option>
-            <option value="BUT">BUT</option>
-            <option value="Prépa CPGE">Prépa CPGE</option>
-          </optgroup>
-
-          <optgroup label="Université">
-            <option value="Licence 1">Licence 1</option>
-            <option value="Licence 2">Licence 2</option>
-            <option value="Licence 3">Licence 3</option>
-            <option value="Master 1">Master 1</option>
-            <option value="Master 2">Master 2</option>
-            <option value="Doctorat">Doctorat</option>
-          </optgroup>
-
           <optgroup label="Autres formations">
             <option value="Formation professionnelle">Formation professionnelle</option>
           </optgroup>
 
         </select>
          <small style="color:#555;">Maintenez CTRL (Windows) ou CMD (Mac) pour sélectionner plusieurs niveaux.</small>
+      </div>
+
+      <div class="form-group" id="classesWrapper" style="display:none;">
+        <label for="classes">Classes enseignées</label>
+        <select id="classes" name="classes[]" multiple></select>
+        <small style="color:#555;">Facultatif. Laissez vide si vous enseignez toutes les classes du niveau.</small>
       </div>
       <div class="form-group">
   <label>📎 Diplôme (PDF ou image)<span class="required">*</span></label>
@@ -346,5 +348,32 @@
   </div> 
 
   <script type="module" src="../../js/auth/register_professeur.js"></script>
+
+  <script type="module">
+    import { CLASSES_PAR_NIVEAU } from "/js/shared/niveaux.js";
+
+    const niveauSelect = document.getElementById("niveau");
+    const classesSelect = document.getElementById("classes");
+    const classesWrapper = document.getElementById("classesWrapper");
+
+    function majClasses() {
+      if (!niveauSelect || !classesSelect || !classesWrapper) return;
+      const niveaux = Array.from(niveauSelect.selectedOptions).map((o) => o.value);
+      const deja = new Set(Array.from(classesSelect.selectedOptions).map((o) => o.value));
+      const classes = niveaux.flatMap((n) => CLASSES_PAR_NIVEAU[n] || []);
+      classesSelect.innerHTML = "";
+      classes.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        if (deja.has(c)) opt.selected = true;
+        classesSelect.appendChild(opt);
+      });
+      classesWrapper.style.display = classes.length ? "block" : "none";
+    }
+
+    niveauSelect?.addEventListener("change", majClasses);
+    majClasses();
+  </script>
 </body>
 </html>

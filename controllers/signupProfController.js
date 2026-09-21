@@ -17,6 +17,7 @@ export async function signupProfController(req, res) {
       ville,
       niveau,
       matiere,
+      classes,
       accept_charte
     } = req.body;
 
@@ -37,6 +38,12 @@ export async function signupProfController(req, res) {
     if (!Array.isArray(niveaux)) niveaux = [niveaux];
     let matieres = matiere;
    if (!Array.isArray(matieres)) matieres = [matieres];
+
+    let classesEnseignees = null;
+    if (classes) {
+      classesEnseignees = Array.isArray(classes) ? classes : [classes];
+      if (classesEnseignees.length === 0) classesEnseignees = null;
+    }
 
     console.log("Matières (sans fix) :", matieres);
 
@@ -80,6 +87,7 @@ export async function signupProfController(req, res) {
       statut: "pending",
       niveau: niveaux,
       matiere: matieres,
+      classes: classesEnseignees,
       diplome_url: `/uploads/diplomes/${diplomeFile.filename}`,
       piece_identite_url: `/uploads/diplomes/${pieceIdentiteFile.filename}`,
       photo_identite_url: `/uploads/diplomes/${photoIdentiteFile.filename}`,
