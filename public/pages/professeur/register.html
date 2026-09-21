@@ -56,8 +56,12 @@
       </div>
 
       <div class="form-group">
-        <label>Pays</label>
-        <input type="text" id="pays" name="pays" placeholder="France, Canada..." required>
+        <label for="pays_code">Pays de résidence</label>
+        <select id="pays_code" name="pays_code" required>
+          <option value="">-- Choisir votre pays --</option>
+        </select>
+        <input type="hidden" id="pays" name="pays">
+        <p id="versementInfo" style="display:none;margin-top:8px;padding:10px 12px;border-radius:8px;font-size:14px;line-height:1.45;"></p>
       </div>
 
       <div class="form-group">
@@ -290,6 +294,45 @@
   <script type="module">
     import { CLASSES_PAR_NIVEAU } from "/js/shared/niveaux.js";
     import { MATIERES } from "/js/shared/matieres.js";
+    import { PAYS, paysParCode } from "/js/shared/pays.js";
+
+    // Pays de residence : determine comment le professeur sera paye.
+    (function remplirPays() {
+      const select = document.getElementById("pays_code");
+      const champNom = document.getElementById("pays");
+      const info = document.getElementById("versementInfo");
+      if (!select || !champNom || !info) return;
+
+      PAYS.forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.code;
+        opt.textContent = p.nom;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener("change", () => {
+        const p = paysParCode(select.value);
+        champNom.value = p ? p.nom : "";
+
+        if (!p) {
+          info.style.display = "none";
+          return;
+        }
+
+        if (p.versement === "stripe") {
+          info.textContent =
+            "💳 Vous serez payé automatiquement après chaque session, sur le compte bancaire que vous renseignerez à l'étape suivante.";
+          info.style.background = "#e7f5ec";
+          info.style.color = "#1c5b34";
+        } else {
+          info.textContent =
+            "🏦 Notre prestataire de paiement n'opère pas encore dans ce pays. Vos gains seront cumulés sur votre compte et versés par virement bancaire. Vous renseignerez vos coordonnées après validation de votre inscription.";
+          info.style.background = "#fff4e5";
+          info.style.color = "#7a4a00";
+        }
+        info.style.display = "block";
+      });
+    })();
 
     (function remplirMatieres() {
       const select = document.getElementById("matiere");

@@ -3,6 +3,7 @@
 // --------------------------------------------------
 import * as usersService from "#services/usersService.js";
 import logger from "#config/logger.js";
+import { paysParCode } from "../public/js/shared/pays.js";
 
 export async function signupProfController(req, res) {
   try {
@@ -18,6 +19,7 @@ export async function signupProfController(req, res) {
       niveau,
       matiere,
       classes,
+      pays_code,
       accept_charte
     } = req.body;
 
@@ -44,6 +46,11 @@ export async function signupProfController(req, res) {
       classesEnseignees = Array.isArray(classes) ? classes : [classes];
       if (classesEnseignees.length === 0) classesEnseignees = null;
     }
+
+    // Le mode de versement est deduit du pays cote serveur,
+    // jamais declare par le client.
+    const infoPays = paysParCode(pays_code);
+    const modeVersement = infoPays ? infoPays.versement : null;
 
     console.log("Matières (sans fix) :", matieres);
 
@@ -88,6 +95,8 @@ export async function signupProfController(req, res) {
       niveau: niveaux,
       matiere: matieres,
       classes: classesEnseignees,
+      pays_code: infoPays ? infoPays.code : null,
+      mode_versement: modeVersement,
       diplome_url: `/uploads/diplomes/${diplomeFile.filename}`,
       piece_identite_url: `/uploads/diplomes/${pieceIdentiteFile.filename}`,
       photo_identite_url: `/uploads/diplomes/${photoIdentiteFile.filename}`,
