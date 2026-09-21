@@ -112,8 +112,8 @@ export async function processSessionPayment(roomId, sessionId = null) {
 
     if (sessionId) {
       const result = await pool.query(
-        `SELECT id, duration_seconds, user_id, professor_id, payment_status 
-         FROM visio_sessions WHERE id = $1`,
+        `SELECT id, duration_seconds, user_id, professor_id, payment_status, created_at
+        FROM visio_sessions WHERE id = $1`,
         [sessionId]
       );
       sessionData = result.rows[0] || null;
@@ -121,8 +121,8 @@ export async function processSessionPayment(roomId, sessionId = null) {
       let attempts = 0;
       while (attempts < 3) {
         const result = await pool.query(
-          `SELECT id, duration_seconds, user_id, professor_id, payment_status 
-           FROM visio_sessions 
+          `SELECT id, duration_seconds, user_id, professor_id, payment_status, created_at
+           FROM visio_sessions
            WHERE room_id = $1 AND duration_seconds > 0
            ORDER BY created_at DESC LIMIT 1`,
           [roomId]
@@ -236,7 +236,12 @@ if (totalAmountEUR < 50) {
         application_fee_amount: feeAmountEUR,
       }),
     }, {
-      idempotencyKey: `session_payment_${sessionData.id}`  // ✅ seule transition }, { — deux arguments au total
+      // 🔑 L'identifiant seul ne suffit pas : il peut être réattribué après
+      //    suppression de lignes ou réinitialisation de la séquence, et Stripe
+      //    refuse alors une clé déjà vue avec d'autres paramètres.
+      //    L'horodatage de création rend la clé unique par ligne réelle, tout
+      //    en restant stable si le même paiement est relancé.
+      idempotencyKey: `session_payment_${sessionData.id}_${new Date(sessionData.created_at).getTime()}`  // ✅ seule transition }, { — deux arguments au total
     });
 
     console.log(`✅ [STRIPE] Prélèvement réussi : ${totalAmountEUR / 100} €`);
