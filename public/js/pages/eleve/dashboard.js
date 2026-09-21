@@ -158,7 +158,11 @@ async function initPushNotifications() {
     return;
   }
   try {
-    const permission = await Notification.requestPermission();
+    // 🔔 Ne demande l'autorisation que si elle n'est pas déjà accordée.
+    //    Safari refuse toute demande hors geste utilisateur, même inutile.
+    const permission = Notification.permission === "granted"
+      ? "granted"
+      : await Notification.requestPermission();
     if (permission !== "granted") {
       console.warn("⚠️ Permission de notification refusée par l'élève");
       return;
