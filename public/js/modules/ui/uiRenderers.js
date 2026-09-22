@@ -50,7 +50,9 @@ export function initUIRenderers() {
     : profs;
 
   if (!liste.length) {
-    container.innerHTML = "<li class='empty'>Aucun professeur connectÃÂÃÂ©</li>";
+    container.innerHTML = profs.length
+      ? "<li class='empty'>Aucun professeur ne correspond \u00e0 votre mati\u00e8re et \u00e0 votre niveau</li>"
+      : "<li class='empty'>Aucun professeur connect\u00e9</li>";
     return;
   }
 
