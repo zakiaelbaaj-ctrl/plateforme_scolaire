@@ -48,7 +48,7 @@ export async function loadProfessorRating(profId) {
     </div>
     <div>
         ${data.stats?.note_moyenne ?? "—"}/5
-        (${data.stats?.total_avis ?? 0} avis)
+        ${t("notation.avis", "({n} avis)").replace("{n}", data.stats?.total_avis ?? 0)}
     </div>
 `;
 
@@ -215,24 +215,24 @@ function showInvoiceBeforeRedirect(invoice) {
       </button>
 
       <p style="font-family: var(--font-display); font-size:18px; margin-bottom:8px;">
-        📥 <strong>Votre facture est prête</strong>
+        📥 <strong>${t("facture.prete", "Votre facture est prête")}</strong>
       </p>
       <p style="font-size:14px; color:var(--text-secondary); margin-bottom:24px;">
-        Durée : ${invoice.dureeMinutes} min — Montant : ${invoice.montant}€
+        ${t("facture.dureeMontant", "Durée : {d} min — Montant : {m}€").replace("{d}", invoice.dureeMinutes).replace("{m}", invoice.montant)}
       </p>
 
        <a href="${invoice.url}" target="_blank"
           style="display:block; background:var(--accent); color:#fff; text-decoration:none;
           padding:10px 18px; border-radius:8px; font-weight:600; font-size:14px;
           margin-bottom:12px;">
-       📥 Télécharger ma facture
+       ${t("facture.telecharger", "📥 Télécharger ma facture")}
          </a>
 
       <button id="invoice-continue-btn"
         style="background:var(--ink-muted); border:1px solid var(--border-light); color:var(--text-primary);
                padding:10px 18px; border-radius:8px; cursor:pointer; width:100%; font-size:14px; font-weight:600;
                font-family: var(--font-body);">
-        🔎 Trouver un autre professeur
+        ${t("facture.autreProf", "🔎 Trouver un autre professeur")}
       </button>
     </div>
   `;

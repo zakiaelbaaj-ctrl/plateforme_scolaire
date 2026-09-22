@@ -146,7 +146,9 @@
     "verificationCarte": "Checking card...",
     "connexionEnCours": "Connecting...",
     "enAttenteProf": "Waiting for the teacher...",
-    "lieuNonPrecise": "Location not specified"
+    "lieuNonPrecise": "Location not specified",
+    "enAttenteEleve": "Waiting for a student…",
+    "terminerAppel": "✕ End the call"
   },
   "tdbEleve": {
     "titre": "Student area",
@@ -196,7 +198,8 @@
     "appelEntrant": "Incoming call",
     "enAppel": "On a call",
     "absent": "Away",
-    "enAttente": "Pending"
+    "enAttente": "Pending",
+    "voirEnLigne": "👨‍🏫 See teachers online"
   },
   "paiement": {
     "carteEnregistreeTitre": "Card saved",
@@ -220,7 +223,8 @@
     "commentaire": "Optional comment...",
     "passer": "Skip",
     "envoyer": "Send",
-    "erreurReseau": "Cannot reach the server. Check your connection."
+    "erreurReseau": "Cannot reach the server. Check your connection.",
+    "avis": "({n} reviews)"
   },
   "profil": {
     "avantCommencer": "🎯 Before you start",
@@ -233,5 +237,14 @@
     "nonPrecise": "-- Not specified --",
     "choisirMatiereNiveau": "Please choose a subject and a level.",
     "enregistrement": "Saving..."
+  },
+  "facture": {
+    "prete": "Your invoice is ready",
+    "coursTermine": "Lesson finished",
+    "dureeMontant": "Duration: {d} min — Amount: €{m}",
+    "telecharger": "📥 Download my invoice",
+    "autreProf": "🔎 Find another teacher",
+    "paiementReussi": "Payment successful (€{m})",
+    "merciSession": "Thank you for this {d} min session."
   }
 }

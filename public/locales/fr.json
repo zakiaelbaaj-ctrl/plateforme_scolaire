@@ -146,7 +146,9 @@
     "verificationCarte": "Vérification carte...",
     "connexionEnCours": "Connexion...",
     "enAttenteProf": "En attente du professeur...",
-    "lieuNonPrecise": "Lieu non précisé"
+    "lieuNonPrecise": "Lieu non précisé",
+    "enAttenteEleve": "En attente d'un élève…",
+    "terminerAppel": "✕ Terminer l'appel"
   },
   "tdbEleve": {
     "titre": "Espace Élève",
@@ -196,7 +198,8 @@
     "appelEntrant": "Appel entrant",
     "enAppel": "En appel",
     "absent": "Absent",
-    "enAttente": "En attente"
+    "enAttente": "En attente",
+    "voirEnLigne": "👨‍🏫 Voir les professeurs en ligne"
   },
   "paiement": {
     "carteEnregistreeTitre": "Carte bancaire enregistrée",
@@ -220,7 +223,8 @@
     "commentaire": "Commentaire optionnel...",
     "passer": "Passer",
     "envoyer": "Envoyer",
-    "erreurReseau": "Impossible de joindre le serveur. Vérifiez votre connexion."
+    "erreurReseau": "Impossible de joindre le serveur. Vérifiez votre connexion.",
+    "avis": "({n} avis)"
   },
   "profil": {
     "avantCommencer": "🎯 Avant de commencer",
@@ -233,5 +237,14 @@
     "nonPrecise": "-- Non précisé --",
     "choisirMatiereNiveau": "Veuillez choisir une matière et un niveau.",
     "enregistrement": "Enregistrement..."
+  },
+  "facture": {
+    "prete": "Votre facture est prête",
+    "coursTermine": "Cours terminé",
+    "dureeMontant": "Durée : {d} min — Montant : {m}€",
+    "telecharger": "📥 Télécharger ma facture",
+    "autreProf": "🔎 Trouver un autre professeur",
+    "paiementReussi": "Paiement réussi ({m}€)",
+    "merciSession": "Merci pour cette session de {d} min."
   }
 }

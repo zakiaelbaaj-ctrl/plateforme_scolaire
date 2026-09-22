@@ -146,7 +146,9 @@
     "verificationCarte": "Comprobando la tarjeta...",
     "connexionEnCours": "Conectando...",
     "enAttenteProf": "Esperando al profesor...",
-    "lieuNonPrecise": "Lugar no indicado"
+    "lieuNonPrecise": "Lugar no indicado",
+    "enAttenteEleve": "Esperando a un alumno…",
+    "terminerAppel": "✕ Finalizar la llamada"
   },
   "tdbEleve": {
     "titre": "Espacio del alumno",
@@ -196,7 +198,8 @@
     "appelEntrant": "Llamada entrante",
     "enAppel": "En llamada",
     "absent": "Ausente",
-    "enAttente": "En espera"
+    "enAttente": "En espera",
+    "voirEnLigne": "👨‍🏫 Ver profesores conectados"
   },
   "paiement": {
     "carteEnregistreeTitre": "Tarjeta guardada",
@@ -220,7 +223,8 @@
     "commentaire": "Comentario opcional...",
     "passer": "Omitir",
     "envoyer": "Enviar",
-    "erreurReseau": "No se puede contactar con el servidor. Comprueba tu conexión."
+    "erreurReseau": "No se puede contactar con el servidor. Comprueba tu conexión.",
+    "avis": "({n} opiniones)"
   },
   "profil": {
     "avantCommencer": "🎯 Antes de empezar",
@@ -233,5 +237,14 @@
     "nonPrecise": "-- Sin especificar --",
     "choisirMatiereNiveau": "Elige una materia y un nivel.",
     "enregistrement": "Guardando..."
+  },
+  "facture": {
+    "prete": "Tu factura está lista",
+    "coursTermine": "Clase terminada",
+    "dureeMontant": "Duración: {d} min — Importe: {m}€",
+    "telecharger": "📥 Descargar mi factura",
+    "autreProf": "🔎 Buscar otro profesor",
+    "paiementReussi": "Pago realizado ({m}€)",
+    "merciSession": "Gracias por esta sesión de {d} min."
   }
 }

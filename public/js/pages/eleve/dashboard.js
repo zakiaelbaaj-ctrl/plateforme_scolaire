@@ -494,7 +494,7 @@ ScreenShareService.onStop(() => {
     case null:
       stopOutgoingRing();
       AppState.callInProgress = false; // ✅ libère le verrou
-      cleanupSession("En attente d'un élève…"); break;
+      cleanupSession(t("cours.enAttenteEleve", "En attente d'un élève…")); break;
     // default vide  ignore les états inconnus
   }
 });

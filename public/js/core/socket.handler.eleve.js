@@ -1,3 +1,4 @@
+import { t } from "./i18n.js";
 import { socketService } from "./socket.service.js";
 import { AppState } from "./state.js";
 import { SessionService } from "../services/session.service.js";
@@ -155,10 +156,10 @@ case "callTimeout":
   if (container) {
     container.innerHTML = `
       <div class="invoice-box">
-        <p>📥 <strong>Cours terminé</strong></p>
-        <p>Durée : ${data.dureeMinutes} min | Montant : ${data.montant}€</p>
+        <p>📥 <strong>${t("facture.coursTermine", "Cours terminé")}</strong></p>
+        <p>${t("facture.dureeMontant", "Durée : {d} min — Montant : {m}€").replace("{d}", data.dureeMinutes).replace("{m}", data.montant)}</p>
         <a href="${data.url}" target="_blank" class="btn-primary">
-          📥 Télécharger ma facture
+          ${t("facture.telecharger", "📥 Télécharger ma facture")}
         </a>
       </div>
     `;
@@ -262,11 +263,11 @@ case "screenShareStopped": {
         const toast = document.createElement("div");
         toast.innerHTML = `
           <div style="margin-bottom: 12px; font-size: 14px;">
-            ✔️ <strong>Paiement réussi (${data.montant}€)</strong><br>
-            <span style="font-size: 12px; opacity: 0.9;">Merci pour cette session de ${data.dureeMinutes} min.</span>
+            ✔️ <strong>${t("facture.paiementReussi", "Paiement réussi ({m}€)").replace("{m}", data.montant)}</strong><br>
+            <span style="font-size: 12px; opacity: 0.9;">${t("facture.merciSession", "Merci pour cette session de {d} min.").replace("{d}", data.dureeMinutes)}</span>
           </div>
           <button id="download-invoice-btn" style="width: 100%; background: white; color: #4CAF50; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-            📥 Télécharger ma facture
+            ${t("facture.telecharger", "📥 Télécharger ma facture")}
           </button>
         `;
         

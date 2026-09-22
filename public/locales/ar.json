@@ -146,7 +146,9 @@
     "verificationCarte": "جارٍ التحقق من البطاقة...",
     "connexionEnCours": "جارٍ الاتصال...",
     "enAttenteProf": "في انتظار الأستاذ...",
-    "lieuNonPrecise": "المكان غير محدد"
+    "lieuNonPrecise": "المكان غير محدد",
+    "enAttenteEleve": "في انتظار تلميذ…",
+    "terminerAppel": "✕ إنهاء المكالمة"
   },
   "tdbEleve": {
     "titre": "فضاء التلميذ",
@@ -196,7 +198,8 @@
     "appelEntrant": "مكالمة واردة",
     "enAppel": "في مكالمة",
     "absent": "غائب",
-    "enAttente": "في الانتظار"
+    "enAttente": "في الانتظار",
+    "voirEnLigne": "👨‍🏫 عرض الأساتذة المتصلين"
   },
   "paiement": {
     "carteEnregistreeTitre": "تم تسجيل البطاقة البنكية",
@@ -220,7 +223,8 @@
     "commentaire": "تعليق اختياري...",
     "passer": "تخطٍ",
     "envoyer": "إرسال",
-    "erreurReseau": "تعذّر الوصول إلى الخادم. تحقق من اتصالك."
+    "erreurReseau": "تعذّر الوصول إلى الخادم. تحقق من اتصالك.",
+    "avis": "({n} تقييم)"
   },
   "profil": {
     "avantCommencer": "🎯 قبل البدء",
@@ -233,5 +237,14 @@
     "nonPrecise": "-- غير محدد --",
     "choisirMatiereNiveau": "يرجى اختيار مادة ومستوى.",
     "enregistrement": "جارٍ الحفظ..."
+  },
+  "facture": {
+    "prete": "فاتورتك جاهزة",
+    "coursTermine": "انتهى الدرس",
+    "dureeMontant": "المدة: {d} د — المبلغ: {m}€",
+    "telecharger": "📥 تنزيل فاتورتي",
+    "autreProf": "🔎 البحث عن أستاذ آخر",
+    "paiementReussi": "تم الدفع بنجاح ({m}€)",
+    "merciSession": "شكراً على هذه الجلسة التي دامت {d} دقيقة."
   }
 }
