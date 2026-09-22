@@ -1,4 +1,4 @@
-const CACHE_NAME = "urgencescolaire-v12"; // ⬅️ forcer la mise à jour après fix sonnerie/notation/camera/timer
+const CACHE_NAME = "urgencescolaire-v13"; // ⬅️ forcer la mise à jour après fix sonnerie/notation/camera/timer
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -37,7 +37,18 @@ self.addEventListener("install", (event) => {
 // ---------------------------------------------------------
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
+
+  // 🛠️ En developpement local : ne rien intercepter du tout, pour qu un
+  // rechargement serve toujours les fichiers du disque. Sans cela, une
+  // traduction ou une page corrigee reste figee a sa version en cache.
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+    return;
+  }
+
   const isAppJs = event.request.url.includes("/js/");
+  // Les fichiers de langue changent aussi souvent que le code : meme
+  // strategie, sinon une correction de traduction reste bloquee chez l eleve.
+  const isLocale = url.pathname.startsWith("/locales/");
 
   // 🔒 Ne jamais intercepter les dashboards WebRTC (Étudiant & Élève)
   if (
@@ -48,7 +59,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   // 🔄 Fichiers JS : Réseau d'abord, secours en cache
-  if (isAppJs) {
+  if (isAppJs || isLocale) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request, { ignoreSearch: true }))
     );
