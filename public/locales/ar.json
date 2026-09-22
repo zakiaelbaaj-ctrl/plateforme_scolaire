@@ -180,7 +180,23 @@
     "enSession": "في جلسة",
     "occupe": "مشغول",
     "horsLigne": "غير متصل",
-    "bloque": "محظور"
+    "bloque": "محظور",
+    "pageTitre": "الأساتذة المتصلون",
+    "pageEntete": "📡 الأساتذة المتصلون",
+    "pageSousTitre": "قائمة محدّثة لحظياً",
+    "monEspace": "🏠 الذهاب إلى فضائي",
+    "chargement": "جارٍ التحميل…",
+    "aucunDisponiblePour": "لا يوجد أستاذ متاح لـ {matiere} - {niveau} في الوقت الحالي.",
+    "retirerFavoris": "إزالة من المفضلة",
+    "ajouterFavoris": "إضافة إلى المفضلة",
+    "cliquerAppeler": "انقر للاتصال",
+    "carteBancaireRequise": "البطاقة البنكية مطلوبة",
+    "connecteDepuis": "متصل منذ {h}",
+    "professeurDefaut": "أستاذ",
+    "appelEntrant": "مكالمة واردة",
+    "enAppel": "في مكالمة",
+    "absent": "غائب",
+    "enAttente": "في الانتظار"
   },
   "paiement": {
     "carteEnregistreeTitre": "تم تسجيل البطاقة البنكية",
@@ -192,7 +208,12 @@
     "ajoutezUneCarte": "أضف بطاقة",
     "valider": "تأكيد",
     "connexionSecurisee": "🔄 اتصال آمن...",
-    "erreurReessayer": "❌ خطأ، أعد المحاولة"
+    "erreurReessayer": "❌ خطأ، أعد المحاولة",
+    "banniereTitre": "💳 البطاقة البنكية مطلوبة",
+    "banniereTexte": "أضف بطاقة لتتمكن من الاتصال بأستاذ.",
+    "ajouterUneCarte": "إضافة بطاقة",
+    "connexionSecuriseeSimple": "اتصال آمن...",
+    "erreurReessayerSimple": "خطأ، أعد المحاولة"
   },
   "notation": {
     "titre": "كيف سار درسك؟",
@@ -200,5 +221,17 @@
     "passer": "تخطٍ",
     "envoyer": "إرسال",
     "erreurReseau": "تعذّر الوصول إلى الخادم. تحقق من اتصالك."
+  },
+  "profil": {
+    "avantCommencer": "🎯 قبل البدء",
+    "intro": "اختر مادتك ومستواك لتُوصَل بالأستاذ المناسب.",
+    "matiere": "المادة",
+    "choisirMatiere": "-- اختر مادة --",
+    "niveau": "المستوى الدراسي",
+    "choisirNiveau": "-- اختر مستواك --",
+    "classe": "الصف الدقيق (اختياري)",
+    "nonPrecise": "-- غير محدد --",
+    "choisirMatiereNiveau": "يرجى اختيار مادة ومستوى.",
+    "enregistrement": "جارٍ الحفظ..."
   }
 }

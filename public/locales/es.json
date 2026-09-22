@@ -180,7 +180,23 @@
     "enSession": "En sesión",
     "occupe": "Ocupado",
     "horsLigne": "Sin conexión",
-    "bloque": "Bloqueado"
+    "bloque": "Bloqueado",
+    "pageTitre": "Profesores conectados",
+    "pageEntete": "📡 Profesores conectados",
+    "pageSousTitre": "Lista actualizada en tiempo real",
+    "monEspace": "🏠 Ir a mi espacio",
+    "chargement": "Cargando…",
+    "aucunDisponiblePour": "Ningún profesor disponible para {matiere} - {niveau} por el momento.",
+    "retirerFavoris": "Quitar de favoritos",
+    "ajouterFavoris": "Añadir a favoritos",
+    "cliquerAppeler": "Haz clic para llamar",
+    "carteBancaireRequise": "Se requiere tarjeta bancaria",
+    "connecteDepuis": "Conectado desde {h}",
+    "professeurDefaut": "Profesor",
+    "appelEntrant": "Llamada entrante",
+    "enAppel": "En llamada",
+    "absent": "Ausente",
+    "enAttente": "En espera"
   },
   "paiement": {
     "carteEnregistreeTitre": "Tarjeta guardada",
@@ -192,7 +208,12 @@
     "ajoutezUneCarte": "Añade una tarjeta",
     "valider": "Confirmar",
     "connexionSecurisee": "🔄 Conexión segura...",
-    "erreurReessayer": "❌ Error, inténtalo de nuevo"
+    "erreurReessayer": "❌ Error, inténtalo de nuevo",
+    "banniereTitre": "💳 Se requiere tarjeta bancaria",
+    "banniereTexte": "Añade una tarjeta para poder llamar a un profesor.",
+    "ajouterUneCarte": "Añadir una tarjeta",
+    "connexionSecuriseeSimple": "Conexión segura...",
+    "erreurReessayerSimple": "Error, inténtalo de nuevo"
   },
   "notation": {
     "titre": "¿Qué tal ha ido tu clase?",
@@ -200,5 +221,17 @@
     "passer": "Omitir",
     "envoyer": "Enviar",
     "erreurReseau": "No se puede contactar con el servidor. Comprueba tu conexión."
+  },
+  "profil": {
+    "avantCommencer": "🎯 Antes de empezar",
+    "intro": "Elige tu materia y tu nivel para que te pongamos en contacto con el profesor adecuado.",
+    "matiere": "Materia",
+    "choisirMatiere": "-- Elige una materia --",
+    "niveau": "Nivel escolar",
+    "choisirNiveau": "-- Elige tu nivel --",
+    "classe": "Clase exacta (opcional)",
+    "nonPrecise": "-- Sin especificar --",
+    "choisirMatiereNiveau": "Elige una materia y un nivel.",
+    "enregistrement": "Guardando..."
   }
 }

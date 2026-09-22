@@ -180,7 +180,23 @@
     "enSession": "In session",
     "occupe": "Busy",
     "horsLigne": "Offline",
-    "bloque": "Blocked"
+    "bloque": "Blocked",
+    "pageTitre": "Teachers online",
+    "pageEntete": "📡 Teachers online",
+    "pageSousTitre": "List updated in real time",
+    "monEspace": "🏠 Go to my space",
+    "chargement": "Loading…",
+    "aucunDisponiblePour": "No teacher available for {matiere} - {niveau} at the moment.",
+    "retirerFavoris": "Remove from favourites",
+    "ajouterFavoris": "Add to favourites",
+    "cliquerAppeler": "Click to call",
+    "carteBancaireRequise": "Bank card required",
+    "connecteDepuis": "Online since {h}",
+    "professeurDefaut": "Teacher",
+    "appelEntrant": "Incoming call",
+    "enAppel": "On a call",
+    "absent": "Away",
+    "enAttente": "Pending"
   },
   "paiement": {
     "carteEnregistreeTitre": "Card saved",
@@ -192,7 +208,12 @@
     "ajoutezUneCarte": "Add a card",
     "valider": "Confirm",
     "connexionSecurisee": "🔄 Secure connection...",
-    "erreurReessayer": "❌ Error, try again"
+    "erreurReessayer": "❌ Error, try again",
+    "banniereTitre": "💳 Bank card required",
+    "banniereTexte": "Add a card to be able to call a teacher.",
+    "ajouterUneCarte": "Add a card",
+    "connexionSecuriseeSimple": "Secure connection...",
+    "erreurReessayerSimple": "Error, try again"
   },
   "notation": {
     "titre": "How did your lesson go?",
@@ -200,5 +221,17 @@
     "passer": "Skip",
     "envoyer": "Send",
     "erreurReseau": "Cannot reach the server. Check your connection."
+  },
+  "profil": {
+    "avantCommencer": "🎯 Before you start",
+    "intro": "Choose your subject and level to be matched with the right teacher.",
+    "matiere": "Subject",
+    "choisirMatiere": "-- Choose a subject --",
+    "niveau": "School level",
+    "choisirNiveau": "-- Choose your level --",
+    "classe": "Exact class (optional)",
+    "nonPrecise": "-- Not specified --",
+    "choisirMatiereNiveau": "Please choose a subject and a level.",
+    "enregistrement": "Saving..."
   }
 }

@@ -180,7 +180,23 @@
     "enSession": "En session",
     "occupe": "Occupé",
     "horsLigne": "Hors ligne",
-    "bloque": "Bloqué"
+    "bloque": "Bloqué",
+    "pageTitre": "Professeurs en ligne",
+    "pageEntete": "📡 Professeurs en ligne",
+    "pageSousTitre": "Liste mise à jour en temps réel",
+    "monEspace": "🏠 Accéder à mon espace",
+    "chargement": "Chargement…",
+    "aucunDisponiblePour": "Aucun professeur disponible pour {matiere} - {niveau} pour le moment.",
+    "retirerFavoris": "Retirer des favoris",
+    "ajouterFavoris": "Ajouter aux favoris",
+    "cliquerAppeler": "Cliquer pour appeler",
+    "carteBancaireRequise": "Carte bancaire requise",
+    "connecteDepuis": "Connecté depuis {h}",
+    "professeurDefaut": "Professeur",
+    "appelEntrant": "Appel entrant",
+    "enAppel": "En appel",
+    "absent": "Absent",
+    "enAttente": "En attente"
   },
   "paiement": {
     "carteEnregistreeTitre": "Carte bancaire enregistrée",
@@ -192,7 +208,12 @@
     "ajoutezUneCarte": "Ajoutez une carte",
     "valider": "Valider",
     "connexionSecurisee": "🔄 Connexion sécurisée...",
-    "erreurReessayer": "❌ Erreur, réessayer"
+    "erreurReessayer": "❌ Erreur, réessayer",
+    "banniereTitre": "💳 Carte bancaire requise",
+    "banniereTexte": "Ajoutez une carte pour pouvoir appeler un professeur.",
+    "ajouterUneCarte": "Ajouter une carte",
+    "connexionSecuriseeSimple": "Connexion sécurisée...",
+    "erreurReessayerSimple": "Erreur, réessayer"
   },
   "notation": {
     "titre": "Comment s'est passé votre cours ?",
@@ -200,5 +221,17 @@
     "passer": "Passer",
     "envoyer": "Envoyer",
     "erreurReseau": "Impossible de joindre le serveur. Vérifiez votre connexion."
+  },
+  "profil": {
+    "avantCommencer": "🎯 Avant de commencer",
+    "intro": "Choisissez votre matière et votre niveau pour être mis en relation avec le bon professeur.",
+    "matiere": "Matière",
+    "choisirMatiere": "-- Choisir une matière --",
+    "niveau": "Niveau scolaire",
+    "choisirNiveau": "-- Choisir votre niveau --",
+    "classe": "Classe précise (optionnel)",
+    "nonPrecise": "-- Non précisé --",
+    "choisirMatiereNiveau": "Veuillez choisir une matière et un niveau.",
+    "enregistrement": "Enregistrement..."
   }
 }
