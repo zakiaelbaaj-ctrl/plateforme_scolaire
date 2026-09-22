@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virements à effectuer — Administration</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #f4f5f7; color: #222; }
+  header { background: #fff; padding: 18px 28px; border-bottom: 1px solid #e3e5e8; }
+  h1 { margin: 0; font-size: 1.25rem; }
+  main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+  .total { background: #fff; border-radius: 12px; padding: 18px 22px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .total strong { font-size: 1.9rem; display: block; }
+  .total span { color: #666; font-size: .9rem; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  th, td { padding: 12px 14px; text-align: start; border-bottom: 1px solid #eef0f2; font-size: .92rem; }
+  th { background: #fafbfc; font-weight: 600; color: #555; }
+  tr:last-child td { border-bottom: none; }
+  .montant { font-weight: 700; white-space: nowrap; }
+  .btn { padding: 7px 14px; border: none; border-radius: 8px; background: #0b5ed7; color: #fff; cursor: pointer; font-size: .85rem; }
+  .btn:disabled { background: #9bb4d8; cursor: default; }
+  .vide { background: #fff; border-radius: 12px; padding: 40px; text-align: center; color: #777; }
+  .pays { color: #666; font-size: .85rem; }
+  #message { margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; display: none; }
+</style>
+</head>
+<body>
+
+<header><h1>🏦 Virements à effectuer</h1></header>
+
+<main>
+  <div id="message"></div>
+  <div class="total">
+    <strong id="totalGlobal">—</strong>
+    <span>à verser, tous professeurs confondus</span>
+  </div>
+  <div id="contenu"></div>
+</main>
+
+<script type="module">
+  const API = window.location.hostname === "localhost" ? "http://localhost:4000" : "";
+  const token = localStorage.getItem("token");
+
+  const euros = (c) => (c / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+
+  function afficherMessage(texte, succes) {
+    const zone = document.getElementById("message");
+    zone.textContent = texte;
+    zone.style.background = succes ? "#e7f5ec" : "#fdecea";
+    zone.style.color = succes ? "#1c5b34" : "#8a1c13";
+    zone.style.display = "block";
+  }
+
+  async function charger() {
+    const reponse = await fetch(`${API}/api/v1/admin/versements`, {
+      headers: { Authorization: "Bearer " + token },
+    });
+
+    if (!reponse.ok) {
+      document.getElementById("contenu").innerHTML =
+        `<div class="vide">Accès refusé ou erreur serveur (${reponse.status}).</div>`;
+      return;
+    }
+
+    const { professeurs } = await reponse.json();
+    const total = professeurs.reduce((s, p) => s + p.total_du, 0);
+    document.getElementById("totalGlobal").textContent = euros(total);
+
+    if (!professeurs.length) {
+      document.getElementById("contenu").innerHTML =
+        `<div class="vide">Aucun virement en attente.</div>`;
+      return;
+    }
+
+    const table = document.createElement("table");
+    table.innerHTML = `<thead><tr>
+      <th>Professeur</th><th>Pays</th><th>Sessions</th>
+      <th>Le plus ancien</th><th>Montant dû</th><th></th>
+    </tr></thead>`;
+
+    const corps = document.createElement("tbody");
+
+    professeurs.forEach((p) => {
+      const tr = document.createElement("tr");
+
+      const nom = document.createElement("td");
+      nom.innerHTML = `${p.prenom} ${p.nom}<br><span class="pays">${p.email}</span>`;
+
+      const pays = document.createElement("td");
+      pays.textContent = p.pays || p.pays_code || "—";
+
+      const sessions = document.createElement("td");
+      sessions.textContent = p.sessions_dues;
+
+      const ancien = document.createElement("td");
+      ancien.textContent = p.plus_ancienne
+        ? new Date(p.plus_ancienne).toLocaleDateString("fr-FR")
+        : "—";
+
+      const montant = document.createElement("td");
+      montant.className = "montant";
+      montant.textContent = euros(p.total_du);
+
+      const action = document.createElement("td");
+      const bouton = document.createElement("button");
+      bouton.className = "btn";
+      bouton.textContent = "Marquer versé";
+      bouton.addEventListener("click", () => verser(p, bouton));
+      action.appendChild(bouton);
+
+      [nom, pays, sessions, ancien, montant, action].forEach((c) => tr.appendChild(c));
+      corps.appendChild(tr);
+    });
+
+    table.appendChild(corps);
+    const contenu = document.getElementById("contenu");
+    contenu.innerHTML = "";
+    contenu.appendChild(table);
+  }
+
+  async function verser(prof, bouton) {
+    const reference = prompt(
+      `Référence du virement de ${euros(prof.total_du)} à ${prof.prenom} ${prof.nom} :\n\n` +
+      `Indiquez le numéro ou l'identifiant du mouvement bancaire.`
+    );
+    if (!reference || !reference.trim()) return;
+
+    bouton.disabled = true;
+    bouton.textContent = "Enregistrement…";
+
+    try {
+      const reponse = await fetch(`${API}/api/v1/admin/versements/${prof.prof_id}/verser`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({ reference: reference.trim() }),
+      });
+
+      const donnees = await reponse.json();
+
+      if (!reponse.ok) {
+        afficherMessage(donnees.message || "Échec de l'enregistrement.", false);
+        bouton.disabled = false;
+        bouton.textContent = "Marquer versé";
+        return;
+      }
+
+      afficherMessage(
+        `${donnees.lignes} session(s) marquée(s) versée(s) — ${euros(donnees.total_cents)} — référence ${donnees.reference}.`,
+        true
+      );
+      charger();
+    } catch (err) {
+      afficherMessage("Erreur réseau : " + err.message, false);
+      bouton.disabled = false;
+      bouton.textContent = "Marquer versé";
+    }
+  }
+
+  charger();
+</script>
+
+</body>
+</html>
