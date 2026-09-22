@@ -339,6 +339,8 @@
 </script>
 <script type="module">
     import { MATIERES } from "/js/shared/matieres.js";
+    import { CLASSES_PAR_NIVEAU } from "/js/shared/niveaux.js";
+    import { professeurCorrespond } from "/js/shared/correspondance.js";
 
     // Le menu des matieres est construit depuis la reference partagee,
     // pour qu'il ne puisse plus diverger de celui du professeur.
@@ -393,12 +395,7 @@
     // Rempli dans init(), utilisé par renderProfList() pour savoir si un
     // clic doit être autorisé (même règle que canCall dans dashboard.js)
     let currentUserData = null;
-    const CLASSES_PAR_NIVEAU = {
-  "Primaire": ["CP", "CE1", "CE2", "CM1", "CM2"],
-  "Collège":  ["6ème", "5ème", "4ème", "3ème"],
-  "Lycée":    ["Seconde", "Première", "Terminale"],
-  "Supérieur": ["BTS 1", "BTS 2", "Prépa 1", "Prépa 2", "Licence 1", "Licence 2", "Licence 3", "Master 1", "Master 2", "Doctorat"]
-};
+    // CLASSES_PAR_NIVEAU vient desormais de /js/shared/niveaux.js
 
     const classeWrapper = document.getElementById("pcClasseWrapper");
     const classeSelect  = document.getElementById("pcClasse");
@@ -558,20 +555,8 @@ function showProfileCompletionModal() {
   const eleveNiveau = Array.isArray(currentUserData?.niveau)
     ? currentUserData.niveau[0]
     : currentUserData?.niveau;
-  const eleveClasse = Array.isArray(currentUserData?.classe)
-    ? currentUserData.classe[0]
-    : currentUserData?.classe;
 
-  const filteredProfs = profs.filter((p) => {
-    if (!eleveMatiere || !eleveNiveau) return false;
-    const profMatieres = Array.isArray(p.matiere) ? p.matiere : (p.matiere ? [p.matiere] : []);
-    const profNiveaux = Array.isArray(p.niveau) ? p.niveau : (p.niveau ? [p.niveau] : []);
-    const profClasses = Array.isArray(p.classes) ? p.classes : (p.classes ? [p.classes] : []);
-    const niveauOk =
-      profNiveaux.includes(eleveNiveau) &&
-      (profClasses.length === 0 || !eleveClasse || profClasses.includes(eleveClasse));
-    return profMatieres.includes(eleveMatiere) && niveauOk;
-  });
+  const filteredProfs = profs.filter((p) => professeurCorrespond(p, currentUserData));
 
   if (!filteredProfs.length) {
     container.innerHTML = `<p class="prof-empty">Aucun professeur disponible pour ${eleveMatiere || "cette matière"} - ${eleveNiveau || "ce niveau"} pour le moment.</p>`;
