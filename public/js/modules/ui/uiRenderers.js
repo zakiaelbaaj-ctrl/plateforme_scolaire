@@ -1,3 +1,4 @@
+import { professeurCorrespond } from "../../shared/correspondance.js";
 // public/js/modules/ui/uiRenderers.js
 // UI RENDERERS — REACTION ONLY (LISTEN TO APPSTATE)
 import { AppState } from "/js/core/state.js";
@@ -41,12 +42,19 @@ export function initUIRenderers() {
 
      container.innerHTML = "";
 
-  if (!profs.length) {
+  // Ne montrer que les professeurs reellement appelables :
+  // meme regle que le serveur, pour qu un professeur visible soit joignable.
+  const eleve = AppState?.currentUser;
+  const liste = (eleve?.matiere && eleve?.niveau)
+    ? profs.filter((prof) => professeurCorrespond(prof, eleve))
+    : profs;
+
+  if (!liste.length) {
     container.innerHTML = "<li class='empty'>Aucun professeur connectÃÂÃÂ©</li>";
     return;
   }
 
-  profs.forEach((prof) => {
+  liste.forEach((prof) => {
     const li = document.createElement("li");
     li.className = "prof-item";
     li.textContent = `${prof.prenom} ${prof.nom}`;
