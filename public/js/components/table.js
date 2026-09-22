@@ -356,7 +356,7 @@ export default class Table {
         class: "table-select-all",
         "aria-label": "Select all rows",
         type: "button"
-      }, ["Ã¢ËÂ"]);
+      }, ["☐"]);
       checkbox.addEventListener("click", () => {
         if (this.selection.size === this.data.length) {
           this.selection.clear();
@@ -381,7 +381,7 @@ export default class Table {
           "aria-label": `Sort by ${col.label || col.key}`
         }, [col.label || col.key]);
         if (this.sortState.key === col.key && this.sortState.dir) {
-          const indicator = createEl("span", { class: "sort-indicator", text: this.sortState.dir === "asc" ? "Ã¢âÂ²" : "Ã¢âÂ¼" });
+          const indicator = createEl("span", { class: "sort-indicator", text: this.sortState.dir === "asc" ? "▲" : "▼" });
           btn.appendChild(indicator);
         }
         th.innerHTML = "";
@@ -472,7 +472,7 @@ export default class Table {
       // selection cell
       if (this.opts.selectable) {
         const tdSel = createEl("td");
-        const btn = createEl("button", { class: "row-select-btn", type: "button", "aria-label": "Select row" }, ["Ã¢ËÂ"]);
+        const btn = createEl("button", { class: "row-select-btn", type: "button", "aria-label": "Select row" }, ["☐"]);
         tdSel.appendChild(btn);
         tr.appendChild(tdSel);
       }
@@ -530,7 +530,7 @@ export default class Table {
       // selection cell
       if (this.opts.selectable) {
         const sel = createEl("div", { class: "virtual-cell" });
-        const btn = createEl("button", { class: "row-select-btn", type: "button", "aria-label": "Select row" }, ["Ã¢ËÂ"]);
+        const btn = createEl("button", { class: "row-select-btn", type: "button", "aria-label": "Select row" }, ["☐"]);
         sel.appendChild(btn);
         tr.appendChild(sel);
       }

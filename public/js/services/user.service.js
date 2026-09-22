@@ -2,7 +2,7 @@ export async function getUserProfile() {
   try {
     const token = localStorage.getItem("token");
 
-    // 1. Si pas de token, on ne tente mÃÂªme pas l'appel
+    // 1. Si pas de token, on ne tente même pas l'appel
     if (!token) {
       console.warn("⚠️ Aucun token trouvé dans le localStorage");
       return null;
@@ -23,11 +23,11 @@ export async function getUserProfile() {
     });
 
     if (!resp.ok) {
-      // Si le token est invalide ou expirÃÂ© (401/403)
+      // Si le token est invalide ou expiré (401/403)
       if (resp.status === 401 || resp.status === 403) {
         localStorage.removeItem("token"); // Nettoyage
       }
-      throw new Error("Session expirÃÂ©e ou invalide");
+      throw new Error("Session expirée ou invalide");
     }
 
     const data = await resp.json();

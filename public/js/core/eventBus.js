@@ -2,7 +2,7 @@
 
 const listeners = new Map();
 
-// --- Fonctions exportÃÂ©es individuellement ---
+// --- Fonctions exportées individuellement ---
 
 export function on(event, cb) {
   if (!listeners.has(event)) listeners.set(event, new Set());
@@ -27,17 +27,17 @@ export function emit(event, payload) {
   }
 }
 
-// Ã¢ÂÂ On garde la fonction clear exportÃÂ©e individuellement
+// ✅ On garde la fonction clear exportée individuellement
 export function clear(event) {
   if (!listeners.has(event)) return;
   listeners.delete(event);
 }
 
-// --- L'objet global exportÃÂ© pour socket.handler.etudiant.js ---
+// --- L'objet global exporté pour socket.handler.etudiant.js ---
 
 export const eventBus = {
   on: (event, cb) => on(event, cb),
   emit: (event, payload) => emit(event, payload),
   off: (event, cb) => off(event, cb),
-  clear: (event) => clear(event) // Ã°ÂÂÂ Elle est bien lÃÂ  aussi !
+  clear: (event) => clear(event) // 👈 Elle est bien là aussi !
 };

@@ -17,7 +17,7 @@ function assertPlan(planType) {
 }
 
 /**
- * 1. CrÃ©ation session checkout (Abonnements classiques)
+ * 1. Création session checkout (Abonnements classiques)
  */
 export async function createCheckoutSession({ userId, planType, profId = null, amount = null }) {
   assertPlan(planType);
@@ -214,13 +214,13 @@ if (totalAmountEUR < 50) {
       });
       if (paymentMethods.data.length > 0) {
         paymentMethodId = paymentMethods.data[0].id;
-        // On en profite pour la lier par dÃ©faut pour Ã©viter le prochain fallback
+        // On en profite pour la lier par défaut pour éviter le prochain fallback
         await stripe.customers.update(eleve.stripe_customer_id, {
           invoice_settings: { default_payment_method: paymentMethodId }
         });
       }
     }
-    if (!paymentMethodId) throw new Error("Moyen de paiement par dÃ©faut manquant.");
+    if (!paymentMethodId) throw new Error("Moyen de paiement par défaut manquant.");
 
         const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmountEUR,

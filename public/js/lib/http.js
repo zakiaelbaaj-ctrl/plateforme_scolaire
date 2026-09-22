@@ -292,14 +292,14 @@ export async function stream(path, { onChunk, onComplete, onError, decode = true
 }
 
 /* ===========================
-   Export nommÃÂ© pour compatibilitÃÂ©
+   Export nommé pour compatibilité
    =========================== */
 export const http = {
   request,
   get,
   post,
   put,
-  del: del, // On le mappe sur 'del' pour la cohÃÂ©rence
+  del: del, // On le mappe sur 'del' pour la cohérence
   stream,
   buildQuery,
   setAuthProvider,
@@ -308,6 +308,6 @@ export const http = {
   TimeoutError,
 };
 
-// On garde aussi l'export par dÃÂ©faut au cas oÃÂ¹ d'autres fichiers l'utilisent
+// On garde aussi l'export par défaut au cas où d'autres fichiers l'utilisent
 export default http;
 

@@ -71,7 +71,7 @@ async function loginProfesseur(event) {
     const accessToken = json.accessToken;
     const currentUser = json.user;
 
-    if (!accessToken) throw new Error("Token absent dans la rÃÂÃÂ©ponse serveur");
+    if (!accessToken) throw new Error("Token absent dans la réponse serveur");
     if (!currentUser || !["prof", "professeur"].includes(currentUser.role))
       throw new Error("Cet utilisateur n'est pas professeur");
 

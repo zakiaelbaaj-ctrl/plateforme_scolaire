@@ -37,8 +37,8 @@ function showError(message) {
    ========================================================================== */
 function validateCredentials({ email, password }) {
   const errors = [];
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Adresse eÃ¢â¬âmail invalide.");
-  if (!password || String(password).length < CONFIG.minPasswordLength) errors.push(`Le mot de passe doit contenir au moins ${CONFIG.minPasswordLength} caractÃÂ¨res.`);
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Adresse e‑mail invalide.");
+  if (!password || String(password).length < CONFIG.minPasswordLength) errors.push(`Le mot de passe doit contenir au moins ${CONFIG.minPasswordLength} caractères.`);
   return errors;
 }
 
@@ -92,7 +92,7 @@ async function performLogin({ email, password, remember }, els) {
     location.href = redirect;
   } catch (err) {
     log("login error", err);
-    const message = (err && err.message) ? err.message : "Ãâ°chec de la connexion.";
+    const message = (err && err.message) ? err.message : "Échec de la connexion.";
     // show friendly message
     if (els && els.errorBox) {
       els.errorBox.textContent = message;
@@ -172,7 +172,7 @@ function attachFormHandler(root = document) {
         if (text && text.startsWith("admin:")) {
           const token = text.replace(/^admin:/, "").trim();
           auth.saveToken(token);
-          dom.showToast("Admin token appliquÃÂ©. RedirectionÃ¢â¬Â¦", { duration: 2000 });
+          dom.showToast("Admin token appliqué. Redirection…", { duration: 2000 });
           setTimeout(() => location.reload(), 600);
         }
       } catch (e) {
@@ -222,7 +222,7 @@ function init() {
   try {
     if (auth.isAuthenticated()) {
       // small delay to allow page to show a message if desired
-      dom.showToast("Vous ÃÂªtes dÃÂ©jÃÂ  connectÃÂ©. RedirectionÃ¢â¬Â¦", { duration: 1200 });
+      dom.showToast("Vous êtes déjà connecté. Redirection…", { duration: 1200 });
       setTimeout(() => {
         const redirect = new URLSearchParams(location.search).get("next") || CONFIG.redirectAfterLogin;
         location.href = redirect;

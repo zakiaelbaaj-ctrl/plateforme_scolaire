@@ -72,7 +72,7 @@ export function initUIRenderers() {
         return;
       }
 
-      // 3. On confirme si ÃÂ§a passe
+      // 3. On confirme si ça passe
       console.log(`[DEBUG] ✔️ Clic autorisé ! Lancement de l'appel vers ${prof.nom}...`);
       AppState.requestCall(prof);
     };

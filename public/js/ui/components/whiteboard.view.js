@@ -1,10 +1,10 @@
 // ======================================================
-// WHITEBOARD CANVAS Ã¢â¬â UI PURE
+// WHITEBOARD CANVAS — UI PURE
 // /js/ui/components/whiteboard.canvas.js
 // ======================================================
-// Ã¢Åâ¦ Aucune logique mÃÂ©tier
-// Ã¢Åâ¦ DÃÂ©lÃÂ¨gue tout ÃÂ  WhiteboardService
-// Ã¢Åâ¦ Compatible avec getPaths() Ã¢â â { points[], color, size }
+// ✅ Aucune logique métier
+// ✅ Délègue tout à WhiteboardService
+// ✅ Compatible avec getPaths() → { points[], color, size }
 // ======================================================
 
 export class WhiteboardCanvas {
@@ -35,7 +35,7 @@ export class WhiteboardCanvas {
         color: this._getColor(),
         size:  this._getSize()
       });
-      // Ã¢Åâ¦ DÃÂ©marre le trait visuellement
+      // ✅ Démarre le trait visuellement
       this.ctx.beginPath();
       this.ctx.moveTo(e.offsetX, e.offsetY);
     });
@@ -43,7 +43,7 @@ export class WhiteboardCanvas {
     this.canvas.addEventListener("mousemove", (e) => {
       if (!this._drawing) return;
       this.whiteboardService.addPoint({ x: e.offsetX, y: e.offsetY });
-      // Ã¢Åâ¦ Dessine en temps rÃÂ©el
+      // ✅ Dessine en temps réel
       this._drawSegment(e.offsetX, e.offsetY);
     });
 
@@ -53,7 +53,7 @@ export class WhiteboardCanvas {
       this.whiteboardService.endPath();
     });
 
-    // Ã¢Åâ¦ Ferme aussi le path si la souris quitte le canvas
+    // ✅ Ferme aussi le path si la souris quitte le canvas
     this.canvas.addEventListener("mouseleave", () => {
       if (!this._drawing) return;
       this._drawing = false;
@@ -63,7 +63,7 @@ export class WhiteboardCanvas {
 
 
   // ============================
-  // DESSIN TEMPS RÃâ°EL
+  // DESSIN TEMPS RÉEL
   // ============================
 
   _drawSegment(x, y) {
@@ -76,7 +76,7 @@ export class WhiteboardCanvas {
 
 
   // ============================
-  // REDRAW COMPLET Ã¢â¬â depuis getPaths()
+  // REDRAW COMPLET — depuis getPaths()
   // ============================
 
   redraw() {
@@ -89,7 +89,7 @@ export class WhiteboardCanvas {
     }
   }
 
-  // Ã¢Åâ¦ Dessine un path complet { points[], color, size }
+  // ✅ Dessine un path complet { points[], color, size }
   _drawPath(path) {
     const ctx = this.ctx;
     ctx.beginPath();

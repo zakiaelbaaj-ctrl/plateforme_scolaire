@@ -1,9 +1,9 @@
 // ======================================================
-// WHITEBOARD CONTRACT Ã¢â¬â TABLEAU STROKE
-// Source de vÃÂ©ritÃÂ© du format des traits distants
+// WHITEBOARD CONTRACT — TABLEAU STROKE
+// Source de vérité du format des traits distants
 // ======================================================
 // ======================================================
-// WHITEBOARD CONTRACT Ã¢â¬â VALIDATION TABLEAU STROKE
+// WHITEBOARD CONTRACT — VALIDATION TABLEAU STROKE
 // ======================================================
 
 export function isValidTableauStroke(s) {
