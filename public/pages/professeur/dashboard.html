@@ -65,6 +65,8 @@
   <button id="toggle-camera-btn" class="btn btn--icon" title="Couper la caméra">📷</button>
 
   <button id="screen-share-btn" class="btn btn--icon" title="Partager mon écran">🖥️</button>
+  <button id="gainsBtn" class="btn btn--ghost btn--sm" style="display:none;"
+          title="Gains en attente de virement">💶 <span id="gainsMontant">—</span></button>
   <button id="logout-btn" class="btn btn--ghost">🚪 Déconnexion</button>
 </div>
   </header>
@@ -227,6 +229,7 @@
 
   <!-- JS — dashboard uniquement, il orchestre tout -->
   <script type="module" src="../../js/pages/professeur/dashboard.js"></script>
+
 <script type="module">
   const stripeBtn = document.getElementById("stripe-onboarding-btn");
 
@@ -262,5 +265,79 @@ const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
     }
   });
 </script>
+<div id="gainsModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;color:#222;border-radius:14px;max-width:460px;width:100%;max-height:80vh;overflow:auto;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+      <h3 style="margin:0;font-size:1.1rem;">💶 Mes gains</h3>
+      <button id="gainsFermer" class="btn btn--ghost btn--sm" aria-label="Fermer">✕</button>
+    </div>
+    <p id="gainsTotal" style="margin:0 0 2px;font-size:1.8rem;font-weight:700;">—</p>
+    <p style="margin:0 0 6px;color:#666;font-size:.9rem;">en attente de virement bancaire</p>
+    <p id="gainsVerses" style="display:none;margin:0 0 12px;color:#666;font-size:.9rem;"></p>
+    <ul id="gainsListe" style="list-style:none;padding:0;margin:12px 0 0;font-size:.9rem;"></ul>
+  </div>
+</div>
+
+<script type="module">
+  // 💶 Gains en attente de virement : un montant dans la barre du haut,
+  // le detail dans une fenetre. Rien ne s affiche si aucune ligne n existe.
+  (async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const API_URL = window.location.hostname === "localhost" ? "http://localhost:4000" : "";
+      const reponse = await fetch(`${API_URL}/api/v1/users/profile/versements`, {
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (!reponse.ok) return;
+
+      const donnees = await reponse.json();
+      if (!donnees.lignes?.length) return;
+
+      const euros = (centimes) =>
+        (centimes / 100).toLocaleString("fr-FR", {
+          style: "currency",
+          currency: donnees.devise || "EUR",
+        });
+
+      const bouton = document.getElementById("gainsBtn");
+      document.getElementById("gainsMontant").textContent = euros(donnees.totalDu);
+      bouton.style.display = "inline-flex";
+
+      document.getElementById("gainsTotal").textContent = euros(donnees.totalDu);
+      if (donnees.totalVerse > 0) {
+        const verses = document.getElementById("gainsVerses");
+        verses.textContent = "Déjà versé : " + euros(donnees.totalVerse);
+        verses.style.display = "block";
+      }
+
+      const liste = document.getElementById("gainsListe");
+      donnees.lignes.forEach((ligne) => {
+        const li = document.createElement("li");
+        const date = new Date(ligne.created_at).toLocaleDateString("fr-FR");
+        const minutes = ligne.duration_seconds
+          ? Math.ceil(ligne.duration_seconds / 60) + " min"
+          : "—";
+        li.textContent =
+          date + " · " + minutes + " · " + euros(ligne.montant_cents) +
+          (ligne.statut === "verse" ? " ✅" : "");
+        li.style.padding = "6px 0";
+        li.style.borderBottom = "1px solid rgba(0,0,0,.08)";
+        liste.appendChild(li);
+      });
+
+      const modale = document.getElementById("gainsModal");
+      const fermer = () => { modale.style.display = "none"; };
+      bouton.addEventListener("click", () => { modale.style.display = "flex"; });
+      document.getElementById("gainsFermer").addEventListener("click", fermer);
+      modale.addEventListener("click", (e) => { if (e.target === modale) fermer(); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") fermer(); });
+    } catch (err) {
+      console.warn("💶 Gains indisponibles :", err.message);
+    }
+  })();
+</script>
+
 </body>
 </html>

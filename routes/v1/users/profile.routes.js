@@ -84,4 +84,41 @@ router.put("/", requireAuth, async (req, res) => {
     res.status(500).json({ message: "Erreur DB" });
   }
 });
+// ======================================================
+// GET /api/v1/users/profile/versements
+// Solde et detail des sommes dues au professeur connecte.
+// ======================================================
+router.get("/versements", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { rows: lignes } = await pool.query(
+      `SELECT v.id, v.visio_session_id, v.montant_cents, v.devise,
+              v.statut, v.created_at, v.verse_le, v.reference,
+              s.duration_seconds
+         FROM versements_dus v
+         LEFT JOIN visio_sessions s ON s.id = v.visio_session_id
+        WHERE v.prof_id = $1
+        ORDER BY v.created_at DESC
+        LIMIT 200`,
+      [userId]
+    );
+
+    const somme = (statut) =>
+      lignes
+        .filter((l) => l.statut === statut)
+        .reduce((total, l) => total + l.montant_cents, 0);
+
+    res.json({
+      totalDu: somme("du"),
+      totalVerse: somme("verse"),
+      devise: "EUR",
+      lignes,
+    });
+  } catch (err) {
+    console.error("❌ versements:", err.message);
+    res.status(500).json({ message: "Erreur DB" });
+  }
+});
+
 export default router;
