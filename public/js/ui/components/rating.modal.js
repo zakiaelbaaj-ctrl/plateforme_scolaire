@@ -1,3 +1,4 @@
+import { appliquer, t } from "../../core/i18n.js";
 // ======================================================
 // RATING MODAL — Notation de session
 // ======================================================
@@ -70,6 +71,9 @@ export async function initRatingModal() {
     const res  = await fetch("/pages/eleve/rating.modal.html");
     const html = await res.text();
     document.body.insertAdjacentHTML("beforeend", html);
+    // Le fragment arrive apres le premier passage de appliquer() :
+    // sans ce rappel, ses textes resteraient en francais.
+    appliquer(document.getElementById("rating-modal") || document);
     bindRatingUI();
     console.log("✅ Rating modal initialisée");
   } catch (err) {
@@ -341,7 +345,7 @@ async function _submitRating() {
     );
      // 🆕 Erreur réseau (pas de réponse du tout)
     if (errorEl) {
-      errorEl.textContent = "Impossible de joindre le serveur. Vérifiez votre connexion.";
+      errorEl.textContent = t("notation.erreurReseau", "Impossible de joindre le serveur. Vérifiez votre connexion.");
       errorEl.style.display = "block";
     }
   }

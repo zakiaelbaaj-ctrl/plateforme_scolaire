@@ -1,7 +1,7 @@
 <div id="rating-modal" class="rating-modal" style="display:none;">
   <div class="rating-modal__box">
 
-    <h3>Comment s'est passé votre cours ?</h3>
+    <h3 data-i18n="notation.titre">Comment s'est passé votre cours ?</h3>
 
     <p id="rating-prof-name" class="rating-prof-name"></p>
     
@@ -19,13 +19,14 @@
       id="rating-comment"
       class="rating-comment"
       placeholder="Commentaire optionnel..."
+      data-i18n-placeholder="notation.commentaire"
     ></textarea>
 
     <p id="rating-error" class="rating-error" style="display:none;"></p>
 
     <div class="rating-actions">
-      <button id="rating-skip" class="btn btn--ghost btn--sm">Passer</button>
-      <button id="rating-submit" class="btn btn--primary btn--sm">Envoyer</button>
+      <button id="rating-skip" class="btn btn--ghost btn--sm" data-i18n="notation.passer">Passer</button>
+      <button id="rating-submit" class="btn btn--primary btn--sm" data-i18n="notation.envoyer">Envoyer</button>
     </div>
 
   </div>

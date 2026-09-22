@@ -193,5 +193,12 @@
     "valider": "تأكيد",
     "connexionSecurisee": "🔄 اتصال آمن...",
     "erreurReessayer": "❌ خطأ، أعد المحاولة"
+  },
+  "notation": {
+    "titre": "كيف سار درسك؟",
+    "commentaire": "تعليق اختياري...",
+    "passer": "تخطٍ",
+    "envoyer": "إرسال",
+    "erreurReseau": "تعذّر الوصول إلى الخادم. تحقق من اتصالك."
   }
 }

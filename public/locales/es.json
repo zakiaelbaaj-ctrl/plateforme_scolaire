@@ -193,5 +193,12 @@
     "valider": "Confirmar",
     "connexionSecurisee": "🔄 Conexión segura...",
     "erreurReessayer": "❌ Error, inténtalo de nuevo"
+  },
+  "notation": {
+    "titre": "¿Qué tal ha ido tu clase?",
+    "commentaire": "Comentario opcional...",
+    "passer": "Omitir",
+    "envoyer": "Enviar",
+    "erreurReseau": "No se puede contactar con el servidor. Comprueba tu conexión."
   }
 }

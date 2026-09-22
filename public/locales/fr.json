@@ -193,5 +193,12 @@
     "valider": "Valider",
     "connexionSecurisee": "🔄 Connexion sécurisée...",
     "erreurReessayer": "❌ Erreur, réessayer"
+  },
+  "notation": {
+    "titre": "Comment s'est passé votre cours ?",
+    "commentaire": "Commentaire optionnel...",
+    "passer": "Passer",
+    "envoyer": "Envoyer",
+    "erreurReseau": "Impossible de joindre le serveur. Vérifiez votre connexion."
   }
 }
