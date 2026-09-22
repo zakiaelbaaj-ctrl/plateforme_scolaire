@@ -16,5 +16,32 @@
       "texte": "Manage your classes and students."
     },
     "accroche": "A teacher available within minutes, wherever you are."
+  },
+  "login": {
+    "identifiant": "Username or email",
+    "identifiantExemple": "marie.dupont or marie@example.com",
+    "motDePasse": "Password",
+    "bouton": "Sign in",
+    "oublie": "Forgot your password?",
+    "pasInscrit": "Not registered yet?",
+    "sInscrire": "Sign up",
+    "vousEtesProf": "Are you a teacher?",
+    "connexionProf": "Teacher login",
+    "vousEtesEtudiant": "Are you a university student?",
+    "connexionEtudiant": "University student login",
+    "eleve": {
+      "titre": "🎓 Student login",
+      "soustitre": "Access your learning space"
+    },
+    "vousEtesEleve": "Are you a school student?",
+    "connexionEleve": "School student login",
+    "prof": {
+      "titre": "🧑‍🏫 Teacher login",
+      "soustitre": "Access your teaching space"
+    },
+    "etudiant": {
+      "titre": "🎓 University student login",
+      "soustitre": "Access your collaborative workspace"
+    }
   }
 }

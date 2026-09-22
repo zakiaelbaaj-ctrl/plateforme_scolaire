@@ -16,5 +16,32 @@
       "texte": "أدر أقسامك وتلاميذك."
     },
     "accroche": "أستاذ متاح في دقائق، أينما كنت."
+  },
+  "login": {
+    "identifiant": "اسم المستخدم أو البريد الإلكتروني",
+    "identifiantExemple": "marie.dupont أو marie@example.com",
+    "motDePasse": "كلمة المرور",
+    "bouton": "تسجيل الدخول",
+    "oublie": "هل نسيت كلمة المرور؟",
+    "pasInscrit": "ليس لديك حساب بعد؟",
+    "sInscrire": "إنشاء حساب",
+    "vousEtesProf": "هل أنت أستاذ؟",
+    "connexionProf": "دخول الأساتذة",
+    "vousEtesEtudiant": "هل أنت طالب جامعي؟",
+    "connexionEtudiant": "دخول الطلبة",
+    "eleve": {
+      "titre": "🎓 دخول التلاميذ",
+      "soustitre": "ادخل إلى فضاء التعلم الخاص بك"
+    },
+    "vousEtesEleve": "هل أنت تلميذ؟",
+    "connexionEleve": "دخول التلاميذ",
+    "prof": {
+      "titre": "🧑‍🏫 دخول الأساتذة",
+      "soustitre": "ادخل إلى فضاء دروسك"
+    },
+    "etudiant": {
+      "titre": "🎓 دخول الطلبة",
+      "soustitre": "ادخل إلى فضاء العمل التشاركي"
+    }
   }
 }

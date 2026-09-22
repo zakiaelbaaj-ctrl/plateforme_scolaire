@@ -16,5 +16,32 @@
       "texte": "Gestiona tus clases y alumnos."
     },
     "accroche": "Un profesor disponible en pocos minutos, estés donde estés."
+  },
+  "login": {
+    "identifiant": "Nombre de usuario o correo",
+    "identifiantExemple": "marie.dupont o marie@example.com",
+    "motDePasse": "Contraseña",
+    "bouton": "Iniciar sesión",
+    "oublie": "¿Olvidaste tu contraseña?",
+    "pasInscrit": "¿Aún no tienes cuenta?",
+    "sInscrire": "Registrarse",
+    "vousEtesProf": "¿Eres profesor?",
+    "connexionProf": "Acceso profesores",
+    "vousEtesEtudiant": "¿Eres estudiante universitario?",
+    "connexionEtudiant": "Acceso estudiantes",
+    "eleve": {
+      "titre": "🎓 Acceso alumnos",
+      "soustitre": "Accede a tu espacio de aprendizaje"
+    },
+    "vousEtesEleve": "¿Eres alumno?",
+    "connexionEleve": "Acceso alumnos",
+    "prof": {
+      "titre": "🧑‍🏫 Acceso profesores",
+      "soustitre": "Accede a tu espacio de clases"
+    },
+    "etudiant": {
+      "titre": "🎓 Acceso estudiantes",
+      "soustitre": "Accede a tu espacio de trabajo colaborativo"
+    }
   }
 }

@@ -14,53 +14,82 @@
 </head>
 
 <body class="auth-body">
+
+  <select id="selecteurLangue" aria-label="Langue"
+          style="position:fixed;top:12px;inset-inline-end:12px;z-index:50;font-family:inherit;
+                 font-size:.9rem;padding:6px 10px;border-radius:8px;border:1px solid #ccc;
+                 background:#fff;cursor:pointer;width:auto;min-width:0;max-width:200px;"></select>
   <div class="auth-container role-etudiant">
 
     <div class="logo-global"></div>
 
-    <h1>🎓 Connexion Étudiant</h1>
-    <p class="subtitle">Accédez à votre espace de travail collaboratif</p>
+    <h1 data-i18n="login.etudiant.titre">🎓 Connexion Étudiant</h1>
+    <p class="subtitle" data-i18n="login.etudiant.soustitre">Accédez à votre espace de travail collaboratif</p>
 
     <form id="loginEtudiantForm">
 
       <div class="form-group">
-        <label for="username">Nom d'utilisateur ou Email</label>
+        <label for="username" data-i18n="login.identifiant">Nom d'utilisateur ou Email</label>
         <input type="text" id="username" name="username" required
                autocomplete="username"
-               placeholder="nom.prenom ou email@example.com">
+               placeholder="nom.prenom ou email@example.com"
+               data-i18n-placeholder="login.identifiantExemple">
       </div>
 
       <div class="form-group">
-        <label for="password">Mot de passe</label>
+        <label for="password" data-i18n="login.motDePasse">Mot de passe</label>
         <input type="password" id="password" name="password" required
                autocomplete="current-password"
                placeholder="••••••••">
       </div>
 
-      <button type="submit" id="submitBtn">Se connecter</button>
+      <button type="submit" id="submitBtn" data-i18n="login.bouton">Se connecter</button>
 
       <div id="loadingDiv" class="loading"></div>
       <div id="errorDiv"   class="error"></div>
       <div id="successDiv" class="success"></div>
        <div class="link-section" style="margin-top: 10px; text-align: center;">
-  <a href="/forgot_password.html">Mot de passe oublié ?</a>
+  <a href="/forgot_password.html" data-i18n="login.oublie">Mot de passe oublié ?</a>
 </div>
     </form>
 
     <div class="link-section">
-      Pas encore inscrit ? <a href="/pages/etudiant/register.html" id="registerLink">S'inscrire</a>
+      <span data-i18n="login.pasInscrit">Pas encore inscrit ?</span>
+      <a href="/pages/etudiant/register.html" id="registerLink" data-i18n="login.sInscrire">S'inscrire</a>
     </div>
     <div class="link-section" style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 15px;">
-      Vous êtes élève ? <a href="/pages/eleve/login.html">Connexion élève</a>
+      <span data-i18n="login.vousEtesEleve">Vous êtes élève ?</span>
+      <a href="/pages/eleve/login.html" data-i18n="login.connexionEleve">Connexion élève</a>
     </div>
 
 
     <div class="link-section" style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 15px;">
-      Vous êtes professeur ? <a href="/pages/professeur/login.html">Connexion professeur</a>
+      <span data-i18n="login.vousEtesProf">Vous êtes professeur ?</span>
+      <a href="/pages/professeur/login.html" data-i18n="login.connexionProf">Connexion professeur</a>
     </div>
 
   </div>
 
   <script type="module" src="../../js/auth/login_etudiant.js"></script>
+  <script type="module">
+    import { initI18n, definirLangue, LANGUES } from "/js/core/i18n.js";
+
+    (async () => {
+      const langue = await initI18n();
+      const select = document.getElementById("selecteurLangue");
+      if (!select) return;
+
+      LANGUES.forEach((l) => {
+        const opt = document.createElement("option");
+        opt.value = l.code;
+        opt.textContent = l.nomNatif;
+        if (l.code === langue.code) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener("change", () => definirLangue(select.value));
+    })();
+  </script>
+
 </body>
 </html>
