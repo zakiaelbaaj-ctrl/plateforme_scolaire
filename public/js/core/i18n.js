@@ -48,6 +48,29 @@ export function appliquer(racine = document) {
   });
 }
 
+// Les champs techniques — adresse, telephone, mot de passe, identifiant —
+// contiennent toujours du texte latin. En mode droite-a-gauche, l algorithme
+// bidirectionnel y deplace les caracteres neutres comme le point ou l arobase,
+// ce qui corrompt la saisie. On leur impose donc le sens gauche-droite.
+function poserStylesBidi() {
+  if (document.getElementById("i18n-styles-bidi")) return;
+  const style = document.createElement("style");
+  style.id = "i18n-styles-bidi";
+  style.textContent = `
+    [dir="rtl"] input[type="email"],
+    [dir="rtl"] input[type="tel"],
+    [dir="rtl"] input[type="url"],
+    [dir="rtl"] input[type="number"],
+    [dir="rtl"] input[type="password"],
+    [dir="rtl"] input[name="username"],
+    [dir="rtl"] input[name="telephone"] {
+      direction: ltr;
+      text-align: left;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export async function definirLangue(code) {
   const langue = langueParCode(code) || langueParCode(LANGUE_PAR_DEFAUT);
 
@@ -62,6 +85,7 @@ export async function definirLangue(code) {
   langueActive = langue.code;
   document.documentElement.lang = langue.code;
   document.documentElement.dir = langue.sens;
+  poserStylesBidi();
 
   try {
     localStorage.setItem(CLE_STOCKAGE, langue.code);

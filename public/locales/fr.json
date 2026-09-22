@@ -85,6 +85,19 @@
       "lettre": "📎 Lettre de motivation.",
       "activation": "⏳ Compte activé uniquement après validation administrateur.",
       "charte": "🔒 En vous inscrivant, vous confirmez avoir lu et accepté notre"
+    },
+    "nomUtilisateurReq": "Nom d'utilisateur *",
+    "prenomReq": "Prénom *",
+    "nomReq": "Nom *",
+    "emailReq": "Email *",
+    "motDePasseReq": "Mot de passe *",
+    "confirmerMotDePasseReq": "Confirmer le mot de passe *",
+    "pays": "Pays",
+    "eleve": {
+      "titre": "📝 Inscription Élève"
+    },
+    "etudiant": {
+      "titre": "📝 Inscription Étudiant"
     }
   }
 }

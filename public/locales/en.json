@@ -85,6 +85,19 @@
       "lettre": "📎 Cover letter.",
       "activation": "⏳ Account activated only after administrator approval.",
       "charte": "🔒 By registering, you confirm that you have read and accepted our"
+    },
+    "nomUtilisateurReq": "Username *",
+    "prenomReq": "First name *",
+    "nomReq": "Last name *",
+    "emailReq": "Email *",
+    "motDePasseReq": "Password *",
+    "confirmerMotDePasseReq": "Confirm password *",
+    "pays": "Country",
+    "eleve": {
+      "titre": "📝 Student registration"
+    },
+    "etudiant": {
+      "titre": "📝 University student registration"
     }
   }
 }

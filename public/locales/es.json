@@ -85,6 +85,19 @@
       "lettre": "📎 Carta de motivación.",
       "activation": "⏳ Cuenta activada solo tras la validación del administrador.",
       "charte": "🔒 Al registrarte, confirmas haber leído y aceptado nuestra"
+    },
+    "nomUtilisateurReq": "Nombre de usuario *",
+    "prenomReq": "Nombre *",
+    "nomReq": "Apellidos *",
+    "emailReq": "Correo *",
+    "motDePasseReq": "Contraseña *",
+    "confirmerMotDePasseReq": "Confirmar contraseña *",
+    "pays": "País",
+    "eleve": {
+      "titre": "📝 Registro de alumnos"
+    },
+    "etudiant": {
+      "titre": "📝 Registro de estudiantes"
     }
   }
 }
