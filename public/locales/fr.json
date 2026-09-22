@@ -99,5 +99,39 @@
     "etudiant": {
       "titre": "📝 Inscription Étudiant"
     }
+  },
+  "cours": {
+    "documents": "📁 Documents",
+    "glisserFichier": "Glisser un fichier ici",
+    "ouParcourir": "ou cliquer pour parcourir",
+    "envoyerDocument": "Envoyer le document",
+    "video": "🎥 Vidéo",
+    "tableauBlanc": "🖊 Tableau blanc",
+    "session": "📞 Session",
+    "chat": "💬 Chat",
+    "professeur": "Professeur",
+    "etiquetteProf": "PROFESSEUR",
+    "etiquetteVous": "VOUS",
+    "messagePlaceholder": "Message…",
+    "couperMicro": "Couper le micro",
+    "couperCamera": "Couper la caméra",
+    "pleinEcran": "Plein écran",
+    "outilPoint": "Point",
+    "outilStylo": "Stylo",
+    "outilGomme": "Gomme",
+    "outilLigne": "Ligne",
+    "outilRectangle": "Rectangle",
+    "outilCercle": "Cercle",
+    "outilTexte": "Texte",
+    "couleur": "Couleur",
+    "epaisseur": "Épaisseur",
+    "annuler": "Annuler",
+    "effacerTout": "Effacer tout",
+    "telecharger": "Télécharger"
+  },
+  "tdbEleve": {
+    "titre": "Espace Élève",
+    "deconnexion": "Déconnexion",
+    "disponibles": "👨‍🏫 Disponibles"
   }
 }

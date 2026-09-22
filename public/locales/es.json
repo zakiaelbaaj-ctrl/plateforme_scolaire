@@ -99,5 +99,39 @@
     "etudiant": {
       "titre": "📝 Registro de estudiantes"
     }
+  },
+  "cours": {
+    "documents": "📁 Documentos",
+    "glisserFichier": "Arrastra un archivo aquí",
+    "ouParcourir": "o haz clic para explorar",
+    "envoyerDocument": "Enviar el documento",
+    "video": "🎥 Vídeo",
+    "tableauBlanc": "🖊 Pizarra",
+    "session": "📞 Sesión",
+    "chat": "💬 Chat",
+    "professeur": "Profesor",
+    "etiquetteProf": "PROFESOR",
+    "etiquetteVous": "TÚ",
+    "messagePlaceholder": "Mensaje…",
+    "couperMicro": "Silenciar micrófono",
+    "couperCamera": "Apagar cámara",
+    "pleinEcran": "Pantalla completa",
+    "outilPoint": "Punto",
+    "outilStylo": "Lápiz",
+    "outilGomme": "Borrador",
+    "outilLigne": "Línea",
+    "outilRectangle": "Rectángulo",
+    "outilCercle": "Círculo",
+    "outilTexte": "Texto",
+    "couleur": "Color",
+    "epaisseur": "Grosor",
+    "annuler": "Deshacer",
+    "effacerTout": "Borrar todo",
+    "telecharger": "Descargar"
+  },
+  "tdbEleve": {
+    "titre": "Espacio del alumno",
+    "deconnexion": "Cerrar sesión",
+    "disponibles": "👨‍🏫 Disponibles"
   }
 }

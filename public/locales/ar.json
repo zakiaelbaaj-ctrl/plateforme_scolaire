@@ -99,5 +99,39 @@
     "etudiant": {
       "titre": "📝 تسجيل الطلبة"
     }
+  },
+  "cours": {
+    "documents": "📁 المستندات",
+    "glisserFichier": "اسحب ملفًا هنا",
+    "ouParcourir": "أو انقر للتصفح",
+    "envoyerDocument": "إرسال المستند",
+    "video": "🎥 فيديو",
+    "tableauBlanc": "🖊 السبورة",
+    "session": "📞 الجلسة",
+    "chat": "💬 المحادثة",
+    "professeur": "الأستاذ",
+    "etiquetteProf": "الأستاذ",
+    "etiquetteVous": "أنت",
+    "messagePlaceholder": "رسالة…",
+    "couperMicro": "كتم الميكروفون",
+    "couperCamera": "إيقاف الكاميرا",
+    "pleinEcran": "ملء الشاشة",
+    "outilPoint": "نقطة",
+    "outilStylo": "قلم",
+    "outilGomme": "ممحاة",
+    "outilLigne": "خط",
+    "outilRectangle": "مستطيل",
+    "outilCercle": "دائرة",
+    "outilTexte": "نص",
+    "couleur": "اللون",
+    "epaisseur": "السماكة",
+    "annuler": "تراجع",
+    "effacerTout": "مسح الكل",
+    "telecharger": "تنزيل"
+  },
+  "tdbEleve": {
+    "titre": "فضاء التلميذ",
+    "deconnexion": "تسجيل الخروج",
+    "disponibles": "👨‍🏫 المتاحون"
   }
 }

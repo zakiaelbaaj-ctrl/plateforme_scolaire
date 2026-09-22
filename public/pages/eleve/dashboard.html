@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Espace Élève</title>
+  <title data-i18n="tdbEleve.titre">Espace Élève</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -54,12 +54,12 @@
   <button id="enable-notifications-btn" class="btn btn--primary btn--sm" style="display:none; margin-left:8px;">
     🔔 Activer les notifications
   </button>
-  <button id="logout-btn" class="primary" aria-label="Se déconnecter">Déconnexion</button>
+  <button id="logout-btn" data-i18n="tdbEleve.deconnexion" class="primary" aria-label="Se déconnecter">Déconnexion</button>
 </div>
 </header>
   <!-- ================= PROF LIST BAR ================= -->
   <div class="prof-bar">
-    <span class="prof-bar__label">👨‍🏫 Disponibles</span>
+    <span class="prof-bar__label" data-i18n="tdbEleve.disponibles">👨‍🏫 Disponibles</span>
     <ul id="prof-list" class="prof-list">
       <li class="empty">Aucun professeur connecté</li>
     </ul>
@@ -96,15 +96,15 @@
       <!-- VIDEO AREA -->
       <section class="card card--video">
   <div class="card__header" style="cursor: move;">
-    <h3 class="card__title">🎥 Vidéo</h3>
+    <h3 class="card__title" data-i18n="cours.video">🎥 Vidéo</h3>
 
 <div class="video-actions">
 
-  <button id="toggle-mic-btn" class="btn btn--icon btn--sm" title="Couper le micro">
+  <button id="toggle-mic-btn" data-i18n-title="cours.couperMicro" class="btn btn--icon btn--sm" title="Couper le micro">
     🎙️
   </button>
 
-  <button id="toggle-camera-btn" class="btn btn--icon btn--sm" title="Couper la caméra">
+  <button id="toggle-camera-btn" data-i18n-title="cours.couperCamera" class="btn btn--icon btn--sm" title="Couper la caméra">
     📷
   </button>
 
@@ -144,13 +144,13 @@
     
       <div class="video-block video-block--remote">
         <div id="remoteVideoContainer" class="video-box">
-          <div class="video-overlay">PROFESSEUR</div>
+          <div class="video-overlay" data-i18n="cours.etiquetteProf">PROFESSEUR</div>
         </div>
       </div>
 
       <div class="video-block video-block--local">
         <div id="localVideoContainer" class="video-box">
-          <div class="video-overlay">VOUS</div>
+          <div class="video-overlay" data-i18n="cours.etiquetteVous">VOUS</div>
         </div>
       </div>
     </div>
@@ -165,9 +165,9 @@
       <!-- WHITEBOARD -->
       <section class="card card--whiteboard">
   <div class="card__header">
-    <h3 class="card__title">🖊 Tableau blanc</h3>
+    <h3 class="card__title" data-i18n="cours.tableauBlanc">🖊 Tableau blanc</h3>
     <div class="wb-header-actions">
-      <button id="wb-fullscreen-btn" class="btn btn--icon" title="Plein écran">⛶</button>
+      <button id="wb-fullscreen-btn" data-i18n-title="cours.pleinEcran" class="btn btn--icon" title="Plein écran">⛶</button>
     </div>
   </div>
 
@@ -184,22 +184,22 @@
     <!-- Outils DANS le wrapper → visibles en fullscreen -->
     <div class="whiteboard-tools whiteboard-tools--overlay">
       <div class="wb-tools-group">
-        <button id="pointToolBtn"  class="btn btn--icon wb-tool" title="Point">•</button>
-        <button id="penToolBtn"    class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
-        <button id="eraserToolBtn" class="btn btn--icon wb-tool" title="Gomme">🧽</button>
-        <button id="lineToolBtn"   class="btn btn--icon wb-tool" title="Ligne">📏</button>
-        <button id="rectToolBtn"   class="btn btn--icon wb-tool" title="Rectangle">▭</button>
-        <button id="circleToolBtn" class="btn btn--icon wb-tool" title="Cercle">⭕</button>
-        <button id="textToolBtn"   class="btn btn--icon wb-tool" title="Texte">🔤</button>
+        <button id="pointToolBtn" data-i18n-title="cours.outilPoint"  class="btn btn--icon wb-tool" title="Point">•</button>
+        <button id="penToolBtn" data-i18n-title="cours.outilStylo"    class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
+        <button id="eraserToolBtn" data-i18n-title="cours.outilGomme" class="btn btn--icon wb-tool" title="Gomme">🧽</button>
+        <button id="lineToolBtn" data-i18n-title="cours.outilLigne"   class="btn btn--icon wb-tool" title="Ligne">📏</button>
+        <button id="rectToolBtn" data-i18n-title="cours.outilRectangle"   class="btn btn--icon wb-tool" title="Rectangle">▭</button>
+        <button id="circleToolBtn" data-i18n-title="cours.outilCercle" class="btn btn--icon wb-tool" title="Cercle">⭕</button>
+        <button id="textToolBtn" data-i18n-title="cours.outilTexte"   class="btn btn--icon wb-tool" title="Texte">🔤</button>
       </div>
       <div class="wb-tools-group">
-        <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
-        <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
+        <input type="color" id="whiteboardColor" data-i18n-title="cours.couleur" value="#000000" class="wb-color-picker" title="Couleur" />
+        <input type="range" id="whiteboardSize" data-i18n-title="cours.epaisseur" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
       </div>
       <div class="wb-tools-group wb-tools-group--right">
-        <button id="undoWhiteboardBtn"     class="btn btn--icon" title="Annuler">↩</button>
-        <button id="clearWhiteboardBtn"    class="btn btn--icon btn--danger-ghost" title="Effacer tout">🗑️</button>
-        <button id="downloadWhiteboardBtn" class="btn btn--icon" title="Télécharger">⬇️</button>
+        <button id="undoWhiteboardBtn" data-i18n-title="cours.annuler"     class="btn btn--icon" title="Annuler">↩</button>
+        <button id="clearWhiteboardBtn" data-i18n-title="cours.effacerTout"    class="btn btn--icon btn--danger-ghost" title="Effacer tout">🗑️</button>
+        <button id="downloadWhiteboardBtn" data-i18n-title="cours.telecharger" class="btn btn--icon" title="Télécharger">⬇️</button>
       </div>
     </div>
 
@@ -214,10 +214,10 @@
       <!-- SESSION INFO -->
       <div class="card card--session">
         <div class="card__header">
-          <h3 class="card__title">📞 Session</h3>
+          <h3 class="card__title" data-i18n="cours.session">📞 Session</h3>
         </div>
         <p class="session-prof-info">
-          <span class="label">Professeur</span>
+          <span class="label" data-i18n="cours.professeur">Professeur</span>
           <span id="remote-prof-info" class="value">—</span>
         </p>
       </div>
@@ -225,11 +225,11 @@
       <!-- CHAT -->
       <div class="card card--chat">
         <div class="card__header">
-          <h3 class="card__title">💬 Chat</h3>
+          <h3 class="card__title" data-i18n="cours.chat">💬 Chat</h3>
         </div>
         <div id="chat-box" class="chat-box"></div>
         <div class="chat-input-row">
-          <input id="chat-input" class="chat-input" placeholder="Message…" autocomplete="off" />
+          <input id="chat-input" data-i18n-placeholder="cours.messagePlaceholder" class="chat-input" placeholder="Message…" autocomplete="off" />
           <button id="send-msg" class="btn btn--primary btn--sm">→</button>
         </div>
       </div>
@@ -237,16 +237,16 @@
       <!-- DOCUMENTS -->
       <div class="card card--docs">
         <div class="card__header">
-          <h3 class="card__title">📁 Documents</h3>
+          <h3 class="card__title" data-i18n="cours.documents">📁 Documents</h3>
         </div>
         <label class="file-drop-zone" for="file-input">
-          <span>Glisser un fichier ici</span>
-          <span class="file-drop-zone__sub">ou cliquer pour parcourir</span>
+          <span data-i18n="cours.glisserFichier">Glisser un fichier ici</span>
+          <span class="file-drop-zone__sub" data-i18n="cours.ouParcourir">ou cliquer pour parcourir</span>
         </label>
         <input type="file" id="file-input" class="file-input-hidden" />
         <!-- aperçu avant envoi -->
         <div id="selected-file-preview"></div>
-        <button id="send-file" class="btn btn--primary full-width">Envoyer le document</button>
+        <button id="send-file" class="btn btn--primary full-width" data-i18n="cours.envoyerDocument">Envoyer le document</button>
         <ul id="doc-list" class="doc-list"></ul>
       </div>
 
@@ -254,6 +254,12 @@
   </main>     <!-- ← fermeture dashboard-layout -->
    <!-- Liste défilante profs — en dehors du main, position: fixed -->
   <!-- ================= JS ================= -->
+  <!-- Traduction de l interface -->
+  <script type="module">
+    import { initI18n } from "/js/core/i18n.js";
+    initI18n();
+  </script>
+
   <script type="module" src="../../js/pages/eleve/dashboard.js"></script>
   <script type="module">
    const stripeBtn = document.getElementById("stripe-onboarding-btn");

@@ -99,5 +99,39 @@
     "etudiant": {
       "titre": "📝 University student registration"
     }
+  },
+  "cours": {
+    "documents": "📁 Documents",
+    "glisserFichier": "Drag a file here",
+    "ouParcourir": "or click to browse",
+    "envoyerDocument": "Send document",
+    "video": "🎥 Video",
+    "tableauBlanc": "🖊 Whiteboard",
+    "session": "📞 Session",
+    "chat": "💬 Chat",
+    "professeur": "Teacher",
+    "etiquetteProf": "TEACHER",
+    "etiquetteVous": "YOU",
+    "messagePlaceholder": "Message…",
+    "couperMicro": "Mute microphone",
+    "couperCamera": "Turn off camera",
+    "pleinEcran": "Fullscreen",
+    "outilPoint": "Point",
+    "outilStylo": "Pen",
+    "outilGomme": "Eraser",
+    "outilLigne": "Line",
+    "outilRectangle": "Rectangle",
+    "outilCercle": "Circle",
+    "outilTexte": "Text",
+    "couleur": "Colour",
+    "epaisseur": "Thickness",
+    "annuler": "Undo",
+    "effacerTout": "Clear all",
+    "telecharger": "Download"
+  },
+  "tdbEleve": {
+    "titre": "Student area",
+    "deconnexion": "Log out",
+    "disponibles": "👨‍🏫 Available"
   }
 }
