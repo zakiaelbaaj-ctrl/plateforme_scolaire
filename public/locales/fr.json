@@ -43,5 +43,48 @@
       "titre": "🎓 Connexion Étudiant",
       "soustitre": "Accédez à votre espace de travail collaboratif"
     }
+  },
+  "inscription": {
+    "prenom": "Prénom",
+    "nom": "Nom",
+    "nomUtilisateur": "Nom d'utilisateur",
+    "telephone": "Téléphone",
+    "paysResidence": "Pays de résidence",
+    "ville": "Ville",
+    "villeExemple": "Paris,...",
+    "matieres": "Matière(s) enseignée(s)",
+    "niveaux": "Niveau enseigné",
+    "aideCtrl": "Maintenez CTRL (Windows) ou CMD (Mac) pour sélectionner plusieurs niveaux.",
+    "classes": "Classes enseignées",
+    "aideClasses": "Facultatif. Laissez vide si vous enseignez toutes les classes du niveau.",
+    "diplome": "📎 Diplôme (PDF ou image)",
+    "lettreMotivation": "📎 Lettre de motivation (PDF ou image)",
+    "cv": "📎 Curriculum Vitae (PDF ou image)",
+    "pieceIdentite": "📎 Pièce d'identité (PDF ou image)",
+    "photoIdentite": "📎 Photo d'identité (PDF ou image)",
+    "emailPro": "Email professionnel",
+    "emailExemple": "exemple@mail.com",
+    "motDePasse": "Mot de passe",
+    "confirmerMotDePasse": "Confirmer le mot de passe",
+    "charteTexte": "J'ai lu et j'accepte la",
+    "charteLien": "charte de sécurité",
+    "envoyer": "📤 Envoyer ma demande",
+    "prof": {
+      "titre": "🧑‍🏫 Inscription Professeur",
+      "soustitre": "Partenaire international – enseignez partout dans le monde 🌍"
+    },
+    "conditions": {
+      "titre": "📌 Conditions requises :",
+      "primaire": "Primaire : Bac +3 minimum",
+      "secondaire": "Secondaire : Bac +4 minimum",
+      "superieur": "Supérieur : Bac +6 minimum",
+      "piece": "📎 Copie de la pièce d'identité.",
+      "diplome": "📎 Copie du diplôme obligatoire.",
+      "photo": "📎 Photo d'identité.",
+      "cv": "📎 Curriculum Vitae (CV).",
+      "lettre": "📎 Lettre de motivation.",
+      "activation": "⏳ Compte activé uniquement après validation administrateur.",
+      "charte": "🔒 En vous inscrivant, vous confirmez avoir lu et accepté notre"
+    }
   }
 }

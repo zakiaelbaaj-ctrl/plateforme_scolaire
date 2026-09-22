@@ -43,5 +43,48 @@
       "titre": "🎓 Acceso estudiantes",
       "soustitre": "Accede a tu espacio de trabajo colaborativo"
     }
+  },
+  "inscription": {
+    "prenom": "Nombre",
+    "nom": "Apellidos",
+    "nomUtilisateur": "Nombre de usuario",
+    "telephone": "Teléfono",
+    "paysResidence": "País de residencia",
+    "ville": "Ciudad",
+    "villeExemple": "Madrid, ...",
+    "matieres": "Asignatura(s) impartida(s)",
+    "niveaux": "Nivel impartido",
+    "aideCtrl": "Mantén CTRL (Windows) o CMD (Mac) para seleccionar varios niveles.",
+    "classes": "Clases impartidas",
+    "aideClasses": "Opcional. Déjalo vacío si imparte todas las clases del nivel.",
+    "diplome": "📎 Título (PDF o imagen)",
+    "lettreMotivation": "📎 Carta de motivación (PDF o imagen)",
+    "cv": "📎 Currículum (PDF o imagen)",
+    "pieceIdentite": "📎 Documento de identidad (PDF o imagen)",
+    "photoIdentite": "📎 Foto de identidad (PDF o imagen)",
+    "emailPro": "Correo profesional",
+    "emailExemple": "ejemplo@mail.com",
+    "motDePasse": "Contraseña",
+    "confirmerMotDePasse": "Confirmar contraseña",
+    "charteTexte": "He leído y acepto la",
+    "charteLien": "carta de seguridad",
+    "envoyer": "📤 Enviar mi solicitud",
+    "prof": {
+      "titre": "🧑‍🏫 Registro de profesores",
+      "soustitre": "Socio internacional – enseña en cualquier parte del mundo 🌍"
+    },
+    "conditions": {
+      "titre": "📌 Requisitos:",
+      "primaire": "Primaria: 3 años de estudios superiores mínimo",
+      "secondaire": "Secundaria: 4 años de estudios superiores mínimo",
+      "superieur": "Superior: 6 años de estudios superiores mínimo",
+      "piece": "📎 Copia del documento de identidad.",
+      "diplome": "📎 Copia del título (obligatorio).",
+      "photo": "📎 Foto de identidad.",
+      "cv": "📎 Currículum (CV).",
+      "lettre": "📎 Carta de motivación.",
+      "activation": "⏳ Cuenta activada solo tras la validación del administrador.",
+      "charte": "🔒 Al registrarte, confirmas haber leído y aceptado nuestra"
+    }
   }
 }

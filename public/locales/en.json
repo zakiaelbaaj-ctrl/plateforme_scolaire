@@ -43,5 +43,48 @@
       "titre": "🎓 University student login",
       "soustitre": "Access your collaborative workspace"
     }
+  },
+  "inscription": {
+    "prenom": "First name",
+    "nom": "Last name",
+    "nomUtilisateur": "Username",
+    "telephone": "Phone",
+    "paysResidence": "Country of residence",
+    "ville": "City",
+    "villeExemple": "Paris, ...",
+    "matieres": "Subject(s) taught",
+    "niveaux": "Level taught",
+    "aideCtrl": "Hold CTRL (Windows) or CMD (Mac) to select several levels.",
+    "classes": "Classes taught",
+    "aideClasses": "Optional. Leave empty if you teach every class of the level.",
+    "diplome": "📎 Diploma (PDF or image)",
+    "lettreMotivation": "📎 Cover letter (PDF or image)",
+    "cv": "📎 Résumé (PDF or image)",
+    "pieceIdentite": "📎 ID document (PDF or image)",
+    "photoIdentite": "📎 ID photo (PDF or image)",
+    "emailPro": "Professional email",
+    "emailExemple": "example@mail.com",
+    "motDePasse": "Password",
+    "confirmerMotDePasse": "Confirm password",
+    "charteTexte": "I have read and accept the",
+    "charteLien": "security charter",
+    "envoyer": "📤 Send my application",
+    "prof": {
+      "titre": "🧑‍🏫 Teacher registration",
+      "soustitre": "International partner – teach anywhere in the world 🌍"
+    },
+    "conditions": {
+      "titre": "📌 Requirements:",
+      "primaire": "Primary: 3 years of higher education minimum",
+      "secondaire": "Secondary: 4 years of higher education minimum",
+      "superieur": "Higher education: 6 years of higher education minimum",
+      "piece": "📎 Copy of your ID document.",
+      "diplome": "📎 Copy of your diploma (required).",
+      "photo": "📎 ID photo.",
+      "cv": "📎 Résumé (CV).",
+      "lettre": "📎 Cover letter.",
+      "activation": "⏳ Account activated only after administrator approval.",
+      "charte": "🔒 By registering, you confirm that you have read and accepted our"
+    }
   }
 }
