@@ -17,6 +17,7 @@ import "/js/eleve.init.js";
 import { initUIRenderers } from "/js/modules/ui/uiRenderers.js";
 import { socketHandlerEleve } from "/js/core/socket.handler.eleve.js";
 import { getUserProfile } from "../../services/user.service.js";
+import { t } from "../../core/i18n.js";
 import { handleAllStripeReturns, holdFundsForSession } 
 from "/js/services/stripe.service.js";
 import { showNotification } from "/js/ui/components/notification.js";
@@ -325,8 +326,8 @@ function initAutoCallFromUrl() {
     console.warn("⚠️ Auto-appel annulé : professeur introuvable après délai", targetProfId);
     AppState._notify("ui:notification", {
       type: "error",
-      title: "Professeur indisponible",
-      message: "Ce professeur n'est plus en ligne."
+      title: t("appel.profIndisponibleTitre", "Professeur indisponible"),
+      message: t("appel.profPlusEnLigne", "Ce professeur n'est plus en ligne.")
     });
   }, 8000);
 
@@ -353,10 +354,10 @@ if (!result.ok) {
 
   AppState._notify("ui:notification", {
     type: "error",
-    title: "Appel impossible",
+    title: t("appel.impossibleTitre", "Appel impossible"),
     message: result.reason === "no-card"
-      ? "Ajoutez une carte bancaire pour appeler un professeur."
-      : "Ce professeur n'est pas disponible pour le moment."
+      ? t("appel.ajoutezCarte", "Ajoutez une carte bancaire pour appeler un professeur.")
+      : t("appel.profPasDisponible", "Ce professeur n'est pas disponible pour le moment.")
   });
 }
   }
@@ -508,8 +509,8 @@ ScreenShareService.onStop(() => {
 
     AppState._notify("ui:notification", {
       type: "error",
-      title: "Aucune réponse",
-      message: "Le professeur n'a pas répondu à votre appel. Vous pouvez réessayer ou choisir un autre professeur."
+      title: t("appel.aucuneReponseTitre", "Aucune réponse"),
+      message: t("appel.aucuneReponseTexte", "Le professeur n'a pas répondu à votre appel. Vous pouvez réessayer ou choisir un autre professeur.")
     });
   });
   // ================= APPEL REFUSÉ PAR LE PROF =================
@@ -524,8 +525,8 @@ AppState.on('call:rejected', (data) => {
 
   AppState._notify("ui:notification", {
     type: "error",
-    title: "Appel refusé",
-    message: "Le professeur a refusé votre appel. Vous pouvez choisir un autre professeur en ligne."
+    title: t("appel.refuseTitre", "Appel refusé"),
+    message: t("appel.refuseTexte", "Le professeur a refusé votre appel. Vous pouvez choisir un autre professeur en ligne.")
   });
 });
    AppState.on("timer:update", (seconds) => {
@@ -1051,7 +1052,7 @@ function updateWsStatus(status, attempt = 0) {
   switch (status) {
     case "connected":
       if (badge) {
-        badge.textContent = "🟢 Connecté";
+        badge.textContent = t("cours.wsConnecte", "🟢 Connecté");
         badge.style.color = "#4CAF50";
         badge.title = "";
       }
@@ -1059,17 +1060,17 @@ function updateWsStatus(status, attempt = 0) {
 
     case "reconnecting":
       if (badge) {
-        badge.textContent = `🟡 Reconnexion... (${attempt})`;
+        badge.textContent = t("cours.wsReconnexion", "🟡 Reconnexion... ({n})").replace("{n}", attempt);
         badge.style.color = "#FF9800";
-        badge.title = `Tentative ${attempt}`;
+        badge.title = t("cours.wsTentative", "Tentative {n}").replace("{n}", attempt);
       }
       break;
 
     case "disconnected":
       if (badge) {
-        badge.textContent = "🔴 Hors ligne";
+        badge.textContent = t("cours.wsHorsLigne", "🔴 Hors ligne");
         badge.style.color = "#f44336";
-        badge.title = "Connexion perdue";
+        badge.title = t("cours.wsConnexionPerdue", "Connexion perdue");
       }
       break;
 
@@ -1078,9 +1079,9 @@ function updateWsStatus(status, attempt = 0) {
       // dans socketHandlerEleve a échoué) — pas la peine d'insister,
       // on renvoie proprement l'élève se reconnecter.
       if (badge) {
-        badge.textContent = "🔴 Session expirée";
+        badge.textContent = t("cours.wsSessionExpiree", "🔴 Session expirée");
         badge.style.color = "#f44336";
-        badge.title = "Reconnexion requise";
+        badge.title = t("cours.wsReconnexionRequise", "Reconnexion requise");
       }
       localStorage.clear();
       window.location.replace("/pages/eleve/login.html?reason=session_expired");

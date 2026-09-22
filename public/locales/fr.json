@@ -127,11 +127,29 @@
     "epaisseur": "Épaisseur",
     "annuler": "Annuler",
     "effacerTout": "Effacer tout",
-    "telecharger": "Télécharger"
+    "telecharger": "Télécharger",
+    "wsConnecte": "🟢 Connecté",
+    "wsReconnexion": "🟡 Reconnexion... ({n})",
+    "wsTentative": "Tentative {n}",
+    "wsHorsLigne": "🔴 Hors ligne",
+    "wsConnexionPerdue": "Connexion perdue",
+    "wsSessionExpiree": "🔴 Session expirée",
+    "wsReconnexionRequise": "Reconnexion requise"
   },
   "tdbEleve": {
     "titre": "Espace Élève",
     "deconnexion": "Déconnexion",
     "disponibles": "👨‍🏫 Disponibles"
+  },
+  "appel": {
+    "profIndisponibleTitre": "Professeur indisponible",
+    "profPlusEnLigne": "Ce professeur n'est plus en ligne.",
+    "impossibleTitre": "Appel impossible",
+    "ajoutezCarte": "Ajoutez une carte bancaire pour appeler un professeur.",
+    "profPasDisponible": "Ce professeur n'est pas disponible pour le moment.",
+    "aucuneReponseTitre": "Aucune réponse",
+    "aucuneReponseTexte": "Le professeur n'a pas répondu à votre appel. Vous pouvez réessayer ou choisir un autre professeur.",
+    "refuseTitre": "Appel refusé",
+    "refuseTexte": "Le professeur a refusé votre appel. Vous pouvez choisir un autre professeur en ligne."
   }
 }

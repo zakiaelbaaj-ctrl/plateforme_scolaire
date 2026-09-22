@@ -127,11 +127,29 @@
     "epaisseur": "Thickness",
     "annuler": "Undo",
     "effacerTout": "Clear all",
-    "telecharger": "Download"
+    "telecharger": "Download",
+    "wsConnecte": "🟢 Connected",
+    "wsReconnexion": "🟡 Reconnecting... ({n})",
+    "wsTentative": "Attempt {n}",
+    "wsHorsLigne": "🔴 Offline",
+    "wsConnexionPerdue": "Connection lost",
+    "wsSessionExpiree": "🔴 Session expired",
+    "wsReconnexionRequise": "Reconnection required"
   },
   "tdbEleve": {
     "titre": "Student area",
     "deconnexion": "Log out",
     "disponibles": "👨‍🏫 Available"
+  },
+  "appel": {
+    "profIndisponibleTitre": "Teacher unavailable",
+    "profPlusEnLigne": "This teacher is no longer online.",
+    "impossibleTitre": "Call not possible",
+    "ajoutezCarte": "Add a bank card to call a teacher.",
+    "profPasDisponible": "This teacher is not available right now.",
+    "aucuneReponseTitre": "No answer",
+    "aucuneReponseTexte": "The teacher did not answer your call. You can try again or choose another teacher.",
+    "refuseTitre": "Call declined",
+    "refuseTexte": "The teacher declined your call. You can choose another teacher who is online."
   }
 }

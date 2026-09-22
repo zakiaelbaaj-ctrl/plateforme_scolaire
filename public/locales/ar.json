@@ -127,11 +127,29 @@
     "epaisseur": "السماكة",
     "annuler": "تراجع",
     "effacerTout": "مسح الكل",
-    "telecharger": "تنزيل"
+    "telecharger": "تنزيل",
+    "wsConnecte": "🟢 متصل",
+    "wsReconnexion": "🟡 إعادة الاتصال... ({n})",
+    "wsTentative": "المحاولة {n}",
+    "wsHorsLigne": "🔴 غير متصل",
+    "wsConnexionPerdue": "انقطع الاتصال",
+    "wsSessionExpiree": "🔴 انتهت الجلسة",
+    "wsReconnexionRequise": "يلزم إعادة الاتصال"
   },
   "tdbEleve": {
     "titre": "فضاء التلميذ",
     "deconnexion": "تسجيل الخروج",
     "disponibles": "👨‍🏫 المتاحون"
+  },
+  "appel": {
+    "profIndisponibleTitre": "الأستاذ غير متاح",
+    "profPlusEnLigne": "لم يعد هذا الأستاذ متصلاً.",
+    "impossibleTitre": "تعذّر الاتصال",
+    "ajoutezCarte": "أضف بطاقة بنكية للاتصال بأستاذ.",
+    "profPasDisponible": "هذا الأستاذ غير متاح حالياً.",
+    "aucuneReponseTitre": "لا يوجد رد",
+    "aucuneReponseTexte": "لم يجب الأستاذ على مكالمتك. يمكنك المحاولة مجدداً أو اختيار أستاذ آخر.",
+    "refuseTitre": "تم رفض المكالمة",
+    "refuseTexte": "رفض الأستاذ مكالمتك. يمكنك اختيار أستاذ آخر متصل."
   }
 }

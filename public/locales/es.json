@@ -127,11 +127,29 @@
     "epaisseur": "Grosor",
     "annuler": "Deshacer",
     "effacerTout": "Borrar todo",
-    "telecharger": "Descargar"
+    "telecharger": "Descargar",
+    "wsConnecte": "🟢 Conectado",
+    "wsReconnexion": "🟡 Reconectando... ({n})",
+    "wsTentative": "Intento {n}",
+    "wsHorsLigne": "🔴 Sin conexión",
+    "wsConnexionPerdue": "Conexión perdida",
+    "wsSessionExpiree": "🔴 Sesión caducada",
+    "wsReconnexionRequise": "Se requiere reconexión"
   },
   "tdbEleve": {
     "titre": "Espacio del alumno",
     "deconnexion": "Cerrar sesión",
     "disponibles": "👨‍🏫 Disponibles"
+  },
+  "appel": {
+    "profIndisponibleTitre": "Profesor no disponible",
+    "profPlusEnLigne": "Este profesor ya no está en línea.",
+    "impossibleTitre": "Llamada imposible",
+    "ajoutezCarte": "Añade una tarjeta bancaria para llamar a un profesor.",
+    "profPasDisponible": "Este profesor no está disponible en este momento.",
+    "aucuneReponseTitre": "Sin respuesta",
+    "aucuneReponseTexte": "El profesor no respondió a tu llamada. Puedes intentarlo de nuevo o elegir otro profesor.",
+    "refuseTitre": "Llamada rechazada",
+    "refuseTexte": "El profesor rechazó tu llamada. Puedes elegir otro profesor en línea."
   }
 }
