@@ -466,7 +466,7 @@ ScreenShareService.onStart((track) => {
 ScreenShareService.onStop(() => {
   ScreenShareOverlay.hide();
   const btn = document.getElementById("screen-share-btn");
-  if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
+  if (btn) { btn.textContent = "🖥️"; btn.title = t("cours.partagerEcran", "Partager l'écran"); }
 });
 
   // ================= CALL =================
@@ -734,10 +734,10 @@ function bindUI() {
       // Met à jour l'icône du bouton dynamiquement
       if (elVideo.classList.contains('is-collapsed')) {
         collapseBtn.textContent = "🔲"; // Icône "Agrandir"
-        collapseBtn.title = "Agrandir la vidéo";
+        collapseBtn.title = t("cours.agrandirVideo", "Agrandir la vidéo");
       } else {
         collapseBtn.textContent = "➖"; // Icône "Réduire"
-        collapseBtn.title = "Réduire la vidéo";
+        collapseBtn.title = t("cours.reduireVideo", "Réduire la vidéo");
       }
       
       console.log("⚠️🤖 Fenêtre vidéo repliée/dépliée par l'utilisateur");
@@ -799,12 +799,12 @@ document.getElementById("screen-share-btn")?.addEventListener("click", async () 
   if (ScreenShareService.isSharing()) {
     await ScreenShareService.stop(VideoService.room);
     btn.textContent = "🖥️";
-    btn.title = "Partager l'écran";
+    btn.title = t("cours.partagerEcran", "Partager l'écran");
   } else {
     await ScreenShareService.start(VideoService.room);
     if (ScreenShareService.isSharing()) {
       btn.textContent = "⏹️";
-      btn.title = "Arrêter le partage";
+      btn.title = t("cours.arreterPartage", "Arrêter le partage");
     }
   }
 });
@@ -816,7 +816,7 @@ document.getElementById("btn-rejoindre-cours")?.addEventListener("click", async 
   const originalText = btn.innerText;
 
   btn.disabled = true;
-  btn.innerText = "Vérification carte...";
+  btn.innerText = t("cours.verificationCarte", "Vérification carte...");
 
   try {
     // 💳 1. PRE-AUTH STRIPE
@@ -832,7 +832,7 @@ document.getElementById("btn-rejoindre-cours")?.addEventListener("click", async 
     window.currentPaymentIntentId = intentId;
     window.sessionStartTime = Date.now();
 
-    btn.innerText = "Connexion...";
+    btn.innerText = t("cours.connexionEnCours", "Connexion...");
 
     // 🔥 3. LANCEMENT SESSION
     AppState.currentPaymentIntentId = intentId;
@@ -843,8 +843,8 @@ document.getElementById("btn-rejoindre-cours")?.addEventListener("click", async 
       console.error("❌ Aucune room active — impossible de rejoindre.");
       AppState._notify("ui:notification", {
         type: "error",
-        title: "Erreur",
-        message: "Aucune session active à rejoindre. Réessayez depuis la liste des professeurs."
+        title: t("appel.erreurTitre", "Erreur"),
+        message: t("appel.aucuneSessionRejoindre", "Aucune session active à rejoindre. Réessayez depuis la liste des professeurs.")
       });
       btn.disabled = false;
       btn.innerText = originalText;
@@ -958,7 +958,7 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
         btn.style.padding = "10px 16px";
         btn.style.borderRadius = "99px";
         btn.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
-        btn.textContent = "Quitter";
+        btn.textContent = t("cours.quitter", "Quitter");
       } else {
         if (btn._originalParent) {
           btn._originalParent.insertBefore(btn, btn._originalNextSibling);
@@ -969,7 +969,7 @@ document.getElementById("wb-fullscreen-btn")?.addEventListener("click", () => {
         // champ) pour garantir un retour propre à l'état CSS de base,
         // sans risque d'oubli ou d'ordre d'opérations incorrect.
         btn.removeAttribute("style");
-        btn.textContent = "Plein écran";
+        btn.textContent = t("cours.pleinEcran", "Plein écran");
       }
     }
 
@@ -1002,7 +1002,7 @@ document.addEventListener("fullscreenchange", () => {
     if (videoMiniature) videoMiniature.style.display = "block";
     syncMiniatureStream();
     const btn = document.getElementById("wb-fullscreen-btn");
-    if (btn) btn.textContent = "Quitter";
+    if (btn) btn.textContent = t("cours.quitter", "Quitter");
   } else {
     if (videoMiniature) videoMiniature.style.display = "none";
     if (remoteVideoTrack) {
@@ -1010,7 +1010,7 @@ document.addEventListener("fullscreenchange", () => {
       if (videoMini) remoteVideoTrack.detach(videoMini);
     }
     const btn = document.getElementById("wb-fullscreen-btn");
-    if (btn) btn.textContent = "Plein écran";
+    if (btn) btn.textContent = t("cours.pleinEcran", "Plein écran");
   }
 });
 // Cacher le partage d'écran si non supporté (tablette/mobile) + informer l'élève
@@ -1019,7 +1019,7 @@ if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
   screenShareBtn.style.display = "none";
 
   const notice = document.createElement("div");
-  notice.textContent = "ℹ️ Le partage d'écran n'est pas disponible sur cet appareil. Utilisez un ordinateur si vous souhaitez partager votre écran pendant un cours.";
+  notice.textContent = t("cours.partageIndisponible", "ℹ️ Le partage d'écran n'est pas disponible sur cet appareil. Utilisez un ordinateur si vous souhaitez partager votre écran pendant un cours.");
   notice.style.cssText = `
     position: fixed; bottom: 20px; right: 20px; z-index: 9999;
     background: #2563eb; color: white; padding: 14px 18px;
@@ -1122,8 +1122,8 @@ async function toggleFavorite(profId, shouldAdd) {
     console.error("❌ Erreur toggle favori:", err);
     AppState._notify("ui:notification", {
       type: "error",
-      title: "Erreur",
-      message: "Impossible de mettre à jour vos favoris pour le moment."
+      title: t("appel.erreurTitre", "Erreur"),
+      message: t("appel.favorisErreur", "Impossible de mettre à jour vos favoris pour le moment.")
     });
   }
 }
@@ -1145,11 +1145,11 @@ function renderProfList(profs = []) {
       list.innerHTML = `
         <li class="empty empty--profile">
           ⚠️ <a href="/pages/eleve/profs_en_ligne.html" style="color: var(--accent); text-decoration: underline;">
-            Complétez votre profil (matière et niveau)
-          </a> pour voir les professeurs disponibles.
+            ${t("profs.completerProfil", "Complétez votre profil (matière et niveau)")}
+          </a> ${t("profs.completerProfilSuite", "pour voir les professeurs disponibles.")}
         </li>`;
     } else {
-      list.innerHTML = `<li class="empty">Aucun professeur connecté pour votre matière/niveau actuellement</li>`;
+      list.innerHTML = `<li class="empty">${t("profs.aucunPourMatiere", "Aucun professeur connecté pour votre matière/niveau actuellement")}</li>`;
     }
     return;
   }
@@ -1191,9 +1191,9 @@ function renderProfList(profs = []) {
     const canCall = prof.disponibilite && user?.has_payment_method;
 
     if (canCall) {
-      badge.textContent = "⚠️ Disponible";
+      badge.textContent = "⚠️ " + t("profs.disponible", "Disponible");
       badge.style.color = "#3b6d11";
-      btn.textContent = "Appeler";
+      btn.textContent = t("profs.appeler", "Appeler");
       btn.disabled = false;
       btn.style.opacity = "1";
       btn.style.cursor = "pointer";
@@ -1202,26 +1202,26 @@ function renderProfList(profs = []) {
         if (!result.ok && result.reason === "call-in-progress") {
           AppState._notify("ui:notification", {
             type: "error",
-            title: "Appel déjà en cours",
-            message: "Attendez la fin de l'appel actuel avant d'en démarrer un autre."
+            title: t("appel.dejaEnCoursTitre", "Appel déjà en cours"),
+            message: t("appel.dejaEnCoursTexte", "Attendez la fin de l'appel actuel avant d'en démarrer un autre.")
           });
         }
       };
     } else {
-      let statusLabel = "Indisponible";
+      let statusLabel = t("profs.indisponible", "Indisponible");
       if (!user?.has_payment_method) {
-        statusLabel = "Carte requise";
+        statusLabel = t("profs.carteRequise", "Carte requise");
       } else {
         statusLabel = {
-          "en_session": "En session",
-          "appel_reçu": "Occupé",
-          "offline":    "Hors ligne",
-        }[prof.status] || "Indisponible";
+          "en_session": t("profs.enSession", "En session"),
+          "appel_reçu": t("profs.occupe", "Occupé"),
+          "offline":    t("profs.horsLigne", "Hors ligne"),
+        }[prof.status] || t("profs.indisponible", "Indisponible");
       }
 
       badge.textContent = `⚠️ ${statusLabel}`;
       badge.style.color = "#a32d2d";
-      btn.textContent = user?.has_payment_method ? "Indisponible" : "⚠️ Bloqué";
+      btn.textContent = user?.has_payment_method ? t("profs.indisponible", "Indisponible") : "⚠️ " + t("profs.bloque", "Bloqué");
       btn.disabled = true;
       btn.style.opacity = "0.45";
       btn.style.cursor = "not-allowed";
@@ -1377,14 +1377,14 @@ function updateCameraButton(isEnabled) {
   const btn = document.getElementById("toggle-camera-btn");
   if (!btn) return;
   btn.textContent = isEnabled ? "📷" : "📵";
-  btn.title = isEnabled ? "Couper la caméra" : "Réactiver la caméra";
+  btn.title = isEnabled ? t("cours.couperCamera", "Couper la caméra") : t("cours.reactiverCamera", "Réactiver la caméra");
 }
 
 function updateMicButton(isEnabled) {
   const btn = document.getElementById("toggle-mic-btn");
   if (!btn) return;
   btn.textContent = isEnabled ? "🎙️" : "🔇";
-  btn.title = isEnabled ? "Couper le micro" : "Réactiver le micro";
+  btn.title = isEnabled ? t("cours.couperMicro", "Couper le micro") : t("cours.reactiverMicro", "Réactiver le micro");
 }
 function updateCallStatus(text) {
   const el = document.getElementById("call-status");
@@ -1430,7 +1430,7 @@ function cleanupSession(message) {
           v.srcObject = null;
           v.pause?.();
         });
-        el.innerHTML = "En attente du professeur...";
+        el.innerHTML = t("cours.enAttenteProf", "En attente du professeur...");
       }
     }
   });
@@ -1478,11 +1478,11 @@ function updateJoinButton(user) {
 
   if (!hasPaymentMethod) {
     btn.disabled = true;
-    btn.innerText = "Ajoutez une carte";
+    btn.innerText = t("paiement.ajoutezUneCarte", "Ajoutez une carte");
     btn.classList.add("is-disabled");
   } else {
     btn.disabled = false;
-    btn.innerText = "Valider";
+    btn.innerText = t("paiement.valider", "Valider");
     btn.classList.remove("is-disabled");
   }
 }
@@ -1520,7 +1520,7 @@ function renderCurrentUserInfo(user) {
   const cityEl = document.getElementById("eleve-location") || document.getElementById("user-city");
 
   if (nameEl) nameEl.textContent = `${prenom || ""} ${nom || ""}`.trim();
-  if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || "Lieu non précisé");
+  if (cityEl) cityEl.textContent = (ville && pays) ? `${ville}, ${pays}` : (ville || pays || t("cours.lieuNonPrecise", "Lieu non précisé"));
 
   // --- 2. PREPARATION DU CONTENU STRIPE ---
   const infoContainer = document.getElementById("user-info");
@@ -1532,17 +1532,17 @@ function renderCurrentUserInfo(user) {
     const config = has_payment_method ? {
         status: "success",
         icon: "✅",
-        title: "Carte bancaire enregistrée",
-        text: "Votre moyen de paiement est prêt pour vos prochains cours.",
+        title: t("paiement.carteEnregistreeTitre", "Carte bancaire enregistrée"),
+        text: t("paiement.carteEnregistreeTexte", "Votre moyen de paiement est prêt pour vos prochains cours."),
         btnClass: "btn-link",
-        btnText: "Mettre à jour ma carte"
+        btnText: t("paiement.mettreAJourCarte", "Mettre à jour ma carte")
     } : {
         status: "warning",
         icon: "⚠️",
-        title: "Paiement requis",
-        text: "Veuillez enregistrer une carte pour pouvoir appeler un professeur.",
+        title: t("paiement.requisTitre", "Paiement requis"),
+        text: t("paiement.requisTexte", "Veuillez enregistrer une carte pour pouvoir appeler un professeur."),
         btnClass: "btn-primary",
-        btnText: "💳 Ajouter une carte bancaire"
+        btnText: t("paiement.ajouterCarte", "💳 Ajouter une carte bancaire")
     };
 
     stripeHTML = `
@@ -1596,13 +1596,13 @@ function renderCurrentUserInfo(user) {
       const originalText = btn.innerHTML;
 
       btn.disabled = true;
-      btn.innerHTML = "🔄 Connexion sécurisée...";
+      btn.innerHTML = t("paiement.connexionSecurisee", "🔄 Connexion sécurisée...");
 
       try {
         await openSetupSession();
       } catch (err) {
         console.error("Erreur Stripe:", err);
-        btn.innerHTML = "❌ Erreur, réessayer";
+        btn.innerHTML = t("paiement.erreurReessayer", "❌ Erreur, réessayer");
         setTimeout(() => { 
           btn.innerHTML = originalText; 
           btn.disabled = false; 

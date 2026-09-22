@@ -134,7 +134,19 @@
     "wsHorsLigne": "🔴 غير متصل",
     "wsConnexionPerdue": "انقطع الاتصال",
     "wsSessionExpiree": "🔴 انتهت الجلسة",
-    "wsReconnexionRequise": "يلزم إعادة الاتصال"
+    "wsReconnexionRequise": "يلزم إعادة الاتصال",
+    "partagerEcran": "مشاركة الشاشة",
+    "arreterPartage": "إيقاف المشاركة",
+    "agrandirVideo": "تكبير الفيديو",
+    "reduireVideo": "تصغير الفيديو",
+    "quitter": "خروج",
+    "reactiverCamera": "تشغيل الكاميرا",
+    "reactiverMicro": "إلغاء كتم الميكروفون",
+    "partageIndisponible": "ℹ️ مشاركة الشاشة غير متاحة على هذا الجهاز. استخدم حاسوباً إذا أردت مشاركة شاشتك أثناء الدرس.",
+    "verificationCarte": "جارٍ التحقق من البطاقة...",
+    "connexionEnCours": "جارٍ الاتصال...",
+    "enAttenteProf": "في انتظار الأستاذ...",
+    "lieuNonPrecise": "المكان غير محدد"
   },
   "tdbEleve": {
     "titre": "فضاء التلميذ",
@@ -150,6 +162,36 @@
     "aucuneReponseTitre": "لا يوجد رد",
     "aucuneReponseTexte": "لم يجب الأستاذ على مكالمتك. يمكنك المحاولة مجدداً أو اختيار أستاذ آخر.",
     "refuseTitre": "تم رفض المكالمة",
-    "refuseTexte": "رفض الأستاذ مكالمتك. يمكنك اختيار أستاذ آخر متصل."
+    "refuseTexte": "رفض الأستاذ مكالمتك. يمكنك اختيار أستاذ آخر متصل.",
+    "erreurTitre": "خطأ",
+    "aucuneSessionRejoindre": "لا توجد جلسة نشطة للانضمام إليها. حاول مجدداً من قائمة الأساتذة.",
+    "dejaEnCoursTitre": "مكالمة جارية بالفعل",
+    "dejaEnCoursTexte": "انتظر انتهاء المكالمة الحالية قبل بدء أخرى.",
+    "favorisErreur": "تعذّر تحديث مفضلاتك في الوقت الحالي."
+  },
+  "profs": {
+    "completerProfil": "أكمل ملفك (المادة والمستوى)",
+    "completerProfilSuite": "لرؤية الأساتذة المتاحين.",
+    "aucunPourMatiere": "لا يوجد أستاذ متصل لمادتك ومستواك حالياً",
+    "disponible": "متاح",
+    "appeler": "اتصال",
+    "indisponible": "غير متاح",
+    "carteRequise": "البطاقة مطلوبة",
+    "enSession": "في جلسة",
+    "occupe": "مشغول",
+    "horsLigne": "غير متصل",
+    "bloque": "محظور"
+  },
+  "paiement": {
+    "carteEnregistreeTitre": "تم تسجيل البطاقة البنكية",
+    "carteEnregistreeTexte": "وسيلة الدفع جاهزة لدروسك القادمة.",
+    "mettreAJourCarte": "تحديث بطاقتي",
+    "requisTitre": "الدفع مطلوب",
+    "requisTexte": "يرجى تسجيل بطاقة للتمكن من الاتصال بأستاذ.",
+    "ajouterCarte": "💳 إضافة بطاقة بنكية",
+    "ajoutezUneCarte": "أضف بطاقة",
+    "valider": "تأكيد",
+    "connexionSecurisee": "🔄 اتصال آمن...",
+    "erreurReessayer": "❌ خطأ، أعد المحاولة"
   }
 }

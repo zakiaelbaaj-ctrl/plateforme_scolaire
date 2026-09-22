@@ -134,7 +134,19 @@
     "wsHorsLigne": "🔴 Hors ligne",
     "wsConnexionPerdue": "Connexion perdue",
     "wsSessionExpiree": "🔴 Session expirée",
-    "wsReconnexionRequise": "Reconnexion requise"
+    "wsReconnexionRequise": "Reconnexion requise",
+    "partagerEcran": "Partager l'écran",
+    "arreterPartage": "Arrêter le partage",
+    "agrandirVideo": "Agrandir la vidéo",
+    "reduireVideo": "Réduire la vidéo",
+    "quitter": "Quitter",
+    "reactiverCamera": "Réactiver la caméra",
+    "reactiverMicro": "Réactiver le micro",
+    "partageIndisponible": "ℹ️ Le partage d'écran n'est pas disponible sur cet appareil. Utilisez un ordinateur si vous souhaitez partager votre écran pendant un cours.",
+    "verificationCarte": "Vérification carte...",
+    "connexionEnCours": "Connexion...",
+    "enAttenteProf": "En attente du professeur...",
+    "lieuNonPrecise": "Lieu non précisé"
   },
   "tdbEleve": {
     "titre": "Espace Élève",
@@ -150,6 +162,36 @@
     "aucuneReponseTitre": "Aucune réponse",
     "aucuneReponseTexte": "Le professeur n'a pas répondu à votre appel. Vous pouvez réessayer ou choisir un autre professeur.",
     "refuseTitre": "Appel refusé",
-    "refuseTexte": "Le professeur a refusé votre appel. Vous pouvez choisir un autre professeur en ligne."
+    "refuseTexte": "Le professeur a refusé votre appel. Vous pouvez choisir un autre professeur en ligne.",
+    "erreurTitre": "Erreur",
+    "aucuneSessionRejoindre": "Aucune session active à rejoindre. Réessayez depuis la liste des professeurs.",
+    "dejaEnCoursTitre": "Appel déjà en cours",
+    "dejaEnCoursTexte": "Attendez la fin de l'appel actuel avant d'en démarrer un autre.",
+    "favorisErreur": "Impossible de mettre à jour vos favoris pour le moment."
+  },
+  "profs": {
+    "completerProfil": "Complétez votre profil (matière et niveau)",
+    "completerProfilSuite": "pour voir les professeurs disponibles.",
+    "aucunPourMatiere": "Aucun professeur connecté pour votre matière/niveau actuellement",
+    "disponible": "Disponible",
+    "appeler": "Appeler",
+    "indisponible": "Indisponible",
+    "carteRequise": "Carte requise",
+    "enSession": "En session",
+    "occupe": "Occupé",
+    "horsLigne": "Hors ligne",
+    "bloque": "Bloqué"
+  },
+  "paiement": {
+    "carteEnregistreeTitre": "Carte bancaire enregistrée",
+    "carteEnregistreeTexte": "Votre moyen de paiement est prêt pour vos prochains cours.",
+    "mettreAJourCarte": "Mettre à jour ma carte",
+    "requisTitre": "Paiement requis",
+    "requisTexte": "Veuillez enregistrer une carte pour pouvoir appeler un professeur.",
+    "ajouterCarte": "💳 Ajouter une carte bancaire",
+    "ajoutezUneCarte": "Ajoutez une carte",
+    "valider": "Valider",
+    "connexionSecurisee": "🔄 Connexion sécurisée...",
+    "erreurReessayer": "❌ Erreur, réessayer"
   }
 }

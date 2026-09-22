@@ -134,7 +134,19 @@
     "wsHorsLigne": "🔴 Sin conexión",
     "wsConnexionPerdue": "Conexión perdida",
     "wsSessionExpiree": "🔴 Sesión caducada",
-    "wsReconnexionRequise": "Se requiere reconexión"
+    "wsReconnexionRequise": "Se requiere reconexión",
+    "partagerEcran": "Compartir pantalla",
+    "arreterPartage": "Detener la pantalla compartida",
+    "agrandirVideo": "Ampliar el vídeo",
+    "reduireVideo": "Reducir el vídeo",
+    "quitter": "Salir",
+    "reactiverCamera": "Activar cámara",
+    "reactiverMicro": "Activar micrófono",
+    "partageIndisponible": "ℹ️ La pantalla compartida no está disponible en este dispositivo. Usa un ordenador si quieres compartir tu pantalla durante una clase.",
+    "verificationCarte": "Comprobando la tarjeta...",
+    "connexionEnCours": "Conectando...",
+    "enAttenteProf": "Esperando al profesor...",
+    "lieuNonPrecise": "Lugar no indicado"
   },
   "tdbEleve": {
     "titre": "Espacio del alumno",
@@ -150,6 +162,36 @@
     "aucuneReponseTitre": "Sin respuesta",
     "aucuneReponseTexte": "El profesor no respondió a tu llamada. Puedes intentarlo de nuevo o elegir otro profesor.",
     "refuseTitre": "Llamada rechazada",
-    "refuseTexte": "El profesor rechazó tu llamada. Puedes elegir otro profesor en línea."
+    "refuseTexte": "El profesor rechazó tu llamada. Puedes elegir otro profesor en línea.",
+    "erreurTitre": "Error",
+    "aucuneSessionRejoindre": "No hay ninguna sesión activa a la que unirse. Inténtalo desde la lista de profesores.",
+    "dejaEnCoursTitre": "Llamada ya en curso",
+    "dejaEnCoursTexte": "Espera a que termine la llamada actual antes de iniciar otra.",
+    "favorisErreur": "No se pueden actualizar tus favoritos por ahora."
+  },
+  "profs": {
+    "completerProfil": "Completa tu perfil (materia y nivel)",
+    "completerProfilSuite": "para ver los profesores disponibles.",
+    "aucunPourMatiere": "Ningún profesor conectado para tu materia y nivel ahora mismo",
+    "disponible": "Disponible",
+    "appeler": "Llamar",
+    "indisponible": "No disponible",
+    "carteRequise": "Tarjeta requerida",
+    "enSession": "En sesión",
+    "occupe": "Ocupado",
+    "horsLigne": "Sin conexión",
+    "bloque": "Bloqueado"
+  },
+  "paiement": {
+    "carteEnregistreeTitre": "Tarjeta guardada",
+    "carteEnregistreeTexte": "Tu método de pago está listo para tus próximas clases.",
+    "mettreAJourCarte": "Actualizar mi tarjeta",
+    "requisTitre": "Pago requerido",
+    "requisTexte": "Guarda una tarjeta para poder llamar a un profesor.",
+    "ajouterCarte": "💳 Añadir una tarjeta",
+    "ajoutezUneCarte": "Añade una tarjeta",
+    "valider": "Confirmar",
+    "connexionSecurisee": "🔄 Conexión segura...",
+    "erreurReessayer": "❌ Error, inténtalo de nuevo"
   }
 }

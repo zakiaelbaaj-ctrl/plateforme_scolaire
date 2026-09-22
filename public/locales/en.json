@@ -134,7 +134,19 @@
     "wsHorsLigne": "🔴 Offline",
     "wsConnexionPerdue": "Connection lost",
     "wsSessionExpiree": "🔴 Session expired",
-    "wsReconnexionRequise": "Reconnection required"
+    "wsReconnexionRequise": "Reconnection required",
+    "partagerEcran": "Share screen",
+    "arreterPartage": "Stop sharing",
+    "agrandirVideo": "Enlarge video",
+    "reduireVideo": "Shrink video",
+    "quitter": "Exit",
+    "reactiverCamera": "Turn camera on",
+    "reactiverMicro": "Unmute microphone",
+    "partageIndisponible": "ℹ️ Screen sharing is not available on this device. Use a computer if you want to share your screen during a lesson.",
+    "verificationCarte": "Checking card...",
+    "connexionEnCours": "Connecting...",
+    "enAttenteProf": "Waiting for the teacher...",
+    "lieuNonPrecise": "Location not specified"
   },
   "tdbEleve": {
     "titre": "Student area",
@@ -150,6 +162,36 @@
     "aucuneReponseTitre": "No answer",
     "aucuneReponseTexte": "The teacher did not answer your call. You can try again or choose another teacher.",
     "refuseTitre": "Call declined",
-    "refuseTexte": "The teacher declined your call. You can choose another teacher who is online."
+    "refuseTexte": "The teacher declined your call. You can choose another teacher who is online.",
+    "erreurTitre": "Error",
+    "aucuneSessionRejoindre": "No active session to join. Try again from the teacher list.",
+    "dejaEnCoursTitre": "Call already in progress",
+    "dejaEnCoursTexte": "Wait for the current call to end before starting another.",
+    "favorisErreur": "Cannot update your favourites right now."
+  },
+  "profs": {
+    "completerProfil": "Complete your profile (subject and level)",
+    "completerProfilSuite": "to see available teachers.",
+    "aucunPourMatiere": "No teacher online for your subject and level right now",
+    "disponible": "Available",
+    "appeler": "Call",
+    "indisponible": "Unavailable",
+    "carteRequise": "Card required",
+    "enSession": "In session",
+    "occupe": "Busy",
+    "horsLigne": "Offline",
+    "bloque": "Blocked"
+  },
+  "paiement": {
+    "carteEnregistreeTitre": "Card saved",
+    "carteEnregistreeTexte": "Your payment method is ready for your next lessons.",
+    "mettreAJourCarte": "Update my card",
+    "requisTitre": "Payment required",
+    "requisTexte": "Please save a card to be able to call a teacher.",
+    "ajouterCarte": "💳 Add a bank card",
+    "ajoutezUneCarte": "Add a card",
+    "valider": "Confirm",
+    "connexionSecurisee": "🔄 Secure connection...",
+    "erreurReessayer": "❌ Error, try again"
   }
 }
