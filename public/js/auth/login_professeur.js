@@ -1,3 +1,4 @@
+import { viderSession } from "../shared/session.js";
 // 1. Détection dynamique de l'URL de base
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:4000" 
@@ -20,15 +21,15 @@ if (storedUser && token) {
       // 🔴 Un élève (ou autre) arrive sur le login prof !
       // On détruit sa session pour éviter les conflits et le laisser se connecter.
       console.warn("Session non-professeur détectée. Déconnexion automatique.");
-      localStorage.clear();
+      viderSession();
     }
   } catch (e) {
     console.error("Erreur lecture session", e);
-    localStorage.clear();
+    viderSession();
   }
 } else {
     // Si pas de token, on nettoie pour éviter les résidus
-    localStorage.clear(); 
+    viderSession(); 
 }
 
 const loginForm = document.getElementById("loginProfForm");

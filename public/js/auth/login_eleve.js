@@ -1,3 +1,4 @@
+import { viderSession } from "../shared/session.js";
 // ============================================
 // 🔑 LOGIN ELEVE
 // ============================================
@@ -20,11 +21,11 @@ if (existingToken && currentUser) {
         // 🚨 Un professeur (ou autre) arrive sur le login élève !
         // On détruit sa session prof pour éviter les bugs et le laisser se connecter en élève.
         console.warn("Session non-élève détectée. Déconnexion automatique.");
-        localStorage.clear();
+        viderSession();
     }
 } else {
     // 2️⃣ Si PAS de token ou données corrompues -> On nettoie TOUT pour repartir à zéro
-    localStorage.clear();
+    viderSession();
 }
 document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("loginEleveForm");
@@ -73,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
 if (data.accessToken) {
   // 🚨 L'AJOUT EST ICI : On fait table rase de l'ancien cache
         // pour éviter tout conflit (ex: données Stripe ou WebSocket de l'ancien prof)
-        localStorage.clear();
+        viderSession();
     // 1. On stocke les jetons
     localStorage.setItem("token", data.accessToken);
     localStorage.setItem("refreshToken", data.refreshToken || "");

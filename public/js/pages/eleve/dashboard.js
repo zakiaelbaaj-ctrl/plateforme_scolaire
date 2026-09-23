@@ -1,3 +1,4 @@
+import { viderSession } from "../../shared/session.js";
 ﻿// ======================================================
 // DASHBOARD ELEVE _ UI PURE
 // ======================================================
@@ -774,7 +775,7 @@ document.getElementById("send-file")
   document.getElementById("logout-btn")?.addEventListener("click", () => {
     VideoService.disconnect();
     socketHandlerEleve.destroy();
-    localStorage.clear();
+    viderSession();
     window.location.href = "/pages/eleve/login.html";
   });
 
@@ -1083,7 +1084,7 @@ function updateWsStatus(status, attempt = 0) {
         badge.style.color = "#f44336";
         badge.title = t("cours.wsReconnexionRequise", "Reconnexion requise");
       }
-      localStorage.clear();
+      viderSession();
       window.location.replace("/pages/eleve/login.html?reason=session_expired");
       break;
   }

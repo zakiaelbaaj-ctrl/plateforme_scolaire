@@ -1,3 +1,4 @@
+import { viderSession } from "../../shared/session.js";
 // ======================================================
 // DASHBOARD PROFESSEUR _ UI PURE / DOMAIN-DRIVEN
 // ======================================================
@@ -668,7 +669,7 @@ document.getElementById("toggle-mic-btn")?.addEventListener("click", toggleMic);
     socketService.send({ type: "logout" });
     SessionService.stopVideoCall?.();
     socketHandlerProf.destroy();
-    localStorage.clear();
+    viderSession();
     window.location.href = "/pages/professeur/login.html";
   });
   // ✅ NOUVEAU — insérer ICI, juste avant l'accolade fermante de bindUI()
@@ -718,7 +719,7 @@ function updateWsStatus(status, attempt = 0) {
       badge.textContent = "🔴 Session expirée";
       badge.style.color = "#f44336";
       badge.title = "Reconnexion requise";
-      localStorage.clear();
+      viderSession();
       window.location.replace("/pages/professeur/login.html?reason=session_expired");
       break;
   }
