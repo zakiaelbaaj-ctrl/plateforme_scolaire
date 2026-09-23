@@ -156,6 +156,11 @@
     "disponibles": "👨‍🏫 Available"
   },
   "appel": {
+    "confirmerTitre": "Call {prof}?",
+    "confirmerTexte": "The session is billed on actual connection time, with a minimum of €2 even for a very short call.",
+    "annuler": "Cancel",
+    "continuer": "Continue",
+    "parametresPaiement": "💳 Payment settings",
     "profIndisponibleTitre": "Teacher unavailable",
     "profPlusEnLigne": "This teacher is no longer online.",
     "impossibleTitre": "Call not possible",

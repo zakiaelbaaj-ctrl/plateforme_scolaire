@@ -156,6 +156,11 @@
     "disponibles": "👨‍🏫 المتاحون"
   },
   "appel": {
+    "confirmerTitre": "الاتصال بـ {prof}؟",
+    "confirmerTexte": "تُحسب تكلفة الجلسة حسب مدة الاتصال الفعلية، بحد أدنى 2 يورو حتى للمكالمة القصيرة.",
+    "annuler": "إلغاء",
+    "continuer": "متابعة",
+    "parametresPaiement": "💳 إعدادات الدفع",
     "profIndisponibleTitre": "الأستاذ غير متاح",
     "profPlusEnLigne": "لم يعد هذا الأستاذ متصلاً.",
     "impossibleTitre": "تعذّر الاتصال",

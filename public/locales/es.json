@@ -156,6 +156,11 @@
     "disponibles": "👨‍🏫 Disponibles"
   },
   "appel": {
+    "confirmerTitre": "¿Llamar a {prof}?",
+    "confirmerTexte": "La sesión se factura según el tiempo real de comunicación, con un mínimo de 2 € incluso para una llamada muy corta.",
+    "annuler": "Cancelar",
+    "continuer": "Continuar",
+    "parametresPaiement": "💳 Ajustes de pago",
     "profIndisponibleTitre": "Profesor no disponible",
     "profPlusEnLigne": "Este profesor ya no está en línea.",
     "impossibleTitre": "Llamada imposible",

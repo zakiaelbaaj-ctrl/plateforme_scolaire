@@ -156,6 +156,11 @@
     "disponibles": "👨‍🏫 Disponibles"
   },
   "appel": {
+    "confirmerTitre": "Appeler {prof} ?",
+    "confirmerTexte": "La session est facturée au temps réel de communication, avec un montant minimum de 2&nbsp;€ même pour un appel très court.",
+    "annuler": "Annuler",
+    "continuer": "Continuer",
+    "parametresPaiement": "💳 Paramètres de paiement",
     "profIndisponibleTitre": "Professeur indisponible",
     "profPlusEnLigne": "Ce professeur n'est plus en ligne.",
     "impossibleTitre": "Appel impossible",

@@ -232,17 +232,16 @@ function showCallConfirm(prof, onConfirm) {
     <div style="background:#1b1b1b;color:#f0ead8;max-width:380px;width:90%;
                 padding:22px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);">
       <p style="margin:0 0 12px;font-weight:600;">
-        Appeler ${prof.prenom} ${prof.nom} ?
+        ${t("appel.confirmerTitre", "Appeler {prof} ?").replace("{prof}", prof.prenom + " " + prof.nom)}
       </p>
       <p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:#c9c3b4;">
-        La session est facturée au temps réel de communication, avec un montant
-        minimum de 2&nbsp;€ même pour un appel très court.
+        ${t("appel.confirmerTexte", "La session est facturée au temps réel de communication, avec un montant minimum de 2&nbsp;€ même pour un appel très court.")}
       </p>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button id="call-confirm-no" style="padding:9px 14px;border-radius:8px;
-          border:1px solid #555;background:transparent;color:#ccc;cursor:pointer;">Annuler</button>
+          border:1px solid #555;background:transparent;color:#ccc;cursor:pointer;">${t("appel.annuler", "Annuler")}</button>
         <button id="call-confirm-yes" style="padding:9px 16px;border-radius:8px;
-          border:none;background:#2196f3;color:#fff;font-weight:600;cursor:pointer;">Continuer</button>
+          border:none;background:#2196f3;color:#fff;font-weight:600;cursor:pointer;">${t("appel.continuer", "Continuer")}</button>
       </div>
     </div>`;
 
@@ -1575,7 +1574,7 @@ function renderCurrentUserInfo(user) {
   infoContainer.innerHTML = `
   <div class="user-card">
     <div class="user-card__header">
-      <h3 class="card-title">💳 Paramètres de paiement</h3>
+      <h3 class="card-title">${t("appel.parametresPaiement", "💳 Paramètres de paiement")}</h3>
     </div>
     <div class="user-card__body compact-payment">
       <div class="user-card__stripe-content">
