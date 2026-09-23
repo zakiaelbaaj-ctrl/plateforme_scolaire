@@ -10,6 +10,36 @@ export const TARIFS_PAR_NIVEAU = {
 
 export const TARIF_PAR_DEFAUT = 24; // collège, si niveau absent ou inconnu
 
+/** Taux de TVA applique aux prestations. Defini ici, nulle part ailleurs. */
+export const TAUX_TVA = 0.20;
+
+/**
+ * Part du professeur, exprimee sur le montant HORS TAXES.
+ *
+ * La regle commerciale est : le professeur percoit 60 % du HT, la
+ * plateforme conserve 40 % du HT une fois la TVA reversee. Elle etait
+ * auparavant ecrite « 50 % du TTC », ce qui donnait le meme resultat
+ * — mais seulement parce que la TVA vaut 20 %. Le jour ou un eleve
+ * hors UE ne sera pas soumis a la TVA, cette ecriture-ci reste juste
+ * et l autre aurait silencieusement porte la commission a 50 %.
+ */
+export const PART_PROF_HT = 0.60;
+
+/** Part du professeur en centimes, a partir du montant TTC paye. */
+export function partProfCents(montantTTCCents) {
+  const montantHT = montantTTCCents / (1 + TAUX_TVA);
+  return Math.round(montantHT * PART_PROF_HT);
+}
+
+/**
+ * Commission de la plateforme en centimes : tout ce qui n est pas la
+ * part du professeur, TVA comprise, puisque c est la plateforme qui
+ * la reverse a l administration.
+ */
+export function commissionCents(montantTTCCents) {
+  return montantTTCCents - partProfCents(montantTTCCents);
+}
+
 /**
  * Retire accents, casse et espaces superflus d'une valeur de niveau.
  */

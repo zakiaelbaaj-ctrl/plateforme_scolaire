@@ -4,7 +4,7 @@ import logger from "../config/logger.js";
 import { QueryTypes } from "sequelize";
 import { pool } from "../config/db.js";
 import * as mailService from "./mail.service.js"; // Ou le chemin vers ton service d'envoi de mail
-import { getTarifHoraireHT } from "./pricing.util.js";
+import { getTarifHoraireHT, commissionCents } from "./pricing.util.js";
 const PRICES = {
   monthly: Number(process.env.PRICE_MONTHLY_CENTS) || 999,
   yearly: Number(process.env.PRICE_YEARLY_CENTS) || 9999,
@@ -199,7 +199,7 @@ if (totalAmountEUR < 50) {
 
    // ✅ RÉPARTITION 50/50 sur le TTC : la plateforme retient application_fee_amount
     // (couvre taxe + charges + urgence scolaire), le solde part au prof via transfer_data.
-    const feeAmountEUR = Math.round(totalAmountEUR * 0.5);
+    const feeAmountEUR = commissionCents(totalAmountEUR);
     const studentCurrency = eleve.currency?.toLowerCase() || 'eur';
 
     // ✅ Prélèvement automatique
@@ -396,7 +396,7 @@ async function handleAuthenticationRequired(eleve, prof, duration, roomId) {
       : 0;
     const billedDuration = duration;
 
-    const feeAmountEUR = Math.round(totalAmount * 0.5);
+    const feeAmountEUR = commissionCents(totalAmount);
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       customer: eleve.stripe_customer_id,

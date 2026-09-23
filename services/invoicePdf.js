@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
+import { TAUX_TVA } from "./pricing.util.js";
 
 /**
  * Mentions de l'émetteur.
@@ -60,7 +61,7 @@ export async function generateInvoicePdf({
   if (!invoiceNumber) throw new Error("invoiceNumber requis");
   if (!amount || amount <= 0) throw new Error("Montant invalide");
 
-  const TVA_RATE = 0.20;
+  const TVA_RATE = TAUX_TVA;
 
   const amountHT  = Math.round(amount / (1 + TVA_RATE));
   const tvaAmount = amount - amountHT;
@@ -149,7 +150,7 @@ export async function generateInvoicePdf({
         .fontSize(11)
         .text("Description", 50, tableTop)
         .text("Montant HT", 50, tableTop + 40)
-        .text("TVA (20%)",  50, tableTop + 60)
+        .text(`TVA (${Math.round(TVA_RATE * 100)}%)`, 50, tableTop + 60)
         .text("Total TTC",  50, tableTop + 80);
 
       doc.moveTo(50, tableTop + 15).lineTo(400, tableTop + 15).stroke();
