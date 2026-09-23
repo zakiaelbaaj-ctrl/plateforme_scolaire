@@ -148,7 +148,7 @@ export async function processSessionPayment(roomId, sessionId = null) {
     const resolvedSessionId = sessionData.id;  // ✅ renommé, plus de conflit
 
     const users = await db.query(
-      `SELECT id, email, username, role, stripe_customer_id, stripe_account_id, currency, is_university_prof, is_subscriber, mode_versement 
+      `SELECT id, email, username, role, stripe_customer_id, stripe_account_id, currency, is_university_prof, is_subscriber, mode_versement, niveau, ville, pays_code 
        FROM users WHERE id IN (:profId, :eleveId)`,
       { replacements: { profId, eleveId }, type: QueryTypes.SELECT }
     );
@@ -291,12 +291,18 @@ if (totalAmountEUR < 50) {
     // ✅ La génération du PDF
     const { generateInvoicePdf } = await import("./invoicePdf.js"); // Adaptez le chemin
     const invoiceNumber = `VID-${profId}-${eleveId}-${Date.now()}`;
+    // Le bloc client de la facture : chaque champ absent est simplement omis.
+    const adresseClient = [eleve.ville, eleve.pays_code].filter(Boolean).join(", ");
+
     const { fileName } = await generateInvoicePdf({
       userId: eleveId,
       planType: `Cours vidéo (${billedDuration} min)`,
       amount: totalAmountEUR,
       invoiceNumber,
-      date: new Date()
+      date: new Date(),
+      clientNom: eleve.username || "",
+      clientAdresse: adresseClient,
+      clientEmail: eleve.email || "",
     });
     // ✅ Emails isolés — un échec d'envoi ne doit JAMAIS empêcher
 // le retour du succès du paiement

@@ -20,7 +20,19 @@ const EMETTEUR = {
 };
 
 /**
- * Génère une facture PDF avec QR code.
+ * Les polices standard de PDFKit ne couvrent que l'alphabet latin.
+ * Un texte arabe, cyrillique ou chinois n'y provoque pas d'erreur :
+ * il ressort en lettres latines arbitraires — خالد26 devient bæ'dF/26.
+ * Sur un document comptable, un nom faux est pire qu'un nom absent,
+ * donc on omet ce que la police ne sait pas rendre.
+ */
+function estRendable(texte) {
+  if (!texte) return false;
+  return [...String(texte)].every((c) => c.codePointAt(0) <= 0x00ff || c === "€");
+}
+
+/**
+ * Gènere une facture PDF avec QR code.
  * @param {Object}  params
  * @param {number}  params.userId
  * @param {string}  params.planType       Description de la prestation
@@ -114,9 +126,9 @@ export async function generateInvoicePdf({
 
       // ---------- CLIENT ----------
       const lignesClient = [];
-      if (clientNom)     lignesClient.push(clientNom);
-      if (clientAdresse) lignesClient.push(clientAdresse);
-      if (clientEmail)   lignesClient.push(`Email : ${clientEmail}`);
+      if (estRendable(clientNom))     lignesClient.push(clientNom);
+      if (estRendable(clientAdresse)) lignesClient.push(clientAdresse);
+      if (estRendable(clientEmail))   lignesClient.push(`Email : ${clientEmail}`);
       lignesClient.push(
         lignesClient.length
           ? `Référence client : ${userId}`
