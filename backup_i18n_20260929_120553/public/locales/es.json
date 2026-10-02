@@ -153,26 +153,7 @@
   "tdbEleve": {
     "titre": "Espacio del alumno",
     "deconnexion": "Cerrar sesión",
-    "disponibles": "👨‍🏫 Disponibles",
-    "appelEntrant": "Llamada entrante...",
-    "sessionTerminee": "Sesión finalizada",
-    "profNaPasRepondu": "El profesor no respondió",
-    "stripeConfigureTitre": "Cuenta Stripe configurada",
-    "stripeConfigureTexte": "Ya puedes recibir pagos de tus alumnos.",
-    "revenusAttenteTitre": "Ingresos pendientes",
-    "revenusAttenteTexte": "Configura tu cuenta para recibir tus transferencias.",
-    "activerStripeConnect": "⚙️ Activar Stripe Connect",
-    "redirection": "🔄 Redirigiendo...",
-    "fichierEnvoye": "El archivo \"{nom}\" se envió correctamente",
-    "validationBancaireTitre": "Validación bancaria requerida",
-    "validationBancaireMessageDefaut": "Tu banco debe validar este pago.",
-    "validerPaiementBtn": "Validar mi pago",
-    "profDeconnecteMessage": "{prof} se ha desconectado — reconexión posible en {s}s.",
-    "leprofDefaut": "El profesor",
-    "enAttenteRetourProf": "Esperando el regreso del profesor ({s}s)...",
-    "profDeRetourMessage": "{prof} ha vuelto.",
-    "aucuneSession": "Sin sesión",
-    "aucunProfConnecte": "Ningún profesor conectado"
+    "disponibles": "👨‍🏫 Disponibles"
   },
   "tdbProf": {
     "dispoLabel": "Disponible para llamadas:",

@@ -6,6 +6,21 @@ import { CallService } from "../domains/call/call.service.js";
 import { SessionService } from "../domains/session/session.service.js";
 import { CallStateMachine } from "../domains/call/call.state.machine.js";
 import { refreshAccessToken } from "../lib/auth.refresh.js"; // ✅ NOUVEAU
+// 🌐 i18n — traductions de l'interface (voir /js/core/i18n.js)
+import { t } from "./i18n.js";
+
+// 🌐 Petite aide pour interpoler des variables ({n}, {eleve}, ...) dans une
+// traduction, même helper que celui de dashboard.js (voir ce fichier pour
+// le détail du fonctionnement).
+function tf(cle, vars = null, secours = null) {
+  let texte = t(cle, secours);
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      texte = texte.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+    });
+  }
+  return texte;
+}
 
 class SocketHandlerProf {
   constructor() {
@@ -51,7 +66,7 @@ class SocketHandlerProf {
 const normalizedDoc = {
   fileName: raw.fileName ?? raw.name ?? "unknown",
   fileData: raw.fileData ?? raw.data ?? null,
-  sender: raw.userName ?? raw.sender ?? "Inconnu"
+  sender: raw.userName ?? raw.sender ?? t("tdbProf.inconnu", "Inconnu")
 };
 
      console.log("📦 doc normalisé PROF:", normalizedDoc);
@@ -118,30 +133,36 @@ break;
 
 case "chatMessage":
   AppState.addChatMessage({
-    sender: data.sender ?? "élève",
+    sender: data.sender ?? t("tdbProf.eleveLabel", "élève"),
     text: data.text ?? ""
   });
   break;
   case "peerDisconnected": {
   const graceSeconds = data.graceSeconds || 90;
+  const nomEleve = data.userName || t("tdbProf.leleve", "L'élève");
   AppState._notify("ui:notification", {
     type: "warning",
-    title: "Connexion instable",
-    message: `${data.userName || "L'élève"} s'est déconnecté — reconnexion possible sous ${graceSeconds}s.`
+    title: t("tdbProf.connexionInstableTitre", "Connexion instable"),
+    message: tf(
+      "tdbProf.connexionInstableMessage",
+      { eleve: nomEleve, s: graceSeconds },
+      `${nomEleve} s'est déconnecté — reconnexion possible sous ${graceSeconds}s.`
+    )
   });
   const el = document.getElementById("call-status");
-  if (el) el.textContent = `⏳ En attente de reconnexion (${graceSeconds}s)...`;
+  if (el) el.textContent = tf("tdbProf.enAttenteReconnexion", { s: graceSeconds }, `⏳ En attente de reconnexion (${graceSeconds}s)...`);
   break;
 }
 
 case "peerReconnected": {
+  const nomEleveReco = data.userName || t("tdbProf.leleve", "L'élève");
   AppState._notify("ui:notification", {
     type: "success",
-    title: "Reconnecté",
-    message: `${data.userName || "L'élève"} est de retour.`
+    title: t("tdbProf.reconnecteTitre", "Reconnecté"),
+    message: tf("tdbProf.reconnecteMessage", { eleve: nomEleveReco }, `${nomEleveReco} est de retour.`)
   });
   const el = document.getElementById("call-status");
-  if (el) el.textContent = "En communication";
+  if (el) el.textContent = t("tdbProf.enCommunication", "En communication");
   break;
 }
   case "ws:status":
@@ -167,7 +188,7 @@ case "peerReconnected": {
      const btn = document.getElementById("screen-share-btn");
         if (btn) { 
           btn.classList.remove("active"); // 🛑 Éteint proprement le halo bleu lumineux
-          btn.title = "Partager l'écran"; 
+          btn.title = t("cours.partagerEcran", "Partager l'écran"); 
         }
         break;
       }
@@ -184,8 +205,12 @@ case "peerReconnected": {
         // 2. Déclencher une notification non-bloquante dans l'UI
         AppState._notify("ui:notification", {
             type: "success",
-            title: "Paiement reçu",
-            message: `Gain de la session : ${data.montant}€ (${data.dureeMinutes} min)`
+            title: t("tdbProf.notifPaiementDefaut", "Paiement reçu"),
+            message: tf(
+              "tdbProf.gainSessionMessage",
+              { m: data.montant, d: data.dureeMinutes },
+              `Gain de la session : ${data.montant}€ (${data.dureeMinutes} min)`
+            )
         });
 
         // 3. Mettre à jour le solde du prof s'il est affiché sur son tableau de bord
@@ -200,15 +225,19 @@ case "peerReconnected": {
     console.info(`[PAIE] Paiement en attente de validation bancaire`);
     AppState._notify("ui:notification", {
       type: "info",
-      title: "Paiement en attente",
-      message: data.message || "Le paiement de cette session est en attente de validation par l'élève."
+      title: t("tdbProf.paiementAttenteTitre", "Paiement en attente"),
+      message: data.message || t("tdbProf.paiementAttenteMessageDefaut", "Le paiement de cette session est en attente de validation par l'élève.")
     });
   } else {
     console.info(`[PAIE] Session non facturée : ${data.dureeMinutes} min (trop courte)`);
     AppState._notify("ui:notification", {
       type: "warning",
-      title: "Session non facturée",
-      message: `Cette session de ${data.dureeMinutes} min était trop courte pour être facturée.`
+      title: t("tdbProf.sessionNonFactureeTitre", "Session non facturée"),
+      message: tf(
+        "tdbProf.sessionNonFactureeMessage",
+        { d: data.dureeMinutes },
+        `Cette session de ${data.dureeMinutes} min était trop courte pour être facturée.`
+      )
     });
   }
   break;

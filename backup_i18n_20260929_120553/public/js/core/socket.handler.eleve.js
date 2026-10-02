@@ -121,7 +121,7 @@ case "callAccepted":
   setTimeout(() => CallUI.hide(), 1200);
 
   const remoteProfEl = document.getElementById("remote-prof-info");
-  if (remoteProfEl) remoteProfEl.textContent = data.profName || t("cours.professeur", "Professeur");
+  if (remoteProfEl) remoteProfEl.textContent = data.profName || "Professeur";
 
   break;
 case "callRejected":
@@ -207,18 +207,18 @@ case "endSession": {
         case "peerDisconnected": {
   const graceSeconds = data.graceSeconds || 90;
   showNotification(
-    t("tdbEleve.profDeconnecteMessage", "{prof} s'est déconnecté — reconnexion possible sous {s}s.").replace("{prof}", () => data.userName || t("tdbEleve.leprofDefaut", "Le professeur")).replace("{s}", () => graceSeconds),
+    `${data.userName || "Le professeur"} s'est déconnecté — reconnexion possible sous ${graceSeconds}s.`,
     "info"
   );
   const el = document.getElementById("call-status");
-  if (el) el.textContent = `⏳ ${t("tdbEleve.enAttenteRetourProf", "En attente du retour du professeur ({s}s)...").replace("{s}", () => graceSeconds)}`;
+  if (el) el.textContent = `⏳ En attente du retour du professeur (${graceSeconds}s)...`;
   break;
 }
 
 case "peerReconnected": {
-  showNotification(t("tdbEleve.profDeRetourMessage", "{prof} est de retour.").replace("{prof}", () => data.userName || t("tdbEleve.leprofDefaut", "Le professeur")), "success");
+  showNotification(`${data.userName || "Le professeur"} est de retour.`, "success");
   const el = document.getElementById("call-status");
-  if (el) el.textContent = t("tdbProf.enCommunication", "En communication");
+  if (el) el.textContent = "En communication";
   break;
 }
 
@@ -247,7 +247,7 @@ case "screenShareStopped": {
   const btn = document.getElementById("screen-share-btn");
         if (btn) { 
           btn.classList.remove("active"); // 🛑 Éteint le halo bleu comme côté prof
-          btn.title = t("cours.partagerEcran", "Partager l'écran"); 
+          btn.title = "Partager l'écran"; 
         }
         break;
       }
@@ -301,8 +301,8 @@ case "screenShareStopped": {
   const toast = document.createElement("div");
   toast.innerHTML = `
     <div style="margin-bottom: 12px; font-size: 14px;">
-      ℹ️ <strong>${t("tdbProf.sessionNonFactureeTitre", "Session non facturée")}</strong><br>
-      <span style="font-size: 12px; opacity: 0.9;">${t("tdbProf.sessionNonFactureeMessage", "Cette session de {d} min était trop courte pour être facturée.").replace("{d}", () => data.dureeMinutes)}</span>
+      ℹ️ <strong>Session non facturée</strong><br>
+      <span style="font-size: 12px; opacity: 0.9;">Durée : ${data.dureeMinutes} min — trop courte pour être facturée.</span>
     </div>
   `;
   toast.style.cssText = `
@@ -329,12 +329,12 @@ case "screenShareStopped": {
   const toast = document.createElement("div");
   toast.innerHTML = `
     <div style="margin-bottom: 12px; font-size: 14px;">
-      ⚠️ <strong>${t("tdbEleve.validationBancaireTitre", "Validation bancaire requise")}</strong><br>
-      <span style="font-size: 12px; opacity: 0.9;">${data.message || t("tdbEleve.validationBancaireMessageDefaut", "Votre banque doit valider ce paiement.")}</span>
+      ⚠️ <strong>Validation bancaire requise</strong><br>
+      <span style="font-size: 12px; opacity: 0.9;">${data.message || "Votre banque doit valider ce paiement."}</span>
     </div>
     ${data.checkoutUrl ? `
     <button id="complete-payment-btn" style="width: 100%; background: white; color: #dc2626; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-      ${t("tdbEleve.validerPaiementBtn", "Valider mon paiement")}
+      Valider mon paiement
     </button>` : ""}
   `;
   toast.style.cssText = `

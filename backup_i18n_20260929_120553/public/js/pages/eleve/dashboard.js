@@ -477,18 +477,18 @@ ScreenShareService.onStop(() => {
   AppState.on('callState:change', (state) => {
     switch (state) {
     case 'calling':
-      updateCallStatus(t("tdbProf.appelEnCours", "Appel en cours..."));
+      updateCallStatus('Appel en cours...');
       playOutgoingRing();          // ▶️ ça sonne chez l'élève
       break;
-    case 'ringing':  updateCallStatus(t("tdbEleve.appelEntrant", "Appel entrant...")); break;
+    case 'ringing':  updateCallStatus('Appel entrant...'); break;
     case 'inCall':
       stopOutgoingRing();          // ⏹️ le prof a décroché
-      updateCallStatus(t("tdbProf.enCommunication", "En communication"));
+      updateCallStatus('En communication');
       break;
     case 'ended':
       stopOutgoingRing();
       AppState.callInProgress = false; // ✅ libère le verrou
-      cleanupSession(t("tdbEleve.sessionTerminee", "Session terminée"));
+      cleanupSession('Session terminée');
      break;
     case 'idle':      // ← AJOUT (déclenché par CallStateMachine.reset())
     case null:
@@ -503,7 +503,7 @@ ScreenShareService.onStop(() => {
     stopOutgoingRing();          // ⏹️ le prof n'a pas répondu
     console.log("⏱️ Appel expiré, le professeur n'a pas répondu", data);
     AppState.callInProgress = false; // ✅ NOUVEAU — libère le verrou
-    cleanupSession(t("tdbEleve.profNaPasRepondu", "Le professeur n'a pas répondu"));
+    cleanupSession("Le professeur n'a pas répondu");
     AppState.currentProfId = null;
     AppState.currentSession = null;
 
@@ -519,7 +519,7 @@ AppState.on('call:rejected', (data) => {
   console.log("❌ Appel refusé par le professeur", data);
 
   AppState.callInProgress = false; // ✅ libère le verrou anti-double-appel
-  cleanupSession(t("appel.refuseTitre", "Appel refusé"));
+  cleanupSession("Appel refusé");
   AppState.currentProfId = null;
   AppState.currentSession = null;
 
@@ -544,7 +544,7 @@ window.addEventListener("remoteVideoTrackReady", (e) => {
   }
 });
 // ================= VIDEO =================
-  AppState.on('video:connected',    ()       => updateCallStatus(t("tdbProf.enCommunication", "En communication")));
+  AppState.on('video:connected',    ()       => updateCallStatus('En communication'));
  // ================= DOCUMENT PREVIEW =================
 
 AppState.on("document:selected", (file) => {
@@ -573,7 +573,7 @@ AppState.on("document:selected", (file) => {
   });
   AppState._notify("ui:notification", {
     type: "success",
-    message: `📎 ${t("tdbEleve.fichierEnvoye", "Le fichier \"{nom}\" a été envoyé avec succès").replace("{nom}", () => doc.fileName ?? doc.name)}`
+    message: `📎 Le fichier "${doc.fileName ?? doc.name}" a été envoyé avec succès`
   });
 
 });
@@ -1172,7 +1172,7 @@ function renderProfList(profs = []) {
     const heartBtn = document.createElement("button");
     heartBtn.className = "favorite-btn";
     heartBtn.textContent = isFavorite ? "❤️" : "🤍";
-    heartBtn.title = isFavorite ? t("profs.retirerFavoris", "Retirer des favoris") : t("profs.ajouterFavoris", "Ajouter aux favoris");
+    heartBtn.title = isFavorite ? "Retirer des favoris" : "Ajouter aux favoris";
     heartBtn.style.background = "transparent";
     heartBtn.style.border = "none";
     heartBtn.style.cursor = "pointer";

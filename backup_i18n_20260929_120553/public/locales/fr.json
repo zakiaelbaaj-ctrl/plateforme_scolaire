@@ -153,26 +153,7 @@
   "tdbEleve": {
     "titre": "Espace Élève",
     "deconnexion": "Déconnexion",
-    "disponibles": "👨‍🏫 Disponibles",
-    "appelEntrant": "Appel entrant...",
-    "sessionTerminee": "Session terminée",
-    "profNaPasRepondu": "Le professeur n'a pas répondu",
-    "stripeConfigureTitre": "Compte Stripe configuré",
-    "stripeConfigureTexte": "Vous pouvez recevoir des paiements de vos élèves.",
-    "revenusAttenteTitre": "Revenus en attente",
-    "revenusAttenteTexte": "Configurez votre compte pour recevoir vos virements.",
-    "activerStripeConnect": "⚙️ Activer Stripe Connect",
-    "redirection": "🔄 Redirection...",
-    "fichierEnvoye": "Le fichier \"{nom}\" a été envoyé avec succès",
-    "validationBancaireTitre": "Validation bancaire requise",
-    "validationBancaireMessageDefaut": "Votre banque doit valider ce paiement.",
-    "validerPaiementBtn": "Valider mon paiement",
-    "profDeconnecteMessage": "{prof} s'est déconnecté — reconnexion possible sous {s}s.",
-    "leprofDefaut": "Le professeur",
-    "enAttenteRetourProf": "En attente du retour du professeur ({s}s)...",
-    "profDeRetourMessage": "{prof} est de retour.",
-    "aucuneSession": "Aucune session",
-    "aucunProfConnecte": "Aucun professeur connecté"
+    "disponibles": "👨‍🏫 Disponibles"
   },
   "tdbProf": {
     "dispoLabel": "Disponible pour les appels :",

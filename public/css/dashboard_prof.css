@@ -676,11 +676,11 @@ input:checked + .slider::before {
 }
 
 .wb-tools-group + .wb-tools-group {
-  padding-left: var(--space-sm);
-  border-left: 1px solid var(--border);
+  padding-inline-start: var(--space-sm);
+  border-inline-start: 1px solid var(--border);
 }
 
-.wb-tools-group--right { margin-left: auto; }
+.wb-tools-group--right { margin-inline-start: auto; }
 
 .wb-color-picker {
   width: 30px;

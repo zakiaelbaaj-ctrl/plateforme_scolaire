@@ -31,12 +31,6 @@
 
 <body>
 
-  <select id="selecteurLangue" aria-label="Langue"
-          style="position:fixed;top:calc(var(--header-h) + var(--profbar-h) + 10px);left:12px;z-index:50;font-family:inherit;
-                 font-size:.9rem;padding:6px 10px;border-radius:8px;border:1px solid #ccc;
-                 background:#fff;cursor:pointer;width:auto;min-width:0;max-width:200px;"></select>
-
-
   <!-- ================= HEADER ================= -->
   <header class="top-bar">
 
@@ -50,14 +44,14 @@
     <div class="top-bar__status">
       <div class="status-badge" id="call-status-badge">
         <span class="status-dot"></span>
-        <span id="call-status" data-i18n="tdbEleve.aucuneSession">Aucune session</span>
+        <span id="call-status">Aucune session</span>
       </div>
       <span id="call-time" class="call-timer">00:00</span>
     </div>
 
    <div class="actions">
   <span id="ws-status-badge" style="font-size:12px;">🟢 Connecté</span>
-  <button id="enable-notifications-btn" class="btn btn--primary btn--sm" style="display:none; margin-left:8px;" data-i18n="tdbProf.activerNotifications">
+  <button id="enable-notifications-btn" class="btn btn--primary btn--sm" style="display:none; margin-left:8px;">
     🔔 Activer les notifications
   </button>
   <button id="logout-btn" data-i18n="tdbEleve.deconnexion" class="primary" aria-label="Se déconnecter">Déconnexion</button>
@@ -67,7 +61,7 @@
   <div class="prof-bar">
     <span class="prof-bar__label" data-i18n="tdbEleve.disponibles">👨‍🏫 Disponibles</span>
     <ul id="prof-list" class="prof-list">
-      <li class="empty" data-i18n="tdbEleve.aucunProfConnecte">Aucun professeur connecté</li>
+      <li class="empty">Aucun professeur connecté</li>
     </ul>
 
     <div class="prof-scroll-arrows">
@@ -164,7 +158,7 @@
     <!-- NOTE EXPLICATIVE iOS / APPLE INTEGRÉE ICI -->
     <div class="ios-camera-notice">
       <span class="notice-icon">ℹ️</span>
-      <span><strong data-i18n="tdbProf.notePlateformeTitre">Note Apple :</strong> <span data-i18n="tdbProf.notePlateformeTexte">L'icône rouge dans la barre d'état indique uniquement que la caméra est active pour le cours en direct. Aucun enregistrement n'est effectué.</span></span>
+      <span><strong>Note Apple :</strong> L'icône rouge dans la barre d'état indique uniquement que la caméra est active pour le cours en direct. Aucun enregistrement n'est effectué.</span>
     </div>
   </section>
          
@@ -262,22 +256,8 @@
   <!-- ================= JS ================= -->
   <!-- Traduction de l interface -->
   <script type="module">
-    import { initI18n, definirLangue, LANGUES } from "/js/core/i18n.js";
-    (async () => {
-      const langue = await initI18n();
-      const select = document.getElementById("selecteurLangue");
-      if (!select) return;
-
-      LANGUES.forEach((l) => {
-        const opt = document.createElement("option");
-        opt.value = l.code;
-        opt.textContent = l.nomNatif;
-        if (l.code === langue.code) opt.selected = true;
-        select.appendChild(opt);
-      });
-
-      select.addEventListener("change", () => definirLangue(select.value));
-    })();
+    import { initI18n } from "/js/core/i18n.js";
+    initI18n();
   </script>
 
   <script type="module" src="../../js/pages/eleve/dashboard.js"></script>

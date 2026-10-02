@@ -153,26 +153,7 @@
   "tdbEleve": {
     "titre": "فضاء التلميذ",
     "deconnexion": "تسجيل الخروج",
-    "disponibles": "👨‍🏫 المتاحون",
-    "appelEntrant": "مكالمة واردة...",
-    "sessionTerminee": "انتهت الجلسة",
-    "profNaPasRepondu": "لم يرد الأستاذ",
-    "stripeConfigureTitre": "تم إعداد حساب Stripe",
-    "stripeConfigureTexte": "يمكنك الآن استلام مدفوعات تلاميذك.",
-    "revenusAttenteTitre": "أرباح قيد الانتظار",
-    "revenusAttenteTexte": "أعدّ حسابك لاستلام تحويلاتك.",
-    "activerStripeConnect": "⚙️ تفعيل Stripe Connect",
-    "redirection": "🔄 جارٍ التوجيه...",
-    "fichierEnvoye": "تم إرسال الملف «{nom}» بنجاح",
-    "validationBancaireTitre": "التحقق البنكي مطلوب",
-    "validationBancaireMessageDefaut": "يجب على بنكك تأكيد هذا الدفع.",
-    "validerPaiementBtn": "تأكيد دفعتي",
-    "profDeconnecteMessage": "{prof} انقطع اتصاله — إعادة الاتصال ممكنة خلال {s} ثانية.",
-    "leprofDefaut": "الأستاذ",
-    "enAttenteRetourProf": "في انتظار عودة الأستاذ ({s} ثانية)...",
-    "profDeRetourMessage": "{prof} عاد الآن.",
-    "aucuneSession": "لا توجد جلسة",
-    "aucunProfConnecte": "لا يوجد أستاذ متصل"
+    "disponibles": "👨‍🏫 المتاحون"
   },
   "tdbProf": {
     "dispoLabel": "متاح للمكالمات:",

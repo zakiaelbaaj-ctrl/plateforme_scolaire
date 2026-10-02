@@ -25,7 +25,13 @@
 </head>
 
 <body class="role-professeur">
-  
+
+  <!-- Sélecteur de langue — même pattern que login.html / register.html -->
+  <select id="selecteurLangue" aria-label="Langue"
+          style="position:fixed;top:calc(var(--header-h) + 10px);inset-inline-end:12px;z-index:50;font-family:inherit;
+                 font-size:.9rem;padding:6px 10px;border-radius:8px;border:1px solid #ccc;
+                 background:#fff;cursor:pointer;width:auto;min-width:0;max-width:200px;"></select>
+
   <header class="top-bar">
 <div class="top-bar__brand">
   <img src="../../images/logo.png" alt="Urgence Scolaire" style="width:40px; height:40px; object-fit:contain;" />
@@ -38,36 +44,36 @@
     <div class="top-bar__session">
   <div class="session-badge" id="session-badge">
     <span class="session-dot"></span>
-    <span id="call-status">En attente d'un élève…</span>
+    <span id="call-status" data-i18n="cours.enAttenteEleve">En attente d'un élève…</span>
   </div>
 
   <!-- ✅ interrupteur de disponibilité -->
   <div class="dispo-switch-container">
-    <span>Disponible pour les appels:</span>
+    <span data-i18n="tdbProf.dispoLabel">Disponible pour les appels :</span>
     <label class="switch">
       <input type="checkbox" id="dispoToggle">
       <span class="slider"></span>
     </label>
-    <span id="dispoStatusText">Hors ligne</span>
+    <span id="dispoStatusText" data-i18n="profs.horsLigne">Hors ligne</span>
   </div>
 
   <span id="call-time" class="call-timer"></span>
-  <span id="ws-status-badge" style="font-size:12px; margin-left:8px;">🟢 Connecté</span>
+  <span id="ws-status-badge" style="font-size:12px; margin-left:8px;" data-i18n="cours.wsConnecte">🟢 Connecté</span>
 </div>
 
 <div class="top-bar__actions">
-  <button id="enable-notifications-btn" class="btn btn--primary btn--sm" style="display:none; margin-left:8px;">
+  <button id="enable-notifications-btn" class="btn btn--primary btn--sm" style="display:none; margin-left:8px;" data-i18n="tdbProf.activerNotifications">
     🔔 Activer les notifications
   </button>
-  <button id="end-session-btn" class="btn btn--danger btn--sm" style="display:none;">✕ Terminer</button>
+  <button id="end-session-btn" class="btn btn--danger btn--sm" style="display:none;" data-i18n="tdbProf.terminer">✕ Terminer</button>
 
-  <button id="toggle-mic-btn" class="btn btn--icon" title="Couper le micro">🎙️</button>
-  <button id="toggle-camera-btn" class="btn btn--icon" title="Couper la caméra">📷</button>
+  <button id="toggle-mic-btn" class="btn btn--icon" title="Couper le micro" data-i18n-title="cours.couperMicro">🎙️</button>
+  <button id="toggle-camera-btn" class="btn btn--icon" title="Couper la caméra" data-i18n-title="cours.couperCamera">📷</button>
 
-  <button id="screen-share-btn" class="btn btn--icon" title="Partager mon écran">🖥️</button>
+  <button id="screen-share-btn" class="btn btn--icon" title="Partager l'écran" data-i18n-title="cours.partagerEcran">🖥️</button>
   <button id="gainsBtn" class="btn btn--ghost btn--sm" style="display:none;"
-          title="Gains en attente de virement">💶 <span id="gainsMontant">—</span></button>
-  <button id="logout-btn" class="btn btn--ghost">🚪 Déconnexion</button>
+          title="Gains en attente de virement" data-i18n-title="tdbProf.gainsTitre">💶 <span id="gainsMontant">—</span></button>
+  <button id="logout-btn" class="btn btn--ghost" data-i18n="tdbProf.deconnexionBtn">🚪 Déconnexion</button>
 </div>
   </header>
 
@@ -80,7 +86,7 @@
       <div class="videos">
 
   <div id="localBlock" class="video-block video-block--local video-floating">
-    <div class="video-label">Vous</div>
+    <div class="video-label" data-i18n="tdbProf.vous">Vous</div>
     <div id="localVideoContainer" class="video-box">
       <video id="local-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
       <div class="video-overlay">CAM</div>
@@ -88,14 +94,14 @@
   </div>
 
   <div id="remoteBlock" class="video-block video-block--remote video-main">
-    <div class="video-label">Élève</div>
+    <div class="video-label" data-i18n="tdbProf.eleveLabel">Élève</div>
     <div id="remoteVideoContainer" class="video-box" style="position: relative;"> 
       
       <video id="remote-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
       
       <video id="remote-screen" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; display:none; background:#000;"></video>
       
-      <button id="screen-fullscreen-btn" class="btn btn--icon" style="display: none;" title="Plein écran">⛶ Plein écran</button>
+      <button id="screen-fullscreen-btn" class="btn btn--icon" style="display: none;" title="Plein écran" data-i18n-title="cours.pleinEcran">⛶ <span data-i18n="cours.pleinEcran">Plein écran</span></button>
       
       <div class="video-overlay video-overlay--live">LIVE</div>
     </div>
@@ -106,13 +112,13 @@
 <!-- NOTE EXPLICATIVE iOS / APPLE INTEGRÉE ICI -->
     <div class="ios-camera-notice">
       <span class="notice-icon">ℹ️</span>
-      <span><strong>Note Apple :</strong> L'icône rouge dans la barre d'état indique uniquement que la caméra est active pour le cours en direct. Aucun enregistrement n'est effectué.</span>
+      <span><strong data-i18n="tdbProf.notePlateformeTitre">Note Apple :</strong> <span data-i18n="tdbProf.notePlateformeTexte">L'icône rouge dans la barre d'état indique uniquement que la caméra est active pour le cours en direct. Aucun enregistrement n'est effectué.</span></span>
     </div>
   
       <!-- WHITEBOARD -->
       <section class="card card--whiteboard">
         <div class="card__header">
-          <h3 class="card__title">✏️ Tableau blanc</h3>
+          <h3 class="card__title" data-i18n="tdbProf.tableauBlanc">✏️ Tableau blanc</h3>
           <div class="wb-header-actions">
             
           </div>
@@ -121,22 +127,22 @@
         <div class="whiteboard-canvas-wrapper" id="whiteboard-wrapper">
           <!-- Barre d’outils intégrée -->
         <div class="whiteboard-tools">
-          <button id="wb-fullscreen-btn" class="btn btn--icon wb-tool" title="Plein écran">[ ]</button>
-          <button id="pointToolBtn" class="btn btn--icon wb-tool" title="Point">•</button>
-          <button id="penToolBtn"     class="btn btn--icon wb-tool active" title="Stylo">✏️</button>
-          <button id="eraserToolBtn"  class="btn btn--icon wb-tool" title="Gomme">🧽</button>
-          <button id="lineToolBtn"    class="btn btn--icon wb-tool" title="Ligne">📏</button>
-          <button id="rectToolBtn"    class="btn btn--icon wb-tool" title="Rectangle">▭</button>
-          <button id="circleToolBtn"  class="btn btn--icon wb-tool" title="Cercle">⭕</button>  <!-- ✅ -->
-          <button id="textToolBtn"    class="btn btn--icon wb-tool" title="Texte">🔤</button>
+          <button id="wb-fullscreen-btn" class="btn btn--icon wb-tool" title="Plein écran" data-i18n-title="cours.pleinEcran">[ ]</button>
+          <button id="pointToolBtn" class="btn btn--icon wb-tool" title="Point" data-i18n-title="cours.outilPoint">•</button>
+          <button id="penToolBtn"     class="btn btn--icon wb-tool active" title="Stylo" data-i18n-title="cours.outilStylo">✏️</button>
+          <button id="eraserToolBtn"  class="btn btn--icon wb-tool" title="Gomme" data-i18n-title="cours.outilGomme">🧽</button>
+          <button id="lineToolBtn"    class="btn btn--icon wb-tool" title="Ligne" data-i18n-title="cours.outilLigne">📏</button>
+          <button id="rectToolBtn"    class="btn btn--icon wb-tool" title="Rectangle" data-i18n-title="cours.outilRectangle">▭</button>
+          <button id="circleToolBtn"  class="btn btn--icon wb-tool" title="Cercle" data-i18n-title="cours.outilCercle">⭕</button>  <!-- ✅ -->
+          <button id="textToolBtn"    class="btn btn--icon wb-tool" title="Texte" data-i18n-title="cours.outilTexte">🔤</button>
         <div class="wb-tools-group">
-      <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" />
-      <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" />
+      <input type="color" id="whiteboardColor" value="#000000" class="wb-color-picker" title="Couleur" data-i18n-title="cours.couleur" />
+      <input type="range" id="whiteboardSize" min="1" max="20" value="3" class="wb-size-slider" title="Épaisseur" data-i18n-title="cours.epaisseur" />
     </div>
            <div class="wb-tools-group wb-tools-group--right">
-            <button id="undoWhiteboardBtn"     class="btn btn--icon" title="Annuler">↩</button>
-            <button id="clearWhiteboardBtn"    class="btn btn--icon btn--danger-ghost" title="Effacer">🗑️</button>
-            <button id="downloadWhiteboardBtn" class="btn btn--icon" title="Télécharger">⬇️</button>
+            <button id="undoWhiteboardBtn"     class="btn btn--icon" title="Annuler" data-i18n-title="cours.annuler">↩</button>
+            <button id="clearWhiteboardBtn"    class="btn btn--icon btn--danger-ghost" title="Effacer" data-i18n-title="tdbProf.effacer">🗑️</button>
+            <button id="downloadWhiteboardBtn" class="btn btn--icon" title="Télécharger" data-i18n-title="cours.telecharger">⬇️</button>
           </div>
   </div>
   <!-- Canvas -->
@@ -153,15 +159,15 @@
       <!-- APPELS ENTRANTS -->
       <div class="card card--calls">
         <div class="card__header">
-          <h3 class="card__title">📞 Appels entrants</h3>
+          <h3 class="card__title" data-i18n="tdbProf.appelsEntrantsTitre">📞 Appels entrants</h3>
         </div>
         <div id="no-call" class="no-call-msg">
           <span class="no-call-icon">◎</span>
-          Aucun appel en cours
+          <span data-i18n="tdbProf.aucunAppelEnCours">Aucun appel en cours</span>
         </div>
         <!-- ✅ NOUVEAU — affiche le nom de l'élève pendant la session, comme côté élève -->
 <p class="session-eleve-info" id="session-eleve-box" style="display:none;">
-  <span class="label">Élève</span>
+  <span class="label" data-i18n="tdbProf.eleveLabel">Élève</span>
   <span id="remote-eleve-info" class="value">—</span>
 </p>
         <div id="incoming-call-box" class="incoming-call" style="display:none;">
@@ -169,10 +175,10 @@
             <span class="ring-pulse"></span>
             <span class="ring-icon">📞</span>
           </div>
-          <div id="incoming-call-text" class="incoming-call__text">Appel d'un élève…</div>
+          <div id="incoming-call-text" class="incoming-call__text" data-i18n="tdbProf.appelDunEleve">Appel d'un élève…</div>
           <div class="incoming-call__actions">
-            <button id="accept-call-btn" class="btn btn--accept">✅ Accepter</button>
-            <button id="cancel-call-btn" class="btn btn--reject">✕ Refuser</button>
+            <button id="accept-call-btn" class="btn btn--accept" data-i18n="tdbProf.accepter">✅ Accepter</button>
+            <button id="cancel-call-btn" class="btn btn--reject" data-i18n="tdbProf.refuser">✕ Refuser</button>
           </div>
         </div>
       </div>
@@ -180,11 +186,11 @@
       <!-- CHAT -->
       <div class="card card--chat">
         <div class="card__header">
-          <h3 class="card__title">💬 Chat</h3>
+          <h3 class="card__title" data-i18n="cours.chat">💬 Chat</h3>
         </div>
         <div id="chat-box" class="chat-box"></div>
         <div class="chat-input-row">
-          <input id="chat-input" class="chat-input" type="text" placeholder="Message…" autocomplete="off" />
+          <input id="chat-input" class="chat-input" type="text" placeholder="Message…" data-i18n-placeholder="cours.messagePlaceholder" autocomplete="off" />
           <button id="send-msg" class="btn btn--primary btn--sm">→</button>
         </div>
       </div>
@@ -192,16 +198,16 @@
       <!-- DOCUMENTS -->
       <div class="card card--docs">
         <div class="card__header">
-          <h3 class="card__title">📂 Documents</h3>
+          <h3 class="card__title" data-i18n="cours.documents">📁 Documents</h3>
         </div>
         <label class="file-drop-zone" for="file-input">
-          <span>Glisser un fichier ici</span>
-          <span class="file-drop-zone__sub">ou cliquer pour parcourir</span>
+          <span data-i18n="cours.glisserFichier">Glisser un fichier ici</span>
+          <span class="file-drop-zone__sub" data-i18n="cours.ouParcourir">ou cliquer pour parcourir</span>
         </label>
         <input type="file" id="file-input" class="file-input-hidden" />
          <!-- aperçu avant envoi -->
         <div id="selected-file-preview"></div>
-        <button id="send-file" class="btn btn--primary full-width">Envoyer</button>
+        <button id="send-file" class="btn btn--primary full-width" data-i18n="tdbProf.envoyer">Envoyer</button>
         <ul id="doc-list" class="doc-list"></ul>
       </div>
       <!-- STRIPE CONNECT -->
@@ -210,11 +216,11 @@
 
 <div class="card card--stripe-connect">
   <div class="card__header">
-    <h3 class="card__title">💳 Stripe Connect (Vendeur)</h3>
+    <h3 class="card__title" data-i18n="tdbProf.stripeConnectTitre">💳 Stripe Connect (Vendeur)</h3>
   </div>
   <div class="card__body">
-    <p class="text-muted small">Nécessaire pour recevoir vos paiements.</p>
-    <button id="stripe-onboarding-btn" class="btn btn--primary full-width" style="display: none;">
+    <p class="text-muted small" data-i18n="tdbProf.stripeNecessaire">Nécessaire pour recevoir vos paiements.</p>
+    <button id="stripe-onboarding-btn" class="btn btn--primary full-width" style="display: none;" data-i18n="tdbProf.stripeConnecterBtn">
       Connecter mon compte Stripe
     </button>
   </div>
@@ -229,6 +235,27 @@
 
   <!-- JS — dashboard uniquement, il orchestre tout -->
   <script type="module" src="../../js/pages/professeur/dashboard.js"></script>
+
+  <!-- Initialisation i18n — même pattern que login.html / register.html -->
+  <script type="module">
+    import { initI18n, definirLangue, LANGUES } from "/js/core/i18n.js";
+
+    (async () => {
+      const langue = await initI18n();
+      const select = document.getElementById("selecteurLangue");
+      if (!select) return;
+
+      LANGUES.forEach((l) => {
+        const opt = document.createElement("option");
+        opt.value = l.code;
+        opt.textContent = l.nomNatif;
+        if (l.code === langue.code) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener("change", () => definirLangue(select.value));
+    })();
+  </script>
 
 <script type="module">
   const stripeBtn = document.getElementById("stripe-onboarding-btn");
@@ -257,22 +284,24 @@ const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
         // Redirige vers le lien d'onboarding Stripe
         window.location.href = data.stripeLink;
       } else {
-        alert("Votre compte Stripe est déjà connecté ou une erreur est survenue.");
+        const { t } = await import("/js/core/i18n.js");
+        alert(t("tdbProf.stripeDejaConnecte", "Votre compte Stripe est déjà connecté ou une erreur est survenue."));
       }
     } catch (err) {
       console.error("Erreur Stripe onboarding:", err);
-      alert("Impossible de démarrer l'onboarding Stripe.");
+      const { t } = await import("/js/core/i18n.js");
+      alert(t("tdbProf.erreurDemarrageStripe", "Impossible de démarrer l'onboarding Stripe."));
     }
   });
 </script>
 <div id="gainsModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px;">
   <div style="background:#fff;color:#222;border-radius:14px;max-width:460px;width:100%;max-height:80vh;overflow:auto;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
-      <h3 style="margin:0;font-size:1.1rem;">💶 Mes gains</h3>
+      <h3 style="margin:0;font-size:1.1rem;" data-i18n="tdbProf.gainsModalTitre">💶 Mes gains</h3>
       <button id="gainsFermer" class="btn btn--ghost btn--sm" aria-label="Fermer">✕</button>
     </div>
     <p id="gainsTotal" style="margin:0 0 2px;font-size:1.8rem;font-weight:700;">—</p>
-    <p style="margin:0 0 6px;color:#666;font-size:.9rem;">en attente de virement bancaire</p>
+    <p style="margin:0 0 6px;color:#666;font-size:.9rem;" data-i18n="tdbProf.gainsEnAttente">en attente de virement bancaire</p>
     <p id="gainsVerses" style="display:none;margin:0 0 12px;color:#666;font-size:.9rem;"></p>
     <ul id="gainsListe" style="list-style:none;padding:0;margin:12px 0 0;font-size:.9rem;"></ul>
   </div>
@@ -286,6 +315,8 @@ const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
       const token = localStorage.getItem("token");
       if (!token) return;
 
+      const { t, langueCourante } = await import("/js/core/i18n.js");
+
       const API_URL = window.location.hostname === "localhost" ? "http://localhost:4000" : "";
       const reponse = await fetch(`${API_URL}/api/v1/users/profile/versements`, {
         headers: { Authorization: "Bearer " + token },
@@ -295,8 +326,12 @@ const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
       const donnees = await reponse.json();
       if (!donnees.lignes?.length) return;
 
+      // 🌐 Locale de formatage alignée sur la langue active de l'interface
+      const LOCALES_INTL = { fr: "fr-FR", en: "en-GB", es: "es-ES", ar: "ar-MA" };
+      const localeIntl = LOCALES_INTL[langueCourante()] || "fr-FR";
+
       const euros = (centimes) =>
-        (centimes / 100).toLocaleString("fr-FR", {
+        (centimes / 100).toLocaleString(localeIntl, {
           style: "currency",
           currency: donnees.devise || "EUR",
         });
@@ -308,14 +343,14 @@ const res = await fetch(`${API_URL}/api/v1/stripeConnect/onboarding`, {
       document.getElementById("gainsTotal").textContent = euros(donnees.totalDu);
       if (donnees.totalVerse > 0) {
         const verses = document.getElementById("gainsVerses");
-        verses.textContent = "Déjà versé : " + euros(donnees.totalVerse);
+        verses.textContent = t("tdbProf.gainsDejaVerse", "Déjà versé : ") + euros(donnees.totalVerse);
         verses.style.display = "block";
       }
 
       const liste = document.getElementById("gainsListe");
       donnees.lignes.forEach((ligne) => {
         const li = document.createElement("li");
-        const date = new Date(ligne.created_at).toLocaleDateString("fr-FR");
+        const date = new Date(ligne.created_at).toLocaleDateString(localeIntl);
         const minutes = ligne.duration_seconds
           ? Math.ceil(ligne.duration_seconds / 60) + " min"
           : "—";

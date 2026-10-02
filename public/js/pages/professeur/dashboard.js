@@ -17,10 +17,36 @@ import { getUserProfile } from "../../services/user.service.js"; // service fict
 import { handleAllStripeReturns, openSetupSession } from '/js/services/stripe.service.js';
 import { ScreenShareService } from "/js/domains/call/screen.share.service.js";
 import { ScreenShareOverlay }  from "/js/ui/components/screen.share.overlay.js";
+// 🌐 i18n — traductions de l'interface (voir /js/core/i18n.js)
+import { t } from "/js/core/i18n.js";
+
 let whiteboardWrapper = null;
 let videoMiniature = null;
 let deferredInstallPrompt = null;
 let remoteVideoTrack = null;
+
+// 🌐 Etat "dernier affiché", pour pouvoir retraduire sans relancer les
+// evenements metier quand le prof change de langue en cours de session.
+let lastWsStatus = null;
+let lastWsAttempt = 0;
+let lastCallStatusCle = "cours.enAttenteEleve";
+let lastCallStatusVars = null;
+let lastDispoEstDisponible = null;
+let lastCameraEnabled = true;
+let lastMicEnabled = true;
+let lastUserData = null;
+
+// 🌐 Petite aide pour interpoler des variables ({n}, {h}, ...) dans une
+// traduction, comme le fait déjà i18n.js pour les {prof}, {matiere}, etc.
+function tf(cle, vars = null, secours = null) {
+  let texte = t(cle, secours);
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      texte = texte.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+    });
+  }
+  return texte;
+}
 
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:4000" 
@@ -101,10 +127,9 @@ function checkIOSInstallPrompt() {
       font-size: 14px; display: flex; flex-direction: column; gap: 10px;
     `;
     banner.innerHTML = `
-      <div>📲 <strong>Installez l'application</strong><br>
-      Pour recevoir les appels même app fermée : appuyez sur <strong>Partager</strong> ⬆️ puis
-      <strong>"Sur l'écran d'accueil"</strong>.</div>
-      <button id="ios-install-dismiss" style="padding:8px; border-radius:6px; border:1px solid #444; background:transparent; color:#aaa; cursor:pointer;">Compris</button>
+      <div>${t("tdbProf.installTitre", "📲 Installez l'application")}<br>
+      ${t("tdbProf.installTexteIOS", "Pour recevoir les appels même app fermée : appuyez sur <strong>Partager</strong> ⬆️ puis <strong>« Sur l'écran d'accueil »</strong>.")}</div>
+      <button id="ios-install-dismiss" style="padding:8px; border-radius:6px; border:1px solid #444; background:transparent; color:#aaa; cursor:pointer;">${t("tdbProf.installCompris", "Compris")}</button>
     `;
     document.body.appendChild(banner);
     document.getElementById("ios-install-dismiss").addEventListener("click", () => {
@@ -127,11 +152,11 @@ function showInstallBanner() {
     font-size: 14px; display: flex; flex-direction: column; gap: 10px;
   `;
   banner.innerHTML = `
-    <div>📲 <strong>Installez l'application</strong><br>
-    Pour recevoir les appels même app fermée, ajoutez cette page à votre écran d'accueil.</div>
+    <div>${t("tdbProf.installTitre", "📲 Installez l'application")}<br>
+    ${t("tdbProf.installTexteAndroid", "Pour recevoir les appels même app fermée, ajoutez cette page à votre écran d'accueil.")}</div>
     <div style="display:flex; gap:8px;">
-      <button id="install-accept" style="flex:1; padding:8px; border-radius:6px; border:none; background:#2196f3; color:#fff; cursor:pointer;">Installer</button>
-      <button id="install-dismiss" style="padding:8px 12px; border-radius:6px; border:1px solid #444; background:transparent; color:#aaa; cursor:pointer;">Plus tard</button>
+      <button id="install-accept" style="flex:1; padding:8px; border-radius:6px; border:none; background:#2196f3; color:#fff; cursor:pointer;">${t("tdbProf.installBtn", "Installer")}</button>
+      <button id="install-dismiss" style="padding:8px 12px; border-radius:6px; border:1px solid #444; background:transparent; color:#aaa; cursor:pointer;">${t("tdbProf.installPlusTard", "Plus tard")}</button>
     </div>
   `;
   document.body.appendChild(banner);
@@ -173,11 +198,11 @@ async function initStripeOnboarding() {
       window.location.href = data.stripeLink;
     } else {
       // Ajout d'une alerte si le lien est absent (très utile pour le débug)
-      alert("Erreur : " + (data.message || "Impossible de générer le lien Stripe."));
+      alert(t("tdbProf.erreurPrefixe", "Erreur : ") + (data.message || t("tdbProf.erreurLienStripe", "Impossible de générer le lien Stripe.")));
     }
   } catch (err) {
     console.error("Erreur Stripe onboarding:", err);
-    alert("Une erreur réseau est survenue.");
+    alert(t("tdbProf.erreurReseauStripe", "Une erreur réseau est survenue."));
   }
 }
 
@@ -197,7 +222,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (audioDebloque || document.getElementById("activer-son-banniere")) return;
     const bouton = document.createElement("button");
     bouton.id = "activer-son-banniere";
-    bouton.textContent = "🔔 Activer le son des appels";
+    bouton.textContent = t("tdbProf.activerSon", "🔔 Activer le son des appels");
     bouton.style.cssText =
       "position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:9999;" +
       "padding:12px 20px;border:none;border-radius:999px;background:#0b5ed7;color:#fff;" +
@@ -288,9 +313,8 @@ try {
   });
   const data = await res.json();
   const dispoToggle = document.getElementById("dispoToggle");
-  const dispoStatusText = document.getElementById("dispoStatusText");
   if (dispoToggle) dispoToggle.checked = data.estDisponible;
-  if (dispoStatusText) dispoStatusText.textContent = data.estDisponible ? "En ligne" : "Hors ligne";
+  setDispoStatusText(data.estDisponible);
 } catch (err) {
   console.error("❌ Impossible de charger la disponibilité initiale:", err);
 }
@@ -318,7 +342,7 @@ if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
 
   // ✅ AJOUT : informer le prof plutôt que de cacher silencieusement
   const notice = document.createElement("div");
-  notice.textContent = "ℹ️ Le partage d'écran n'est pas disponible sur cet appareil. Utilisez un ordinateur si vous souhaitez partager votre écran pendant un cours.";
+  notice.textContent = t("cours.partageIndisponible", "ℹ️ Le partage d'écran n'est pas disponible sur cet appareil. Utilisez un ordinateur si vous souhaitez partager votre écran pendant un cours.");
   notice.style.cssText = `
     position: fixed; bottom: 20px; right: 20px; z-index: 9999;
     background: #2563eb; color: white; padding: 14px 18px;
@@ -337,6 +361,42 @@ if (screenShareBtn && !navigator.mediaDevices?.getDisplayMedia) {
   // 🔴 Broadcast initial des profs connectés vers les élèves
   updateOnlineProfessors();
   });
+// ======================================================
+// 🌐 CHANGEMENT DE LANGUE EN COURS DE SESSION
+// ======================================================
+// appliquer() (dans i18n.js) retraduit déjà tout seul les éléments
+// [data-i18n] au moment du choix de langue. Ici on ne retraduit que ce qui
+// est écrit dynamiquement en JS et qui n'a donc pas d'attribut data-i18n :
+// badge websocket, statut d'appel, statut de disponibilité, titres des
+// boutons caméra/micro, et le bloc "Mon compte" reconstruit en innerHTML.
+document.addEventListener("langue:changee", () => {
+  updateWsStatus(lastWsStatus, lastWsAttempt);
+  updateCallStatus(lastCallStatusCle, lastCallStatusVars);
+  if (lastDispoEstDisponible !== null) setDispoStatusText(lastDispoEstDisponible);
+  updateCameraButton(lastCameraEnabled);
+  updateMicButton(lastMicEnabled);
+  if (lastUserData) renderCurrentUserInfo(lastUserData);
+
+  // ⚠️ correctif — appliquer() (dans i18n.js) vient de réécrire le title de
+  // TOUS les éléments [data-i18n-title] d'après leur valeur statique dans le
+  // HTML, y compris ceux dont le titre dépend d'un état en cours (partage
+  // d'écran actif, tableau blanc en plein écran). On les recorrige ici.
+  const ssBtn = document.getElementById("screen-share-btn");
+  if (ssBtn && ScreenShareService.isSharing?.()) {
+    ssBtn.title = t("cours.arreterPartage", "Arrêter le partage");
+  }
+
+  const wbBtn = document.getElementById("wb-fullscreen-btn");
+  const wrapper = document.getElementById("whiteboard-wrapper");
+  if (wbBtn && wrapper) {
+    if (document.fullscreenElement === wrapper) {
+      wbBtn.textContent = t("tdbProf.quitterPleinEcran", "❌ Quitter");
+      wbBtn.title = t("tdbProf.quitterPleinEcranTitre", "Quitter le plein écran");
+    } else if (wrapper.classList.contains("whiteboard-fullscreen")) {
+      wbBtn.title = t("tdbProf.quitterPleinEcranTitre", "Quitter le plein écran");
+    }
+  }
+});
 // ======================================================
 // DOMAIN SUBSCRIPTIONS _ UI écoute uniquement
 // ======================================================
@@ -361,7 +421,7 @@ function subscribeToDomains() {
   // ================= CALL =================
   AppState.on('callState:change', (state) => {
   switch (state) {
-    case 'calling':  updateCallStatus('Appel en cours...'); break;
+    case 'calling':  updateCallStatus('tdbProf.appelEnCours'); break;
     case 'ringing':
     case 'incoming':
       showIncomingCall({
@@ -371,12 +431,12 @@ function subscribeToDomains() {
       break;
    case 'inCall':
   hideIncomingAlert();
-  updateCallStatus("En communication"); // ✅ redevient générique dans le header
+  updateCallStatus('tdbProf.enCommunication'); // ✅ redevient générique dans le header
 
   // ✅ NOUVEAU — affiche le nom dans le panneau "Appels entrants"
   const sessionEleveBox = document.getElementById("session-eleve-box");
   const remoteEleveInfo = document.getElementById("remote-eleve-info");
-  if (remoteEleveInfo) remoteEleveInfo.textContent = AppState.currentIncomingCallEleveName || "Élève";
+  if (remoteEleveInfo) remoteEleveInfo.textContent = AppState.currentIncomingCallEleveName || t("tdbProf.eleveLabel", "Élève");
   if (sessionEleveBox) sessionEleveBox.style.display = "block";
 
   setSessionActive(true);
@@ -400,7 +460,7 @@ function subscribeToDomains() {
 
   AppState.on("session:end", () => {
     updateTimerUI("00:00");
-    updateCallStatus("En attente d'un élève…");
+    updateCallStatus('cours.enAttenteEleve');
   });
   AppState.on('video:remoteTracks', (tracks) => attachRemoteTracks(tracks));
   AppState.on('call:incoming',      (data)   => showIncomingCall(data));
@@ -408,7 +468,7 @@ function subscribeToDomains() {
   AppState.on('call:timeout', (data) => {
     console.log("⏱️ Appel expiré côté prof", data);
     hideIncomingAlert();
-    updateCallStatus("En attente d'un élève…");
+    updateCallStatus('cours.enAttenteEleve');
     AppState.currentIncomingCallEleveId = null;
   });
   // ================= CHAT =================
@@ -451,7 +511,7 @@ ScreenShareService.onStart((track) => {
 ScreenShareService.onStop(() => {
   ScreenShareOverlay.hide();
   const btn = document.getElementById("screen-share-btn");
-  if (btn) { btn.textContent = "🖥️"; btn.title = "Partager l'écran"; }
+  if (btn) { btn.textContent = "🖥️"; btn.title = t("cours.partagerEcran", "Partager l'écran"); }
 });
   // ================= NOTIFICATION PAIEMENT =================
   AppState.on("ui:notification", (notif) => {
@@ -464,7 +524,7 @@ ScreenShareService.onStop(() => {
     `;
     toast.innerHTML = `
       <div style="font-weight: bold; margin-bottom: 6px;">
-        ✅ ${notif.title || "Paiement reçu"}
+        ✅ ${notif.title || t("tdbProf.notifPaiementDefaut", "Paiement reçu")}
       </div>
       <div style="font-size: 14px;">${notif.message || ""}</div>
     `;
@@ -486,19 +546,17 @@ ScreenShareService.onStop(() => {
   // ✅ NOUVEAU — confirmation serveur de la disponibilité
   AppState.on("availabilityUpdated", ({ estDisponible }) => {
     const dispoToggle = document.getElementById("dispoToggle");
-    const dispoStatusText = document.getElementById("dispoStatusText");
     if (dispoToggle) dispoToggle.checked = estDisponible;
-    if (dispoStatusText) dispoStatusText.textContent = estDisponible ? "En ligne" : "Hors ligne";
+    setDispoStatusText(estDisponible);
   });
   // ✅ NOUVEAU — le serveur a refusé le changement (ex: session en cours)
  AppState.on("availabilityError", ({ message }) => {
   const dispoToggle = document.getElementById("dispoToggle");
-  const dispoStatusText = document.getElementById("dispoStatusText");
   if (dispoToggle) {
     dispoToggle.checked = !dispoToggle.checked; // revert
-    if (dispoStatusText) dispoStatusText.textContent = dispoToggle.checked ? "En ligne" : "Hors ligne";
+    setDispoStatusText(dispoToggle.checked);
   }
-  alert(message || "Impossible de changer votre disponibilité pour le moment.");
+  alert(message || t("tdbProf.erreurDispo", "Impossible de changer votre disponibilité pour le moment."));
 });
 }
   
@@ -553,7 +611,7 @@ endBtn?.addEventListener("click", async () => {
     socketService.send({ type: "rejectCall", eleveId });
     AppState.currentIncomingCallEleveId = null;
     hideIncomingAlert();
-    updateCallStatus("Appel refusé");
+    updateCallStatus('appel.refuseTitre');
   });
   
 // ================= WHITEBOARD =================
@@ -604,13 +662,13 @@ document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement === whiteboardWrapper) {
     videoMiniature.style.display = "block";
     syncMiniatureStream();
-    fullscreenBtn.textContent = "❌ Quitter";
-    fullscreenBtn.title = "Quitter le plein écran";
+    fullscreenBtn.textContent = t("tdbProf.quitterPleinEcran", "❌ Quitter");
+    fullscreenBtn.title = t("tdbProf.quitterPleinEcranTitre", "Quitter le plein écran");
   } else {
     videoMiniature.style.display = "none";
     if (remoteVideoTrack) remoteVideoTrack.detach(videoMini);
     fullscreenBtn.textContent = "⛶";
-    fullscreenBtn.title = "Plein écran";
+    fullscreenBtn.title = t("cours.pleinEcran", "Plein écran");
   }
   // ✅ NOUVEAU — redimensionne le canvas à sa vraie résolution après le
   // changement de taille du wrapper (entrée ET sortie du plein écran natif).
@@ -632,12 +690,12 @@ document.getElementById("screen-share-btn")?.addEventListener("click", async () 
   if (ScreenShareService.isSharing()) {
     await ScreenShareService.stop(VideoService.room);
     btn.textContent = "🖥️";
-    btn.title = "Partager l'écran";
+    btn.title = t("cours.partagerEcran", "Partager l'écran");
   } else {
     await ScreenShareService.start(VideoService.room);
     if (ScreenShareService.isSharing()) {
       btn.textContent = "⏹️";
-      btn.title = "Arrêter le partage";
+      btn.title = t("cours.arreterPartage", "Arrêter le partage");
     }
   }
 });
@@ -675,7 +733,6 @@ document.getElementById("toggle-mic-btn")?.addEventListener("click", toggleMic);
   // ✅ NOUVEAU — insérer ICI, juste avant l'accolade fermante de bindUI()
   // ================= DISPONIBILITÉ =================
     const dispoToggle = document.getElementById("dispoToggle");
-  const dispoStatusText = document.getElementById("dispoStatusText");
 
     dispoToggle?.addEventListener("change", async (e) => {
     const estDisponible = e.target.checked;
@@ -684,7 +741,7 @@ document.getElementById("toggle-mic-btn")?.addEventListener("click", toggleMic);
       await initPushNotifications();
       if (Notification.permission !== "granted") {
         dispoToggle.checked = false;
-        alert("Active les notifications pour pouvoir être disponible.");
+        alert(t("tdbProf.activerNotifsPourDispo", "Active les notifications pour pouvoir être disponible."));
         return;
       }
     }
@@ -693,32 +750,43 @@ document.getElementById("toggle-mic-btn")?.addEventListener("click", toggleMic);
     socketService.send({ type: "updateAvailability", estDisponible });
   });
 }
+function setDispoStatusText(estDisponible) {
+  lastDispoEstDisponible = estDisponible;
+  const dispoStatusText = document.getElementById("dispoStatusText");
+  if (dispoStatusText) {
+    dispoStatusText.textContent = estDisponible
+      ? t("profs.enLigne", "En ligne")
+      : t("profs.horsLigne", "Hors ligne");
+  }
+}
 function updateWsStatus(status, attempt = 0) {
+  lastWsStatus = status;
+  lastWsAttempt = attempt;
   const badge = document.getElementById("ws-status-badge");
   if (!badge) return;
 
   switch (status) {
     case "connected":
-      badge.textContent = "🟢 Connecté";
+      badge.textContent = t("cours.wsConnecte", "🟢 Connecté");
       badge.style.color = "#4CAF50";
       badge.title = "";
       break;
 
     case "reconnecting":
-      badge.textContent = `🟡 Reconnexion... (${attempt})`;
+      badge.textContent = tf("cours.wsReconnexion", { n: attempt }, `🟡 Reconnexion... (${attempt})`);
       badge.style.color = "#FF9800";
-      badge.title = `Tentative ${attempt}`;
+      badge.title = tf("cours.wsTentative", { n: attempt }, `Tentative ${attempt}`);
       break;
 
     case "disconnected":
-      badge.textContent = "🔴 Hors ligne";
+      badge.textContent = t("cours.wsHorsLigne", "🔴 Hors ligne");
       badge.style.color = "#f44336";
-      badge.title = "Connexion perdue";
+      badge.title = t("cours.wsConnexionPerdue", "Connexion perdue");
       break;
       case "auth-failed":
-      badge.textContent = "🔴 Session expirée";
+      badge.textContent = t("cours.wsSessionExpiree", "🔴 Session expirée");
       badge.style.color = "#f44336";
-      badge.title = "Reconnexion requise";
+      badge.title = t("cours.wsReconnexionRequise", "Reconnexion requise");
       viderSession();
       window.location.replace("/pages/professeur/login.html?reason=session_expired");
       break;
@@ -734,7 +802,7 @@ function onSessionStarted(event) {
 
   // ✅ CORRIGÉ — utilise le nom de l'élève au lieu du texte générique,
   // pour ne plus écraser l'info posée par case 'inCall'.
-  updateCallStatus("En communication");
+  updateCallStatus('tdbProf.enCommunication');
   updateMicButton(true);
   updateCameraButton(true);
   setSessionActive(true);
@@ -790,7 +858,7 @@ function setSessionActive(active) {
   if (text) {
     const location = eleveVille && elevePays ? ` — ${eleveVille}, ${elevePays}` : "";
     const classe = eleveClasse ? ` (${eleveClasse})` : "";
-    text.textContent = `${eleveName || "Élève"}${classe}${location}`;
+    text.textContent = `${eleveName || t("tdbProf.eleveLabel", "Élève")}${classe}${location}`;
   }
 }
 
@@ -912,17 +980,19 @@ async function toggleMic() {
   updateMicButton(!isEnabled);
 }
 function updateCameraButton(isEnabled) {
+  lastCameraEnabled = isEnabled;
   const btn = document.getElementById("toggle-camera-btn");
   if (!btn) return;
   btn.textContent = isEnabled ? "📷" : "📵";
-  btn.title = isEnabled ? "Couper la caméra" : "Réactiver la caméra";
+  btn.title = isEnabled ? t("cours.couperCamera", "Couper la caméra") : t("cours.reactiverCamera", "Réactiver la caméra");
 }
 
 function updateMicButton(isEnabled) {
+  lastMicEnabled = isEnabled;
   const btn = document.getElementById("toggle-mic-btn");
   if (!btn) return;
   btn.textContent = isEnabled ? "🎙️" : "🔇";
-  btn.title = isEnabled ? "Couper le micro" : "Réactiver le micro";
+  btn.title = isEnabled ? t("cours.couperMicro", "Couper le micro") : t("cours.reactiverMicro", "Réactiver le micro");
 }
 
 // ======================================================
@@ -1009,7 +1079,7 @@ function toggleWhiteboardFullscreen() {
   if (isFullscreen) {
     if (btn) {
       btn.textContent = "✕";
-      btn.title = "Quitter le plein écran";
+      btn.title = t("tdbProf.quitterPleinEcranTitre", "Quitter le plein écran");
       // ✅ Le bouton reste dans la barre d'outils (.whiteboard-tools),
       // zone confirmée visible même pendant la vidéo — plus besoin de
       // le déplacer ni de lutter contre l'overlay matériel Android.
@@ -1019,7 +1089,7 @@ function toggleWhiteboardFullscreen() {
   } else {
     if (btn) {
       btn.textContent = "[ ]";
-      btn.title = "Plein écran";
+      btn.title = t("cours.pleinEcran", "Plein écran");
     }
     if (videoMiniature) videoMiniature.style.display = "none";
     if (remoteVideoTrack) {
@@ -1034,9 +1104,11 @@ function toggleWhiteboardFullscreen() {
 // UI HELPERS
 // ======================================================
 
-function updateCallStatus(text) {
+function updateCallStatus(cle, vars = null) {
+  lastCallStatusCle = cle;
+  lastCallStatusVars = vars;
   const el = document.getElementById("call-status");
-  if (el) el.textContent = text;
+  if (el) el.textContent = tf(cle, vars);
 }
 function cleanupSession(message) {
   if (cleanupSession._running) return;
@@ -1066,6 +1138,7 @@ if (sessionEleveBox) sessionEleveBox.style.display = "none";
   }
 
 function renderCurrentUserInfo(user) {
+  lastUserData = user;
   // 1. Récupération des données (on utilise 'user' passé en paramètre)
   const { prenom, nom, ville, pays, is_subscriber, role } = user || {};
 
@@ -1080,11 +1153,11 @@ function renderCurrentUserInfo(user) {
   if (infoContainer) {
     infoContainer.innerHTML = `
         <div class="card">
-            <h3>Mon compte</h3>
-            <p>Utilisateur : ${prenom ?? ""} ${nom ?? ""}</p>
-            <p>Statut : ${is_subscriber ? '✅ Abonné' : '❌ Non abonné'}</p>
+            <h3>${t("tdbProf.monCompte", "Mon compte")}</h3>
+            <p>${t("tdbProf.utilisateurLabel", "Utilisateur : ")}${prenom ?? ""} ${nom ?? ""}</p>
+            <p>${t("tdbProf.statutLabel", "Statut : ")}${is_subscriber ? t("tdbProf.abonne", "✅ Abonné") : t("tdbProf.nonAbonne", "❌ Non abonné")}</p>
             <button id="stripe-setup-btn" class="btn-primary">
-                ${role === 'prof' ? '⚙️ Configurer mon compte Stripe' : '💳 Enregistrer ma carte bancaire'}
+                ${role === 'prof' ? t("tdbProf.configurerStripe", "⚙️ Configurer mon compte Stripe") : t("tdbProf.enregistrerCarte", "💳 Enregistrer ma carte bancaire")}
                 </button>
             
             <div id="stripe-status" style="margin-top: 10px;"></div>
@@ -1098,12 +1171,12 @@ function renderCurrentUserInfo(user) {
             e.preventDefault();
             stripeBtn.disabled = true;
             const originalText = stripeBtn.textContent;
-             stripeBtn.textContent = "🔄 Chargement...";
+             stripeBtn.textContent = t("profil.enregistrement", "Enregistrement...");
             try {
                 await openSetupSession(); // La fonction importée
             } catch (error) {
                 console.error("Erreur Stripe:", error);
-                alert("Impossible d'ouvrir la session Stripe.");
+                alert(t("tdbProf.erreurOuvertureStripe", "Impossible d'ouvrir la session Stripe."));
                 stripeBtn.disabled = false;
                 stripeBtn.textContent = originalText;
             }
